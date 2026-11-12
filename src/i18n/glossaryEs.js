@@ -4397,4 +4397,12 @@ export const UI_GLOSSARY_ES = {
   // ── Réglages R3 : plan de salle ──
   'Réservations : plan de salle': 'Reservas: plano de sala',
   'Salles, tables, décor et places de bar du plan de base': 'Salas, mesas, decoración y plazas de barra del plano base',
+  // ── Statistiques (S2) : Pertes ──
+  "Valeur des pertes": "Valor de las mermas",
+  "Pertes déclarées": "Mermas declaradas",
+  "Par catégorie": "Por categoría",
+  "Par motif": "Por motivo",
+  "la date de la perte": "la fecha de la merma",
+  "Quantité perdue fois valeur unitaire, pertes validées ou non, au jour de la perte.": "Cantidad perdida por valor unitario, mermas validadas o no, el día de la merma.",
+  "Nombre de pertes déclarées, validées ou non.": "Número de mermas declaradas, validadas o no.",
 };

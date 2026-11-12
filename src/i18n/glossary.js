@@ -4416,6 +4416,14 @@ export const UI_GLOSSARY = {
   // ── Réglages R3 : plan de salle ──
   'Réservations : plan de salle': 'Reservations: floor plan',
   'Salles, tables, décor et places de bar du plan de base': 'Rooms, tables, decor and bar seats of the base plan',
+  // ── Statistiques (S2) : Pertes ──
+  "Valeur des pertes": "Waste value",
+  "Pertes déclarées": "Waste reported",
+  "Par catégorie": "By category",
+  "Par motif": "By reason",
+  "la date de la perte": "the date of the waste",
+  "Quantité perdue fois valeur unitaire, pertes validées ou non, au jour de la perte.": "Quantity lost times unit value, waste validated or not, on the day of the waste.",
+  "Nombre de pertes déclarées, validées ou non.": "Number of waste entries reported, validated or not.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

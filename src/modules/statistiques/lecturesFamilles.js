@@ -13,7 +13,7 @@
 // affiche « non lu » et « Réessayer », pas un zéro (D9).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { isModuleActiveForEtab } from '../moduleConfig.js';
+import { isModuleActiveForEtab, isPageActiveForEtab, peutOuvrirPage } from '../moduleConfig.js';
 import { dbService } from '../../services/dbService.js';
 import * as caisse from '../../services/caisseService.js';
 import { lireFenetre } from '../caisse/rapports/lectureRapport.js';
@@ -22,6 +22,11 @@ import { lireModeTest } from '../caisse/modeTest.js';
 import { ROLES_RAPPORT } from '../previsions/rapport/gardeRapport.js';
 import { lireReferentiel, lireReservations } from '../previsions/rapport/useRapportReservations.js';
 import { estDirection, peutReglerFactures } from '../comptabilite/gardesCompta.js';
+
+// Garde d'un écran d'origine, la chaîne même de LegacyModuleHost.jsx : page
+// active pour l'établissement, puis droit d'ouvrir la page.
+export const ecranOuvert = (page, { role, permissions, etablissement }) => isPageActiveForEtab(etablissement, page)
+  && peutOuvrirPage(page, { role }, permissions);
 
 const echec = (e, defaut) => new Error(typeof e === 'string' && e ? e : (e?.message || defaut));
 
@@ -73,6 +78,17 @@ export const LECTURES = {
     parHook: true,
     visible: ({ role, permissions, etablissement }) => isModuleActiveForEtab(etablissement, 'comptabilite')
       && permissions.comptabilite === true && (estDirection(role) || peutReglerFactures(role)),
+  },
+  // Pertes : l'écran Pertes, toutes les pertes de l'établissement (sans
+  // fenêtre, comme l'écran qui ne filtre pas par date).
+  pertes: {
+    sansFenetre: true,
+    visible: (ctx) => ecranOuvert('pertes', ctx),
+    async lire(etabId) {
+      const db = dbService.getBridge()?.db;
+      if (!db) throw echec(null, 'Lecture indisponible.');
+      return { pertes: await db.listPertes(etabId, { strict: true }) };
+    },
   },
 };
 

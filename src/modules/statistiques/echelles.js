@@ -3,8 +3,9 @@
 // par node --test, echelles.test.mjs).
 //
 // Unités du catalogue : 'chf' (francs), 'nombre', 'pct' (un rapport entre 0
-// et 1, affiché en pour cent), 'min' (minutes). Formats fr-CH. Une valeur
-// absente s'écrit « n/a », jamais 0.
+// et 1, affiché en pour cent), 'min' (minutes), 'h' (heures décimales),
+// 'jour' (jours), 'temp' (degrés Celsius). Formats fr-CH. Une valeur absente
+// s'écrit « n/a », jamais 0.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const UNITES = {
@@ -12,6 +13,9 @@ export const UNITES = {
   nombre: { label: '', decimales: 0 },
   pct: { label: '%', decimales: 1 },
   min: { label: 'min', decimales: 0 },
+  h: { label: 'h', decimales: 2 },
+  jour: { label: 'jours', decimales: 0 },
+  temp: { label: '°C', decimales: 1 },
 };
 
 const estNombre = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -51,6 +55,8 @@ export function nombreDe(valeur, unite, { court = false } = {}) {
   if (unite === 'pct') return nombreFr(valeur * 100, court ? 0 : 1);
   if (unite === 'chf') return nombreFr(valeur, court ? 0 : 2);
   if (unite === 'min') return nombreFr(valeur, 0);
+  if (unite === 'h') return nombreFr(valeur, court ? 0 : 2);
+  if (unite === 'temp') return nombreFr(valeur, 1);
   return nombreFr(valeur, Number.isInteger(valeur) ? 0 : 1);
 }
 

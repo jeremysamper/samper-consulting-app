@@ -285,11 +285,12 @@ test('accès : une famille fermée n\'apporte aucune mesure, les salaires resten
 test('catalogue : chaque mesure déclare ce qu\'il faut, les ids sont uniques', () => {
   assert.equal(new Set(MESURES.map((m) => m.id)).size, MESURES.length);
   MESURES.forEach((m) => {
-    assert.ok(['chf', 'nombre', 'pct', 'min'].includes(m.unite), m.id);
-    assert.ok(['flux', 'taux', 'stock'].includes(m.nature), m.id);
+    assert.ok(['chf', 'nombre', 'pct', 'min', 'h', 'jour', 'temp'].includes(m.unite), m.id);
+    assert.ok(['flux', 'taux', 'stock', 'etat'].includes(m.nature), m.id);
     assert.equal(typeof m.valeur, 'function', m.id);
     assert.ok(m.libelle && m.phrase && m.phrase.length > 20, m.id);
     assert.ok(m.pas.length > 0, m.id);
   });
-  assert.equal(MESURES.length, 36);
+  // Les quatre familles de S1 ; celles de S2 sont comptées dans egalite-s2.test.mjs.
+  assert.equal(MESURES.filter((m) => ['caisse', 'reservations', 'achats', 'comptabilite'].includes(m.famille)).length, 36);
 });
