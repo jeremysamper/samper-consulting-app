@@ -9,6 +9,8 @@ import assert from 'node:assert/strict';
 import { FAMILLES, MESURES } from './catalogueMesures.js';
 import { sommeFlux, trancheEntiere, tranchesDe } from './agregation.js';
 import { jeuPertes } from '../pertes/jeuPertes.mjs';
+import { jeuHoraires } from '../planning/jeuHoraires.mjs';
+import { calcHeures, heuresFaites, retardsDe, soldeMois } from '../planning/soldesHeures.js';
 
 const famille = (id) => FAMILLES.find((f) => f.id === id);
 const mesuresDe = (id) => MESURES.filter((m) => m.famille === id);
@@ -59,7 +61,39 @@ test('pertes : la valeur et les déclarations font le total de l\'écran Pertes'
   assert.equal(mesure('pertes.valeur').valeur(vide), null);
 });
 
+// ── Planning et pointage ──
+test('planning : chaque flux fait le total, égal à la grille, au relevé et au solde du mois', () => {
+  const { shifts, contrats, absences } = jeuHoraires();
+  const noms = { u1: 'Ana', u2: 'Bea', u3: 'Cid', u4: 'Dan' };
+  const donnees = { shifts, contrats, absences, noms };
+  // Heures décimales sans arrondi d'origine (un tiers d'heure, 4,8 h dues par
+  // jour) : chaque point affiché au centième s'écarte d'un demi-centième au plus.
+  ['jour', 'semaine', 'mois'].forEach((pas) => {
+    const lu = lire('planning', donnees, '2026-10-01', '2026-10-31', pas);
+    const borne = Math.ceil(lu.points.length / 2);
+    verifierFlux('planning', lu, { 'planning.heures_prevues': borne, 'planning.heures_pointees': borne, 'planning.solde': borne });
+  });
+  const lu = lire('planning', donnees, '2026-10-01', '2026-10-31', 'semaine');
+  const oct = shifts.filter((s) => s.date >= '2026-10-01' && s.date <= '2026-10-31');
+  const v = (id) => mesure(id).valeur(lu.total);
+  const proche = (a, b, m) => assert.ok(Math.abs(a - b) < 1e-9, `${m} : ${a} au lieu de ${b}`);
+  proche(v('planning.heures_prevues'), oct.reduce((t, s) => t + parseFloat(calcHeures(s.debut, s.fin, s.pause)), 0), 'prévues');
+  proche(v('planning.heures_pointees'), heuresFaites(oct), 'pointées');
+  assert.equal(v('planning.retards'), retardsDe(oct).nombre);
+  assert.equal(v('planning.minutes_retard'), retardsDe(oct).minutes);
+  const soldes = ['u1', 'u2'].map((u) => soldeMois({ mois: '2026-10', userId: u, contrats, shifts, absences }).solde);
+  proche(v('planning.solde'), soldes[0] + soldes[1], 'solde');
+  const parts = mesure('planning.heures_prevues').ventilations[0].parts(lu.total);
+  assert.deepEqual(parts.map((x) => x.libelle).sort(), ['Ana', 'Bea', 'Cid', 'Dan']);
+  proche(parts.reduce((t, x) => t + x.valeur, 0), v('planning.heures_prevues'), 'ventilation');
+  const juil = lire('planning', donnees, '2026-07-01', '2026-07-31', 'mois');
+  assert.equal(mesure('planning.absences').valeur(juil.total), 14);
+  const [vide] = lire('planning', donnees, '2025-01-01', '2025-01-01', 'jour').points;
+  assert.equal(mesure('planning.heures_prevues').valeur(vide), null);
+});
+
 test('catalogue S2 : nombre de mesures par famille', () => {
   const compte = (id) => mesuresDe(id).length;
   assert.equal(compte('pertes'), 2);
+  assert.equal(compte('planning'), 6);
 });

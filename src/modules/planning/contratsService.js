@@ -84,6 +84,18 @@ export async function lireAbsences(etablissementId, debut, fin) {
   return (data || []).map(mapAbsenceFromDB);
 }
 
+// Contrats d'un établissement (ceux que la RLS laisse voir), lus une fois :
+// la requête de useContrats, sans son état ni ses réessais. [] tant que la
+// table n'existe pas ; une erreur remonte.
+export async function lireContrats(etablissementId) {
+  const { data, error } = await supabase.from(TABLE).select('*').eq('etablissement_id', etablissementId);
+  if (error) {
+    if (RELATION_ABSENTE.has(error.code)) return [];
+    throw error;
+  }
+  return (data || []).map(mapContratFromDB);
+}
+
 // Toutes les pages d'une lecture : PostgREST rend 1000 lignes au plus par
 // réponse. `requete(de, a)` construit une page avec un ordre stable.
 async function toutesLesPages(requete) {

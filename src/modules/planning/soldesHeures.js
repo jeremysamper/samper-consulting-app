@@ -171,3 +171,59 @@ export function formatSolde(h) {
   const mm = minutes % 60;
   return `${signe}${hh} h${mm ? ` ${String(mm).padStart(2, '0')}` : ''}`;
 }
+
+// ── Série d'une équipe, pour le module Statistiques ──
+// Un point par tranche [{ debut, fin }] (jours ISO), avec les règles de ce
+// fichier et de la grille du Planning :
+//   prevues    : calcHeures(debut, fin, pause) de chaque horaire, comme le
+//                total par personne de la grille (weeklyHoursByUser) ;
+//   pointees   : heuresFaites, la mesure du relevé CCNT et du solde ;
+//   retards    : retardsDe (nombre, minutes) ;
+//   parPersonne: { userId: { prevues, pointees } } ;
+//   soldes     : { userId: solde } de soldePersonne, pour chaque personne qui
+//                a un contrat sur la tranche ; solde : leur somme, null sans
+//                contrat ; null aussi au-delà de 400 jours, où joursEntre
+//                s'arrête (un solde tronqué serait faux) ;
+//   absences   : jours d'absence par motif, de toute l'équipe (null au-delà
+//                de 400 jours, même raison).
+// vide : aucun horaire dans la tranche.
+export function serieHeures({ shifts, contrats, absences, tranches }) {
+  const tous = shifts || [];
+  const personnes = [...new Set([
+    ...tous.map((s) => s.userId),
+    ...(contrats || []).map((c) => c.profileId),
+    ...(absences || []).map((a) => a.userId),
+  ].filter(Boolean))];
+  return (tranches || []).map((t) => {
+    const dedans = tous.filter((s) => s.date >= t.debut && s.date <= t.fin);
+    const parPersonne = {};
+    let prevues = 0;
+    dedans.forEach((s) => {
+      const h = parseFloat(calcHeures(s.debut, s.fin, s.pause));
+      const p = parPersonne[s.userId] || (parPersonne[s.userId] = { prevues: 0, pointees: 0 });
+      if (!Number.isNaN(h)) { prevues += h; p.prevues += h; }
+      if (s.pointageDebut && s.pointageFin) p.pointees += parseFloat(calcHeures(s.pointageDebut, s.pointageFin, s.pause)) || 0;
+    });
+    const tropLong = versNumero(t.fin) - versNumero(t.debut) + 1 > 400;
+    const soldes = {};
+    const absencesParMotif = {};
+    let solde = null;
+    personnes.forEach((userId) => {
+      const r = soldePersonne({ userId, debut: t.debut, fin: t.fin, contrats, shifts: dedans, absences });
+      Object.entries(r.joursParMotif).forEach(([m, n]) => { absencesParMotif[m] = (absencesParMotif[m] || 0) + n; });
+      if (r.solde != null && !tropLong) { soldes[userId] = r.solde; solde = (solde || 0) + r.solde; }
+    });
+    return {
+      debut: t.debut,
+      fin: t.fin,
+      vide: dedans.length === 0,
+      prevues,
+      pointees: heuresFaites(dedans),
+      retards: retardsDe(dedans),
+      parPersonne,
+      soldes,
+      solde: tropLong ? null : solde,
+      absences: tropLong ? null : absencesParMotif,
+    };
+  });
+}

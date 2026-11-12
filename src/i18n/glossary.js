@@ -4424,6 +4424,21 @@ export const UI_GLOSSARY = {
   "la date de la perte": "the date of the waste",
   "Quantité perdue fois valeur unitaire, pertes validées ou non, au jour de la perte.": "Quantity lost times unit value, waste validated or not, on the day of the waste.",
   "Nombre de pertes déclarées, validées ou non.": "Number of waste entries reported, validated or not.",
+  // ── Statistiques (S2) : Planning et pointage ──
+  "Planning et pointage": "Planning and clock-in",
+  "Heures pointées": "Clocked hours",
+  "Arrivées en retard": "Late arrivals",
+  "Minutes de retard": "Minutes late",
+  "Solde d'heures selon le contrat": "Hours balance under the contract",
+  "Jours d'absence": "Days of absence",
+  "Personne inconnue": "Unknown person",
+  "la date de l'horaire": "the date of the shift",
+  "Durée des horaires prévus, pause déduite, service coupé compté en deux créneaux, comme les totaux de la grille.": "Length of the scheduled shifts, break deducted, split shifts counted as two slots, like the grid totals.",
+  "Durée entre l'arrivée et le départ pointés, pause déduite ; un horaire sans départ pointé ne compte pas.": "Time between clocked arrival and departure, break deducted; a shift without a clocked departure does not count.",
+  "Horaires pointés plus de cinq minutes après le début prévu.": "Shifts clocked in more than five minutes after the scheduled start.",
+  "Somme des minutes de retard au-delà de la tolérance de cinq minutes.": "Total minutes late beyond the five-minute tolerance.",
+  "Heures pointées moins heures dues selon le contrat, absences créditées déduites ; n/a sans contrat sur la période. Réservé à la direction.": "Clocked hours less hours due under the contract, credited absences deducted; n/a without a contract over the period. Management only.",
+  "Jours couverts par une absence saisie au planning, par personne et par jour, tous motifs.": "Days covered by an absence entered in the planning, per person and per day, all reasons.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

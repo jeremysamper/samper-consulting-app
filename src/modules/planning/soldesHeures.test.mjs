@@ -155,3 +155,62 @@ test('période libre (semaine) : même règle que le mois', () => {
   const r = soldePersonne({ userId: 'u1', debut: '2026-10-26', fin: '2026-11-01', contrats: [contrat()], shifts: [], absences: [] });
   proche(r.heuresDues, 42);
 });
+
+// ── Série d'une équipe (module Statistiques) ──
+import { serieHeures } from './soldesHeures.js';
+import { jeuHoraires, PERSONNES } from './jeuHoraires.mjs';
+import { chiffresGestion } from '../dashboard/tableauLogique.js';
+
+const moisDe2026 = () => Array.from({ length: 12 }, (_, m) => bornesMois(`2026-${String(m + 1).padStart(2, '0')}`));
+const somme = (liste) => liste.reduce((s, v) => s + (v || 0), 0);
+
+test('série : plus de mille horaires, la somme des mois fait l\'année, par personne comme la grille', () => {
+  const { shifts, contrats, absences } = jeuHoraires();
+  assert.ok(shifts.length > 1000);
+  const mois = serieHeures({ shifts, contrats, absences, tranches: moisDe2026() });
+  const [annee] = serieHeures({ shifts, contrats, absences, tranches: [{ debut: '2026-01-01', fin: '2026-12-31' }] });
+  proche(somme(mois.map((p) => p.prevues)), annee.prevues);
+  proche(somme(mois.map((p) => p.pointees)), annee.pointees);
+  assert.equal(somme(mois.map((p) => p.retards.nombre)), annee.retards.nombre);
+  assert.equal(somme(mois.map((p) => p.retards.minutes)), annee.retards.minutes);
+  // Grille du Planning : calcHeures de chaque horaire de la personne.
+  PERSONNES.forEach((u) => {
+    const grille = shifts.filter((s) => s.userId === u).reduce((t, s) => t + parseFloat(calcHeures(s.debut, s.fin, s.pause)), 0);
+    proche(annee.parPersonne[u].prevues, grille);
+  });
+});
+
+test('série : le solde d\'un mois est celui de soldeMois, personne par personne ; la somme des jours fait le mois', () => {
+  const { shifts, contrats, absences } = jeuHoraires();
+  const [oct] = serieHeures({ shifts, contrats, absences, tranches: [bornesMois('2026-10')] });
+  ['u1', 'u2'].forEach((u) => proche(oct.soldes[u], soldeMois({ mois: '2026-10', userId: u, contrats, shifts, absences }).solde));
+  assert.equal(oct.soldes.u3, undefined, 'contrat fini le 30.09 : pas de solde en octobre');
+  assert.equal(oct.soldes.u4, undefined, 'sans contrat : pas de solde');
+  const jours = serieHeures({ shifts, contrats, absences, tranches: joursEntre('2026-10-01', '2026-10-31').map((j) => ({ debut: j, fin: j })) });
+  proche(somme(jours.map((p) => p.solde)), oct.solde);
+  const [juil] = serieHeures({ shifts, contrats, absences, tranches: [bornesMois('2026-07')] });
+  assert.equal(juil.absences.vacances, 14);
+});
+
+test('série : sans contrat le solde est n/a, au-delà de 400 jours aussi (jamais tronqué)', () => {
+  const { shifts } = jeuHoraires();
+  const [p] = serieHeures({ shifts, contrats: [], absences: [], tranches: [bornesMois('2026-05')] });
+  assert.equal(p.solde, null);
+  const { contrats } = jeuHoraires();
+  const [long] = serieHeures({ shifts, contrats, absences: [], tranches: [{ debut: '2025-01-01', fin: '2026-12-31' }] });
+  assert.equal(long.solde, null);
+  assert.equal(long.absences, null);
+  const [vide] = serieHeures({ shifts, contrats, absences: [], tranches: [{ debut: '2024-01-01', fin: '2024-01-07' }] });
+  assert.equal(vide.vide, true);
+});
+
+test('série : sept jours d\'heures prévues égalent la carte du tableau de bord, sauf horaire qui passe minuit', () => {
+  const sansNuit = jeuHoraires().shifts;
+  const [p] = serieHeures({ shifts: sansNuit, contrats: [], absences: [], tranches: [{ debut: '2026-11-09', fin: '2026-11-15' }] });
+  assert.equal(Math.round(p.prevues * 10) / 10, chiffresGestion({ pertes: [], shifts: sansNuit, couverts: [], aujourdhui: '2026-11-09' }).heures);
+  // Horaire de 08:00 à 01:30 : la grille (calcHeures) le compte négatif, la
+  // carte du tableau de bord ajoute 24 h. Écart d'origine, dit au rapport.
+  const nuit = jeuHoraires({ nuit: true }).shifts;
+  const [q] = serieHeures({ shifts: nuit, contrats: [], absences: [], tranches: [{ debut: '2026-11-09', fin: '2026-11-15' }] });
+  assert.notEqual(Math.round(q.prevues * 10) / 10, chiffresGestion({ pertes: [], shifts: nuit, couverts: [], aujourdhui: '2026-11-09' }).heures);
+});

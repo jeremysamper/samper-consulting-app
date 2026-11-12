@@ -17,8 +17,9 @@ import { familleReservations } from './familles/reservations.js';
 import { familleAchats } from './familles/achats.js';
 import { familleComptabilite } from './familles/comptabilite.js';
 import { famillePertes } from './familles/pertes.js';
+import { famillePlanning } from './familles/planning.js';
 
-export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes];
+export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes, famillePlanning];
 
 const TOUS_LES_PAS = ['jour', 'semaine', 'mois'];
 

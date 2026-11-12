@@ -22,6 +22,8 @@ import { lireModeTest } from '../caisse/modeTest.js';
 import { ROLES_RAPPORT } from '../previsions/rapport/gardeRapport.js';
 import { lireReferentiel, lireReservations } from '../previsions/rapport/useRapportReservations.js';
 import { estDirection, peutReglerFactures } from '../comptabilite/gardesCompta.js';
+import { lireContrats, lirePeriode } from '../planning/contratsService.js';
+import { userDisplayName } from '../../utils/userDisplay.js';
 
 // Garde d'un écran d'origine, la chaîne même de LegacyModuleHost.jsx : page
 // active pour l'établissement, puis droit d'ouvrir la page.
@@ -88,6 +90,19 @@ export const LECTURES = {
       const db = dbService.getBridge()?.db;
       if (!db) throw echec(null, 'Lecture indisponible.');
       return { pertes: await db.listPertes(etabId, { strict: true }) };
+    },
+  },
+  // Planning : la grille et les pointages du jour, à qui ouvre le Planning.
+  // Horaires et absences de la fenêtre (lirePeriode, par pages), contrats de
+  // l'établissement, noms comme la grille (userDisplayName).
+  planning: {
+    visible: (ctx) => ecranOuvert('planning', ctx),
+    async lire(etabId, debut, fin) {
+      const [{ shifts, absences }, contrats] = await Promise.all([lirePeriode(etabId, debut, fin), lireContrats(etabId)]);
+      const noms = {};
+      [...shifts.map((x) => x.userId), ...contrats.map((c) => c.profileId), ...absences.map((a) => a.userId)]
+        .filter(Boolean).forEach((id) => { if (!noms[id]) noms[id] = userDisplayName(id); });
+      return { shifts, absences, contrats, noms };
     },
   },
 };
