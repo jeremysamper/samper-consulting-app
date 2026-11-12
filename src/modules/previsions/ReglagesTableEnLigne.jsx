@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import BoiteEnvoiReservations from './BoiteEnvoiReservations.jsx';
 import { encadreStyle } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
-import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
@@ -12,6 +11,9 @@ import {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Réservation d'une table en ligne : réglages (patron et consultant).
+// Depuis le 12.11.2026, une section de la page des réglages
+// (SectionReservationEnLigne.jsx) : plus de fenêtre ni de voile, le même
+// contenu posé dans la page. Dans Réservations, la tuile « Réglages » y mène.
 //
 // Même principe que l'onglet « En ligne » du Spa : le restaurant choisit ses
 // heures d'arrivée par service, le nombre de couverts qu'il ouvre en ligne et
@@ -50,7 +52,7 @@ function demiHeuresDuService(horaires, service) {
   return liste;
 }
 
-export default function ReglagesTableEnLigne({ etablissement, onClose, consultant = false }) {
+export default function ReglagesTableEnLigne({ etablissement, consultant = false }) {
   const etabId = etablissement?.id;
   const { parametres, existe, status, enregistrer } = useParametresEnLigne(etabId);
   const [form, setForm] = useState(null);
@@ -60,8 +62,6 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
   const [couleur, setCouleur] = useState(COULEUR_DEFAUT);
   const [qr, setQr] = useState(null);
   const slugForm = form?.slug || '';
-
-  useBackLayer(true, onClose, 'reglages-resa-en-ligne');
 
   useEffect(() => {
     if (status !== 'ready' || !parametres) return;
@@ -529,17 +529,7 @@ export default function ReglagesTableEnLigne({ etablissement, onClose, consultan
     );
   })();
 
-  return (
-    <div className="modal-full-overlay" style={s.voile} onClick={onClose}>
-      <div className="modal-full" style={s.fenetre} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Réservation en ligne">
-        <div style={s.entete}>
-          <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>Réservation en ligne</div>
-          <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={s.fermer}>×</button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px 18px' }}>{contenu}</div>
-      </div>
-    </div>
-  );
+  return <div role="region" aria-label="Réservation en ligne" data-reglages-resa-en-ligne="" style={s.section}>{contenu}</div>;
 }
 
 function Champ({ label, aide, children }) {
@@ -566,22 +556,8 @@ function BlocCode({ titre, texte, code, onCopier }) {
 }
 
 const s = {
-  voile: {
-    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-  },
-  fenetre: {
-    background: 'var(--surface)', borderRadius: 14, width: 920, maxWidth: '100%', maxHeight: '90vh',
-    display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
-  },
-  entete: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-    padding: '12px 18px', borderBottom: '1px solid var(--border)',
-  },
-  fermer: {
-    width: 44, height: 44, border: 'none', background: 'none', fontSize: 22, lineHeight: 1,
-    cursor: 'pointer', color: 'var(--text2)',
-  },
+  // La largeur de l'ancienne fenêtre, sans son cadre : la page porte le titre.
+  section: { width: '100%', maxWidth: 920, minWidth: 0 },
   deuxColonnes: {
     display: 'grid', gap: 14, alignItems: 'start',
     gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',

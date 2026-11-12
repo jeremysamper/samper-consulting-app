@@ -10,6 +10,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../services/supabase.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { lienGmail, lienMailto } from '../spa/integration.js';
 
@@ -150,6 +151,9 @@ export function useParametresEnLigne(etabId) {
   }, [etabId]);
 
   useEffect(() => { charger(); }, [charger]);
+  // Réglés dans la page des réglages (section 'reservation_en_ligne'), table
+  // hors temps réel : un écran resté monté relit au signal de changement.
+  useReglageModifie('reservation_en_ligne', charger);
 
   const enregistrer = useCallback(async (p) => {
     const { data, error } = await supabase

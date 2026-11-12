@@ -4325,4 +4325,6 @@ export const UI_GLOSSARY_ES = {
   'Tous les réglages': 'Todos los ajustes',
   // ── Réglages : section Caisse ──
   'Catégories, produits, modes, paiement, terminal, TVA et clôture': 'Categorías, productos, modos, pago, terminal, IVA y cierre',
+  // ── Réglages : section Réservation en ligne ──
+  "Boîte d'envoi, SMS, horaires, capacité, lien à partager": 'Buzón de envío, SMS, horarios, capacidad, enlace para compartir',
 };

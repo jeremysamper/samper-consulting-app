@@ -4344,6 +4344,8 @@ export const UI_GLOSSARY = {
   'Tous les réglages': 'All settings',
   // ── Réglages : section Caisse ──
   'Catégories, produits, modes, paiement, terminal, TVA et clôture': 'Categories, products, modes, payment, terminal, VAT and closing',
+  // ── Réglages : section Réservation en ligne ──
+  "Boîte d'envoi, SMS, horaires, capacité, lien à partager": 'Outbox, SMS, hours, capacity, link to share',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

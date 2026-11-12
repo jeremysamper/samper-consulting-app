@@ -11,7 +11,8 @@ import RechercheResas from './RechercheResas.jsx';
 import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
-import ReglagesTableEnLigne from './ReglagesTableEnLigne.jsx';
+import { peutReglerEnLigne } from './gardeEnLigne.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
 import { PanneauNotifications, useNotificationsAppareil } from './NotificationsAppareil.jsx';
 import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
@@ -34,9 +35,9 @@ const RapportReservations = lazy(() => import('./rapport/RapportReservations.jsx
 // retombe dans le mode service du jour au lieu de l'accueil du module.
 const CLE_MODE_SERVICE = 'sc_resa_mode_service';
 
-// Réglages de la réservation en ligne : la direction, comme pour le Spa (et la
-// RLS de reservation_en_ligne_parametres).
-const ROLES_EN_LIGNE = ['consultant', 'patron'];
+// Réglages de la réservation en ligne : la direction (gardeEnLigne.js). Ils
+// vivent dans la page des réglages, section 'reservation_en_ligne' ; la tuile
+// « Réglages » y mène.
 
 // Rôles voyant les KPIs financiers (CA prévisionnel, etc.)
 // Réservé pour les futurs affichages de chiffre d'affaires estimé.
@@ -58,7 +59,6 @@ export default function Previsions({ user, etablissement }) {
   const [recherche,     setRecherche]     = useState('');
   const [resaTrouvee,   setResaTrouvee]   = useState(null);
   const [resaEnEdition, setResaEnEdition] = useState(null);
-  const [reglagesEnLigne, setReglagesEnLigne] = useState(false);
   const [notificationsOuvertes, setNotificationsOuvertes] = useState(false);
   // Le champ de « Je cherche une réservation » prend la main quand on vient de
   // toucher sa tuile.
@@ -107,7 +107,7 @@ export default function Previsions({ user, etablissement }) {
   // (Rôles & accès, case « Modifier » ; défaut consultant/patron/resp_cuisine/hôte).
   const canEdit        = canManageModule(user?.role, 'previsions');
   const voitRapport    = ROLES_RAPPORT.includes(user?.role);
-  const voitReglages   = ROLES_EN_LIGNE.includes(user?.role);
+  const voitReglages   = peutReglerEnLigne(user?.role);
   // showFinancials réservé pour les futures sections KPIs CA
   // const showFinancials = ROLES_FINANCIALS.includes(user?.role);
 
@@ -218,7 +218,7 @@ export default function Previsions({ user, etablissement }) {
           onClients={() => setEcran('clients')}
           onRapport={() => setEcran('rapport')}
           onNotifications={() => setNotificationsOuvertes(true)}
-          onReglages={() => setReglagesEnLigne(true)}
+          onReglages={() => ouvrirCompte('reservation_en_ligne')}
         />
       )}
 
@@ -363,10 +363,6 @@ export default function Previsions({ user, etablissement }) {
           onClose={fermerModeService}
           onChange={() => setRefreshKey((k) => k + 1)}
         />
-      )}
-
-      {reglagesEnLigne && etabId && voitReglages && (
-        <ReglagesTableEnLigne etablissement={etablissement} consultant={user?.role === 'consultant'} onClose={() => setReglagesEnLigne(false)} />
       )}
 
       {notificationsOuvertes && etabId && (

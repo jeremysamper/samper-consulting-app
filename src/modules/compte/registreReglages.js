@@ -1,5 +1,6 @@
 import { isPageActiveForEtab, peutAdministrerCompte, peutOuvrirPage } from '../moduleConfig.js';
 import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
+import { peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -58,6 +59,12 @@ export const SECTIONS = [
     groupe: 'modules', portee: 'maison', module: 'caisse',
     garde: (ctx) => ouvreLeModule('caisse')(ctx) && peutHabillerCaisse(ctx.user?.role),
     charger: () => import('../caisse/SectionReglagesCaisse.jsx'),
+  },
+  {
+    id: 'reservation_en_ligne', libelle: 'Réservation en ligne', detail: "Boîte d'envoi, SMS, horaires, capacité, lien à partager",
+    groupe: 'modules', portee: 'maison', module: 'previsions',
+    garde: (ctx) => ouvreLeModule('previsions')(ctx) && peutReglerEnLigne(ctx.user?.role),
+    charger: () => import('../previsions/SectionReservationEnLigne.jsx'),
   },
 
   // ── L'équipe et les accès ──
