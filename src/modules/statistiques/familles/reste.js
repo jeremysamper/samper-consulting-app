@@ -8,6 +8,7 @@ import { serieSop } from '../../sop/serieSop.js';
 import { serieKds } from '../../kds/serieKds.js';
 import { serieMep } from '../../mep/serieMep.js';
 import { SANS_PRATICIEN_SPA, serieSpa } from '../../spa/serieSpa.js';
+import { serieVentesPos } from '../../pos/lib/serieVentesPos.js';
 
 const sauf = (p, f) => (p.vide ? null : f(p));
 const compte = (objet, libelles) => Object.entries(objet || {}).map(([cle, valeur]) => ({ cle, libelle: libelles[cle] || cle, valeur }));
@@ -141,6 +142,36 @@ export const familleSpa = {
       id: 'spa.bons', libelle: 'Bons cadeaux créés', unite: 'nombre', nature: 'flux',
       valeur: (p) => p.bons,
       phrase: 'Bons cadeaux créés, au jour de leur création. Leur valeur est un texte, pas un montant : elle ne s\'additionne pas.',
+    },
+  ],
+};
+
+// Ventes POS (caisse reliée) : quantités et chiffre, par plat, comme le top et
+// flop. Une tranche sans vente vaut « n/a ».
+const parPlatPos = (cle) => [
+  { id: 'plat', libelle: 'Par plat, les plus vendus', parts: (p) => Object.entries(p.parPlat || {}).map(([id, x]) => ({ cle: id, libelle: x.nom, donnee: true, valeur: x[cle] })) },
+  { id: 'plat_moins', libelle: 'Par plat, les moins vendus', ordre: 'croissant', parts: (p) => Object.entries(p.parPlat || {}).filter(([, x]) => x.qte > 0).map(([id, x]) => ({ cle: id, libelle: x.nom, donnee: true, valeur: x[cle] })) },
+];
+
+export const familleVentesPos = {
+  id: 'pos',
+  libelle: 'Ventes POS',
+  journee: 'le jour de la vente dans la caisse reliée',
+  calculer(donnees, tranches) {
+    return serieVentesPos(donnees.ventes, donnees.noms, tranches);
+  },
+  mesures: [
+    {
+      id: 'pos.qte', libelle: 'Quantités vendues (caisse reliée)', unite: 'nombre', nature: 'flux',
+      valeur: (p) => sauf(p, (x) => x.qte),
+      ventilations: parPlatPos('qte'),
+      phrase: 'Articles vendus dans la caisse reliée, au jour de la vente, comme le top et flop des Ventes POS.',
+    },
+    {
+      id: 'pos.chiffre', libelle: 'Chiffre de la caisse reliée', unite: 'chf', nature: 'flux',
+      valeur: (p) => sauf(p, (x) => x.chiffre),
+      ventilations: parPlatPos('chiffre'),
+      phrase: 'Chiffre des articles vendus que rend la caisse reliée, TVA comprise, au jour de la vente.',
     },
   ],
 };

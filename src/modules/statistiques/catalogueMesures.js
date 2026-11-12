@@ -21,9 +21,9 @@ import { famillePlanning } from './familles/planning.js';
 import { familleHaccp } from './familles/haccp.js';
 import { familleInventaire } from './familles/inventaire.js';
 import { familleGroupes } from './familles/groupes.js';
-import { familleJournal, familleKds, familleMep, familleSop, familleSpa } from './familles/reste.js';
+import { familleJournal, familleKds, familleMep, familleSop, familleSpa, familleVentesPos } from './familles/reste.js';
 
-export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes, famillePlanning, familleHaccp, familleInventaire, familleGroupes, familleSop, familleMep, familleKds, familleJournal, familleSpa];
+export const FAMILLES = [familleCaisse, familleReservations, familleAchats, familleComptabilite, famillePertes, famillePlanning, familleHaccp, familleInventaire, familleGroupes, familleSop, familleMep, familleKds, familleJournal, familleSpa, familleVentesPos];
 
 const TOUS_LES_PAS = ['jour', 'semaine', 'mois'];
 

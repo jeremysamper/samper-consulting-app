@@ -304,6 +304,18 @@ test("spa : soins, minutes, annulés et bons font l'agenda, par praticien", () =
   assert.equal(parts.find((x) => x.cle === 'À attribuer').donnee, false);
 });
 
+// ── Ventes POS ──
+test('ventes POS : quantités et chiffre font le top et flop, par plat', () => {
+  const ventes = Array.from({ length: 1500 }, (_, i) => ({ pos_item_id: `it${i % 9}`, date: new Date(Date.UTC(2026, 0, 1 + (i % 320))).toISOString().slice(0, 10), qty: 1 + (i % 3), revenue_cts: 990 + (i % 5) * 110 }));
+  const noms = Object.fromEntries(Array.from({ length: 9 }, (_, k) => [`it${k}`, `Plat ${k}`]));
+  ['jour', 'semaine', 'mois'].forEach((pas) => verifierFlux('pos', lire('pos', { ventes, noms }, '2026-01-01', '2026-12-31', pas)));
+  const lu = lire('pos', { ventes, noms }, '2026-01-01', '2026-12-31', 'mois');
+  assert.equal(mesure('pos.qte').valeur(lu.total), ventes.reduce((x, v) => x + v.qty, 0));
+  assert.equal(Math.round(mesure('pos.chiffre').valeur(lu.total) * 100), ventes.reduce((x, v) => x + v.revenue_cts, 0));
+  const parts = mesure('pos.qte').ventilations[0].parts(lu.total);
+  assert.equal(parts.reduce((x, y) => x + y.valeur, 0), mesure('pos.qte').valeur(lu.total));
+});
+
 test('catalogue S2 : nombre de mesures par famille', () => {
   const compte = (id) => mesuresDe(id).length;
   assert.equal(compte('pertes'), 2);
@@ -316,4 +328,5 @@ test('catalogue S2 : nombre de mesures par famille', () => {
   assert.equal(compte('kds'), 2);
   assert.equal(compte('mep'), 3);
   assert.equal(compte('spa'), 4);
+  assert.equal(compte('pos'), 2);
 });

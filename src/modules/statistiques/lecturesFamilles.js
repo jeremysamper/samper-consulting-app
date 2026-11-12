@@ -208,6 +208,20 @@ export const LECTURES = {
       return { reservations: rdv.map(mapRdvSpa), bons: bons.map((b) => ({ id: b.id, createdAt: b.created_at })) };
     },
   },
+  // Ventes POS : comme le top et flop, les articles des connexions actives de
+  // la caisse reliée et leurs ventes de la fenêtre.
+  pos: {
+    visible: (ctx) => ecranOuvert('pos', ctx),
+    async lire(etabId, debut, fin) {
+      const conns = await toutesLesPages((x, y) => supabase.from('pos_connections').select('id').eq('etablissement_id', etabId).eq('status', 'connected').order('id').range(x, y));
+      if (!conns.length) return { ventes: [], noms: {} };
+      const items = await toutesLesPages((x, y) => supabase.from('pos_items').select('id, name').in('pos_connection_id', conns.map((c) => c.id)).order('id').range(x, y));
+      if (!items.length) return { ventes: [], noms: {} };
+      const ventes = await toutesLesPages((x, y) => supabase.from('pos_sales').select('id, pos_item_id, date, qty, revenue_cts')
+        .in('pos_item_id', items.map((i) => i.id)).gte('date', debut).lte('date', fin).order('date').order('id').range(x, y));
+      return { ventes, noms: Object.fromEntries(items.map((i) => [i.id, i.name || i.id])) };
+    },
+  },
 };
 
 export const famillesVisibles = (contexte) => Object.keys(LECTURES).filter((id) => LECTURES[id].visible(contexte));

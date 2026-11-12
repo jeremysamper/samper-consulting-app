@@ -4570,4 +4570,12 @@ export const UI_GLOSSARY_ES = {
   "Somme des durées des soins ni annulés ni absents.": "Suma de las duraciones de los tratamientos ni cancelados ni ausentes.",
   "Rendez-vous annulés, ou dont le client ne s'est pas présenté.": "Citas canceladas, o en las que el cliente no se presentó.",
   "Bons cadeaux créés, au jour de leur création. Leur valeur est un texte, pas un montant : elle ne s'additionne pas.": "Bonos regalo creados, el día de su creación. Su valor es un texto, no un importe: no se suma.",
+  // ── Statistiques (S2) : Ventes POS ──
+  "le jour de la vente dans la caisse reliée": "el día de la venta en la caja vinculada",
+  "Quantités vendues (caisse reliée)": "Cantidades vendidas (caja vinculada)",
+  "Chiffre de la caisse reliée": "Facturación de la caja vinculada",
+  "Par plat, les plus vendus": "Por plato, los más vendidos",
+  "Par plat, les moins vendus": "Por plato, los menos vendidos",
+  "Articles vendus dans la caisse reliée, au jour de la vente, comme le top et flop des Ventes POS.": "Artículos vendidos en la caja vinculada, el día de la venta, como el top y flop de las ventas POS.",
+  "Chiffre des articles vendus que rend la caisse reliée, TVA comprise, au jour de la vente.": "Facturación de los artículos vendidos que devuelve la caja vinculada, IVA incluido, el día de la venta.",
 };

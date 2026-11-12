@@ -4589,6 +4589,14 @@ export const UI_GLOSSARY = {
   "Somme des durées des soins ni annulés ni absents.": "Sum of the lengths of the treatments neither cancelled nor no-show.",
   "Rendez-vous annulés, ou dont le client ne s'est pas présenté.": "Appointments cancelled, or where the client did not show up.",
   "Bons cadeaux créés, au jour de leur création. Leur valeur est un texte, pas un montant : elle ne s'additionne pas.": "Gift vouchers created, on the day of their creation. Their value is a text, not an amount: it is not added up.",
+  // ── Statistiques (S2) : Ventes POS ──
+  "le jour de la vente dans la caisse reliée": "the day of the sale in the linked till",
+  "Quantités vendues (caisse reliée)": "Quantities sold (linked till)",
+  "Chiffre de la caisse reliée": "Linked till revenue",
+  "Par plat, les plus vendus": "By dish, best sellers",
+  "Par plat, les moins vendus": "By dish, least sold",
+  "Articles vendus dans la caisse reliée, au jour de la vente, comme le top et flop des Ventes POS.": "Items sold in the linked till, on the day of the sale, like the POS sales top and flop.",
+  "Chiffre des articles vendus que rend la caisse reliée, TVA comprise, au jour de la vente.": "Revenue of the items sold as returned by the linked till, VAT included, on the day of the sale.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
