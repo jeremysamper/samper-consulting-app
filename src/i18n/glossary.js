@@ -4375,6 +4375,19 @@ export const UI_GLOSSARY = {
   'Planning : contrats': 'Planning: contracts',
   'Taux, heures par semaine et vacances de chacun': 'Rate, weekly hours and holidays for each person',
   "Ce réglage n'est pas encore activé sur la base de données.": 'This setting is not yet enabled in the database.',
+  // ── Réglages : Mon compte, notifications, ordre du menu, logo ──
+  "Logo de l'établissement": 'Site logo',
+  "Dans la barre latérale, sur la page d'accueil et sur les factures": 'In the sidebar, on the home page and on invoices',
+  'Ordre du menu': 'Menu order',
+  'Les modules et leurs rubriques, pour tous les comptes': 'Modules and their sections, for all accounts',
+  'Nom, téléphone, mot de passe, déconnexion': 'Name, phone, password, sign out',
+  'Notifications sur cet appareil': 'Notifications on this device',
+  'Être prévenu des nouvelles réservations en ligne': 'Be notified of new online bookings',
+  "Rangez les modules et leurs rubriques dans la barre latérale : glissez la poignée ou utilisez les flèches, puis « Terminé ». L'ordre vaut pour tous les comptes.": 'Arrange the modules and their sections in the sidebar: drag the handle or use the arrows, then "Done". The order applies to all accounts.',
+  'Le logo de': 'The logo of',
+  "dans la barre latérale, sur la page d'accueil et sur les factures.": 'in the sidebar, on the home page and on invoices.',
+  'Retirer le logo': 'Remove the logo',
+  'Max 500 Ko. PNG, JPG ou SVG.': 'Max 500 KB. PNG, JPG or SVG.',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

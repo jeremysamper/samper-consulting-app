@@ -2,13 +2,15 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { authService, profileService } from '../../services/supabase.js';
-import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { zurichDateHeure } from '../../utils/zurichTime.js';
 import { authErrorMessage } from './authMessages.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // « Mon compte » : ouvert d'un clic sur son nom, en bas de la barre latérale.
+// Depuis le 12.11.2026, une section de la page des réglages
+// (compte/sections/SectionMonCompte.jsx) : le même contenu, sans fenêtre ni
+// voile. Le clic sur son nom ouvre la page sur cette section.
 //
 //   - prénom, nom : modifiables (le trigger profiles_verrou_champs_sensibles
 //     n'autorise que ces colonnes-là à leur propriétaire) ;
@@ -244,7 +246,7 @@ function DoubleAuthSection({ disabled }) {
   );
 }
 
-export default function AccountModal({ user, onClose, onSaved, onChangePassword, onOrganize, onLogout }) {
+export default function AccountModal({ user, onSaved, onChangePassword, onOrganize, onLogout }) {
   const [prenom, setPrenom] = useState(user.prenom || '');
   const [nom, setNom] = useState(user.nom || '');
   const [tel, setTel] = useState('');
@@ -252,8 +254,6 @@ export default function AccountModal({ user, onClose, onSaved, onChangePassword,
   const [telState, setTelState] = useState('loading'); // loading | ready | error
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-
-  useBackLayer(true, onClose, 'account');
 
   useEffect(() => {
     let alive = true;
@@ -270,16 +270,6 @@ export default function AccountModal({ user, onClose, onSaved, onChangePassword,
       });
     return () => { alive = false; };
   }, [user.id]);
-
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key !== 'Escape' || saving) return;
-      e.preventDefault();
-      onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [saving, onClose]);
 
   const nextPrenom = prenom.trim();
   const nextNom = nom.trim();
@@ -327,28 +317,13 @@ export default function AccountModal({ user, onClose, onSaved, onChangePassword,
   }
 
   return (
-    <div
-      className="modal-sheet-overlay"
-      style={s.overlay}
-      onClick={saving ? undefined : onClose}
-    >
-      <div
-        className="modal-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="account-title"
-        style={s.card}
-        onClick={(event) => event.stopPropagation()}
-      >
+      <div role="region" aria-labelledby="account-title" data-mon-compte="" style={s.section}>
         <div style={s.head}>
           <span style={s.avatar} aria-hidden="true" data-no-translate="">{user.avatar || initialsOf(user.prenom, user.nom)}</span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div id="account-title" style={s.title}>Mon compte</div>
             <div style={s.sub} data-no-translate="">{fullName}</div>
           </div>
-          <button type="button" style={s.close} onClick={onClose} disabled={saving} aria-label="Fermer">
-            <span aria-hidden="true">×</span>
-          </button>
         </div>
 
         {error && <div style={s.errorBox} role="alert">{error}</div>}
@@ -439,7 +414,6 @@ export default function AccountModal({ user, onClose, onSaved, onChangePassword,
           Se déconnecter
         </button>
       </div>
-    </div>
   );
 }
 
@@ -448,6 +422,8 @@ const s = {
     position: 'fixed', inset: 0, background: 'rgba(0, 22, 32, 0.45)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16,
   },
+  // La largeur de l'ancienne fenêtre, sans son cadre.
+  section: { width: '100%', maxWidth: 440, minWidth: 0 },
   card: {
     background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)',
     padding: '20px 22px', width: 440, maxWidth: '100%', maxHeight: 'calc(100% - 32px)', overflowY: 'auto',

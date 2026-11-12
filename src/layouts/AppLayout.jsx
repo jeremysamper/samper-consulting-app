@@ -22,13 +22,13 @@ import EtabSwitcher from '../components/nav/EtabSwitcher.jsx';
 import AccountButton from '../components/nav/AccountButton.jsx';
 import CompteButton from '../components/nav/CompteButton.jsx';
 import TotpRappel from '../components/nav/TotpRappel.jsx';
-import AccountModal from '../modules/auth/AccountModal.jsx';
+import { peutChangerLogo, peutOrganiserMenu, regleLaCoque } from '../components/nav/gardesCoque.js';
 import NavBadge from '../components/nav/NavBadge.jsx';
 import MessagerieBarre from '../components/nav/MessagerieBarre.jsx';
 import CarteAlertes from '../components/CarteAlertes.jsx';
 import { ShellProvider } from './ShellContext.js';
 import { applyNavOrder } from '../hooks/useNavOrder.js';
-import { navigateToPage } from '../services/navigationService.js';
+import { navigateToPage, ouvrirCompte as ouvrirSection } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, removeStorageKeys } from '../utils/storage.js';
 import { dbService } from '../services/dbService.js';
@@ -89,7 +89,6 @@ export default function AppLayout({
   const [logoMenuOpen, setLogoMenuOpen] = React.useState(false);
   const [logoHover, setLogoHover] = React.useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = React.useState(false);
-  const [accountOpen, setAccountOpen] = React.useState(false);
   const [identityOverride, setIdentityOverride] = React.useState(null);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [helpOpen, setHelpOpen] = React.useState(false);
@@ -332,11 +331,14 @@ export default function AppLayout({
   // la synchro post-login (App.jsx) ; le profil réel suit au prochain
   // rechargement naturel (retour au premier plan, connexion suivante).
   const accountUser = identityOverride?.id === user.id ? { ...user, ...identityOverride } : user;
+  // « Mon compte » est une section de la page des réglages : le clic sur son
+  // nom ouvre la page dessus.
+  const ouvrirMonCompte = React.useCallback(() => ouvrirSection('mon_compte'), []);
   const renderAccountButton = (variant, style) => (
     <AccountButton
       user={accountUser}
       variant={variant}
-      onOpen={() => setAccountOpen(true)}
+      onOpen={ouvrirMonCompte}
       style={style}
     />
   );
@@ -346,28 +348,16 @@ export default function AppLayout({
   // sections.
   const compteOuvrable = peutOuvrirCompte(user);
   const ouvrirCompte = compteOuvrable ? () => handleSetPage('compte') : null;
-  const accountModal = accountOpen ? (
-    <AccountModal
-      user={accountUser}
-      onClose={() => setAccountOpen(false)}
-      onSaved={(updated) => setIdentityOverride({
-        id: updated.id, prenom: updated.prenom, nom: updated.nom, avatar: updated.avatar,
-      })}
-      onChangePassword={() => { setAccountOpen(false); setPasswordModalOpen(true); }}
-      onOrganize={isConsultant && !tactile ? () => { setAccountOpen(false); startOrganizing(); } : null}
-      onLogout={onLogout}
-    />
-  ) : null;
   // Rappel du code à usage unique (consultant sans facteur vérifié) : même
   // rangée que les autres bandeaux, « Activer » ouvre Mon compte.
-  const rappelTotp = <TotpRappel user={user} onActiver={() => setAccountOpen(true)} compteOuvert={accountOpen} />;
+  const rappelTotp = <TotpRappel user={user} onActiver={ouvrirMonCompte} compteOuvert={currentPage === 'compte'} />;
 
   // Ce que la page d'accueil tactile lit (ShellContext) : la même liste de
   // modules et les mêmes badges que la barre latérale, le compte, la navigation.
   const shellValue = {
     mode: shellMode, visibleNav, groupedNav, badges, getLabelForModule,
     setPage: handleSetPage, etablissement, etabs, accountUser,
-    openAccount: () => setAccountOpen(true),
+    openAccount: ouvrirMonCompte,
     openCompte: ouvrirCompte, compteActif: currentPage === 'compte',
     carteAlertes: tactile ? carteAlertes : null,
   };
@@ -466,7 +456,7 @@ export default function AppLayout({
     onOpenHelp: openHelp,
     onBack: goBack,
     canGoBack,
-    onOrganize: isConsultant && !tactile ? startOrganizing : null,
+    onOrganize: peutOrganiserMenu(user.role, shellMode) ? startOrganizing : null,
   }) : []), [paletteOpen, paletteNav, currentPage, etabs, etablissement?.id, isDark, tactile, sidebarOpen, canGoBack, isConsultant, startOrganizing]);
 
   const shortcutsLayer = (
@@ -488,7 +478,7 @@ export default function AppLayout({
   const handleReconnect = () => handleSetPage('parametres');
 
   // ── Logo upload (consultant uniquement)
-  const canEditLogo = user.role === 'consultant';
+  const canEditLogo = regleLaCoque(user.role);
 
   const handleLogoUpload = (e) => {
     const file = e.target.files?.[0];
@@ -539,6 +529,23 @@ export default function AppLayout({
     }
     removeStorageKeys(['sc_app_logo']) // nettoyage legacy
     setLogoMenuOpen(false);
+  };
+
+  // Ce que la page des réglages reçoit de la coque (sections Mon compte,
+  // Ordre du menu, Logo) : les mêmes gestes que la fenêtre Mon compte, le menu
+  // du logo et la palette, sous les mêmes gardes (gardesCoque.js).
+  shellValue.reglages = {
+    compte: {
+      onSaved: (updated) => setIdentityOverride({
+        id: updated.id, prenom: updated.prenom, nom: updated.nom, avatar: updated.avatar,
+      }),
+      onChangePassword: () => setPasswordModalOpen(true),
+      onLogout,
+    },
+    organiserMenu: peutOrganiserMenu(user.role, shellMode) ? startOrganizing : null,
+    logo: peutChangerLogo(user.role, shellMode)
+      ? { url: appLogo, nom: etablissement?.nom || '', onUpload: handleLogoUpload, onRemove: handleLogoRemove }
+      : null,
   };
 
   // LogoMark et LogoMenu : fonctions de rendu (pas des composants React)
@@ -761,7 +768,6 @@ export default function AppLayout({
           </main>
         </div>
 
-        {accountModal}
         {passwordModal}
         {shortcutsLayer}
       </div>
@@ -915,7 +921,6 @@ export default function AppLayout({
         </div>
       </div>
 
-      {accountModal}
       {passwordModal}
       {shortcutsLayer}
     </div>

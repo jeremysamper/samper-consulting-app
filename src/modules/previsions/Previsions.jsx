@@ -13,7 +13,7 @@ import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
 import { peutReglerEnLigne } from './gardeEnLigne.js';
 import { ouvrirCompte } from '../../services/navigationService.js';
-import { PanneauNotifications, useNotificationsAppareil } from './NotificationsAppareil.jsx';
+import { useNotificationsAppareil } from './NotificationsAppareil.jsx';
 import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
 import { useReservationsJour } from './useReservationsJour.js';
@@ -59,7 +59,6 @@ export default function Previsions({ user, etablissement }) {
   const [recherche,     setRecherche]     = useState('');
   const [resaTrouvee,   setResaTrouvee]   = useState(null);
   const [resaEnEdition, setResaEnEdition] = useState(null);
-  const [notificationsOuvertes, setNotificationsOuvertes] = useState(false);
   // Le champ de « Je cherche une réservation » prend la main quand on vient de
   // toucher sa tuile.
   const [champAuToucher, setChampAuToucher] = useState(false);
@@ -122,7 +121,6 @@ export default function Previsions({ user, etablissement }) {
     : null;
 
   const notifications = useNotificationsAppareil(etabId, user);
-  const fermerNotifications = useCallback(() => setNotificationsOuvertes(false), []);
 
   // Échap sur un écran de tâche ramène à l'accueil du module (useEcranModule),
   // sauf quand une fenêtre du module est ouverte par-dessus : formulaire,
@@ -217,7 +215,7 @@ export default function Previsions({ user, etablissement }) {
           onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
           onClients={() => setEcran('clients')}
           onRapport={() => setEcran('rapport')}
-          onNotifications={() => setNotificationsOuvertes(true)}
+          onNotifications={() => ouvrirCompte('notifications')}
           onReglages={() => ouvrirCompte('reservation_en_ligne')}
         />
       )}
@@ -363,10 +361,6 @@ export default function Previsions({ user, etablissement }) {
           onClose={fermerModeService}
           onChange={() => setRefreshKey((k) => k + 1)}
         />
-      )}
-
-      {notificationsOuvertes && etabId && (
-        <PanneauNotifications notifs={notifications} onFermer={fermerNotifications} />
       )}
 
       {canEdit && resaEnEdition && etabId && (

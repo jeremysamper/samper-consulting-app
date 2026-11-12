@@ -1,4 +1,5 @@
 import { isPageActiveForEtab, peutAdministrerCompte, peutOuvrirPage } from '../moduleConfig.js';
+import { peutChangerLogo, peutOrganiserMenu } from '../../components/nav/gardesCoque.js';
 import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
 import { peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
 import { peutReglerFactures } from '../comptabilite/gardesCompta.js';
@@ -56,6 +57,18 @@ export const SECTIONS = [
     id: 'parametres', libelle: 'Paramètres', detail: 'Établissements, modules, noms des modules, caisse reliée',
     groupe: 'maison', portee: 'maison', garde: administre,
     charger: () => import('./sections/SectionParametres.jsx'),
+  },
+  {
+    id: 'logo', libelle: "Logo de l'établissement", detail: 'Dans la barre latérale, sur la page d\'accueil et sur les factures',
+    groupe: 'maison', portee: 'maison',
+    garde: (ctx) => peutChangerLogo(ctx.user?.role, ctx.shellMode),
+    charger: () => import('./sections/SectionCoque.jsx').then((m) => ({ default: m.SectionLogo })),
+  },
+  {
+    id: 'ordre_menu', libelle: 'Ordre du menu', detail: 'Les modules et leurs rubriques, pour tous les comptes',
+    groupe: 'maison', portee: 'maison',
+    garde: (ctx) => peutOrganiserMenu(ctx.user?.role, ctx.shellMode),
+    charger: () => import('./sections/SectionCoque.jsx').then((m) => ({ default: m.SectionOrdreMenu })),
   },
   {
     id: 'alertes', libelle: 'Alertes', detail: 'Les règles qui préviennent la direction et l\'équipe',
@@ -163,9 +176,20 @@ export const SECTIONS = [
 
   // ── Mes préférences ──
   {
+    id: 'mon_compte', libelle: 'Mon compte', detail: 'Nom, téléphone, mot de passe, déconnexion',
+    groupe: 'preferences', portee: 'personne', garde: () => true,
+    charger: () => import('./sections/SectionMonCompte.jsx'),
+  },
+  {
     id: 'apparence', libelle: 'Apparence et langue', detail: 'Mode clair ou sombre, langue d\'affichage',
     groupe: 'preferences', portee: 'appareil', garde: () => true,
     charger: () => import('./sections/SectionApparence.jsx'),
+  },
+  {
+    id: 'notifications', libelle: 'Notifications sur cet appareil', detail: 'Être prévenu des nouvelles réservations en ligne',
+    groupe: 'preferences', portee: 'appareil', module: 'previsions',
+    garde: ouvreLeModule('previsions'),
+    charger: () => import('../previsions/SectionNotificationsAppareil.jsx'),
   },
 ];
 

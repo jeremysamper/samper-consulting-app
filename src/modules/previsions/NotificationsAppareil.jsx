@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { notify } from '../../components/toast/index.js';
 import { activerPush, desactiverPush, etatPush, testerPush } from '../../services/pushNotifications.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // « Notifications » : prévenir CET appareil (téléphone, tablette du pass) à
@@ -34,6 +34,11 @@ export function useNotificationsAppareil(etablissementId, user) {
     etatPush(etablissementId).then((e) => { if (vivant) setEtat(e); }).catch(() => { if (vivant) setEtat('non-supporte'); });
     return () => { vivant = false; };
   }, [etablissementId]);
+  // Activé ou désactivé dans la page des réglages (section 'notifications') :
+  // la tuile de Réservations restée montée relit l'état de l'appareil.
+  useReglageModifie('notifications', () => {
+    etatPush(etablissementId).then(setEtat).catch(() => {});
+  });
 
   async function activer() {
     setEnCours(true);
@@ -75,19 +80,13 @@ export function useNotificationsAppareil(etablissementId, user) {
 
 // Le panneau, ouvert par la tuile de l'accueil. notifs : ce que rend
 // useNotificationsAppareil.
-export function PanneauNotifications({ notifs, onFermer }) {
+// Depuis le 12.11.2026 : une section de la page des réglages
+// (SectionNotificationsAppareil.jsx), le même contenu sans fenêtre ni voile.
+export function PanneauNotifications({ notifs }) {
   const { etat, actif, enCours, activer, tester, desactiver } = notifs;
 
-  useEffect(() => {
-    const echap = (e) => { if (e.key === 'Escape') onFermer(); };
-    document.addEventListener('keydown', echap);
-    return () => document.removeEventListener('keydown', echap);
-  }, [onFermer]);
-
-  return createPortal(
-    <div style={s.voile} onClick={(e) => { if (e.target === e.currentTarget) onFermer(); }}>
-    <div style={s.panneau} role="dialog" aria-modal="true" aria-label="Notifications sur cet appareil">
-      <button type="button" onClick={onFermer} aria-label="Fermer" className="ui-fermer" style={s.fermer}>×</button>
+  return (
+    <div style={s.section} role="region" aria-label="Notifications sur cet appareil">
       <div style={s.titre}>Nouvelles réservations en ligne</div>
       {etat === null && <div style={s.texte}>Vérification…</div>}
       {MESSAGES[etat] && <div style={s.texte}>{MESSAGES[etat]}</div>}
@@ -111,8 +110,6 @@ export function PanneauNotifications({ notifs, onFermer }) {
         </>
       )}
     </div>
-    </div>,
-    document.body,
   );
 }
 
@@ -121,6 +118,7 @@ const s = {
     position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(0,0,0,0.45)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
   },
+  section: { display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 380, minWidth: 0 },
   panneau: {
     position: 'relative', width: 'min(380px, 100%)',
     background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 16,

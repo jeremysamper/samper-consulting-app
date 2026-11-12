@@ -4356,4 +4356,17 @@ export const UI_GLOSSARY_ES = {
   'Planning : contrats': 'Planificación: contratos',
   'Taux, heures par semaine et vacances de chacun': 'Tasa, horas por semana y vacaciones de cada uno',
   "Ce réglage n'est pas encore activé sur la base de données.": 'Este ajuste aún no está activado en la base de datos.',
+  // ── Réglages : Mon compte, notifications, ordre du menu, logo ──
+  "Logo de l'établissement": 'Logo del establecimiento',
+  "Dans la barre latérale, sur la page d'accueil et sur les factures": 'En la barra lateral, en la página de inicio y en las facturas',
+  'Ordre du menu': 'Orden del menú',
+  'Les modules et leurs rubriques, pour tous les comptes': 'Los módulos y sus secciones, para todas las cuentas',
+  'Nom, téléphone, mot de passe, déconnexion': 'Nombre, teléfono, contraseña, cierre de sesión',
+  'Notifications sur cet appareil': 'Notificaciones en este dispositivo',
+  'Être prévenu des nouvelles réservations en ligne': 'Recibir aviso de las nuevas reservas en línea',
+  "Rangez les modules et leurs rubriques dans la barre latérale : glissez la poignée ou utilisez les flèches, puis « Terminé ». L'ordre vaut pour tous les comptes.": 'Ordene los módulos y sus secciones en la barra lateral: arrastre el tirador o use las flechas y pulse «Terminado». El orden vale para todas las cuentas.',
+  'Le logo de': 'El logo de',
+  "dans la barre latérale, sur la page d'accueil et sur les factures.": 'en la barra lateral, en la página de inicio y en las facturas.',
+  'Retirer le logo': 'Quitar el logo',
+  'Max 500 Ko. PNG, JPG ou SVG.': 'Máx. 500 KB. PNG, JPG o SVG.',
 };
