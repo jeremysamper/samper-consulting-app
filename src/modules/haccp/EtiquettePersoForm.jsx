@@ -70,7 +70,7 @@ const EtiquettePersoForm = ({ etiquette, existantes = [], busy = false, onSave, 
         value={f[cle]}
         onChange={e => set({ [cle]: e.target.value })}
       />
-      {aide && <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.4 }}>{aide}</div>}
+      {aide && <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 }}>{aide}</div>}
     </div>
   );
 
@@ -96,7 +96,7 @@ const EtiquettePersoForm = ({ etiquette, existantes = [], busy = false, onSave, 
                 onChange={e => set({ nom: e.target.value })}
                 autoFocus
               />
-              <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.4 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 }}>
                 C'est ce nom qui s'imprime en tête de l'étiquette.
               </div>
             </div>
@@ -117,11 +117,11 @@ const EtiquettePersoForm = ({ etiquette, existantes = [], busy = false, onSave, 
               >
                 <div style={{ ...hcfg.toggleThumb, left: f.congelable ? 'calc(100% - 20px)' : '2px' }} />
               </div>
-              <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>Préparation congelable</span>
+              <span style={{ fontSize: 'var(--t2)', color: 'var(--text)', fontWeight: 'var(--g2)' }}>Préparation congelable</span>
             </div>
 
             {f.congelable ? (
-              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div data-cadre="" style={{ background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)', padding: 14, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {champDuree(
                   'Durée au congélateur (jours) *',
                   'dureeVieCongeleJours',
@@ -134,14 +134,14 @@ const EtiquettePersoForm = ({ etiquette, existantes = [], busy = false, onSave, 
                 )}
               </div>
             ) : (
-              <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 }}>
                 Sans durée de surgélation, l'étiquette reste grisée dans les modes
                 Surgélation et Décongélation.
               </div>
             )}
 
             {erreur && (
-              <div style={{ padding: '10px 0 10px 12px',  borderLeft: '2px solid var(--danger-bd)',  fontSize: 12, color: 'var(--danger-strong)', lineHeight: 1.4 }}>
+              <div style={{ padding: '10px 0 10px 12px',  borderLeft: '2px solid var(--danger-bd)',  fontSize: 'var(--t1)', color: 'var(--danger-strong)', lineHeight: 1.4 }}>
                 {erreur}
               </div>
             )}

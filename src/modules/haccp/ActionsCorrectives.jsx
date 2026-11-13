@@ -83,23 +83,23 @@ export default function ActionsCorrectives({ zone, valeur, choix, onChoix, rappe
 
 const st = {
   bloc: { marginTop: 10, padding: '12px 12px 10px', borderRadius: 'var(--r)', background: 'var(--danger-bg-soft)', color: 'var(--text)', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
-  verdict: { fontSize: 15, fontWeight: 700, color: 'var(--danger-text)', lineHeight: 1.3 },
-  rappel: { fontWeight: 400, color: 'var(--text)' },
-  consigne: { fontSize: 13, color: 'var(--text)', lineHeight: 1.4 },
+  verdict: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--danger-text)', lineHeight: 1.3 },
+  rappel: { fontWeight: 'var(--g1)', color: 'var(--text)' },
+  consigne: { fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.4 },
   puces: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   // Puce à bascule : 44 px au doigt, texte long replié sur deux lignes plutôt
   // qu'un débordement à 375 px.
   puce: {
-    minHeight: 44, maxWidth: '100%', padding: '8px 14px', borderRadius: 22,
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500,
+    minHeight: 44, maxWidth: '100%', padding: '8px 14px', borderRadius: 'var(--r)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
     lineHeight: 1.25, textAlign: 'left', whiteSpace: 'normal', cursor: 'pointer',
   },
-  puceOn: { borderColor: 'var(--danger-strong)', background: 'var(--danger-bg)', color: 'var(--danger-text)', fontWeight: 600 },
+  puceOn: { borderColor: 'var(--danger-strong)', background: 'var(--danger-bg)', color: 'var(--danger-text)', fontWeight: 'var(--g3)' },
   // 16 px : iOS ne zoome pas sur un champ à 16 px.
   champ: {
     width: '100%', boxSizing: 'border-box', minHeight: 44, padding: '10px 12px', borderRadius: 'var(--r-sm)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text)',
-    fontFamily: 'var(--font)', fontSize: 16,
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', background: 'var(--surface)', color: 'var(--text)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t3)',
   },
 };
