@@ -33,7 +33,7 @@ export function EnTete({ date, salutation, prenom, pret, service, reperes, peutO
         </h2>
         {pret && service && (
           <p style={s.service}>
-            <Clock size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 2 }} />
+            <Clock size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--lien)', flexShrink: 0, marginTop: 2 }} />
             <span style={{ minWidth: 0 }}><LigneService service={service} /></span>
           </p>
         )}
@@ -111,15 +111,15 @@ const s = {
   // Grille, espacements et retraits dans tableau.css (suivent la largeur).
   hero: {
     minWidth: 0, boxSizing: 'border-box',
-    background: 'var(--accent-light)', borderRadius: 'var(--r-lg)', color: 'var(--text)',
+    background: 'var(--selection)', borderRadius: 'var(--r-lg)', color: 'var(--text)',
   },
   ligneHaut: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minWidth: 0 },
-  date: { margin: 0, fontSize: 15, fontWeight: 500, lineHeight: 1.4, color: 'var(--text2)' },
-  salut: { margin: '4px 0 0', fontFamily: 'var(--font-serif)', fontWeight: 400, lineHeight: 1.15, color: 'var(--text)', overflowWrap: 'anywhere' },
-  service: { display: 'flex', alignItems: 'flex-start', gap: 10, margin: '8px 0 0', fontSize: 16, lineHeight: 1.45, color: 'var(--text)', maxWidth: 640 },
+  date: { margin: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.4, color: 'var(--text2)' },
+  salut: { margin: '4px 0 0', fontFamily: 'var(--font)', fontWeight: 'var(--g3)', lineHeight: 1.15, color: 'var(--text)', overflowWrap: 'anywhere' },
+  service: { display: 'flex', alignItems: 'flex-start', gap: 10, margin: '8px 0 0', fontSize: 'var(--t3)', lineHeight: 1.45, color: 'var(--text)', maxWidth: 640 },
   assistant: {
     display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 16px', flexShrink: 0, cursor: 'pointer',
-    borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--surface)', color: 'var(--accent)',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600,
+    borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--surface)', color: 'var(--lien)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)',
   },
 };

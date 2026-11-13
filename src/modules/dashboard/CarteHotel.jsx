@@ -57,7 +57,7 @@ const s = {
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
     fontFamily: 'var(--font)', color: 'var(--text)',
   },
-  label: { fontSize: 14, fontWeight: 500, color: 'var(--text2)' },
-  valeur: { fontFamily: 'var(--font-num)', fontSize: 38, lineHeight: 1.05, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
-  unite: { fontSize: 13, color: 'var(--text2)', lineHeight: 1.3, marginTop: 'auto' },
+  label: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
+  valeur: { fontFamily: 'var(--font-num)', fontSize: 'var(--t6)', lineHeight: 1.05, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  unite: { fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.3, marginTop: 'auto' },
 };

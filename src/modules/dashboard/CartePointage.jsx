@@ -56,7 +56,7 @@ export default function CartePointage({
 
       {!shifts.length && (
         <p style={s.repos}>
-          <CalendarClock size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--accent)', flexShrink: 0, marginTop: 1 }} />
+          <CalendarClock size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--lien)', flexShrink: 0, marginTop: 1 }} />
           <span style={{ minWidth: 0 }}>
             {prochain ? (
               <>
@@ -131,7 +131,7 @@ export default function CartePointage({
               <div key={shift.id} style={s.suivant}>
                 <p style={s.ensuite}>
                   <span>Ensuite :</span>{' '}
-                  <span style={{ color: 'var(--text)', fontWeight: 600 }}>{libelle.texte}</span>
+                  <span style={{ color: 'var(--text)', fontWeight: 'var(--g3)' }}>{libelle.texte}</span>
                   {!horsPlanning && <>, <span data-no-translate>{shift.debut} à {shift.fin}</span></>}
                 </p>
                 {boutonArrivee(false)}
@@ -168,7 +168,7 @@ export default function CartePointage({
                 <>
                   <div style={s.direct}>
                     <span className="tdb-live" aria-hidden="true" />
-                    <span style={{ fontSize: 15, color: 'var(--text)', fontWeight: 500 }}>
+                    <span style={{ fontSize: 'var(--t2)', color: 'var(--text)', fontWeight: 'var(--g2)' }}>
                       <span>En poste depuis</span>{' '}<span data-no-translate>{shift.pointageDebut}</span>
                     </span>
                     <Duree minutes={travaille} style={s.compteur} />
@@ -194,33 +194,33 @@ export default function CartePointage({
 
 const s = {
   erreur: {
-    fontSize: 14, padding: '8px 0 8px 12px', marginBottom: 12, color: 'var(--danger-text)',
+    fontSize: 'var(--t2)', padding: '8px 0 8px 12px', marginBottom: 12, color: 'var(--danger-text)',
     borderLeftWidth: 2, borderLeftStyle: 'solid', borderLeftColor: 'var(--danger-bd)',
   },
-  repos: { display: 'flex', alignItems: 'flex-start', gap: 10, margin: 0, padding: '4px 0', fontSize: 15, lineHeight: 1.5, color: 'var(--text)' },
-  aide: { margin: '8px 0 0', fontSize: 13, lineHeight: 1.45, color: 'var(--text2)' },
+  repos: { display: 'flex', alignItems: 'flex-start', gap: 10, margin: 0, padding: '4px 0', fontSize: 'var(--t2)', lineHeight: 1.5, color: 'var(--text)' },
+  aide: { margin: '8px 0 0', fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text2)' },
   service: { minWidth: 0 },
   serviceTete: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '2px 12px', flexWrap: 'wrap' },
-  serviceNom: { fontSize: 17, fontWeight: 600, lineHeight: 1.3, color: 'var(--text)' },
-  serviceHeures: { fontFamily: 'var(--font-num)', fontSize: 17, lineHeight: 1.3, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
-  poste: { marginTop: 2, fontSize: 13, lineHeight: 1.4, color: 'var(--text2)' },
-  ponct: { display: 'flex', alignItems: 'center', gap: 6, margin: '8px 0 0', fontSize: 14, fontWeight: 600, lineHeight: 1.4 },
+  serviceNom: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', lineHeight: 1.3, color: 'var(--text)' },
+  serviceHeures: { fontFamily: 'var(--font-num)', fontSize: 'var(--t3)', lineHeight: 1.3, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  poste: { marginTop: 2, fontSize: 'var(--t2)', lineHeight: 1.4, color: 'var(--text2)' },
+  ponct: { display: 'flex', alignItems: 'center', gap: 6, margin: '8px 0 0', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.4 },
   direct: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 10, flexWrap: 'wrap' },
   compteur: {
-    marginLeft: 'auto', fontFamily: 'var(--font-num)', fontSize: 30, lineHeight: 1, color: 'var(--text)',
+    marginLeft: 'auto', fontFamily: 'var(--font-num)', fontSize: 'var(--t6)', lineHeight: 1, color: 'var(--text)',
     fontVariantNumeric: 'tabular-nums',
   },
-  termine: { display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: 14, lineHeight: 1.45, color: 'var(--text2)' },
+  termine: { display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text2)' },
   suivant: { minWidth: 0, paddingTop: 12, borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--rule-soft)' },
-  ensuite: { margin: 0, fontSize: 15, lineHeight: 1.45, color: 'var(--text2)' },
+  ensuite: { margin: 0, fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text2)' },
   action: {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, width: '100%', marginTop: 10, boxSizing: 'border-box',
-    padding: '0 18px', borderRadius: 'var(--r)', border: 'none', cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 16, fontWeight: 700, letterSpacing: 0.1,
+    padding: '0 18px', borderRadius: 'var(--r)', borderWidth: 0, borderStyle: 'solid', borderColor: 'transparent', cursor: 'pointer',
+    fontFamily: 'var(--font)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', letterSpacing: 0.1,
   },
   // Arrivée en vert plein, départ en pétrole plein : jetons partagés, texte
   // lisible dans les deux thèmes (--on-success, --on-accent).
   arrivee: { minHeight: 56, background: 'var(--success-fill)', color: 'var(--on-success)' },
   depart: { minHeight: 56, background: 'var(--accent)', color: 'var(--on-accent)' },
-  secondaire: { minHeight: 48, marginTop: 10, fontSize: 15, fontWeight: 600, background: 'var(--accent-light)', color: 'var(--accent)' },
+  secondaire: { minHeight: 48, marginTop: 10, fontSize: 'var(--t2)', fontWeight: 'var(--g2)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderColor: 'var(--btn-bord)' },
 };

@@ -12,7 +12,7 @@ import { LigneAction, Section } from './tableauBriques.jsx';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MAX = 6;
-const COULEURS = { danger: 'var(--danger-text)', warning: 'var(--warning-text)', info: 'var(--accent)' };
+const COULEURS = { danger: 'var(--danger-text)', warning: 'var(--warning-text)', info: 'var(--lien)' };
 
 export default function AFaire({ items, peutOuvrir, ouvrir }) {
   const [tout, setTout] = React.useState(false);
@@ -27,8 +27,8 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
       {urgents > 0 && (
         <>
           <span>, dont</span>{' '}
-          <span data-no-translate style={{ color: 'var(--danger-text)', fontWeight: 600 }}>{urgents}</span>{' '}
-          <span style={{ color: 'var(--danger-text)', fontWeight: 600 }}>{urgents > 1 ? 'urgents' : 'urgent'}</span>
+          <span data-no-translate style={{ color: 'var(--danger-text)', fontWeight: 'var(--g3)' }}>{urgents}</span>{' '}
+          <span style={{ color: 'var(--danger-text)', fontWeight: 'var(--g3)' }}>{urgents > 1 ? 'urgents' : 'urgent'}</span>
         </>
       )}
     </>
@@ -47,7 +47,7 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
           <LigneAction
             key={item.id}
             icone={getModuleIcon(item.page === 'pointage' ? 'planning' : item.page)}
-            couleur={COULEURS[item.ton] || 'var(--accent)'}
+            couleur={COULEURS[item.ton] || 'var(--lien)'}
             titre={item.titre}
             titreBrut={item.brut}
             detail={item.detail}
@@ -68,11 +68,11 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
 }
 
 const s = {
-  vide: { display: 'flex', alignItems: 'center', gap: 10, margin: 0, padding: '8px 0', fontSize: 15, lineHeight: 1.5, color: 'var(--text)' },
-  urgent: { flexShrink: 0, whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600, color: 'var(--danger-text)' },
+  vide: { display: 'flex', alignItems: 'center', gap: 10, margin: 0, padding: '8px 0', fontSize: 'var(--t2)', lineHeight: 1.5, color: 'var(--text)' },
+  urgent: { flexShrink: 0, whiteSpace: 'nowrap', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--danger-text)' },
   plus: {
     alignSelf: 'flex-start', minHeight: 44, padding: '0 6px', marginTop: 4, cursor: 'pointer',
     borderRadius: 'var(--r-sm)',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--accent)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--lien)',
   },
 };

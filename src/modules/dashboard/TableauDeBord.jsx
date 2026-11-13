@@ -338,5 +338,5 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
 const s = {
   // Espacement des sections : tableau.css (24 px, 32 px dès 600 px).
   page: { display: 'flex', flexDirection: 'column', maxWidth: 1400, margin: '0 auto', width: '100%', minWidth: 0 },
-  chargement: { margin: 0, fontSize: 15, color: 'var(--text2)' },
+  chargement: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)' },
 };

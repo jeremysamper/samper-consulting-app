@@ -28,8 +28,8 @@ const PILES = [
 ];
 
 const chipStyle = (conf) => ({
-  fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10, whiteSpace: 'nowrap',
-  background: conf >= 85 ? 'var(--success-bg)' : conf >= 60 ? 'var(--warning-bg)' : 'var(--surface2)',
+  fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '1px 6px', borderRadius: 'var(--r)', whiteSpace: 'nowrap',
+  background: conf >= 85 ? 'var(--success-bg)' : conf >= 60 ? 'var(--warning-bg)' : 'var(--selection)',
   color: conf >= 85 ? 'var(--success-text)' : conf >= 60 ? 'var(--warning-text)' : 'var(--text2)',
 });
 
@@ -234,15 +234,15 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
     >
       <div
         className="modal-full"
-        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(920px, 96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}
+        style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', width: 'min(920px, 96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}
       >
         {/* En-tête */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+            <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
               Lier les ingrédients au catalogue
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
               {enCalcul
                 ? `Rapprochement en cours… ${scan.done}/${scan.total}`
                 : `${scan.totalIng} ingrédient(s), ${scan.dejaLies} déjà lié(s), ${groups.length} nom(s) distinct(s) à traiter`}
@@ -253,7 +253,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
             disabled={!!progress}
             title="Fermer"
             className="ui-fermer" aria-label="Fermer"
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: progress ? 'not-allowed' : 'pointer', color: 'var(--text2)', flexShrink: 0 }}
+            style={{ background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: progress ? 'not-allowed' : 'pointer', color: 'var(--text2)', flexShrink: 0 }}
           >×</button>
         </div>
 
@@ -262,7 +262,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
             <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden', border: '1px solid var(--border)' }}>
               <div style={{ width: `${pct}%`, height: '100%', background: 'var(--accent)', transition: 'width .12s linear' }} />
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 10, textAlign: 'center' }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 10, textAlign: 'center' }}>
               Comparaison de chaque nom avec les {(catalogue || []).length} produits du catalogue.
             </div>
           </div>
@@ -278,10 +278,10 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                     key={p.id}
                     onClick={() => setPile(p.id)}
                     style={{
-                      padding: '7px 12px', fontSize: 12, fontWeight: actif ? 700 : 500, whiteSpace: 'nowrap',
+                      padding: '7px 12px', fontSize: 'var(--t1)', fontWeight: actif ? 'var(--g3)' : 'var(--g2)', whiteSpace: 'nowrap',
                       background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
-                      color: actif ? 'var(--accent)' : 'var(--text2)',
-                      borderBottom: `2px solid ${actif ? 'var(--accent)' : 'transparent'}`,
+                      color: actif ? 'var(--text)' : 'var(--text2)',
+                      borderBottom: `2px solid ${actif ? 'var(--onglet)' : 'transparent'}`,
                     }}
                   >{p.label} ({n})</button>
                 );
@@ -294,9 +294,9 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Filtrer…"
-                style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', color: 'var(--text)', fontSize: 12, minWidth: 0, flex: '1 1 140px' }}
+                style={{ padding: '6px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t1)', minWidth: 0, flex: '1 1 140px' }}
               />
-              <span style={{ fontSize: 11, color: 'var(--text3)', flex: '1 1 auto', minWidth: 0 }}>
+              <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', flex: '1 1 auto', minWidth: 0 }}>
                 {PILES.find(p => p.id === pile)?.hint}
               </span>
               {pile !== 'aucun' && (
@@ -314,7 +314,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
             {/* Liste */}
             <div style={{ padding: 12, overflowY: 'auto', flex: 1 }}>
               {visibles.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text2)', fontSize: 13 }}>
+                <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text2)', fontSize: 'var(--t2)' }}>
                   {search ? 'Aucun nom ne correspond au filtre.' : 'Rien dans cette pile.'}
                 </div>
               )}
@@ -327,7 +327,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                     style={{
                       border: '1px solid transparent',
                       background: choisi ? 'var(--success-bg)' : 'var(--bg)',
-                      borderRadius: 8, padding: '9px 12px', marginBottom: 7,
+                      borderRadius: 'var(--r)', padding: '9px 12px', marginBottom: 7,
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
@@ -345,15 +345,15 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                         </label>
                       )}
                       <div style={{ flex: '1 1 180px', minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{g.nom}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
+                        <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>{g.nom}</div>
+                        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 1 }}>
                           {g.nbOccurrences} ligne{g.nbOccurrences > 1 ? 's' : ''}, {g.nbRecettes} recette{g.nbRecettes > 1 ? 's' : ''}
                         </div>
                       </div>
                       {choisi && (
-                        <div style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', textAlign: 'right', flexShrink: 0 }}>
                           Produit : <strong style={{ color: 'var(--text)' }}>{choisi.nom}</strong>
-                          <span style={{ color: 'var(--accent)', fontFamily: 'var(--font-num)', marginLeft: 6 }}>
+                          <span style={{ color: 'var(--lien)', fontFamily: 'var(--font-num)', marginLeft: 6 }}>
                             {resolvePrixProduit(choisi).toFixed(3)}/{choisi.uniteRef}
                           </span>
                         </div>
@@ -361,7 +361,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                     </div>
 
                     {perteDePrix && (
-                      <div style={{ marginTop: 7, padding: '5px 0 5px 12px',   borderLeft: '2px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 11 }}>
+                      <div style={{ marginTop: 7, padding: '5px 0 5px 12px',   borderLeft: '2px solid var(--warning-bd)', color: 'var(--warning-text)', fontSize: 'var(--t1)' }}>
                         Ce produit est à 0 au catalogue alors que les recettes portent un prix saisi. Lier ferait tomber leur coût à zéro : renseignez d'abord le prix du produit.
                       </div>
                     )}
@@ -377,10 +377,10 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                               onClick={() => setDecision(g.key, actif ? null : s.product)}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer',
-                                padding: '5px 10px', borderRadius: 7, fontSize: 12, fontFamily: 'var(--font)',
-                                background: actif ? 'var(--accent)' : 'var(--surface)',
-                                color: actif ? 'var(--on-accent)' : 'var(--text)',
-                                border: '1px solid transparent',
+                                padding: '5px 10px', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontFamily: 'var(--font)',
+                                background: actif ? 'var(--selection)' : 'var(--btn-fond)',
+                                color: 'var(--text)',
+                                borderWidth: 1, borderStyle: 'solid', borderColor: actif ? 'var(--onglet)' : 'var(--btn-bord)',
                               }}
                             >
                               {s.product?.nom || s.nom}
@@ -403,14 +403,14 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
                           const p = produitParNom.get(e.target.value);
                           if (p) setDecision(g.key, p);
                         }}
-                        style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', fontSize: 12, flex: '1 1 180px', minWidth: 0 }}
+                        style={{ padding: '6px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t1)', flex: '1 1 180px', minWidth: 0 }}
                       />
                       {g.statut === 'aucun' && (
                         <>
                           <Btn small variant="ghost" onClick={() => creerProduit(g)}>
                             + Créer au catalogue ({uniteDominante(g, 'g')})
                           </Btn>
-                          <span style={{ fontSize: 11, color: 'var(--text3)', flex: '1 1 auto', minWidth: 0 }}>
+                          <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', flex: '1 1 auto', minWidth: 0 }}>
                             {prixSeedPourNouveauProduit(g, uniteDominante(g, 'g')) > 0
                               ? `Prix repris des recettes : ${prixSeedPourNouveauProduit(g, uniteDominante(g, 'g')).toFixed(3)}/${uniteDominante(g, 'g')}.`
                               : 'Fiche créée sans prix, à compléter au catalogue.'}
@@ -431,7 +431,7 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
 
             {/* Pied : récapitulatif et application */}
             <div style={{ padding: '10px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 12, color: 'var(--text2)', flex: '1 1 200px', minWidth: 0 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', flex: '1 1 200px', minWidth: 0 }}>
                 {nbSelection === 0
                   ? 'Aucune liaison sélectionnée.'
                   : <>
@@ -452,11 +452,11 @@ export default function BulkProductLinker({ recettes, catalogue, legacySB, etabI
       {/* Progression de l'écriture */}
       {progress && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9100, background: 'rgba(20,16,12,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(420px,94vw)', padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', width: 'min(420px,94vw)', padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
+            <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)', marginBottom: 4 }}>
               Liaison en cours
             </div>
-            <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+            <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>
               {progress.done}/{progress.total} recette(s), {progress.lignes} ligne(s) liée(s)
               {progress.echecs ? `, ${progress.echecs} échec(s)` : ''}
             </div>
