@@ -23,7 +23,7 @@ Direction d'apparence de l'app depuis le 13.11.2026 (elle remplace la direction 
 - Ce qui est choisi. Une pilule choisie (onglet, filtre, puce, créneau, entrée de menu) est un aplat sombre : fond `--accent`, texte `--on-accent`. Une ligne choisie dans une liste et un survol sont en `--selection`, avec `--text`. L'aplat sombre dit l'action principale et le choix en cours ; il ne sert jamais de décor.
 - Champ : contour `--champ-bord`, fond `--surface`, rayon `--r`. Un bord d'état (quantité comptée, erreur) garde sa couleur.
 - Groupe de pilules, tuile intérieure, cercle d'un picto : `--piste`.
-- Cartes de mise en avant : `--carte-nuit` (avec `--carte-nuit-texte`, `--carte-nuit-doux`, `--carte-nuit-tuile`), `--carte-soleil` et `--carte-ciel` (avec leur `-texte`). Par écran : au plus une carte nuit et deux cartes pastel. Elles portent un résumé ou des chiffres, jamais un état.
+- Cartes de mise en avant : `--carte-nuit` (avec `--carte-nuit-texte`, `--carte-nuit-doux`, `--carte-nuit-tuile`, et `--carte-nuit-succes`, `-info`, `-alerte`, `-danger` pour un trait de graphique), `--carte-soleil` et `--carte-ciel` (avec leur `-texte`). Par écran : au plus une carte nuit et deux cartes pastel. Elles portent un résumé ou des chiffres, jamais un état. En thème sombre, la carte nuit est une teinte pétrole plus claire que les cartes, et ses tuiles sont plus sombres qu'elle : elle se détache du fond sans changer de rôle.
 - Ombres : `--sh` pour une carte, `--sh-lg` pour ce qui flotte (fenêtre, menu, tiroir). Aucune autre ombre.
 - Marqueur du jour et repères au trait : `--onglet`. Texte qui portait l'accent : `--lien` ou `--text`.
 - Toast ou bandeau sombre : `--toast-fond` et `--toast-texte` ; le statut est porté par le picto (`--toast-succes`, `--toast-danger`, `--toast-alerte`).
@@ -37,10 +37,29 @@ Direction d'apparence de l'app depuis le 13.11.2026 (elle remplace la direction 
 - Appliquer la direction dans une vue capturée en PDF : `.pdf-render-root` garde les rayons de 8 px et les couleurs de marque, un export sort identique au pixel.
 - Restyler le Spa, le KDS, la FAQ ou `src/reservation/`, qui gardent leur système.
 
+## Coque
+- Menu de l'ordinateur : un rail d'icônes de 76 px par défaut (un cercle de 44 px par module sur `--surface`, l'entrée choisie en aplat `--nav-active`, le libellé gardé pour le lecteur d'écran et en infobulle). Le bouton placé à gauche du titre le déplie en menu à libellés de 234 px, Ctrl ou Cmd + B aussi ; le choix est gardé sur le poste dans `sc_menu_deplie` (`'1'` déplié), que ce bouton seul écrit. La coque pose `--largeur-menu` (76 ou 234 px) : ce qui est fixe en bas d'écran s'y cale.
+- Barre du haut : à gauche le bouton du menu, le titre de la page et l'établissement en pilule ; à droite la recherche en pilule (`.app-bar-recherche`, « Aller à un module » et son raccourci, repliée en cercle sous 1180 px), puis la langue, le thème, la messagerie et les alertes en cercles de 40 px dans une cible de 44 px (`.app-bar-btn`), puis le compte : pastille, nom et rôle (`.app-bar-compte-nom`, masqué sous 1280 px). Le pied du menu ne porte que les réglages.
+- Tablette et téléphone : la coque tactile garde son accueil en tuiles et sa barre ; elle n'a pas de rail.
+- Le rail demande de lire une infobulle pour nommer un module : c'est le seul geste que la composition ajoute, il s'efface en dépliant le menu une fois.
+
+## Composition d'un écran
+Le tableau de bord (`src/modules/dashboard/`) est l'écran de référence ; un écran recomposé reprend sa grammaire.
+- Le titre de l'écran est posé sur la page, en grand (`--t6`, `--g2`), sans carte autour.
+- Une rangée de repères : de petites cartes blanches (`CarteRepere`), trois de front, le picto dans son cercle, le chiffre, sa phrase, un détail. Le picto se retire quand la carte devient étroite.
+- Au plus une carte nuit à tuiles (`CarteAvant ton="nuit"`, tuiles de `carteAvantStyles('nuit').tuile`, un `Anneau` par tuile) et deux cartes pastel, chacune avec un graphique simple (`Barres`, `Arc`). Un `BoutonFleche` en haut à droite d'une carte mène au module, pour le rôle qui peut l'ouvrir.
+- Les listes sont des cartes blanches (`Panneau`), leurs lignes séparées par un filet `--rule-soft`.
+- Un graphique est muet : le nombre se dit par un texte posé à côté, dans son nœud `data-no-translate`. Une carte ne lit que des données déjà chargées par l'écran et n'en invente aucune ; sans donnée, elle n'est pas rendue.
+- La mise en page suit la largeur du conteneur de l'écran (requêtes de conteneur), jamais celle de la fenêtre : le rail et le menu déplié ne donnent pas la même place. Paliers du tableau de bord : 560, 760, 1080 et 1240 px. Entre 760 et 1079 px, la carte nuit reste à côté de la liste et les deux pastel passent côte à côte dessous.
+- Au téléphone, les trois cartes s'empilent et allongent la page d'un écran environ : à peser écran par écran avant de les reprendre.
+
 ## Primitives
 Elles portent la direction à la source : passer par `src/components/ui/` plutôt que redessiner un bouton, un champ, une carte ou une ligne.
 - `Card`, exportée aussi sous le nom `Panneau` : la carte blanche, limite visible d'un groupe (`data-cadre`). Aucun module ne redessine la sienne.
-- `CarteAvant` (tons `nuit`, `soleil`, `ciel`) et `carteAvantStyles(ton)` pour ses pièces (titre, libellé, chiffre, tuile intérieure). `KpiCard` : carte blanche, picto dans un cercle (`pictoCercleStyle()`), libellé, grand chiffre.
+- `CarteAvant` (tons `nuit`, `soleil`, `ciel`) et `carteAvantStyles(ton)` pour ses pièces (titre, libellé, chiffre, tuile intérieure). `KpiCard` : carte blanche, picto dans un cercle (`pictoCercleStyle()`), libellé au-dessus, grand chiffre dessous.
+- `CarteRepere` : la petite carte blanche d'une rangée de repères, le chiffre d'abord puis sa phrase (`Icone`, `valeur`, `libelle`, `detail`, `texte` quand il n'y a pas de chiffre à dire, `onClick` pour en faire un bouton). Son retrait vient de la classe `ui-repere` d'`app.css` : un écran le règle par largeur de conteneur.
+- `BoutonFleche` (`onClick`, `libelle`, `ton`) : le bouton rond de 44 px en haut à droite d'une carte ; sans `onClick`, il n'est pas rendu.
+- Graphiques de `Graphiques.jsx`, exportés par `index.jsx` : `Anneau` (`part` de 0 à 1, `couleur`, `piste`), `Barres` (`valeurs`, `libelles`, `fort`, `encre`, `encreForte`), `Arc` (`parts` : `[{ valeur, couleur }]`, `total`, `piste`, et en enfant ce qui s'inscrit au pied de l'arc). Leurs couleurs sont des jetons passés par l'appelant ; sur une carte de mise en avant, l'encre est celle de la carte. Aucun module n'importe une pièce depuis `src/modules/dashboard/`.
 - `ligneStyle()` : le style partagé d'une ligne de liste (filet bas, hauteur de l'échelle ; `serree` pour 44 px).
 - `Btn` : une pilule ; `primary` pour l'action principale, `ghost` pour le secondaire. `Input`, `SectionHeader`, `SegmentedTabs` (rangée de pilules, la choisie en aplat sombre).
 - `Fenetre` et les styles `st` de `Fenetres.jsx` (`titre`, `label`, `champ`, `primaire`, `secondaire`, `choix`) pour une fenêtre et son formulaire.
