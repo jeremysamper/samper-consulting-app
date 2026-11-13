@@ -82,6 +82,13 @@ export function origine(poste, ctx) {
       pose('pointage', 'grand');
       pose('equipe', 'grand');
       pose('a-faire', 'pleine');
+    } else if (!pointage && equipe && couverts) {
+      // La direction : à faire à gauche, l'équipe au-dessus des deux cartes
+      // pastel à droite, comme le tableau de bord d'avant.
+      pose('a-faire', 'grand');
+      pose('equipe', 'moyen');
+      pose('semaine', 'petit');
+      pose('reservations', 'petit');
     } else {
       const ordre = pointage && equipe
         ? ['pointage', 'equipe', 'a-faire', 'semaine', 'reservations']

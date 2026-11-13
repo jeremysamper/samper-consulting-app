@@ -64,12 +64,12 @@ export const CATALOGUE = [
   },
   {
     id: 'semaine', nom: 'Couverts de la semaine', description: 'Les couverts réservés des sept prochains jours.',
-    famille: 'salle', page: 'previsions', tailles: ['moyen', 'grand'], origine: { ordinateur: 'moyen', tablette: 'moyen', telephone: 'moyen' },
+    famille: 'salle', page: 'previsions', tailles: ['petit', 'moyen', 'grand'], origine: { ordinateur: 'moyen', tablette: 'moyen', telephone: 'moyen' },
     visible: (c) => c.cartesCouverts, avant: true,
   },
   {
     id: 'reservations', nom: 'Réservations du jour', description: 'Les couverts du jour par service.',
-    famille: 'salle', page: 'previsions', tailles: ['moyen', 'grand'], origine: { ordinateur: 'moyen', tablette: 'moyen', telephone: 'moyen' },
+    famille: 'salle', page: 'previsions', tailles: ['petit', 'moyen', 'grand'], origine: { ordinateur: 'moyen', tablette: 'moyen', telephone: 'moyen' },
     visible: (c) => c.cartesCouverts, avant: true,
   },
   {

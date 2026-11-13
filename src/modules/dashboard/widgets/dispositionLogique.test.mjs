@@ -76,6 +76,8 @@ test('origine : les groupes de petits widgets remplissent leurs rangées', () =>
   assert.deepEqual(taillesDeGroupe(2, 'telephone'), ['petit', 'petit']);
   assert.deepEqual(taillesDeGroupe(0, 'telephone'), []);
   // Sans carte de mise en avant : à faire sur toute la largeur.
+  const tailles = Object.fromEntries(origine('ordinateur', CONSULTANT).map((x) => [x.id, x.taille]));
+  assert.deepEqual([tailles['a-faire'], tailles.equipe, tailles.semaine, tailles.reservations], ['grand', 'moyen', 'petit', 'petit']);
   const seul = { ...CONSULTANT, carteEquipe: false, cartesCouverts: false };
   assert.equal(origine('ordinateur', seul).find((x) => x.id === 'a-faire').taille, 'pleine');
 });
