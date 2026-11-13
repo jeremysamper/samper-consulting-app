@@ -1754,6 +1754,10 @@ export const UI_GLOSSARY_ES = {
   'pour un service': 'para un servicio',
   'Modifier la liste': 'Modificar la lista',
   'Nouvelle liste de mise en place': 'Nueva lista de mise en place',
+  'préparations à faire': 'preparaciones por hacer',
+  'préparation à faire': 'preparación por hacer',
+  'listes': 'listas',
+  'liste': 'lista',
   'Aucune liste de mise en place pour le moment.': 'Todavía no hay ninguna lista de mise en place.',
 
   // ── Pertes par tâche ──

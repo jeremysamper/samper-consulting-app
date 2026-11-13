@@ -2,6 +2,7 @@ import React from 'react';
 import { dbService } from '../../services/dbService.js';
 import { notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
+import { Anneau, Panneau } from '../../components/ui/index.jsx';
 import { s, formatDateService, formatFaitAt } from './MiseEnPlace.styles.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
@@ -95,11 +96,15 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
       <div data-cadre="" style={{ ...s.section, ...(variant === 'urgent' ? s.sectionUrgent : s.sectionGrosse) }}>
         <div style={s.sectionHead}>
           <div style={s.sectionTitleRow}>
-            <span style={s.sectionTitle}>{title}</span>
-            <span style={s.progressLabel}>{faits} / {total}</span>
+            <div style={{ minWidth: 0, flex: '1 1 200px' }}>
+              <span style={s.sectionTitle}>{title}</span>
+              <div style={s.sectionHint}>{hint}</div>
+            </div>
+            <span style={s.sectionCompte}>
+              <span style={s.progressLabel}>{faits} / {total}</span>
+              <Anneau part={pct / 100} taille={36} />
+            </span>
           </div>
-          <div style={s.sectionHint}>{hint}</div>
-          <div style={s.progressTrack}><div style={{ ...s.progressFill, width: `${pct}%` }} /></div>
         </div>
         {total === 0 ? (
           <div style={{ padding: '16px', color: 'var(--text2)', fontSize: 'var(--t2)' }}>Aucune préparation dans cette section.</div>
@@ -166,7 +171,7 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
         )}
       >
         {loading ? (
-          <div style={s.empty}>Chargement des préparations…</div>
+          <Panneau style={s.empty}>Chargement des préparations…</Panneau>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {renderSection('Urgent, non congelable', 'À produire au plus près du service (J-1 / J-0).', urgent, 'urgent')}

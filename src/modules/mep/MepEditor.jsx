@@ -6,6 +6,7 @@ import { s } from './MiseEnPlace.styles.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
+import { Btn, Panneau } from '../../components/ui/index.jsx';
 
 let _tmpSeq = 0;
 const tmpKey = () => `tmp-${Date.now()}-${_tmpSeq++}`;
@@ -194,7 +195,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
       <EcranTache titre={isEdit ? 'Modifier la liste' : 'Nouvelle liste de mise en place'} onRetour={onClose} />
 
       {/* Meta */}
-      <div style={s.editorCard}>
+      <Panneau style={s.editorCard}>
         <div style={s.formRow2}>
           <div style={s.field}>
             <label htmlFor="mep-nom" style={s.fieldLabel}>Nom de la liste</label>
@@ -205,10 +206,10 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
             <input id="mep-date" type="date" style={s.input} value={dateService} onChange={e => setDateService(e.target.value)} />
           </div>
         </div>
-      </div>
+      </Panneau>
 
       {/* Generer depuis une carte */}
-      <div style={s.editorCard}>
+      <Panneau style={s.editorCard}>
         <label htmlFor="mep-carte" style={s.fieldLabel}>Générer depuis une carte</label>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ ...s.field, flex: 1, minWidth: 180 }}>
@@ -217,15 +218,15 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
               {(cartes || []).map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
             </select>
           </div>
-          <button type="button" style={s.addBtn} onClick={addFromCarte} disabled={!carteId}>Ajouter les recettes de la carte</button>
+          <Btn variant="ghost" onClick={addFromCarte} disabled={!carteId} style={s.boutonBloc}>Ajouter les recettes de la carte</Btn>
         </div>
         <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 }}>
           Ajoute toutes les recettes des plats de la carte, sans doublon. Vous pouvez ensuite compléter à la main.
         </div>
-      </div>
+      </Panneau>
 
       {/* Selection courante */}
-      <div style={s.editorCard}>
+      <Panneau style={s.editorCard}>
         <div style={s.fieldLabel}>Préparations de la liste ({items.length})</div>
         {items.length === 0 ? (
           <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Sélectionnez des recettes ci-dessous ou ajoutez une préparation manuelle.</div>
@@ -245,10 +246,10 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
             ))}
           </div>
         )}
-      </div>
+      </Panneau>
 
       {/* Ajout manuel */}
-      <div style={s.editorCard}>
+      <Panneau style={s.editorCard}>
         <div style={s.fieldLabel}>Ajout manuel</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ ...s.field, flex: 2, minWidth: 160 }}>
@@ -260,12 +261,12 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
             <button type="button" style={{ ...s.toggleBtn, ...(manual.congelable === true ? s.toggleActive : null) }} onClick={() => setManual({ ...manual, congelable: true })}>Grosse</button>
             <button type="button" style={{ ...s.toggleBtn, ...(manual.congelable === false ? s.toggleActive : null) }} onClick={() => setManual({ ...manual, congelable: false })}>Urgent</button>
           </div>
-          <button type="button" style={s.addBtn} onClick={addManual}>Ajouter</button>
+          <Btn variant="ghost" onClick={addManual} style={s.boutonBloc}>Ajouter</Btn>
         </div>
-      </div>
+      </Panneau>
 
       {/* Recettes de l'etablissement */}
-      <div style={s.editorCard}>
+      <Panneau style={s.editorCard}>
         <label htmlFor="mep-recherche" style={s.fieldLabel}>Recettes de l'établissement</label>
         {/* Champ enveloppé : enfant direct, il gardait le cadre de la carte (exception :has(> input) de « Plus de carrés »). */}
         <div>
@@ -291,11 +292,11 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
             })}
           </div>
         )}
-      </div>
+      </Panneau>
 
       <div style={s.actionsRow}>
-        <button style={s.ghostBtn} onClick={onClose} disabled={saving}>Annuler</button>
-        <button style={s.addBtn} onClick={save} disabled={saving}>{saving ? 'Enregistrement…' : (isEdit ? 'Enregistrer' : 'Créer la liste')}</button>
+        <Btn variant="ghost" onClick={onClose} disabled={saving} style={s.boutonBloc}>Annuler</Btn>
+        <Btn variant="primary" onClick={save} disabled={saving} style={s.boutonBloc}>{saving ? 'Enregistrement…' : (isEdit ? 'Enregistrer' : 'Créer la liste')}</Btn>
       </div>
     </div>
   );

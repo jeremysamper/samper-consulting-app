@@ -1774,6 +1774,10 @@ export const UI_GLOSSARY = {
   'Modifier la liste': 'Edit the list',
   'Nouvelle liste de mise en place': 'New prep list',
   'Aucune liste de mise en place pour le moment.': 'No prep list yet.',
+  'préparations à faire': 'preparations to do',
+  'préparation à faire': 'preparation to do',
+  'listes': 'lists',
+  'liste': 'list',
 
   // ── Pertes par tâche ──
   'Je jette': 'I throw away',
