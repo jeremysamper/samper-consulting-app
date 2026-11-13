@@ -385,11 +385,11 @@ export default function ReservationForm({
   }
 
   const inp = {
-    width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8,
-    background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13,
+    width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r)',
+    background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)',
     boxSizing: 'border-box',
   };
-  const lbl = { fontSize: 12, fontWeight: 700, color: 'var(--text2)', marginBottom: 5, display: 'block' };
+  const lbl = { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 5, display: 'block' };
 
   // ── Blocs placés différemment selon l'écran : sur le téléphone, l'e-mail,
   //    les notes, groupe et passeport passent sous « Plus de détails ». ──
@@ -400,7 +400,7 @@ export default function ReservationForm({
       <div>
         <label style={lbl}>
           E-mail{' '}
-          <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optionnel)</span>
+          <span style={{ fontWeight: 'var(--g1)', color: 'var(--text3)' }}>(optionnel)</span>
         </label>
         <input type="email" inputMode="email" placeholder="client@exemple.ch" value={form.email}
           onChange={(e) => set('email', e.target.value)} style={inp} autoComplete="off" />
@@ -414,7 +414,7 @@ export default function ReservationForm({
             onChange={(e) => set('accordActus', e.target.checked)}
             style={{ width: 20, height: 20, accentColor: 'var(--accent)', flexShrink: 0 }}
           />
-          <span style={{ fontSize: 13, color: 'var(--text)' }}>
+          <span style={{ fontSize: 'var(--t2)', color: 'var(--text)' }}>
             Le client accepte de recevoir les actualités et les bons cadeaux par e-mail
           </span>
         </label>
@@ -430,12 +430,12 @@ export default function ReservationForm({
       aria-pressed={form.passeport}
       onClick={() => set('passeport', !form.passeport)}
       style={{
-        alignSelf: 'flex-start', minHeight: 44, padding: '8px 16px', borderRadius: 22,
+        alignSelf: 'flex-start', minHeight: 44, padding: '8px 16px', borderRadius: 'var(--r)',
         borderWidth: 2, borderStyle: 'solid',
-        borderColor: form.passeport ? 'var(--success-text)' : 'var(--border)',
+        borderColor: form.passeport ? 'var(--success-text)' : 'var(--btn-bord)',
         background: form.passeport ? 'var(--success-bg-soft)' : 'var(--surface)',
         color: form.passeport ? 'var(--success-text)' : 'var(--text2)',
-        fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
+        fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', cursor: 'pointer',
       }}
     >
       Passeport gourmand
@@ -446,7 +446,7 @@ export default function ReservationForm({
     <div>
       <label style={lbl}>
         Notes{' '}
-        <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optionnel)</span>
+        <span style={{ fontWeight: 'var(--g1)', color: 'var(--text3)' }}>(optionnel)</span>
       </label>
       <textarea
         placeholder="Table près de la fenêtre, allergie sévère, etc."
@@ -463,26 +463,27 @@ export default function ReservationForm({
   const blocCanal = enLigne ? (
     <div>
       <label style={lbl}>Canal</label>
-      <div style={{ fontSize: 13, color: 'var(--text)' }}>Réservée en ligne</div>
+      <div style={{ fontSize: 'var(--t2)', color: 'var(--text)' }}>Réservée en ligne</div>
     </div>
   ) : (
     <div>
       <label style={lbl}>Canal</label>
-      <div style={{ display: 'flex', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', borderRadius: 'var(--r)', border: '1px solid var(--border)', overflow: 'hidden' }}>
         {CANAUX.map((c) => (
           <button key={c.id} type="button" aria-pressed={form.canal === c.id} onClick={() => set('canal', c.id)}
             style={{
               flex: 1, minHeight: 40, padding: '9px 2px', border: 'none', cursor: 'pointer',
-              fontSize: isMobile ? 14 : 12, fontWeight: 700, fontFamily: 'var(--font)', transition: 'all 0.15s',
-              background: form.canal === c.id ? 'var(--accent)' : 'var(--bg)',
-              color:      form.canal === c.id ? 'var(--on-accent)' : 'var(--text2)',
+              fontSize: isMobile ? 'var(--t2)' : 'var(--t1)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', transition: 'all 0.15s',
+              background: form.canal === c.id ? 'var(--selection)' : 'var(--bg)',
+              color:      form.canal === c.id ? 'var(--text)' : 'var(--text2)',
+              boxShadow:  form.canal === c.id ? 'inset 0 -2px 0 var(--onglet)' : 'none',
             }}>
             {c.label}
           </button>
         ))}
       </div>
       {form.canal === 'passage' && (
-        <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 5 }}>
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 5 }}>
           {initialResa
             ? 'Client venu sans réserver. Aucune confirmation ne lui est envoyée.'
             : 'Client venu sans réserver : enregistré arrivé, sans confirmation envoyée.'}
@@ -541,12 +542,12 @@ export default function ReservationForm({
           background: 'var(--surface)',
           borderRadius: isMobile ? 0 : '14px 14px 0 0',
         }}>
-          <div style={{ fontWeight: 700, fontSize: isMobile ? 16 : 15, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+          <div style={{ fontWeight: 'var(--g3)', fontSize: isMobile ? 'var(--t3)' : 'var(--t2)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
             {initialResa ? 'Modifier la réservation' : 'Nouvelle réservation'}
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer"
             style={{
-              background: 'none', border: 'none', fontSize: isMobile ? 28 : 22, cursor: 'pointer',
+              background: 'none', border: 'none', fontSize: isMobile ? 'var(--t6)' : 'var(--t4)', cursor: 'pointer',
               color: 'var(--text2)', padding: 4, lineHeight: 1,
               minWidth: isMobile ? 44 : undefined, minHeight: isMobile ? 44 : undefined,
             }}>
@@ -582,12 +583,12 @@ export default function ReservationForm({
                 return (
                   <button key={r.id} type="button" onClick={() => changeDate(r.id)}
                     style={{
-                      padding: '9px 14px', borderRadius: 8, cursor: 'pointer', minHeight: 44,
-                      fontSize: 13, fontFamily: 'var(--font)', fontWeight: 500,
+                      padding: '9px 14px', borderRadius: 'var(--r)', cursor: 'pointer', minHeight: 44,
+                      fontSize: 'var(--t2)', fontFamily: 'var(--font)', fontWeight: 'var(--g2)',
                       borderWidth: 1, borderStyle: 'solid',
-                      borderColor: actif ? 'var(--accent)' : 'var(--border)',
-                      background:  actif ? 'var(--accent)' : 'var(--bg)',
-                      color:       actif ? 'var(--on-accent)' : 'var(--text)',
+                      borderColor: actif ? 'var(--onglet)' : 'var(--btn-bord)',
+                      background:  actif ? 'var(--selection)' : 'var(--btn-fond)',
+                      color:       actif ? 'var(--text)' : 'var(--btn-texte)',
                     }}>
                     {r.label}
                   </button>
@@ -601,7 +602,7 @@ export default function ReservationForm({
               />
             </div>
             )}
-            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 500, marginTop: isMobile ? 6 : 0 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g2)', marginTop: isMobile ? 6 : 0 }}>
               {formatDateLongue(form.date)}{anneeAutre}
             </div>
           </div>
@@ -609,14 +610,15 @@ export default function ReservationForm({
           <div>
             <div>
               <label style={lbl}>Service</label>
-              <div style={{ display: 'flex', borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', borderRadius: 'var(--r)', border: '1px solid var(--border)', overflow: 'hidden' }}>
                 {['midi', 'soir', 'brunch'].map((s) => (
                   <button key={s} type="button" onClick={() => changeService(s)}
                     style={{
                       flex: 1, padding: '9px 2px', border: 'none', cursor: 'pointer',
-                      fontSize: isMobile ? 14 : 12, fontWeight: 700, fontFamily: 'var(--font)', transition: 'all 0.15s',
-                      background: form.service === s ? 'var(--accent)' : 'var(--bg)',
-                      color:      form.service === s ? 'var(--on-accent)' : 'var(--text2)',
+                      fontSize: isMobile ? 'var(--t2)' : 'var(--t1)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', transition: 'all 0.15s',
+                      background: form.service === s ? 'var(--selection)' : 'var(--bg)',
+                      color:      form.service === s ? 'var(--text)' : 'var(--text2)',
+                      boxShadow:  form.service === s ? 'inset 0 -2px 0 var(--onglet)' : 'none',
                     }}>
                     {s.charAt(0).toUpperCase() + s.slice(1)}
                   </button>
@@ -642,19 +644,20 @@ export default function ReservationForm({
                 {suggestions.map((h) => (
                   <button key={h} type="button" aria-pressed={form.heure === h} onClick={() => set('heure', h)}
                     style={isMobile ? caseStyle(form.heure === h, { fontFamily: 'var(--font-num)' }) : {
-                      padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
-                      fontSize: 13, fontFamily: 'var(--font)', fontWeight: 500, transition: 'all 0.15s',
+                      padding: '8px 14px', borderRadius: 'var(--r)', cursor: 'pointer',
+                      fontSize: 'var(--t2)', fontFamily: 'var(--font)', fontWeight: 'var(--g2)', transition: 'all 0.15s',
                       border: '1px solid transparent',
-                      background:  form.heure === h ? 'var(--accent)' : 'var(--bg)',
-                      color:       form.heure === h ? 'var(--on-accent)' : 'var(--text)',
+                      background:  form.heure === h ? 'var(--selection)' : 'var(--bg)',
+                      color:       'var(--text)',
+                      boxShadow:   form.heure === h ? 'inset 0 0 0 1px var(--onglet)' : 'none',
                     }}>
                     {h}
                   </button>
                 ))}
                 <button type="button" onClick={() => setForm((p) => ({ ...p, heureCustom: true, heureCustomAuto: false }))}
                   style={isMobile
-                    ? caseStyle(false, { gridColumn: `span ${4 - (suggestions.length % 4)}`, borderStyle: 'dashed', color: 'var(--text2)', fontSize: 14 })
-                    : { padding: '8px 14px', borderRadius: 8, border: '1px dashed var(--border)', background: 'var(--bg)', color: 'var(--text2)', cursor: 'pointer', fontSize: 12, fontFamily: 'var(--font)' }}>
+                    ? caseStyle(false, { gridColumn: `span ${4 - (suggestions.length % 4)}`, borderStyle: 'dashed', color: 'var(--text2)', fontSize: 'var(--t2)' })
+                    : { padding: '8px 14px', borderRadius: 'var(--r)', border: '1px dashed var(--border)', background: 'var(--bg)', color: 'var(--text2)', cursor: 'pointer', fontSize: 'var(--t1)', fontFamily: 'var(--font)' }}>
                   Autre heure
                 </button>
               </div>
@@ -663,7 +666,7 @@ export default function ReservationForm({
                 <input type="time" value={form.heure} onChange={(e) => set('heure', e.target.value)} style={{ ...inp, width: 'auto' }} />
                 <button type="button"
                   onClick={() => setForm((p) => ({ ...p, heureCustom: false, heure: suggestions[0] }))}
-                  style={{ fontSize: 12, color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)' }}>
+                  style={{ fontSize: 'var(--t1)', color: 'var(--text2)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)' }}>
                   Retour aux suggestions
                 </button>
               </div>
@@ -676,10 +679,10 @@ export default function ReservationForm({
             {isMobile ? (
               <GrilleCouverts value={form.couverts} onChange={(v) => set('couverts', v)} />
             ) : (
-            <div style={{ display: 'flex', alignItems: 'center', width: 'fit-content', border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', width: 'fit-content', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden' }}>
               <button type="button" aria-label="Diminuer"
                 onClick={() => set('couverts', Math.max(1, (Number(form.couverts) || 0) - 1))}
-                style={{ width: 44, height: 44, fontSize: 20, fontWeight: 700, background: 'var(--bg)', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                style={{ width: 44, height: 44, fontSize: 'var(--t4)', fontWeight: 'var(--g3)', background: 'var(--bg)', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 −
               </button>
               {/* Saisie au clavier : une tablée de 18 se tape, elle ne se
@@ -700,14 +703,14 @@ export default function ReservationForm({
                 }}
                 onBlur={() => { if (form.couverts === '' || form.couverts < 1) set('couverts', 1); }}
                 style={{
-                  width: 52, height: 44, textAlign: 'center', fontWeight: 700, fontSize: 17,
+                  width: 52, height: 44, textAlign: 'center', fontWeight: 'var(--g3)', fontSize: 'var(--t3)',
                   color: 'var(--text)', fontFamily: 'var(--font-num)',
                   background: 'transparent', border: 'none', padding: 0, minWidth: 0,
                 }}
               />
               <button type="button" aria-label="Augmenter"
                 onClick={() => set('couverts', Math.min(50, (Number(form.couverts) || 0) + 1))}
-                style={{ width: 44, height: 44, fontSize: 20, fontWeight: 700, background: 'var(--bg)', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                style={{ width: 44, height: 44, fontSize: 'var(--t4)', fontWeight: 'var(--g3)', background: 'var(--bg)', border: 'none', cursor: 'pointer', color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 +
               </button>
             </div>
@@ -743,7 +746,7 @@ export default function ReservationForm({
           <div>
             <label style={lbl}>
               Téléphone{' '}
-              <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(optionnel)</span>
+              <span style={{ fontWeight: 'var(--g1)', color: 'var(--text3)' }}>(optionnel)</span>
             </label>
             <input ref={telRef} type="tel" inputMode="tel" placeholder="+41 79 123 45 67" value={form.telephone}
               autoComplete="off" enterKeyHint="done"
@@ -757,10 +760,10 @@ export default function ReservationForm({
           {/* Fiche reprise : ce qu'elle sait des allergies se lit avant de
               poser les tags. */}
           {clientChoisi && (
-            <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, marginTop: -6 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5, marginTop: -6 }}>
               <div>Fiche client : {detailsClient(clientChoisi)}</div>
               {clientChoisi.allergies && (
-                <div style={{ color: 'var(--danger-text)', fontWeight: 500 }}>
+                <div style={{ color: 'var(--danger-text)', fontWeight: 'var(--g2)' }}>
                   Allergies notées sur la fiche : {clientChoisi.allergies}
                 </div>
               )}
@@ -784,19 +787,19 @@ export default function ReservationForm({
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
                   width: '100%', minHeight: 52, padding: '10px 0', textAlign: 'left', cursor: 'pointer',
-                  background: 'none', borderWidth: '1px 0 0', borderStyle: 'solid', borderColor: 'var(--border)',
-                  fontFamily: 'var(--font)', color: 'var(--text)',
+                  background: 'none', borderWidth: '1px 0 0', borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+                  fontFamily: 'var(--font)', color: 'var(--btn-texte)',
                 }}>
                 <span style={{ minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: 14, fontWeight: 700 }}>Plus de détails</span>
-                  <span style={{ display: 'block', fontSize: 12, marginTop: 2, color: detailsRenseignes.length ? 'var(--accent)' : 'var(--text3)' }}>
+                  <span style={{ display: 'block', fontSize: 'var(--t2)', fontWeight: 'var(--g3)' }}>Plus de détails</span>
+                  <span style={{ display: 'block', fontSize: 'var(--t1)', marginTop: 2, color: detailsRenseignes.length ? 'var(--lien)' : 'var(--text3)' }}>
                     {detailsRenseignes.length
                       ? `Renseigné : ${detailsRenseignes.join(', ')}`
                       : 'E-mail, notes, canal, groupe, passeport gourmand'}
                   </span>
                 </span>
                 <span aria-hidden="true" style={{
-                  fontSize: 16, color: 'var(--text2)', flexShrink: 0,
+                  fontSize: 'var(--t3)', color: 'var(--text2)', flexShrink: 0,
                   transform: detailsOuverts ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s',
                 }}>
                   ▾
@@ -816,12 +819,12 @@ export default function ReservationForm({
                       aria-pressed={form.groupe}
                       onClick={() => set('groupe', !form.groupe)}
                       style={{
-                        minHeight: 44, padding: '8px 16px', borderRadius: 22,
+                        minHeight: 44, padding: '8px 16px', borderRadius: 'var(--r)',
                         borderWidth: 2, borderStyle: 'solid',
-                        borderColor: form.groupe ? 'var(--accent)' : 'var(--border)',
-                        background: form.groupe ? 'var(--accent)' : 'var(--surface)',
-                        color: form.groupe ? 'var(--on-accent)' : 'var(--text2)',
-                        fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
+                        borderColor: form.groupe ? 'var(--onglet)' : 'var(--btn-bord)',
+                        background: form.groupe ? 'var(--selection)' : 'var(--btn-fond)',
+                        color: form.groupe ? 'var(--text)' : 'var(--btn-texte)',
+                        fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', cursor: 'pointer',
                       }}>
                       Groupe
                     </button>
@@ -839,7 +842,7 @@ export default function ReservationForm({
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <button type="button" aria-label="Groupe" onClick={() => set('groupe', !form.groupe)}
                   style={{
-                    width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
+                    width: 40, height: 22, borderRadius: 'var(--r)', border: 'none', cursor: 'pointer',
                     transition: 'background 0.2s', flexShrink: 0, position: 'relative',
                     background: form.groupe ? 'var(--accent)' : 'var(--border)',
                   }}>
@@ -849,7 +852,7 @@ export default function ReservationForm({
                     boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                   }} />
                 </button>
-                <span style={{ fontSize: 13, color: 'var(--text)', fontFamily: 'var(--font)' }}>Groupe</span>
+                <span style={{ fontSize: 'var(--t2)', color: 'var(--text)', fontFamily: 'var(--font)' }}>Groupe</span>
               </div>
 
               {boutonPasseport}
@@ -858,7 +861,7 @@ export default function ReservationForm({
               <div>
                 <label style={lbl}>
                   Tags{' '}
-                  <span style={{ fontWeight: 400, color: 'var(--text3)' }}>(allergènes, régimes, occasions)</span>
+                  <span style={{ fontWeight: 'var(--g1)', color: 'var(--text3)' }}>(allergènes, régimes, occasions)</span>
                 </label>
                 <ReservationTagSelector value={form.tags} onChange={(v) => set('tags', v)} />
               </div>
@@ -875,23 +878,23 @@ export default function ReservationForm({
             padding: '10px 16px', paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
             borderTop: '1px solid var(--border)', background: 'var(--surface)',
           }}>
-            <div style={{ fontSize: 12, color: 'var(--text2)', fontWeight: 500, marginBottom: 8 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g2)', marginBottom: 8 }}>
               {resume}
             </div>
             <div style={{ display: 'flex', gap: 8 }}>
               {initialResa ? (
                 <button type="button" onClick={onClose}
-                  style={{ flex: 1, minHeight: 48, borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 500 }}>
+                  style={{ flex: 1, minHeight: 48, borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>
                   {loading ? 'Fermer' : 'Annuler'}
                 </button>
               ) : (
                 <button type="button" disabled={loading} onClick={() => submit(true)}
-                  style={{ flex: 1, minHeight: 48, borderRadius: 10, borderWidth: 0, background: 'var(--surface2)', color: 'var(--accent)', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700, opacity: loading ? 0.5 : 1, padding: '0 8px' }}>
+                  style={{ flex: 1, minHeight: 48, borderRadius: 'var(--r)', borderWidth: 0, background: 'var(--surface2)', color: 'var(--lien)', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', opacity: loading ? 0.5 : 1, padding: '0 8px' }}>
                   Saisir une autre
                 </button>
               )}
               <button type="button" disabled={loading} onClick={() => submit(false)}
-                style={{ flex: 1.2, minHeight: 48, borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 700, opacity: loading ? 0.7 : 1 }}>
+                style={{ flex: 1.2, minHeight: 48, borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', opacity: loading ? 0.7 : 1 }}>
                 {loading ? 'Enregistrement…' : 'Enregistrer'}
               </button>
             </div>
@@ -903,7 +906,7 @@ export default function ReservationForm({
         }}>
           {!initialResa && (
             <button type="button" disabled={loading} onClick={() => submit(true)}
-              style={{ background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 12, color: 'var(--accent)', fontFamily: 'var(--font)', fontWeight: 500, padding: 0, opacity: loading ? 0.5 : 1 }}>
+              style={{ background: 'none', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontSize: 'var(--t1)', color: 'var(--lien)', fontFamily: 'var(--font)', fontWeight: 'var(--g2)', padding: 0, opacity: loading ? 0.5 : 1 }}>
               Saisir une autre
             </button>
           )}
@@ -912,11 +915,11 @@ export default function ReservationForm({
                 L'écriture partie ne s'arrête pas : le bouton dit alors
                 « Fermer », « Annuler » ferait croire la résa abandonnée. */}
             <button type="button" onClick={onClose}
-              style={{ padding: '10px 18px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500 }}>
+              style={{ padding: '10px 18px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>
               {loading ? 'Fermer' : 'Annuler'}
             </button>
             <button type="button" disabled={loading} onClick={() => submit(false)}
-              style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, opacity: loading ? 0.7 : 1 }}>
+              style={{ padding: '10px 20px', borderRadius: 'var(--r)', border: '1px solid var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)', cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', opacity: loading ? 0.7 : 1 }}>
               {loading ? 'Enregistrement…' : 'Enregistrer'}
             </button>
           </div>

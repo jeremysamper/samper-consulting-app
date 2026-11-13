@@ -32,15 +32,15 @@ function LigneResultat({ resa, onOuvrir, onAllerAuJour }) {
           border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font)',
         }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }} data-no-translate>
+          <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }} data-no-translate>
             {resa.nom}
           </span>
-          <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+          <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
             {resa.nb_couverts} pax
           </span>
           {traite && (
             <span style={{
-              padding: '1px 7px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+              padding: '1px 7px', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
               borderWidth: 1, borderStyle: 'solid', borderColor: meta.bordure,
               background: meta.bg, color: meta.texte,
             }}>
@@ -48,7 +48,7 @@ function LigneResultat({ resa, onOuvrir, onAllerAuJour }) {
             </span>
           )}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 2 }}>
           {formatDateLongue(resa.date_service)} à {(resa.heure_arrivee || '').slice(0, 5)}
           {resa.telephone ? `, ${resa.telephone}` : ''}
         </div>
@@ -57,10 +57,10 @@ function LigneResultat({ resa, onOuvrir, onAllerAuJour }) {
         type="button" onClick={() => onAllerAuJour(resa.date_service)}
         title="Ouvrir cette journée"
         style={{
-          flexShrink: 0, minHeight: 40, padding: '8px 12px', borderRadius: 8,
-          borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-          background: 'var(--surface)', color: 'var(--text2)',
-          fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)',
+          flexShrink: 0, minHeight: 40, padding: '8px 12px', borderRadius: 'var(--r)',
+          borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+          background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+          fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)',
         }}>
         Voir le jour
       </button>
@@ -100,9 +100,9 @@ export default function RechercheResas({
   if (t.length < 2) {
     return (
       <div style={{
-        marginTop: 12, padding: '14px 16px', borderRadius: 10,
+        marginTop: 12, padding: '14px 16px', borderRadius: 'var(--r)',
         borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-        background: 'var(--surface)', fontSize: 13, color: 'var(--text3)',
+        background: 'var(--surface)', fontSize: 'var(--t2)', color: 'var(--text3)',
       }}>
         Tape au moins deux caractères : nom ou téléphone.
       </div>
@@ -118,30 +118,30 @@ export default function RechercheResas({
     <div style={{ marginTop: 12 }}>
       {error && (
         <div style={{
-          padding: '10px 14px', borderRadius: 8, background: 'var(--danger-bg-soft)',
+          padding: '10px 14px', borderRadius: 'var(--r)', background: 'var(--danger-bg-soft)',
           borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--danger-bd)',
-          color: 'var(--danger-text)', fontSize: 13, marginBottom: 10,
+          color: 'var(--danger-text)', fontSize: 'var(--t2)', marginBottom: 10,
         }}>
           {error}
         </div>
       )}
 
       {loading && (
-        <div style={{ padding: '18px 0', textAlign: 'center', color: 'var(--text3)', fontSize: 13 }}>
+        <div style={{ padding: '18px 0', textAlign: 'center', color: 'var(--text3)', fontSize: 'var(--t2)' }}>
           Recherche…
         </div>
       )}
 
       {!loading && resultats !== null && resultats.length === 0 && (
         <div style={{
-          padding: '20px 16px', textAlign: 'center', borderRadius: 10,
+          padding: '20px 16px', textAlign: 'center', borderRadius: 'var(--r)',
           borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
           background: 'var(--surface)',
         }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>
+          <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginBottom: 4 }}>
             Aucune réservation pour « {t} »
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
             La recherche porte sur le nom et le téléphone, hors résas annulées.
           </div>
         </div>
@@ -150,7 +150,7 @@ export default function RechercheResas({
       {!loading && resultats !== null && resultats.length > 0 && (
         <div style={{
           borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-          borderRadius: 10, overflow: 'hidden', background: 'var(--surface)',
+          borderRadius: 'var(--r)', overflow: 'hidden', background: 'var(--surface)',
         }}>
           {[
             { titre: 'À venir', liste: aVenir },
@@ -159,8 +159,7 @@ export default function RechercheResas({
             <div key={titre}>
               <div style={{
                 padding: '7px 12px', background: 'var(--bg)',
-                fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: 0.5, color: 'var(--text3)',
+                fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)',
               }}>
                 {titre} ({liste.length})
               </div>

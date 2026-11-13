@@ -40,11 +40,11 @@ function valeurCellule(r, cle, granularite) {
 }
 
 const thStyle = {
-  textAlign: 'right', fontWeight: 500, fontSize: 12, color: 'var(--text2)', padding: '6px 8px',
+  textAlign: 'right', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', color: 'var(--text2)', padding: '6px 8px',
   borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', whiteSpace: 'nowrap',
 };
 const tdStyle = {
-  textAlign: 'right', padding: '6px 8px', fontSize: 13, color: 'var(--text)', whiteSpace: 'nowrap',
+  textAlign: 'right', padding: '6px 8px', fontSize: 'var(--t2)', color: 'var(--text)', whiteSpace: 'nowrap',
   fontVariantNumeric: 'tabular-nums', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
 };
 const triStyle = { background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'inherit', cursor: 'pointer' };
@@ -64,7 +64,7 @@ export default function RapportTableau({ tableau }) {
     return l;
   }, [rangees, tri]);
 
-  if (!rangees.length) return <div style={{ fontSize: 13, color: 'var(--text2)' }}>Aucune réservation sur la période</div>;
+  if (!rangees.length) return <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Aucune réservation sur la période</div>;
 
   const trier = (cle) => setTri((t) => (t.cle === cle ? { cle, sens: -t.sens } : { cle, sens: cle === 'periode' ? 1 : -1 }));
 

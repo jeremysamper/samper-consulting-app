@@ -18,8 +18,8 @@
 //   - sinon « non chiffré » : les heures sont comptées, le coût manque.
 // Heures : la mesure du relevé CCNT (calcHeures de planning/soldesHeures.js,
 // la seule règle d'heures) ; un horaire passé non pointé compte ses heures
-// prévues et le dit ; un horaire qui finit après minuit (durée négative pour
-// calcHeures) n'est pas compté et le dit, au lieu d'être soustrait.
+// prévues et le dit ; un horaire qui finit après minuit compte ses heures
+// jusqu'au lendemain (dureeHoraire.js), apresMinuit reste donc à faux.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { calcHeures } from '../planning/soldesHeures.js';
@@ -55,7 +55,6 @@ export function heuresHoraire(s, aujourdhui) {
   if (pointe) h = calcHeures(s.pointageDebut, s.pointageFin, s.pause);
   else if (s.date < aujourdhui) { h = calcHeures(s.debut, s.fin, s.pause); prevues = true; }
   if (h == null || !Number.isFinite(h)) return null;
-  if (h < 0) return { heures: 0, prevues, apresMinuit: true };
   return { heures: h, prevues, apresMinuit: false };
 }
 

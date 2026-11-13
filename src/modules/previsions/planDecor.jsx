@@ -172,8 +172,8 @@ function Dessin({ el }) {
 function Libelle({ el, coin = false }) {
   return (
     <span style={{
-      fontSize: 11, fontWeight: 700, lineHeight: 1.15, color: 'var(--text2)',
-      fontFamily: 'var(--font-serif)', textAlign: coin ? 'left' : 'center',
+      fontSize: 'var(--t1)', fontWeight: 'var(--g3)', lineHeight: 1.15, color: 'var(--text2)',
+      fontFamily: 'var(--font)', textAlign: coin ? 'left' : 'center',
       overflow: 'hidden', display: 'block', maxWidth: '100%', maxHeight: '100%',
       wordBreak: 'break-word',
     }}>

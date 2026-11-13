@@ -32,7 +32,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
       onClick={onClick} onKeyDown={(e) => e.key === 'Enter' && onClick()}
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
       style={{
-        padding: '10px 14px', borderRadius: 8,
+        padding: '10px 14px', borderRadius: 'var(--r)',
         // Passeport gourmand : cadre vert, comme dans l'agenda.
         borderWidth: passeport ? 2 : 1, borderStyle: 'solid',
         borderColor: passeport ? 'var(--success-text)' : 'var(--border)',
@@ -50,8 +50,8 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
     >
       {/* Heure */}
       <div style={{
-        fontSize: isMobile ? 12 : 15, fontWeight: 700,
-        color: 'var(--accent)', fontFamily: 'var(--font-num)',
+        fontSize: isMobile ? 'var(--t1)' : 'var(--t2)', fontWeight: 'var(--g3)',
+        color: 'var(--lien)', fontFamily: 'var(--font-num)',
       }}>
         {(resa.heure_arrivee || '').slice(0, 5)}
       </div>
@@ -59,23 +59,24 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
       {/* Infos principales */}
       <div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--text)' }} data-no-translate>
+          <span style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: 'var(--text)' }} data-no-translate>
             {resa.nom}
           </span>
-          <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+          <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
             {resa.nb_couverts} pax
           </span>
           {resa.est_groupe && (
             <span style={{
-              fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
-              background: 'var(--info-bg-soft)', color: 'var(--info-text)', border: '1px solid #bfdbfe',
+              fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '1px 6px', borderRadius: 'var(--r-full)',
+              background: 'var(--info-bg-soft)', color: 'var(--info-text)',
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--info-bd)',
             }}>
               Groupe
             </span>
           )}
           {passeport && (
             <span style={{
-              fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 20,
+              fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '1px 6px', borderRadius: 'var(--r-full)',
               background: 'var(--success-bg-soft)', color: 'var(--success-text)',
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)',
             }}>
@@ -91,7 +92,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
                 <span
                   key={`${t.type_tag}-${t.valeur}`}
                   style={{
-                    padding: '1px 7px', borderRadius: 20, fontSize: 11, fontWeight: 500,
+                    padding: '1px 7px', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)',
                     background: c.bg, color: c.color, border: `1px solid ${c.border}`,
                     fontFamily: 'var(--font)',
                   }}
@@ -104,7 +105,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
         )}
         {resa.notes_libres && (
           <div style={{
-            fontSize: 11, color: 'var(--text3)', fontStyle: 'italic', marginTop: 3,
+            fontSize: 'var(--t1)', color: 'var(--text3)', fontStyle: 'italic', marginTop: 3,
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
             maxWidth: isMobile ? 220 : 380,
           }} data-no-translate>
@@ -128,10 +129,10 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
             type="button"
             onClick={(e) => { e.stopPropagation(); onTraiter(resa, 'confirmation'); }}
             style={{
-              padding: '6px 12px', borderRadius: 20, minHeight: 32,
+              padding: '6px 12px', borderRadius: 'var(--r)', minHeight: 32,
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)',
               background: 'var(--success-bg-soft)', color: 'var(--success-text)',
-              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+              fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
               whiteSpace: 'nowrap',
             }}>
             Confirmer
@@ -142,10 +143,10 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
             type="button"
             onClick={(e) => { e.stopPropagation(); onStatut?.(resa, 'arrive'); }}
             style={{
-              padding: '6px 12px', borderRadius: 20, minHeight: 32,
+              padding: '6px 12px', borderRadius: 'var(--r)', minHeight: 32,
               borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)',
               background: 'var(--success-bg-soft)', color: 'var(--success-text)',
-              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+              fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
               whiteSpace: 'nowrap',
             }}>
             Arrivé
@@ -153,7 +154,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
         )}
         {traite && (
           <span style={{
-            padding: '3px 9px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+            padding: '3px 9px', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
             borderWidth: 1, borderStyle: 'solid', borderColor: meta.bordure,
             background: meta.bg, color: meta.texte, fontFamily: 'var(--font)',
             whiteSpace: 'nowrap',
@@ -161,7 +162,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
             {meta.court}
           </span>
         )}
-        {!isMobile && <span style={{ fontSize: 16, color: 'var(--text3)' }}>›</span>}
+        {!isMobile && <span style={{ fontSize: 'var(--t3)', color: 'var(--text3)' }}>›</span>}
       </div>
     </div>
   );
@@ -211,18 +212,18 @@ export default function VueJour({
   const serviceEnCours = actives.some((r) => !estPresent(r.statut) || r.statut === 'arrive');
 
   const dateDuJour = (
-    <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+    <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
       {formatDateLongue(date)}
     </div>
   );
   const chiffresDuJour = !loading && actives.length > 0 && (
-    <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 1 }}>
+    <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 1 }}>
       {totalCouverts} couvert{totalCouverts > 1 ? 's' : ''}
       {totalGroupes > 0 ? `, ${totalGroupes} groupe${totalGroupes > 1 ? 's' : ''}` : ''}
       {serviceEnCours && attables > 0 && (
         <>
           {', '}
-          <span style={{ color: 'var(--success-text)', fontWeight: 700 }}>
+          <span style={{ color: 'var(--success-text)', fontWeight: 'var(--g3)' }}>
             {attables} à table
           </span>
           {resteAVenir > 0 ? `, ${resteAVenir} attendu${resteAVenir > 1 ? 's' : ''}` : ''}
@@ -278,10 +279,10 @@ export default function VueJour({
             onClick={() => onModeService(date)}
             title="Plan de salle et réservations attendues, côte à côte"
             style={{
-              padding: '9px 16px', borderRadius: 8, minHeight: 44,
-              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
-              background: 'var(--surface)', color: 'var(--accent)',
-              fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
+              padding: '9px 16px', borderRadius: 'var(--r)', minHeight: 44,
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+              background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+              fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
               cursor: 'pointer', flexShrink: 0,
             }}>
             Mode service
@@ -295,9 +296,9 @@ export default function VueJour({
             type="button"
             onClick={() => setCreating(true)}
             style={{
-              padding: '9px 16px', borderRadius: 8, border: 'none', minHeight: 44,
+              padding: '9px 16px', borderRadius: 'var(--r)', border: 'none', minHeight: 44,
               background: 'var(--accent)', color: 'var(--on-accent)',
-              fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
+              fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
               cursor: 'pointer', flexShrink: 0,
             }}>
             Nouvelle réservation
@@ -314,7 +315,7 @@ export default function VueJour({
       {error && (
         <div style={{
           padding: '10px 0 10px 12px',  
-          borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 13,
+          borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 'var(--t2)',
           marginBottom: 12, display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: 12,
         }}>
@@ -329,7 +330,7 @@ export default function VueJour({
 
       {/* ── Loading ── */}
       {loading && (
-        <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text3)', fontSize: 13 }}>
+        <div style={{ textAlign: 'center', padding: '32px 0', color: 'var(--text3)', fontSize: 'var(--t2)' }}>
           Chargement…
         </div>
       )}
@@ -354,10 +355,10 @@ export default function VueJour({
       {/* ── État vide ── */}
       {vue === 'liste' && !loading && !error && actives.length === 0 && (
         <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 6 }}>
+          <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', marginBottom: 6 }}>
             Aucune réservation ce jour
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>
             {onNouvelle
               ? <Btn variant="primary" onClick={onNouvelle} style={{ marginTop: 6 }}>Nouvelle réservation</Btn>
               : 'Revenez à la semaine pour voir les autres jours.'}
@@ -386,12 +387,11 @@ export default function VueJour({
               borderBottom: `2px solid ${meta.bordure}`,
             }}>
               <span style={{
-                fontSize: 11, fontWeight: 700, textTransform: 'uppercase',
-                letterSpacing: 0.5, color: meta.couleur,
+                fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: meta.couleur,
               }}>
                 {meta.label}
               </span>
-              <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+              <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
                 {sub} pax
               </span>
             </div>

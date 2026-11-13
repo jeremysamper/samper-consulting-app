@@ -10,6 +10,8 @@
 // servent tant que l'établissement n'a rien réglé.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { dureeHeures } from './dureeHoraire.js';
+
 // Libellé et couleur de chaque type d'horaire, partout dans le module. Les
 // cases restent sur un fond neutre : le type se lit au filet gauche de 2 px
 // (`filet`), dans des teintes *-text qui gardent un contraste d'au moins 3:1
@@ -54,11 +56,9 @@ export const minutes = (t) => {
   return (h || 0) * 60 + (m || 0);
 };
 
-// Durée travaillée d'un segment, en heures (pause déduite).
-export const heuresSegment = (s) => {
-  if (!s?.debut || !s?.fin) return 0;
-  return Math.max(0, minutes(s.fin) - minutes(s.debut) - (Number(s.pause) || 0)) / 60;
-};
+// Durée travaillée d'un segment, en heures (pause déduite, fin après minuit au
+// lendemain : dureeHoraire.js) ; 0 si une heure manque.
+export const heuresSegment = (s) => dureeHeures(s?.debut, s?.fin, s?.pause) ?? 0;
 
 export const heuresModele = (m) => (m?.segments || []).reduce((t, s) => t + heuresSegment(s), 0);
 

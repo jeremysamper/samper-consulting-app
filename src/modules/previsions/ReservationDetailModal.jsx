@@ -45,12 +45,12 @@ export default function ReservationDetailModal({
         borderBottom: '1px solid var(--border)',
       }}>
         <div style={{
-          fontSize: 12, color: 'var(--text3)', minWidth: 110,
-          fontWeight: 500, flexShrink: 0,
+          fontSize: 'var(--t1)', color: 'var(--text3)', minWidth: 110,
+          fontWeight: 'var(--g2)', flexShrink: 0,
         }}>
           {label}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text)' }} data-no-translate={brut ? '' : undefined}>
+        <div style={{ fontSize: 'var(--t2)', color: 'var(--text)' }} data-no-translate={brut ? '' : undefined}>
           {valeur}
         </div>
       </div>
@@ -99,7 +99,7 @@ export default function ReservationDetailModal({
       <div
         className="modal-sheet"
         style={{
-          background: 'var(--surface)', borderRadius: 14,
+          background: 'var(--surface)', borderRadius: 'var(--r)',
           width: 400, maxWidth: '100%', maxHeight: '85vh',
           display: 'flex', flexDirection: 'column',
           boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
@@ -112,15 +112,15 @@ export default function ReservationDetailModal({
           padding: '14px 18px', borderBottom: '1px solid var(--border)',
         }}>
           <div style={{
-            fontWeight: 700, fontSize: 14, color: 'var(--text)',
-            fontFamily: 'var(--font-serif)',
+            fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: 'var(--text)',
+            fontFamily: 'var(--font)',
           }} data-no-translate>
             {resa.nom}
           </div>
           <button
             type="button" onClick={onClose} className="ui-fermer" aria-label="Fermer"
             style={{
-              background: 'none', border: 'none', fontSize: 20,
+              background: 'none', border: 'none', fontSize: 'var(--t4)',
               cursor: 'pointer', color: 'var(--text2)', padding: 4, lineHeight: 1,
             }}
           >
@@ -138,7 +138,7 @@ export default function ReservationDetailModal({
             <div style={{
               padding: '10px 0 10px 12px', marginBottom: 10,   borderLeft: '2px solid var(--warning-bd)',
             }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--warning-text)', marginBottom: canEdit && onTraiter ? 8 : 0 }}>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--warning-text)', marginBottom: canEdit && onTraiter ? 8 : 0 }}>
                 Demande en ligne à confirmer
               </div>
               {canEdit && onTraiter && (
@@ -146,20 +146,20 @@ export default function ReservationDetailModal({
                   <button
                     type="button" onClick={() => onTraiter(resa, 'confirmation')}
                     style={{
-                      padding: '8px 14px', borderRadius: 20, minHeight: 40, cursor: 'pointer',
+                      padding: '8px 14px', borderRadius: 'var(--r)', minHeight: 40, cursor: 'pointer',
                       borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)',
                       background: 'var(--success-bg-soft)', color: 'var(--success-text)',
-                      fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
+                      fontSize: 'var(--t1)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)',
                     }}>
                     Confirmer
                   </button>
                   <button
                     type="button" onClick={() => onTraiter(resa, 'refus')}
                     style={{
-                      padding: '8px 14px', borderRadius: 20, minHeight: 40, cursor: 'pointer',
-                      borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                      background: 'var(--surface)', color: 'var(--text2)',
-                      fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
+                      padding: '8px 14px', borderRadius: 'var(--r)', minHeight: 40, cursor: 'pointer',
+                      borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+                      background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+                      fontSize: 'var(--t1)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
                     }}>
                     Refuser
                   </button>
@@ -170,7 +170,7 @@ export default function ReservationDetailModal({
 
           {canEdit && onStatut && !demande && (
             <div style={{ paddingBottom: 12, marginBottom: 4 }}>
-              <div style={{ fontSize: 12, color: 'var(--text3)', fontWeight: 500, marginBottom: 6 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', fontWeight: 'var(--g2)', marginBottom: 6 }}>
                 Statut
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -182,12 +182,12 @@ export default function ReservationDetailModal({
                       key={s} type="button"
                       onClick={() => onStatut(resa, s)}
                       style={{
-                        padding: '8px 13px', borderRadius: 20, minHeight: 40,
+                        padding: '8px 13px', borderRadius: 'var(--r)', minHeight: 40,
                         borderWidth: 1, borderStyle: 'solid',
                         borderColor: actif ? m.bordure : 'var(--border)',
                         background:  actif ? m.bg : 'var(--surface)',
                         color:       actif ? m.texte : 'var(--text2)',
-                        fontSize: 12, fontWeight: 700, fontFamily: 'var(--font)',
+                        fontSize: 'var(--t1)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)',
                         cursor: 'pointer',
                       }}>
                       {m.label}
@@ -206,12 +206,12 @@ export default function ReservationDetailModal({
               aria-pressed={passeport}
               onClick={basculerPasseport}
               style={{
-                minHeight: 44, padding: '8px 16px', borderRadius: 22, marginBottom: 10,
+                minHeight: 44, padding: '8px 16px', borderRadius: 'var(--r)', marginBottom: 10,
                 borderWidth: 2, borderStyle: 'solid',
-                borderColor: passeport ? 'var(--success-text)' : 'var(--border)',
+                borderColor: passeport ? 'var(--success-text)' : 'var(--btn-bord)',
                 background: passeport ? 'var(--success-bg-soft)' : 'var(--surface)',
                 color: passeport ? 'var(--success-text)' : 'var(--text2)',
-                fontSize: 13, fontWeight: 700, fontFamily: 'var(--font)', cursor: 'pointer',
+                fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', cursor: 'pointer',
               }}
             >
               Passeport gourmand
@@ -230,7 +230,7 @@ export default function ReservationDetailModal({
             label="Téléphone"
             valeur={resa.telephone && (
               <a href={`tel:${String(resa.telephone).replace(/\s/g, '')}`}
-                 style={{ color: 'var(--accent)', fontWeight: 500, textDecoration: 'none' }}>
+                 style={{ color: 'var(--lien)', fontWeight: 'var(--g2)', textDecoration: 'none' }}>
                 {resa.telephone}
               </a>
             )}
@@ -238,7 +238,7 @@ export default function ReservationDetailModal({
           <LigneDetail
             label="E-mail"
             valeur={resa.email && (
-              <a href={`mailto:${resa.email}`} style={{ color: 'var(--accent)', fontWeight: 500, textDecoration: 'none', overflowWrap: 'anywhere' }}>
+              <a href={`mailto:${resa.email}`} style={{ color: 'var(--lien)', fontWeight: 'var(--g2)', textDecoration: 'none', overflowWrap: 'anywhere' }}>
                 {resa.email}
               </a>
             )}
@@ -253,8 +253,8 @@ export default function ReservationDetailModal({
               borderBottom: '1px solid var(--border)',
             }}>
               <div style={{
-                fontSize: 12, color: 'var(--text3)', minWidth: 110,
-                fontWeight: 500, flexShrink: 0,
+                fontSize: 'var(--t1)', color: 'var(--text3)', minWidth: 110,
+                fontWeight: 'var(--g2)', flexShrink: 0,
               }}>
                 Tags
               </div>
@@ -263,7 +263,7 @@ export default function ReservationDetailModal({
                   <span
                     key={`${t.type_tag}-${t.valeur}`}
                     style={{
-                      padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 500,
+                      padding: '2px 8px', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)',
                       background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
                       fontFamily: 'var(--font)',
                     }}
@@ -282,10 +282,10 @@ export default function ReservationDetailModal({
               type="button"
               onClick={() => setFicheClient(true)}
               style={{
-                marginTop: 10, width: '100%', minHeight: 44, padding: '8px 12px', borderRadius: 8,
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)',
-                background: 'var(--surface)', color: 'var(--accent)',
-                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+                marginTop: 10, width: '100%', minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+                background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+                fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               }}
             >
@@ -314,10 +314,10 @@ export default function ReservationDetailModal({
               <button
                 type="button" onClick={() => { onClose?.(); ouvrirGroupe(resa.groupe_evenement_id, resa.date_service); }}
                 style={{
-                  padding: '9px 18px', borderRadius: 8,
-                  border: '1px solid var(--border)', background: 'var(--surface)',
-                  color: 'var(--text)', cursor: 'pointer',
-                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+                  padding: '9px 18px', borderRadius: 'var(--r)',
+                  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)',
+                  color: 'var(--btn-texte)', cursor: 'pointer',
+                  fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
                 }}
               >
                 Modifier dans Groupes
@@ -328,10 +328,10 @@ export default function ReservationDetailModal({
                 <button
                   type="button" onClick={() => onEdit?.(resa)}
                   style={{
-                    padding: '9px 18px', borderRadius: 8,
-                    border: '1px solid var(--border)', background: 'var(--surface)',
-                    color: 'var(--text)', cursor: 'pointer',
-                    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+                    padding: '9px 18px', borderRadius: 'var(--r)',
+                    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)',
+                    color: 'var(--btn-texte)', cursor: 'pointer',
+                    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
                   }}
                 >
                   Modifier
@@ -343,11 +343,11 @@ export default function ReservationDetailModal({
                 <button
                   type="button" onClick={() => setShowConfirm(true)}
                   style={{
-                    padding: '9px 18px', borderRadius: 8,
+                    padding: '9px 18px', borderRadius: 'var(--r)',
                     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--danger-bd)',
                     background: 'var(--danger-bg-soft)',
                     color: 'var(--danger-text)', cursor: 'pointer',
-                    fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+                    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
                   }}
                 >
                   Annuler la résa
@@ -357,10 +357,10 @@ export default function ReservationDetailModal({
             <button
               type="button" onClick={onClose}
               style={{
-                padding: '9px 18px', borderRadius: 8,
-                border: '1px solid var(--border)', background: 'var(--surface)',
-                color: 'var(--text)', cursor: 'pointer',
-                fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+                padding: '9px 18px', borderRadius: 'var(--r)',
+                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)',
+                color: 'var(--btn-texte)', cursor: 'pointer',
+                fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
                 marginLeft: canEdit ? 0 : 'auto',
               }}
             >
@@ -376,7 +376,7 @@ export default function ReservationDetailModal({
             background: 'var(--danger-bg-soft)', display: 'flex', flexDirection: 'column', gap: 10,
             borderRadius: '0 0 14px 14px',
           }}>
-            <div style={{ fontSize: 13, color: 'var(--danger-text)', fontWeight: 500, lineHeight: 1.4 }}>
+            <div style={{ fontSize: 'var(--t2)', color: 'var(--danger-text)', fontWeight: 'var(--g2)', lineHeight: 1.4 }}>
               Annuler la réservation de <span data-no-translate>{resa.nom}</span>
               {resa.date_service ? ` du ${formatDateLongue(resa.date_service).toLowerCase()}` : ''}
               {resa.heure_arrivee ? ` à ${(resa.heure_arrivee).slice(0, 5)}` : ''} ?
@@ -388,10 +388,10 @@ export default function ReservationDetailModal({
               <button
                 type="button" onClick={deleting ? onClose : () => setShowConfirm(false)}
                 style={{
-                  padding: '8px 16px', borderRadius: 8,
-                  border: '1px solid var(--border)', background: 'var(--surface)',
-                  color: 'var(--text)', cursor: 'pointer',
-                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+                  padding: '8px 16px', borderRadius: 'var(--r)',
+                  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)',
+                  color: 'var(--btn-texte)', cursor: 'pointer',
+                  fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
                 }}
               >
                 {deleting ? 'Fermer' : 'Annuler'}
@@ -399,11 +399,11 @@ export default function ReservationDetailModal({
               <button
                 type="button" onClick={handleDelete} disabled={deleting}
                 style={{
-                  padding: '8px 16px', borderRadius: 8,
+                  padding: '8px 16px', borderRadius: 'var(--r)',
                   border: '1px solid transparent',
                   background: deleting ? 'var(--danger-bd)' : 'var(--danger-fill)',
                   color: deleting ? 'var(--danger-text)' : 'var(--on-danger)', cursor: deleting ? 'not-allowed' : 'pointer',
-                  fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500,
+                  fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
                   opacity: deleting ? 0.7 : 1,
                 }}
               >

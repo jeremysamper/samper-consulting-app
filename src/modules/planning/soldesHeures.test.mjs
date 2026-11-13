@@ -121,9 +121,9 @@ test('contrat fini avant la période : sans contrat', () => {
   assert.equal(r.avecContrat, false);
 });
 
-test('calcHeures : même résultat que le relevé CCNT, départ après minuit négatif compris', () => {
+test('calcHeures : même résultat que le relevé CCNT, départ après minuit au lendemain', () => {
   assert.equal(calcHeures('10:00', '15:00', 30), 4.5);
-  assert.equal(calcHeures('18:00', '00:30', 0), -17.5);
+  assert.equal(calcHeures('18:00', '00:30', 0), 6.5);
   assert.equal(calcHeures('', '15:00', 0), null);
 });
 
@@ -204,13 +204,14 @@ test('série : sans contrat le solde est n/a, au-delà de 400 jours aussi (jamai
   assert.equal(vide.vide, true);
 });
 
-test('série : sept jours d\'heures prévues égalent la carte du tableau de bord, sauf horaire qui passe minuit', () => {
+test('série : sept jours d\'heures prévues égalent la carte du tableau de bord, horaire qui passe minuit compris', () => {
   const sansNuit = jeuHoraires().shifts;
   const [p] = serieHeures({ shifts: sansNuit, contrats: [], absences: [], tranches: [{ debut: '2026-11-09', fin: '2026-11-15' }] });
   assert.equal(Math.round(p.prevues * 10) / 10, chiffresGestion({ pertes: [], shifts: sansNuit, couverts: [], aujourdhui: '2026-11-09' }).heures);
-  // Horaire de 08:00 à 01:30 : la grille (calcHeures) le compte négatif, la
-  // carte du tableau de bord ajoute 24 h. Écart d'origine, dit au rapport.
+  // Horaire de 08:00 à 01:30 : 17,5 h pour la grille comme pour la carte du
+  // tableau de bord, une seule règle (dureeHoraire.js, afa4da3).
   const nuit = jeuHoraires({ nuit: true }).shifts;
   const [q] = serieHeures({ shifts: nuit, contrats: [], absences: [], tranches: [{ debut: '2026-11-09', fin: '2026-11-15' }] });
-  assert.notEqual(Math.round(q.prevues * 10) / 10, chiffresGestion({ pertes: [], shifts: nuit, couverts: [], aujourdhui: '2026-11-09' }).heures);
+  assert.ok(nuit.some((s) => s.debut === '08:00' && s.fin === '01:30'));
+  assert.equal(Math.round(q.prevues * 10) / 10, chiffresGestion({ pertes: [], shifts: nuit, couverts: [], aujourdhui: '2026-11-09' }).heures);
 });

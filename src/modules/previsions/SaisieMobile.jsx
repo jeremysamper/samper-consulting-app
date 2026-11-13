@@ -23,12 +23,12 @@ const NB_MOIS_RACCOURCIS = 12;
 // actif ne change que borderColor (voir `npm run lint:borders`).
 export function caseStyle(actif, extra = {}) {
   return {
-    minHeight: 44, borderRadius: 10, cursor: 'pointer',
+    minHeight: 44, borderRadius: 'var(--r)', cursor: 'pointer',
     borderWidth: 1, borderStyle: 'solid',
-    borderColor: actif ? 'var(--accent)' : 'var(--border)',
-    background: actif ? 'var(--accent)' : 'var(--bg)',
-    color: actif ? 'var(--on-accent)' : 'var(--text)',
-    fontFamily: 'var(--font)', fontSize: 15, fontWeight: actif ? 700 : 500,
+    borderColor: actif ? 'var(--onglet)' : 'var(--border)',
+    background: actif ? 'var(--selection)' : 'var(--bg)',
+    color: 'var(--text)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: actif ? 'var(--g3)' : 'var(--g2)',
     display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
     padding: '4px 2px', minWidth: 0,
     ...extra,
@@ -76,8 +76,8 @@ export function CalendrierMois({ date, aujourdhui, passeAutorise = false, onChoi
   ];
 
   const fleche = {
-    width: 44, height: 44, borderRadius: 10, borderWidth: 0, background: 'var(--surface2)',
-    color: 'var(--accent)', fontSize: 20, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)',
+    width: 44, height: 44, borderRadius: 'var(--r)', borderWidth: 0, background: 'var(--surface2)',
+    color: 'var(--lien)', fontSize: 'var(--t4)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
   };
 
   return (
@@ -88,7 +88,7 @@ export function CalendrierMois({ date, aujourdhui, passeAutorise = false, onChoi
           const actif = cleMois(m) === cleMois(mois);
           return (
             <button key={cleMois(m)} type="button" aria-pressed={actif} onClick={() => setMois(m)}
-              style={caseStyle(actif, { flexShrink: 0, padding: '4px 12px', fontSize: 14 })}>
+              style={caseStyle(actif, { flexShrink: 0, padding: '4px 12px', fontSize: 'var(--t2)' })}>
               {m.getMonth() === 0 ? `${MOIS_COURTS[0]} ${m.getFullYear()}` : MOIS_COURTS[m.getMonth()]}
             </button>
           );
@@ -100,7 +100,7 @@ export function CalendrierMois({ date, aujourdhui, passeAutorise = false, onChoi
           style={{ ...fleche, opacity: reculerPossible ? 1 : 0.3, cursor: reculerPossible ? 'pointer' : 'default' }}>
           ‹
         </button>
-        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font)' }}>
+        <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
           {MOIS_LONGS[mois.getMonth()]} {mois.getFullYear()}
         </div>
         <button type="button" aria-label="Mois suivant" onClick={() => decaler(1)} style={fleche}>
@@ -110,7 +110,7 @@ export function CalendrierMois({ date, aujourdhui, passeAutorise = false, onChoi
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 }}>
         {['lu', 'ma', 'me', 'je', 've', 'sa', 'di'].map((j) => (
-          <div key={j} style={{ textAlign: 'center', fontSize: 12, color: 'var(--text3)', fontWeight: 500, paddingBottom: 2 }}>{j}</div>
+          <div key={j} style={{ textAlign: 'center', fontSize: 'var(--t1)', color: 'var(--text3)', fontWeight: 'var(--g2)', paddingBottom: 2 }}>{j}</div>
         ))}
         {cases.map((iso, i) => {
           if (!iso) return <div key={`vide-${i}`} />;
@@ -123,9 +123,9 @@ export function CalendrierMois({ date, aujourdhui, passeAutorise = false, onChoi
               aria-label={`${parseLocalDate(iso).getDate()} ${MOIS_LONGS[mois.getMonth()]}`}
               onClick={() => onChoisir(iso)}
               style={caseStyle(actif, {
-                fontSize: 15, padding: 0,
-                borderColor: actif || estAujourdhui ? 'var(--accent)' : 'transparent',
-                background: actif ? 'var(--accent)' : 'transparent',
+                fontSize: 'var(--t2)', padding: 0,
+                borderColor: actif || estAujourdhui ? 'var(--onglet)' : 'transparent',
+                background: actif ? 'var(--selection)' : 'transparent',
                 opacity: bloque ? 0.3 : 1, cursor: bloque ? 'default' : 'pointer',
               })}>
               {parseLocalDate(iso).getDate()}
@@ -162,7 +162,7 @@ export function BandeJours({ date, aujourdhui, passeAutorise = false, onChange }
     if (bandeRef.current) bandeRef.current.scrollLeft = 0;
   }
 
-  const petit = (actif) => ({ fontSize: 11, fontWeight: 500, color: actif ? 'var(--on-accent)' : 'var(--text2)', lineHeight: 1.2 });
+  const petit = (actif) => ({ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: actif ? 'var(--text)' : 'var(--text2)', lineHeight: 1.2 });
 
   return (
     <div>
@@ -188,7 +188,7 @@ export function BandeJours({ date, aujourdhui, passeAutorise = false, onChange }
           );
         })}
         <button type="button" aria-expanded={calendrier} onClick={() => setCalendrier((o) => !o)}
-          style={caseStyle(calendrier, { flexShrink: 0, minWidth: 64, minHeight: 56, padding: '4px 8px', fontSize: 13 })}>
+          style={caseStyle(calendrier, { flexShrink: 0, minWidth: 64, minHeight: 56, padding: '4px 8px', fontSize: 'var(--t2)' })}>
           <span>Autre</span>
           <span>jour</span>
         </button>
@@ -210,7 +210,7 @@ export function GrilleCouverts({ value, onChange }) {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
       {[1, 2, 3, 4, 5, 6, 7, 8].map((k) => (
         <button key={k} type="button" aria-pressed={n === k} onClick={() => onChange(k)}
-          style={caseStyle(n === k, { fontFamily: 'var(--font-num)', fontSize: 17 })}>
+          style={caseStyle(n === k, { fontFamily: 'var(--font-num)', fontSize: 'var(--t3)' })}>
           {k}
         </button>
       ))}
@@ -228,11 +228,11 @@ export function GrilleCouverts({ value, onChange }) {
         onBlur={() => { setSaisie(null); if (n < 1) onChange(1); }}
         style={{
           gridColumn: 'span 2', minWidth: 0, width: '100%', boxSizing: 'border-box',
-          minHeight: 44, borderRadius: 10, textAlign: 'center',
+          minHeight: 44, borderRadius: 'var(--r)', textAlign: 'center',
           borderWidth: grand ? 2 : 1, borderStyle: 'solid',
-          borderColor: grand ? 'var(--accent)' : 'var(--border)',
+          borderColor: grand ? 'var(--onglet)' : 'var(--border)',
           background: 'var(--bg)', color: 'var(--text)',
-          fontFamily: 'var(--font-num)', fontSize: 17, fontWeight: grand ? 700 : 700,
+          fontFamily: 'var(--font-num)', fontSize: 'var(--t3)', fontWeight: grand ? 'var(--g3)' : 'var(--g3)',
         }}
       />
     </div>

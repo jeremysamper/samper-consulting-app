@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Btn } from '../../components/ui/index.jsx';
+import { Btn, Panneau } from '../../components/ui/index.jsx';
 import { usePrevisionsSemaine } from '../../hooks/usePrevisionsSemaine.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import {
@@ -36,9 +36,9 @@ function SkeletonRow() {
       display: 'flex', alignItems: 'center', gap: 12,
       padding: '12px 16px', borderBottom: '1px solid var(--border)',
     }}>
-      <div style={{ width: 52, height: 32, borderRadius: 6, background: 'var(--border)', animation: 'skeletonPulse 1.4s ease-in-out infinite' }} />
-      <div style={{ flex: 1, height: 13, borderRadius: 4, background: 'var(--border)', animation: 'skeletonPulse 1.4s ease-in-out infinite 0.1s' }} />
-      <div style={{ flex: 1, height: 13, borderRadius: 4, background: 'var(--border)', animation: 'skeletonPulse 1.4s ease-in-out infinite 0.2s' }} />
+      <div style={{ width: 52, height: 32, borderRadius: 'var(--r)', background: 'var(--border)', animation: 'skeletonPulse 1.4s ease-in-out infinite' }} />
+      <div style={{ flex: 1, height: 13, borderRadius: 'var(--r)', background: 'var(--border)', animation: 'skeletonPulse 1.4s ease-in-out infinite 0.1s' }} />
+      <div style={{ flex: 1, height: 13, borderRadius: 'var(--r)', background: 'var(--border)', animation: 'skeletonPulse 1.4s ease-in-out infinite 0.2s' }} />
     </div>
   );
 }
@@ -74,7 +74,7 @@ function ResaPuce({ resa, svc, onOpen }) {
       style={{
         display: 'inline-flex', alignItems: 'baseline', gap: 5,
         maxWidth: '100%', minWidth: 0, minHeight: 30,
-        padding: '4px 8px', borderRadius: 6,
+        padding: '4px 8px', borderRadius: 'var(--r)',
         // Une demande venue du site n'est pas encore une réservation : trait
         // pointillé ambre, le même « à confirmer » que dans la vue jour.
         // Passeport gourmand : cadre vert, plus épais que le liseré d'un
@@ -82,12 +82,12 @@ function ResaPuce({ resa, svc, onOpen }) {
         borderWidth: passeport ? 2 : 1, borderStyle: demande ? 'dashed' : 'solid',
         borderColor: passeport ? 'var(--success-text)' : demande ? 'var(--warning-bd)' : meta.bordure,
         background: passeport ? 'var(--success-bg-soft)' : meta.fond, color: 'var(--text)',
-        fontFamily: 'var(--font)', fontSize: 12, lineHeight: 1.3,
+        fontFamily: 'var(--font)', fontSize: 'var(--t1)', lineHeight: 1.3,
         cursor: 'pointer', textAlign: 'left',
         opacity: noShow ? 0.55 : 1,
       }}
     >
-      <span style={{ fontSize: 11, color: meta.couleur, fontFamily: 'var(--font-num)', flexShrink: 0 }}>
+      <span style={{ fontSize: 'var(--t1)', color: meta.couleur, fontFamily: 'var(--font-num)', flexShrink: 0 }}>
         {heure}
       </span>
       {allergies.length > 0 && (
@@ -97,13 +97,13 @@ function ResaPuce({ resa, svc, onOpen }) {
         }} />
       )}
       <span style={{
-        fontWeight: resa.est_groupe ? 700 : 500,
+        fontWeight: resa.est_groupe ? 'var(--g3)' : 'var(--g2)',
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
         textDecoration: noShow ? 'line-through' : 'none',
       }}>
         {resa.nom}
       </span>
-      <span style={{ fontWeight: 700, color: meta.couleur, fontFamily: 'var(--font-num)', flexShrink: 0 }}>
+      <span style={{ fontWeight: 'var(--g3)', color: meta.couleur, fontFamily: 'var(--font-num)', flexShrink: 0 }}>
         {resa.nb_couverts}
       </span>
     </button>
@@ -116,7 +116,7 @@ function ResaPuce({ resa, svc, onOpen }) {
 function ListeService({ resas, svc, onOpen, vide = true }) {
   if (!resas.length) {
     return vide
-      ? <span style={{ fontSize: 12, color: 'var(--text3)' }}>-</span>
+      ? <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>-</span>
       : null;
   }
   return (
@@ -134,7 +134,7 @@ function couvertsService(jour, svc) {
 function Allergenes({ tags, max = 3 }) {
   if (!tags.length) return null;
   return (
-    <div style={{ fontSize: 11, color: 'var(--danger-text)', marginTop: 4, lineHeight: 1.35, fontWeight: 500 }}>
+    <div style={{ fontSize: 'var(--t1)', color: 'var(--danger-text)', marginTop: 4, lineHeight: 1.35, fontWeight: 'var(--g2)' }}>
       {tags.slice(0, max).join(', ')}{tags.length > max ? ` +${tags.length - max}` : ''}
     </div>
   );
@@ -148,8 +148,8 @@ function LigneJour({ jour, services, auj, onDayClick, onOpen, colonnes }) {
   return (
     <div style={{
       display: 'grid', gridTemplateColumns: colonnes,
-      borderBottom: '1px solid var(--border)',
-      background: auj ? 'var(--accent-light)' : 'var(--surface)',
+      borderBottom: '1px solid var(--rule-soft)',
+      background: auj ? 'var(--selection)' : 'var(--zone)',
     }}>
       <button
         type="button"
@@ -158,18 +158,18 @@ function LigneJour({ jour, services, auj, onDayClick, onOpen, colonnes }) {
         title="Ouvrir la journée"
         style={{
           textAlign: 'left', padding: '10px 12px', border: 'none',
-          borderLeft: `3px solid ${auj ? 'var(--accent)' : 'transparent'}`,
-          background: survol ? 'var(--bg)' : 'transparent',
+          borderLeft: `3px solid ${auj ? 'var(--onglet)' : 'transparent'}`,
+          background: survol ? 'var(--selection)' : 'transparent',
           cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 0,
         }}
       >
-        <div style={{ fontSize: 13, fontWeight: 700, color: auj ? 'var(--accent)' : 'var(--text)' }}>
+        <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: auj ? 'var(--lien)' : 'var(--text)' }}>
           {formatJourSemaine(jour.date_service)}
-          <span style={{ fontSize: 11, fontWeight: 500, color: 'var(--text3)', marginLeft: 6 }}>
+          <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text3)', marginLeft: 6 }}>
             {formatDateCourte(jour.date_service)}
           </span>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
           {total > 0 ? pluriel(total, 'couvert') : 'Libre'}
         </div>
         <Allergenes tags={tags} />
@@ -189,7 +189,7 @@ function LigneJour({ jour, services, auj, onDayClick, onOpen, colonnes }) {
           >
             <ListeService resas={resas} svc={svc} onOpen={onOpen} />
             {n > 0 && (
-              <div style={{ fontSize: 11, color: 'var(--text3)' }}>{pluriel(n, 'couvert')}</div>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>{pluriel(n, 'couvert')}</div>
             )}
           </div>
         );
@@ -205,9 +205,9 @@ function CarteJour({ jour, services, auj, onDayClick, onOpen }) {
   const avecResas = services.filter((svc) => (jour.resas[svc] || []).length > 0);
   return (
     <div style={{
-      borderBottom: '1px solid var(--border)',
-      borderLeft: `3px solid ${auj ? 'var(--accent)' : 'transparent'}`,
-      background: auj ? 'var(--accent-light)' : 'var(--surface)',
+      borderBottom: '1px solid var(--rule-soft)',
+      borderLeft: `3px solid ${auj ? 'var(--onglet)' : 'transparent'}`,
+      background: auj ? 'var(--selection)' : 'var(--zone)',
     }}>
       <button
         type="button"
@@ -219,25 +219,25 @@ function CarteJour({ jour, services, auj, onDayClick, onOpen }) {
         }}
       >
         <span>
-          <span style={{ fontWeight: 700, fontSize: 14, color: auj ? 'var(--accent)' : 'var(--text)' }}>
+          <span style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: auj ? 'var(--lien)' : 'var(--text)' }}>
             {formatJourSemaine(jour.date_service)}
           </span>
-          <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 7 }}>
+          <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginLeft: 7 }}>
             {formatDateCourte(jour.date_service)}
           </span>
         </span>
-        <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+        <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
           {total > 0 ? pluriel(total, 'couvert') : 'Libre'} ›
         </span>
       </button>
       <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {avecResas.length === 0 && (
-          <div style={{ fontSize: 12, color: 'var(--text3)' }}>Aucune réservation</div>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>Aucune réservation</div>
         )}
         {avecResas.map((svc) => (
           <div key={svc}>
             <div style={{
-              fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5,
+              fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
               color: SERVICE_META[svc].couleur, marginBottom: 4,
             }}>
               {SERVICE_META[svc].label} : {pluriel(couvertsService(jour, svc), 'couvert')}
@@ -279,7 +279,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Btn small ariaLabel="Semaine précédente" onClick={() => setDateDebut((d) => addDays(d, -7))}>←</Btn>
           <span style={{
-            fontSize: 13, fontWeight: 700, color: 'var(--text)',
+            fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)',
             fontFamily: 'var(--font-num)', minWidth: 110, textAlign: 'center',
           }}>
             {formatDateCourte(dateDebut)} au {formatDateCourte(addDays(dateDebut, 6))}
@@ -291,7 +291,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
           {/* Masqué pendant un changement de semaine : ce total-là, sans date
               à côté, serait encore celui de la semaine précédente. */}
           {totalSemaine > 0 && !loading && (
-            <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+            <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
               {totalSemaine} couvert{totalSemaine > 1 ? 's' : ''} / sem.
             </span>
           )}
@@ -302,7 +302,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
       {error && (
         <div style={{
           padding: '10px 0 10px 12px',  
-          borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 13,
+          borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)', fontSize: 'var(--t2)',
           marginBottom: 12, display: 'flex', alignItems: 'center',
           justifyContent: 'space-between', gap: 12,
         }}>
@@ -317,7 +317,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
       {/* ── Skeleton (premier chargement uniquement) ── */}
       {loading && semaine === null && (
         <div style={{
-          border: '1px solid var(--border)', borderRadius: 10,
+          border: '1px solid var(--border)', borderRadius: 'var(--r)',
           overflow: 'hidden', background: 'var(--surface)',
         }}>
           {[...Array(7)].map((_, i) => <SkeletonRow key={i} />)}
@@ -327,10 +327,10 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
       {/* ── État vide ── */}
       {!loading && semaineVide && (
         <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 6 }}>
+          <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', marginBottom: 6 }}>
             Aucune réservation cette semaine
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>
             {onNouvelle
               ? <Btn variant="primary" onClick={onNouvelle} style={{ marginTop: 6 }}>Nouvelle réservation</Btn>
               : 'Les réservations de la semaine apparaîtront ici.'}
@@ -340,22 +340,18 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
 
       {/* ── Planning 7 jours ── */}
       {semaine !== null && !semaineVide && (
-        <div style={{
-          border: '1px solid var(--border)', borderRadius: 10,
-          overflow: 'hidden', background: 'var(--surface)',
-        }}>
+        <Panneau style={{ padding: 0, overflow: 'hidden' }}>
           {!isMobile && (
             <div style={{
               display: 'grid', gridTemplateColumns: colonnes,
-              borderBottom: '1px solid var(--border)', background: 'var(--bg)',
+              borderBottom: '1px solid var(--rule-soft)', background: 'var(--bg)',
             }}>
-              <div style={{ padding: '8px 12px', fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              <div style={{ padding: '8px 12px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)' }}>
                 Jour
               </div>
               {services.map((svc) => (
                 <div key={svc} style={{
-                  padding: '8px 10px', fontSize: 11, fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: 0.5,
+                  padding: '8px 10px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
                   color: SERVICE_META[svc].couleur,
                   borderLeft: `3px solid ${SERVICE_META[svc].bordure}`,
                   background: SERVICE_META[svc].fond,
@@ -385,12 +381,12 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
               onOpen={onOpenResa}
             />
           )))}
-        </div>
+        </Panneau>
       )}
 
       {/* ── Légende ── */}
       {semaine !== null && !semaineVide && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 8, fontSize: 11, color: 'var(--text3)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 8, fontSize: 'var(--t1)', color: 'var(--text3)' }}>
           <span>Touchez un nom pour ouvrir la réservation, le jour pour la journée.</span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--danger-text)' }} />
