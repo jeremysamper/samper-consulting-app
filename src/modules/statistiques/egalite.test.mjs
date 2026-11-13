@@ -292,7 +292,7 @@ test('accès : une famille fermée n\'apporte aucune mesure, les salaires resten
 });
 
 // Blocs du rapport des réservations entrés au catalogue en S3.
-const AJOUTS_S3 = /^reservations\.(demandes_en_attente|meilleur_jour|jour_calme|meilleure_semaine|clients_reservations|clients_couverts|arrivees_[1-7])$/;
+const AJOUTS_S3 = /^reservations\.(demandes_en_attente|meilleur_jour|jour_calme|meilleure_semaine|clients_reservations|clients_couverts|arrivees_[1-7]|couverts_par_semaine|places_table|tags_occasion|tags_allergene|tags_regime|couverts_en_ligne|couverts_equipe|couverts_passage|annulees|non_pointees|tags_(occasion|allergene|regime)_couverts|part_en_ligne)$/;
 
 test('catalogue : chaque mesure déclare ce qu\'il faut, les ids sont uniques', () => {
   assert.equal(new Set(MESURES.map((m) => m.id)).size, MESURES.length);

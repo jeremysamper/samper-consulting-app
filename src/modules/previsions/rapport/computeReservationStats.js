@@ -639,6 +639,9 @@ export function serieReservations({ lignes, tranches, aujourdhui, service = 'tou
         const l = comptees.filter((r) => r.svc === s);
         return { service: s, tables: l.length, couverts: somme(l) };
       }),
+      // Détail par jour (ou par semaine) et par service du rapport, pour le
+      // tableau dense des Statistiques : le calcul même de l'écran d'origine.
+      detail: tableau(dedans, t, ctx),
     };
   });
 }

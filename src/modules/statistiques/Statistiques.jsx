@@ -296,7 +296,7 @@ export default function Statistiques({ user, etablissement }) {
   const tranchesComp = useMemo(() => (bornesComp ? tranchesDe(bornesComp.debut, bornesComp.fin, pas) : null), [bornesComp, pas]);
 
   // Familles à lire : celles des mesures cochées, parmi les familles visibles.
-  const signatureCochees = vue ? [...vue.graphiques.map((g) => g.mesures.join(',')), (vue.chiffres || []).join(','), (vue.tableau?.mesures || []).join(',')].join(';') : '';
+  const signatureCochees = vue ? [...vue.graphiques.map((g) => g.mesures.join(',')), (vue.chiffres || []).join(','), ...(vue.tableaux || []).map((t) => t.mesures.join(','))].join(';') : '';
   const famillesDemandees = useMemo(() => {
     const ouvertes = signatureFamilles ? signatureFamilles.split(',') : [];
     const ids = new Set();
@@ -436,22 +436,23 @@ export default function Statistiques({ user, etablissement }) {
     const etat = etatFamille === 'error' ? 'error' : ((etatFamille === 'loading' || !sources.points[m.famille]) ? 'loading' : null);
     if (etat) return { id: m.id, libelle: m.libelle, phrase: m.phrase, unite: m.unite, etat };
     const detail = m.detail ? m.detail(sources.totaux[m.famille]) : null;
+    const aide = m.aide ? m.aide(sources.totaux[m.famille]) : null;
     const c = composer({ graphique: { mesures: [m.id], ventilation: '', type: '', choix: {} }, mesures: [m], tranches, tranchesComparaison: tranchesComp, sources, etats: sources.etats, familles: FAMILLES });
     const s = c.series?.[0];
-    return { id: m.id, libelle: m.libelle, phrase: m.phrase, unite: m.unite, detail, total: s?.total ?? null, totalComparaison: s?.totalComparaison ?? null, ecart: s?.ecartTotal ?? null };
+    return { id: m.id, libelle: m.libelle, phrase: m.phrase, unite: m.unite, detail, aide, total: s?.total ?? null, totalComparaison: s?.totalComparaison ?? null, ecart: s?.ecartTotal ?? null };
   }), [vue, mesures, tranches, tranchesComp, sources]);
 
   // Tableau dense : les catégories et valeurs telles que les rend la fonction
   // d'origine (ventilation sur la période, ou valeurs d'aujourd'hui).
-  const tableauDense = useMemo(() => {
-    const t = vue?.tableau;
+  const tableauxDenses = useMemo(() => (vue?.tableaux || []).map((t) => {
     const ms = (t?.mesures || []).map((id) => mesures.find((m) => m.id === id)).filter(Boolean);
     if (!ms.length) return null;
     const premiere = ms[0];
+    const titre = t.titre || '';
     const etatF = sources.etats[premiere.famille];
-    if (etatF === 'error') return { etat: 'error' };
+    if (etatF === 'error') return { etat: 'error', titre };
     const point = sources.totaux[premiere.famille];
-    if (etatF === 'loading' || !point) return { etat: 'loading' };
+    if (etatF === 'loading' || !point) return { etat: 'loading', titre };
     const cleChoix = premiere.choix ? (premiere.choix.cle || premiere.id) : null;
     const options = cleChoix ? (premiere.choix.options(point) || []) : [];
     const choixValeur = cleChoix ? ((options.find((o) => o.cle === t.choix?.[cleChoix]) || options[0])?.cle ?? null) : null;
@@ -462,14 +463,44 @@ export default function Statistiques({ user, etablissement }) {
       parCle: new Map(lignesDe(m).map((l) => [l.cle, l.valeur])),
       total: t.ventilation ? m.valeur(sources.totaux[m.famille]) : (m.total ? m.total(sources.totaux[m.famille], choixValeur) : null),
     }));
+    let rangs = lignesDe(premiere).map((l) => ({ cle: l.cle, libelle: l.libelle, brut: !!(l.donnee || l.brut), ...(l.parties ? { parties: l.parties } : {}) }));
+    // Période comparée (classement des ventes) : la valeur d'avant et l'écart
+    // de la première mesure, en colonnes ; une catégorie vendue seulement
+    // avant compte zéro sur la période.
+    const avant = sources.totauxComparaison?.[premiere.famille];
+    if (t.comparaison && t.ventilation && avant && colonnes.length) {
+      const c0 = colonnes[0];
+      const partsAvant = ventilationDe(premiere)?.parts(avant) || [];
+      const parAvant = new Map(partsAvant.map((l) => [l.cle, l.valeur]));
+      partsAvant.forEach((l) => {
+        if (!c0.parCle.has(l.cle)) { c0.parCle.set(l.cle, 0); rangs.push({ cle: l.cle, libelle: l.libelle, brut: !!(l.donnee || l.brut) }); }
+      });
+      const ecart = (a, b) => (Number.isFinite(a) && Number.isFinite(b) && b > 0 ? (a - b) / b : null);
+      const totalAvant = premiere.valeur(avant);
+      const nouveaux = new Set(rangs.filter((r) => (c0.parCle.get(r.cle) || 0) > 0 && !(parAvant.get(r.cle) > 0)).map((r) => r.cle));
+      colonnes.splice(1, 0,
+        { id: 'avant', libelle: 'Préc.', unite: c0.unite, parCle: new Map(rangs.map((r) => [r.cle, parAvant.get(r.cle) ?? 0])), total: totalAvant },
+        { id: 'variation', libelle: 'Variation', unite: 'pct', signe: true, nouveaux, parCle: new Map(rangs.map((r) => [r.cle, ecart(c0.parCle.get(r.cle), parAvant.get(r.cle))])), total: ecart(c0.total, totalAvant) });
+    }
+    // Classement : la première mesure décroissante, puis le nom, comme l'ancien classement de Ventes POS, parti en S3.
+    if (t.tri === 'decroissant') {
+      const v = (r) => (Number.isFinite(colonnes[0].parCle.get(r.cle)) ? colonnes[0].parCle.get(r.cle) : -Infinity);
+      rangs = [...rangs].sort((a, b) => v(b) - v(a) || String(a.libelle).localeCompare(String(b.libelle), 'fr'));
+    }
+    if (t.part && colonnes.length) {
+      const c0 = colonnes[0];
+      const somme = [...c0.parCle.values()].reduce((n, v) => n + (Number.isFinite(v) ? v : 0), 0);
+      colonnes.splice(1, 0, { id: 'part', libelle: 'Part', unite: 'pct', parCle: new Map([...c0.parCle.entries()].map(([k, v]) => [k, somme > 0 && Number.isFinite(v) ? v / somme : null])), total: somme > 0 ? 1 : null });
+    }
     return {
-      rangs: lignesDe(premiere).map((l) => ({ cle: l.cle, libelle: l.libelle, brut: !!(l.donnee || l.brut) })),
+      titre,
+      rangs,
       colonnes,
       libelleCategories: t.ventilation ? (ventilationDe(premiere)?.libelle || '') : (premiere.libelleCategories || ''),
       libelleTotal: t.ventilation ? 'Total' : (premiere.libelleTotal || 'Total'),
       choix: cleChoix ? { cle: cleChoix, libelle: premiere.choix.libelle, options, valeur: choixValeur } : null,
     };
-  }, [vue, mesures, sources]);
+  }), [vue, mesures, sources]);
 
   // Services proposés : midi et soir, le brunch quand la maison en fait (vu
   // dans les points lus) ou qu'il est choisi.
@@ -491,7 +522,20 @@ export default function Statistiques({ user, etablissement }) {
   }, [compta, reessayer]);
 
   const exporter = () => {
-    const tableaux = compositions.map((c) => c.tableau).filter((t) => t.colonnes.length);
+    // Les graphiques, puis les tableaux denses lus (le détail par jour du
+    // rapport partait en CSV) : une feuille chacun.
+    const denses = tableauxDenses.filter((t) => t && !t.etat && t.colonnes.length).map((t, i) => ({
+      categories: true,
+      nomFeuille: `Tableau ${i + 1}`,
+      libelleCategories: t.titre || t.libelleCategories,
+      libelleTotal: t.libelleTotal,
+      colonnes: t.colonnes.map((c) => ({ id: c.id, libelle: c.libelle, unite: c.unite })),
+      lignes: t.rangs.map((r) => ({ tranche: { pas: 'categorie', cle: r.cle, libelle: String(r.libelle) }, valeurs: t.colonnes.map((c) => c.parCle.get(r.cle) ?? null), avant: t.colonnes.map(() => null) })),
+      periode: { valeurs: t.colonnes.map((c) => c.total ?? null), avant: t.colonnes.map(() => null) },
+      arrondis: [],
+      sansTotal: !t.colonnes.some((c) => typeof c.total === 'number' && Number.isFinite(c.total)),
+    }));
+    const tableaux = [...compositions.map((c) => c.tableau).filter((t) => t.colonnes.length), ...denses];
     if (!tableaux.length) { notify('Rien à exporter : cochez une mesure.', 'info'); return; }
     try {
       telechargerTableaux(tableaux, {
@@ -537,6 +581,9 @@ export default function Statistiques({ user, etablissement }) {
     setVue({ ...v, filtres: vue?.filtres || {} });
     setRaccourci({ id: raccourci.id, vue: id });
   };
+  const tableauDense = (t, i) => (
+    <TableauDense key={`t${i}`} tableau={t} onReessayer={relancer} onChoix={(cle, valeur) => setVue({ ...vue, tableaux: vue.tableaux.map((x, k) => (k === i ? { ...x, choix: { ...(x.choix || {}), [cle]: valeur } } : x)) })} />
+  );
   const barreFiltres = vue ? <Filtres vue={vue} bornes={bornes} bornesComp={bornesComp} aujourdhui={aujourdhui} perimetres={perimetres} services={servicesResa} onVue={setVue} /> : null;
   const periodeChoisie = PERIODES.find((p) => p.id === vue?.periode.id);
 
@@ -546,7 +593,7 @@ export default function Statistiques({ user, etablissement }) {
         <>
           {vuesRaccourci ? (
             <div data-stat-vues="" style={{ minWidth: 0 }}>
-              <SegmentedTabs tabs={vuesRaccourci.map((v) => ({ id: v.id, label: etroit && v.court ? v.court : v.libelle }))} active={raccourci.vue} onChange={choisirVueRaccourci} retourLigne />
+              <SegmentedTabs tabs={vuesRaccourci.map((v) => ({ id: v.id, label: !large && v.court ? v.court : v.libelle }))} active={raccourci.vue} onChange={choisirVueRaccourci} retourLigne />
             </div>
           ) : null}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', minWidth: 0 }}>
@@ -573,8 +620,8 @@ export default function Statistiques({ user, etablissement }) {
               <Btn variant="ghost" onClick={exporterPdf} disabled={pdfEnCours} style={st.bouton}>{pdfEnCours ? 'Export en cours' : 'Exporter en PDF'}</Btn>
             </div>
           </div>
-          <ChiffresDenses lignes={lignesChiffres} colonnes={largeur >= 720 ? 2 : 1} libelleComparaison={libelleComparaison} onReessayer={relancer} />
-          <TableauDense tableau={tableauDense} onReessayer={relancer} onChoix={(cle, valeur) => setVue({ ...vue, tableau: { ...vue.tableau, choix: { ...(vue.tableau?.choix || {}), [cle]: valeur } } })} />
+          <ChiffresDenses lignes={lignesChiffres} colonnes={largeur >= 720 ? 2 : 1} libelleComparaison={libelleComparaison} explications={!!vue.explications} onReessayer={relancer} />
+          {tableauxDenses.map((t, i) => (t && !vue.tableaux[i]?.apres ? tableauDense(t, i) : null))}
           <div id="stat-export" style={{ display: 'grid', gridTemplateColumns: colonnes, gap: 16, minWidth: 0 }}>
             {vue.graphiques.map((g, i) => (
               <CarteGraphique
@@ -598,6 +645,9 @@ export default function Statistiques({ user, etablissement }) {
               />
             ))}
           </div>
+          {/* Tableaux placés sous le graphique (le détail par jour du rapport) : ils
+              ne repoussent pas le graphique qu'ils détaillent. */}
+          {tableauxDenses.map((t, i) => (t && vue.tableaux[i]?.apres ? tableauDense(t, i) : null))}
           {vuesOuvertes ? (
             <VuesNommees
               vues={vuesNommees}

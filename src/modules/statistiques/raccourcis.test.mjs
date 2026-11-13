@@ -114,8 +114,10 @@ test('chaque raccourci ne nomme que des mesures du catalogue, graphiques et lign
   const { MESURES } = await import('./catalogueMesures.js');
   for (const [id, r] of Object.entries(RACCOURCIS)) {
     for (const v of r.vues) {
-      const ids = [...v.graphiques.flatMap((g) => g.mesures), ...(v.chiffres || [])];
-      for (const m of ids) assert.ok(MESURES.some((x) => x.id === m && x.famille === r.famille), `${id}/${v.id} : ${m}`);
+      const ids = [...v.graphiques.flatMap((g) => g.mesures), ...(v.chiffres || []), ...(v.tableaux || []).flatMap((x) => x.mesures)];
+      for (const m of ids) assert.ok(MESURES.some((x) => x.id === m), `${id}/${v.id} : ${m}`);
+      // Les graphiques restent dans la famille du raccourci (le carnet vit à côté des réservations).
+      for (const m of v.graphiques.flatMap((g) => g.mesures)) assert.ok(MESURES.some((x) => x.id === m && x.famille === r.famille), m);
     }
   }
 });
@@ -138,7 +140,27 @@ test('tableau dense : une même ventilation, ou des valeurs d\'aujourd\'hui aux 
     { id: 'e3', unite: 'chf', famille: 'm', nature: 'etat', categories: 'fiches' },
   ];
   const base = { periode: { id: 'mois' }, pas: 'jour', comparaison: '', graphiques: [{ mesures: ['q'] }] };
-  assert.deepEqual(nettoyerVue({ ...base, tableau: { mesures: ['q', 'c', 'x'], ventilation: 'plat' } }, visibles, AUJ).tableau, { mesures: ['q', 'c'], ventilation: 'plat', choix: {} });
-  assert.deepEqual(nettoyerVue({ ...base, tableau: { mesures: ['e1', 'e2', 'e3'], choix: { carte: 'k' } } }, visibles, AUJ).tableau, { mesures: ['e1', 'e2'], ventilation: '', choix: { carte: 'k' } });
-  assert.equal(nettoyerVue({ ...base, tableau: { mesures: ['q'], ventilation: 'inconnue' } }, visibles, AUJ).tableau, null);
+  assert.deepEqual(nettoyerVue({ ...base, tableaux: [{ mesures: ['q', 'c', 'x'], ventilation: 'plat', titre: 'Plats' }] }, visibles, AUJ).tableaux, [{ mesures: ['q', 'c'], ventilation: 'plat', choix: {}, titre: 'Plats' }]);
+  assert.deepEqual(nettoyerVue({ ...base, tableaux: [{ mesures: ['e1', 'e2', 'e3'], choix: { carte: 'k' } }] }, visibles, AUJ).tableaux, [{ mesures: ['e1', 'e2'], ventilation: '', choix: { carte: 'k' }, titre: '' }]);
+  assert.deepEqual(nettoyerVue({ ...base, tableaux: [{ mesures: ['q'], ventilation: 'inconnue' }] }, visibles, AUJ).tableaux, []);
+  // Une vue d'avant S3 qui portait un seul tableau le garde.
+  assert.equal(nettoyerVue({ ...base, tableau: { mesures: ['q'], ventilation: 'plat' } }, visibles, AUJ).tableaux.length, 1);
+});
+
+test('meilleures ventes de la caisse : N jours finis hier, comparés aux N jours précédents (ancien classement de Ventes POS)', async () => {
+  const { bornesDe, bornesDeComparaison, nettoyerVue } = await import('./vueStatistiques.js');
+  const { demandeRaccourci } = await import('./raccourcisStatistiques.js');
+  const p = demandeRaccourci('pos').periode;
+  assert.deepEqual(p, { id: 'libre', jours: 7 });
+  const b = bornesDe(p, '2026-11-13');
+  assert.deepEqual(b, { debut: '2026-11-06', fin: '2026-11-12' });
+  assert.deepEqual(bornesDeComparaison(b, 'precedente'), { debut: '2026-10-30', fin: '2026-11-05' });
+  assert.deepEqual(bornesDe(demandeRaccourci('pos', 'j30').periode, '2026-11-13'), { debut: '2026-10-14', fin: '2026-11-12' });
+  // Des dates choisies l'emportent sur la période glissante.
+  assert.deepEqual(bornesDe({ id: 'libre', jours: 7, debut: '2026-11-01', fin: '2026-11-03' }, '2026-11-13'), { debut: '2026-11-01', fin: '2026-11-03' });
+  // Une vue enregistrée garde la période glissante et la colonne d'avant.
+  const visibles = [{ id: 'q', unite: 'nombre', famille: 'p', nature: 'flux', ventilations: [{ id: 'plat' }] }];
+  const v = nettoyerVue({ periode: p, pas: 'jour', comparaison: 'precedente', graphiques: [{ mesures: ['q'] }], tableaux: [{ mesures: ['q'], ventilation: 'plat', tri: 'decroissant', comparaison: true }] }, visibles, '2026-11-13');
+  assert.equal(v.periode.jours, 7);
+  assert.equal(v.tableaux[0].comparaison, true);
 });

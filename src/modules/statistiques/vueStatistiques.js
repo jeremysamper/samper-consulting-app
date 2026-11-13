@@ -24,6 +24,7 @@ export const MAX_GRAPHIQUES = 4;
 export const MAX_SERIES = 6;
 export const MAX_UNITES = 2;
 export const MAX_CHIFFRES = 24;
+export const MAX_TABLEAUX = 8;
 
 // S3 : les périodes des écrans d'analyse devenus des raccourcis s'ajoutent à
 // celles de D10 (14 jours des meilleures ventes, semaines, mois dernier et
@@ -69,6 +70,11 @@ export function bornesDe(periode, aujourdhui) {
   if (id === 'mois') { const p = periodeMois(aujourdhui); return { debut: p.debut, fin: p.fin }; }
   if (id === 'trimestre') { const p = periodeTrimestre(aujourdhui); return { debut: p.debut, fin: p.fin }; }
   if (id === 'annee') { const p = periodeAnnee(aujourdhui); return { debut: p.debut, fin: p.fin }; }
+  // N jours finis hier (« jours »), tant qu'aucune date n'est choisie : la
+  // période glissante de l'ancien classement de Ventes POS, parti en S3.
+  if (id === 'libre' && Number.isInteger(periode.jours) && periode.jours > 0 && periode.jours <= 400 && !periode.debut && !periode.fin) {
+    return { debut: ajouterJours(aujourdhui, -periode.jours), fin: ajouterJours(aujourdhui, -1) };
+  }
   if (id === 'libre') {
     const a = ISO.test(String(periode.debut || '')) ? periode.debut : ajouterJours(aujourdhui, -29);
     const b = ISO.test(String(periode.fin || '')) ? periode.fin : aujourdhui;
@@ -115,7 +121,8 @@ function tableauNettoye(brut, parId) {
   if (!ok.length) return null;
   const choix = {};
   if (brut.choix && typeof brut.choix === 'object') Object.entries(brut.choix).forEach(([k, v]) => { if (typeof v === 'string') choix[k] = v; });
-  return { mesures: ok.map((m) => m.id), ventilation, choix };
+  const titre = typeof brut.titre === 'string' ? brut.titre : '';
+  return { mesures: ok.map((m) => m.id), ventilation, choix, titre, ...(brut.part === true ? { part: true } : {}), ...(brut.tri === 'decroissant' ? { tri: 'decroissant' } : {}), ...(brut.comparaison === true ? { comparaison: true } : {}), ...(brut.apres === true ? { apres: true } : {}) };
 }
 
 // Première ouverture (D13) : la première mesure visible, sur 30 jours.
@@ -159,7 +166,7 @@ export function nettoyerVue(brute, mesuresVisibles, aujourdhui) {
   const defaut = vueParDefaut(mesuresVisibles);
   if (!brute || typeof brute !== 'object') return defaut;
   const periode = PERIODES.some((p) => p.id === brute.periode?.id)
-    ? { id: brute.periode.id, ...(brute.periode.id === 'libre' ? { debut: brute.periode.debut || null, fin: brute.periode.fin || null } : null) }
+    ? { id: brute.periode.id, ...(brute.periode.id === 'libre' ? { debut: brute.periode.debut || null, fin: brute.periode.fin || null, ...(Number.isInteger(brute.periode.jours) ? { jours: brute.periode.jours } : {}) } : null) }
     : defaut.periode;
   const bornes = bornesDe(periode, aujourdhui);
   const possibles = pasPossibles(bornes.debut, bornes.fin);
@@ -187,9 +194,12 @@ export function nettoyerVue(brute, mesuresVisibles, aujourdhui) {
   // Lignes de la présentation dense (S3) : des mesures visibles, sans doublon,
   // vingt-quatre au plus.
   const chiffres = (Array.isArray(brute.chiffres) ? brute.chiffres : []).filter((id, i, a) => parId.has(id) && a.indexOf(id) === i).slice(0, MAX_CHIFFRES);
-  const tableau = tableauNettoye(brute.tableau, parId);
-  if (!graphiques.length || graphiques.every((g) => !g.mesures.length)) return { ...defaut, periode, pas, comparaison, filtres, chiffres, tableau };
-  return { periode, pas, comparaison, graphiques, filtres, chiffres, tableau };
+  const tableaux = (Array.isArray(brute.tableaux) ? brute.tableaux : (brute.tableau ? [brute.tableau] : [])).map((t) => tableauNettoye(t, parId)).filter(Boolean).slice(0, MAX_TABLEAUX);
+  // Explication sous les lignes (« D'où viennent ces chiffres ») : seulement
+  // quand l'écran d'origine la montrait (vue d'ensemble de la Comptabilité).
+  const explications = brute.explications === true && chiffres.length > 0;
+  if (!graphiques.length || graphiques.every((g) => !g.mesures.length)) return { ...defaut, periode, pas, comparaison, filtres, chiffres, tableaux, explications };
+  return { periode, pas, comparaison, graphiques, filtres, chiffres, tableaux, explications };
 }
 
 // Types de graphique valides pour un graphique, le premier étant celui que la
@@ -220,7 +230,7 @@ export function vueDepuisLien(demande, mesuresVisibles, aujourdhui) {
   const visibles = mesuresVisibles || [];
   let ids = (Array.isArray(demande.mesures) ? demande.mesures : []).filter((id) => visibles.some((m) => m.id === id));
   const periode = typeof demande.periode === 'string' ? { id: demande.periode } : demande.periode;
-  const commun = { periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '', filtres: demande.filtres || {}, chiffres: demande.chiffres || [], tableau: demande.tableau || null };
+  const commun = { periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '', filtres: demande.filtres || {}, chiffres: demande.chiffres || [], tableaux: demande.tableaux || [], explications: demande.explications === true };
   // Raccourci d'un écran d'analyse (S3) : plusieurs graphiques préréglés. Un
   // graphique dont aucune mesure n'est visible tombe ; rien de visible, rien
   // d'ouvert.

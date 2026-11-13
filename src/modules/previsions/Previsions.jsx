@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Input } from '../../components/ui/index.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -11,7 +11,8 @@ import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
 import { peutGererReservations, peutReglerEnLigne } from './gardeEnLigne.js';
-import { ouvrirCompte } from '../../services/navigationService.js';
+import { ouvrirCompte, ouvrirStatistiques } from '../../services/navigationService.js';
+import { demandeRaccourci } from '../statistiques/raccourcisStatistiques.js';
 import { useNotificationsAppareil } from './NotificationsAppareil.jsx';
 import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
@@ -19,15 +20,13 @@ import { useReservationsJour } from './useReservationsJour.js';
 import { readText, writeText, removeStorageKeys } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 
-// Rapport chargé à la demande : le planning, ouvert toute la journée sur
-// l'iPad de l'entrée, ne porte pas le poids des statistiques.
-const RapportReservations = lazy(() => import('./rapport/RapportReservations.jsx'));
-
-// Écran Le rapport (statistiques, lecture seule) : la direction, l'hôte et le
+// Tuile Le rapport (statistiques, lecture seule) : la direction, l'hôte et le
 // responsable cuisine (anticipation des couverts). Masqué pour le service, la
 // cuisine et le spa, même quand le module leur est ouvert (décision de Jérémy,
 // 15.10.2026). La base ne filtre que par établissement : c'est un choix
 // d'écran, pas une garde. La liste des rôles est dans rapport/gardeRapport.js.
+// Depuis S3, la tuile ouvre Statistiques préréglé (raccourcisStatistiques.js) ;
+// l'écran du rapport est parti.
 
 // Mode service resté ouvert sur cet appareil (valeur : id de l'établissement).
 // L'iPad de l'entrée qui recharge en plein service (mise à jour, réveil)
@@ -48,7 +47,6 @@ const TITRES_ECRAN = {
   plan: 'Le plan de salle',
   chercher: 'Je cherche une réservation',
   clients: 'Les clients',
-  rapport: 'Le rapport',
 };
 
 export default function Previsions({ user, etablissement }) {
@@ -173,7 +171,6 @@ export default function Previsions({ user, etablissement }) {
     planning: selectedDate ? null : <>la semaine, service par service</>,
     chercher: <>par le nom ou le téléphone, toutes dates</>,
     clients: <>le fichier, rempli par les réservations</>,
-    rapport: <>l'activité des réservations, en lecture seule</>,
   };
 
   return (
@@ -213,7 +210,7 @@ export default function Previsions({ user, etablissement }) {
           onPlan={() => setEcran('plan')}
           onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
           onClients={() => setEcran('clients')}
-          onRapport={() => setEcran('rapport')}
+          onRapport={() => ouvrirStatistiques(demandeRaccourci('reservations'))}
           onNotifications={() => ouvrirCompte('notifications')}
           onReglages={() => ouvrirCompte('reservation_en_ligne')}
         />
@@ -303,12 +300,6 @@ export default function Previsions({ user, etablissement }) {
 
       {etabId && ecran === 'clients' && (
         <ClientsResa etablissementId={etabId} canEdit={canEdit} peutEffacer={['consultant', 'patron'].includes(user?.role)} refreshKey={refreshKey} />
-      )}
-
-      {etabId && ecran === 'rapport' && voitRapport && (
-        <Suspense fallback={<div style={{ marginTop: 28, fontSize: 'var(--t2)', color: 'var(--text2)' }}>Chargement du rapport…</div>}>
-          <RapportReservations key={etabId} etablissementId={etabId} />
-        </Suspense>
       )}
 
       {/* État vide si pas d'établissement */}

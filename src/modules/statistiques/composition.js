@@ -234,7 +234,7 @@ export function composer({ graphique, mesures, tranches, tranchesComparaison = n
     nonTracees,
     // Ventilations qui ont des catégories sur la période (une salle sans zones
     // n'offre pas « par zone ») ; null tant que la famille n'est pas lue.
-    ventilationsDisponibles: seule && sources.totaux?.[seule.famille] ? (seule.ventilations || []).filter((v) => v.parts(sources.totaux[seule.famille]).length > 0).map((v) => v.id) : null,
+    ventilationsDisponibles: seule && sources.totaux?.[seule.famille] ? (seule.ventilations || []).filter((v) => !v.tableauSeul && v.parts(sources.totaux[seule.famille]).length > 0).map((v) => v.id) : null,
     comparaison: avecComparaison,
     enAttente,
     nonLues,
