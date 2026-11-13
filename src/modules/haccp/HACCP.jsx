@@ -960,8 +960,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                   </div>
                 </section>
               )}
+              {/* Une section, pas un div : la feuille d'export donne une marge
+                  basse à tout div enfant direct de la zone capturée. */}
               {aSurveiller && (
-                <div className="haccp-carte">
+                <section className="haccp-carte">
                   <ProblemesHaccp
                     titre="À surveiller"
                     releves={horsPlageRecents}
@@ -970,7 +972,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                     tpls={ctrlTpls}
                     today={todayStr}
                   />
-                </div>
+                </section>
               )}
             </div>
           )}
