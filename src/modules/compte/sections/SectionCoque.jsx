@@ -59,10 +59,10 @@ export function SectionLogo() {
 const st = {
   bloc: { display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 },
   rang: { display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' },
-  apercu: { width: 64, height: 64, borderRadius: 12, overflow: 'hidden', flexShrink: 0 },
+  apercu: { width: 64, height: 64, borderRadius: 'var(--r)', overflow: 'hidden', flexShrink: 0 },
   image: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
-  texte: { margin: 0, flex: '1 1 240px', fontSize: 14, color: 'var(--text)', lineHeight: 1.5 },
+  texte: { margin: 0, flex: '1 1 240px', fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.5 },
   actions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  note: { margin: 0, fontSize: 12, color: 'var(--text2)' },
+  note: { margin: 0, fontSize: 'var(--t1)', color: 'var(--text2)' },
   btn44: { minHeight: 44 },
 };

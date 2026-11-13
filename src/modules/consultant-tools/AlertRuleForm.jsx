@@ -54,9 +54,9 @@ function CheckRow({ checked, onToggle, title, subtitle, disabled }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 12,
         minHeight: 44, flexShrink: 0, padding: '6px 10px',
-        borderRadius: 8, border: '2px solid',
-        borderColor: checked ? 'var(--accent)' : 'var(--border)',
-        background: checked ? 'var(--accent-light)' : 'var(--surface)',
+        borderRadius: 'var(--r)', border: '2px solid',
+        borderColor: checked ? 'var(--onglet)' : 'var(--border)',
+        background: checked ? 'var(--selection)' : 'var(--surface)',
         cursor: disabled ? 'default' : 'pointer',
         opacity: disabled ? 0.6 : 1,
       }}
@@ -70,14 +70,14 @@ function CheckRow({ checked, onToggle, title, subtitle, disabled }) {
       />
       <span style={{ minWidth: 0 }}>
         <span style={{
-          display: 'block', fontSize: 13, lineHeight: 1.3,
+          display: 'block', fontSize: 'var(--t2)', lineHeight: 1.3,
           fontWeight: checked ? 500 : 400,
-          color: checked ? 'var(--accent)' : 'var(--text)',
+          color: 'var(--text)',
         }}>
           {title}
         </span>
         {subtitle && (
-          <span style={{ display: 'block', fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
+          <span style={{ display: 'block', fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 1 }}>
             {subtitle}
           </span>
         )}
@@ -121,7 +121,7 @@ function ZonePicker({ etablissementId, selected, onChange }) {
   };
 
   if (zones === null) {
-    return <div style={{ fontSize: 12, color: 'var(--text2)', padding: '8px 0' }}>Chargement des zones…</div>;
+    return <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', padding: '8px 0' }}>Chargement des zones…</div>;
   }
 
   const actives = zones.filter((z) => z.actif !== false);
@@ -134,7 +134,7 @@ function ZonePicker({ etablissementId, selected, onChange }) {
 
   if (rows.length === 0) {
     return (
-      <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5, padding: '8px 0' }}>
+      <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5, padding: '8px 0' }}>
         {failed
           ? 'Impossible de charger les zones HACCP. Réessayez dans un instant.'
           : 'Aucune zone HACCP configurée pour cet établissement. Créez-les d\'abord dans le module HACCP.'}
@@ -149,7 +149,7 @@ function ZonePicker({ etablissementId, selected, onChange }) {
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
         <button
           type="button"
-          style={{ ...cts.ghostBtn, fontSize: 12, padding: '4px 10px' }}
+          style={{ ...cts.ghostBtn, fontSize: 'var(--t1)', padding: '4px 10px' }}
           onClick={() => onChange(allSelected ? [] : actives.map((z) => z.id))}
         >
           {allSelected ? 'Tout décocher' : 'Toutes les zones'}
@@ -171,7 +171,7 @@ function ZonePicker({ etablissementId, selected, onChange }) {
           />
         ))}
       </div>
-      <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6 }}>
+      <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 6 }}>
         Une alerte distincte par zone sans relevé, nommée par la zone.
       </div>
     </>
@@ -224,7 +224,7 @@ function StockFields({ config, set, onChange, etablissementId }) {
           {(products || []).map((p) => <option key={p.name} value={p.name} />)}
         </datalist>
         {typed && products && (
-          <div style={{ fontSize: 11, marginTop: 4, color: match ? 'var(--success-text)' : 'var(--warning-text)' }}>
+          <div style={{ fontSize: 'var(--t1)', marginTop: 4, color: match ? 'var(--success-text)' : 'var(--warning-text)' }}>
             {match
               ? 'Produit trouvé dans les inventaires.'
               : "Produit introuvable dans les inventaires : l'alerte ne pourra pas se déclencher tant qu'il n'y figure pas."}
@@ -241,7 +241,7 @@ function StockFields({ config, set, onChange, etablissementId }) {
             onChange={(e) => set('unite', e.target.value)}
             placeholder="kg" />
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4 }}>
           Déclenche si le stock compté passe sous ce seuil (dernier inventaire validé de chaque périmètre, additionnés).
         </div>
       </Field>
@@ -261,7 +261,7 @@ function ConfigFields({ ruleType, config, onChange, etablissementId }) {
             <input type="number" min={5} max={480} style={cts.input}
               value={config.delay_minutes ?? 30}
               onChange={(e) => set('delay_minutes', Number(e.target.value))} />
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4 }}>
               Déclenche l'alerte si un employé n'a pas pointé X minutes après le début de son shift.
             </div>
           </Field>
@@ -272,7 +272,7 @@ function ConfigFields({ ruleType, config, onChange, etablissementId }) {
               title="Prévenir aussi l'employé concerné"
               subtitle="Il reçoit uniquement son alerte, pas celles de ses collègues."
             />
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 6, lineHeight: 1.5 }}>
               L'alerte est nominative : une par employé qui n'a pas pointé. Les rôles choisis
               à l'étape suivante (patron…) les voient toutes.
             </div>
@@ -294,7 +294,7 @@ function ConfigFields({ ruleType, config, onChange, etablissementId }) {
             <input type="time" style={cts.input}
               value={config.expected_by ?? '12:00'}
               onChange={(e) => set('expected_by', e.target.value)} />
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4 }}>
               L'alerte se déclenche si aucun relevé n'est enregistré après cette heure.
             </div>
           </Field>
@@ -307,7 +307,7 @@ function ConfigFields({ ruleType, config, onChange, etablissementId }) {
           <input type="number" min={1} max={168} style={cts.input}
             value={config.delay_hours ?? 24}
             onChange={(e) => set('delay_hours', Number(e.target.value))} />
-          <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4 }}>
             Déclenche si une réservation reste non confirmée plus de X heures.
           </div>
         </Field>
@@ -322,7 +322,7 @@ function ConfigFields({ ruleType, config, onChange, etablissementId }) {
           <input type="number" min={1} max={30} style={cts.input}
             value={config.inactive_days ?? 2}
             onChange={(e) => set('inactive_days', Number(e.target.value))} />
-          <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4 }}>
             Déclenche si aucune vente POS n'a été enregistrée depuis X jours. Nécessite une connexion POS active.
           </div>
         </Field>
@@ -340,7 +340,7 @@ function ConfigFields({ ruleType, config, onChange, etablissementId }) {
             <input type="number" min={1} max={90} style={cts.input}
               value={config.period_days ?? 7}
               onChange={(e) => set('period_days', Number(e.target.value))} />
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4 }}>
               Déclenche si le total des pertes dépasse le seuil sur la période.
             </div>
           </Field>
@@ -369,7 +369,7 @@ function ConfigFields({ ruleType, config, onChange, etablissementId }) {
 
     default:
       return (
-        <div style={{ padding: 16, color: 'var(--text2)', fontSize: 13 }}>
+        <div style={{ padding: 16, color: 'var(--text2)', fontSize: 'var(--t2)' }}>
           Sélectionnez un type de condition à l'étape précédente.
         </div>
       );
@@ -391,7 +391,7 @@ function Stepper({ current, total }) {
               background: active ? 'var(--accent)' : done ? 'var(--accent-light)' : 'var(--bg)',
               border: `2px solid ${active || done ? 'var(--accent)' : 'var(--border)'}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 12, fontWeight: 700,
+              fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
               color: active ? 'var(--on-accent)' : done ? 'var(--accent)' : 'var(--text3)',
               flexShrink: 0,
             }}>
@@ -532,7 +532,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
         style={{
           display: 'flex', flexDirection: 'column',
           background: 'var(--surface)', border: '1px solid var(--border)',
-          borderRadius: 14, width: 560, maxWidth: '94vw', maxHeight: '90vh',
+          borderRadius: 'var(--r)', width: 560, maxWidth: '94vw', maxHeight: '90vh',
           boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden',
         }}>
 
@@ -542,14 +542,14 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
         }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+            <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
               {isEdit ? 'Modifier la règle' : 'Nouvelle règle d\'alerte'}
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>Étape {step} / {TOTAL_STEPS} : {stepTitles[step - 1]}</div>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>Étape {step} / {TOTAL_STEPS} : {stepTitles[step - 1]}</div>
           </div>
           <button
             className="ui-fermer"
-            style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', padding: 4 }}
+            style={{ background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)', padding: 4 }}
             onClick={onClose}
             aria-label="Fermer"
           >×</button>
@@ -592,11 +592,11 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                       key={sev.id}
                       type="button"
                       style={{
-                        padding: '8px 18px', borderRadius: 8, border: '2px solid transparent',
+                        padding: '8px 18px', borderRadius: 'var(--r)', border: '2px solid transparent',
                         background: form.severity === sev.id ? 'rgba(0,0,0,0.04)' : 'var(--surface)',
                         color: form.severity === sev.id ? sev.color : 'var(--text2)',
                         fontWeight: form.severity === sev.id ? 700 : 400,
-                        cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, transition: 'all .12s',
+                        cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', transition: 'all .12s',
                       }}
                       onClick={() => set('severity', sev.id)}
                     >
@@ -618,11 +618,11 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                     type="button"
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '12px 14px', borderRadius: 8, textAlign: 'left',
+                      padding: '12px 14px', borderRadius: 'var(--r)', textAlign: 'left',
                       border: '2px solid transparent',
-                      background: form.rule_type === rt.id ? 'var(--accent-light)' : 'var(--surface)',
-                      color: form.rule_type === rt.id ? 'var(--accent)' : 'var(--text)',
-                      cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13,
+                      background: form.rule_type === rt.id ? 'var(--selection)' : 'var(--surface)',
+                      color: 'var(--text)',
+                      cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)',
                       fontWeight: form.rule_type === rt.id ? 500 : 400, transition: 'all .12s',
                     }}
                     onClick={() => { set('rule_type', rt.id); set('rule_config', {}); }}
@@ -659,8 +659,8 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                       type="button"
                       style={{
                         display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px',
-                        borderRadius: 8, border: '2px solid transparent',
-                        background: form.schedule_type === opt.id ? 'var(--accent-light)' : 'var(--surface)',
+                        borderRadius: 'var(--r)', border: '2px solid transparent',
+                        background: form.schedule_type === opt.id ? 'var(--selection)' : 'var(--surface)',
                         cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left',
                       }}
                       onClick={() => set('schedule_type', opt.id)}
@@ -668,13 +668,13 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                       <div style={{
                         width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
                         border: '2px solid transparent',
-                        background: form.schedule_type === opt.id ? 'var(--accent)' : 'transparent',
+                        background: form.schedule_type === opt.id ? 'var(--onglet)' : 'transparent',
                       }} />
                       <div>
-                        <div style={{ fontWeight: 500, color: form.schedule_type === opt.id ? 'var(--accent)' : 'var(--text)', fontSize: 13 }}>
+                        <div style={{ fontWeight: 'var(--g2)', color: 'var(--text)', fontSize: 'var(--t2)' }}>
                           {opt.label}
                         </div>
-                        <div style={{ fontSize: 11, color: 'var(--text2)' }}>{opt.sub}</div>
+                        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{opt.sub}</div>
                       </div>
                     </button>
                   ))}
@@ -695,11 +695,11 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                           key={day.id}
                           type="button"
                           style={{
-                            width: 40, height: 40, borderRadius: 8, border: '2px solid',
-                            borderColor: form.schedule_days.includes(day.id) ? 'var(--accent)' : 'var(--border)',
-                            background: form.schedule_days.includes(day.id) ? 'var(--accent)' : 'var(--surface)',
-                            color: form.schedule_days.includes(day.id) ? 'var(--on-accent)' : 'var(--text2)',
-                            cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 500,
+                            width: 40, height: 40, borderRadius: 'var(--r)', border: '2px solid',
+                            borderColor: form.schedule_days.includes(day.id) ? 'var(--onglet)' : 'var(--border)',
+                            background: form.schedule_days.includes(day.id) ? 'var(--selection)' : 'var(--surface)',
+                            color: form.schedule_days.includes(day.id) ? 'var(--text)' : 'var(--text2)',
+                            cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)',
                           }}
                           onClick={() => toggleDay(day.id)}
                         >
@@ -718,11 +718,11 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                       key={role.id}
                       type="button"
                       style={{
-                        padding: '7px 14px', borderRadius: 8, border: '2px solid',
-                        borderColor: form.target_roles.includes(role.id) ? 'var(--accent)' : 'var(--border)',
-                        background: form.target_roles.includes(role.id) ? 'var(--accent-light)' : 'var(--surface)',
-                        color: form.target_roles.includes(role.id) ? 'var(--accent)' : 'var(--text2)',
-                        cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12,
+                        padding: '7px 14px', borderRadius: 'var(--r)', border: '2px solid',
+                        borderColor: form.target_roles.includes(role.id) ? 'var(--onglet)' : 'var(--border)',
+                        background: form.target_roles.includes(role.id) ? 'var(--selection)' : 'var(--surface)',
+                        color: form.target_roles.includes(role.id) ? 'var(--text)' : 'var(--text2)',
+                        cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t1)',
                         fontWeight: form.target_roles.includes(role.id) ? 500 : 400,
                       }}
                       onClick={() => toggleRole(role.id)}
@@ -732,7 +732,7 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
                   ))}
                 </div>
                 {form.target_roles.length === 0 && (
-                  <div style={{ fontSize: 11, color: 'var(--color-error, var(--danger-strong))', marginTop: 4 }}>
+                  <div style={{ fontSize: 'var(--t1)', color: 'var(--color-error, var(--danger-strong))', marginTop: 4 }}>
                     Sélectionnez au moins un rôle.
                   </div>
                 )}
@@ -747,12 +747,12 @@ export default function AlertRuleForm({ initialData, etablissementId, onSave, on
           display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           flexShrink: 0, gap: 8,
         }}>
-          <button style={{ ...cts.ghostBtn, fontSize: 13 }} onClick={onClose} disabled={saving}>
+          <button style={{ ...cts.ghostBtn, fontSize: 'var(--t2)' }} onClick={onClose} disabled={saving}>
             Annuler
           </button>
           <div style={{ display: 'flex', gap: 8 }}>
             {step > 1 && (
-              <button style={{ ...cts.ghostBtn, fontSize: 13 }} onClick={() => setStep(step - 1)} disabled={saving}>
+              <button style={{ ...cts.ghostBtn, fontSize: 'var(--t2)' }} onClick={() => setStep(step - 1)} disabled={saving}>
                 Précédent
               </button>
             )}

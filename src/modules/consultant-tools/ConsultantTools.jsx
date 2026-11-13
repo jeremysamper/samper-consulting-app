@@ -59,10 +59,10 @@ const ConsultantToolsGate = (props) => {
   if (props.user?.role !== 'consultant') {
     return (
       <div style={{ padding: 60, textAlign: 'center', maxWidth: 480, margin: '40px auto' }}>
-        <div style={{ fontSize: 18, fontWeight: 700, marginTop: 12, fontFamily: 'var(--font-serif)' }}>
+        <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', marginTop: 12, fontFamily: 'var(--font)' }}>
           Accès réservé
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 6, lineHeight: 1.5 }}>
           Le module "Outils consultant" est réservé au rôle consultant.
           Si vous pensez que c'est une erreur, contactez votre administrateur.
         </div>
@@ -717,7 +717,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   )}
                   {r.categorie}, {r.portions || '?'} p., v{r.version || 1}
                   {r.foodCost && (
-                    <span style={{ marginLeft: 6, color: r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)', fontWeight: 500 }}>
+                    <span style={{ marginLeft: 6, color: r.foodCost < 30 ? 'var(--success-strong)' : r.foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)', fontWeight: 'var(--g2)' }}>
                       {' '}FC {r.foodCost.toFixed(1)}%
                     </span>
                   )}
@@ -760,7 +760,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     ><Pencil size={14} aria-hidden="true" /></button>
                   </div>
                   {isExpanded && (platRecettes.length === 0 ? (
-                    <div style={{ padding: '8px 14px 8px 56px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
+                    <div style={{ padding: '8px 14px 8px 56px', fontSize: 'var(--t1)', color: 'var(--text2)', fontStyle: 'italic' }}>
                       Aucune recette rattachée
                     </div>
                   ) : (
@@ -785,7 +785,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
             return (
               <>
                 {plats.length === 0 && (
-                  <div style={{ padding: '12px 14px', fontSize: 11, color: 'var(--text2)', borderBottom: '1px solid var(--border)', fontStyle: 'italic' }}>
+                  <div style={{ padding: '12px 14px', fontSize: 'var(--t1)', color: 'var(--text2)', borderBottom: '1px solid var(--border)', fontStyle: 'italic' }}>
                     Aucun plat. Les plats se créent dans Cartes & Recettes.
                   </div>
                 )}
@@ -808,13 +808,13 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                         }}
                         title={collapsed ? 'Développer' : 'Réduire'}
                       >
-                        <span style={{ fontSize: 11, color: 'var(--text2)' }}>{!collapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
+                        <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{!collapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                         <span style={cts.carteFolderName}>{folder.nom}</span>
                         <span style={cts.carteCount}>{folder.plats.length}</span>
                       </div>
                       {!collapsed && folder.plats.map(plat => renderPlatBlock(plat, folder))}
                       {!collapsed && folder.plats.length === 0 && (
-                        <div style={{ padding: '8px 14px 8px 30px', fontSize: 11, color: 'var(--text2)', fontStyle: 'italic' }}>
+                        <div style={{ padding: '8px 14px 8px 30px', fontSize: 'var(--t1)', color: 'var(--text2)', fontStyle: 'italic' }}>
                           Aucun plat sur cette carte
                         </div>
                       )}
@@ -842,7 +842,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                       onClick={() => setShowArchivees(v => !v)}
                       title={showArchivees ? 'Réduire' : 'Développer'}
                     >
-                      <span style={{ fontSize: 11 }}>{showArchivees ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
+                      <span style={{ fontSize: 'var(--t1)' }}>{showArchivees ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                       <span>Archivées ({archiveesFiltrees.length})</span>
                     </div>
                     {showArchivees && archiveesFiltrees.map(r => (
@@ -854,7 +854,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                 )}
 
                 {filtered.length === 0 && archiveesFiltrees.length === 0 && (
-                  <div style={{padding: 16, fontSize: 12, color: 'var(--text2)'}}>Aucune recette.</div>
+                  <div style={{padding: 16, fontSize: 'var(--t1)', color: 'var(--text2)'}}>Aucune recette.</div>
                 )}
               </>
             );
@@ -865,8 +865,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       {/* Colonne droite : chiffrage */}
       {!selected ? (
         <div style={cts.emptyState}>
-          <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>Aucune recette sélectionnée</div>
-          <div style={{ fontSize: 13, color: 'var(--text2)' }}>Choisissez une recette dans la liste. Les fiches se créent dans Cartes & Recettes, avec la tuile « Nouvelle fiche » de l'accueil du module.</div>
+          <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' }}>Aucune recette sélectionnée</div>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Choisissez une recette dans la liste. Les fiches se créent dans Cartes & Recettes, avec la tuile « Nouvelle fiche » de l'accueil du module.</div>
         </div>
       ) : (
         <div style={cts.rightCol}>
@@ -896,9 +896,9 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
               ] }]}
             />
             <div style={{ flex: 1 }} />
-            {saveStatus === 'saving' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text2)' }}><Loader2 size={12} /> Sauvegarde…</span>}
-            {saveStatus === 'saved' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--success-text)', fontWeight: 500 }}>Sauvegardé</span>}
-            {saveStatus === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--danger-strong)', fontWeight: 500 }} title={saveError}>Enregistrement échoué</span>}
+            {saveStatus === 'saving' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--t1)', color: 'var(--text2)' }}><Loader2 size={12} /> Sauvegarde…</span>}
+            {saveStatus === 'saved' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--t1)', color: 'var(--success-text)', fontWeight: 'var(--g2)' }}>Sauvegardé</span>}
+            {saveStatus === 'error' && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--t1)', color: 'var(--danger-strong)', fontWeight: 'var(--g2)' }} title={saveError}>Enregistrement échoué</span>}
           </div>
 
           {/* Une recette cachée ne se distingue pas ici : le bandeau dit où
@@ -911,8 +911,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
 
           <div style={cts.printZone}>
             <div style={cts.header}>
-              <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>{selected.nom}</div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 4 }}>
+              <div style={{ fontSize: 'var(--t4)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' }}>{selected.nom}</div>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4 }}>
                 {selected.categorie}, {selected.portions || '?'} portion{Number(selected.portions) > 1 ? 's' : ''}, v{selected.version || 1}, {selected.statut || 'brouillon'}
               </div>
             </div>
@@ -937,7 +937,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </div>
                   <div style={cts.kpiItem}>
                     <span style={cts.kpiLabel}>Coût par portion</span>
-                    <strong style={{ color: 'var(--accent)' }}>CHF {coutPortion.toFixed(2)}</strong>
+                    <strong style={{ color: 'var(--lien)' }}>CHF {coutPortion.toFixed(2)}</strong>
                   </div>
                   <div style={cts.kpiItem}>
                     <span style={cts.kpiLabel}>Food cost %</span>
@@ -965,7 +965,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     <span>Coût</span>
                   </div>
                   {(selected.ingredients || []).length === 0 && (
-                    <div style={{ padding: '12px 0', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' }}>
+                    <div style={{ padding: '12px 0', fontSize: 'var(--t2)', color: 'var(--text2)', fontStyle: 'italic' }}>
                       Aucun ingrédient. Ils se saisissent dans la fiche : « Modifier la fiche », en haut.
                     </div>
                   )}
@@ -977,20 +977,20 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                     const prixDuCatalogue = prixInfo.source === 'catalogue';
                     return (
                       <div key={ing.id} className="grid-table-row" style={{ ...cts.ingRow, gridTemplateColumns: COLONNES_CHIFFRAGE }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, fontSize: 13, color: 'var(--text)' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, fontSize: 'var(--t2)', color: 'var(--text)' }}>
                           {ing.produitId && <span style={{ color: 'var(--success-text)', display: 'inline-flex' }} title="Lié au catalogue"><Link2 size={13} aria-hidden="true" /></span>}
                           {!ing.produitId && ing.needsReview && <span style={{ color: 'var(--warning-text)', display: 'inline-flex' }} title="Correspondance catalogue incertaine"><AlertTriangle size={13} aria-hidden="true" /></span>}
                           <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ing.nom || 'Sans nom'}</span>
                         </span>
-                        <span style={{ fontSize: 13, color: 'var(--text)', textAlign: 'right' }} data-no-translate>{fmtQte(Number(ing.quantite) || 0)}</span>
-                        <span style={{ fontSize: 13, color: 'var(--text2)' }}>{ing.unite}</span>
+                        <span style={{ fontSize: 'var(--t2)', color: 'var(--text)', textAlign: 'right' }} data-no-translate>{fmtQte(Number(ing.quantite) || 0)}</span>
+                        <span style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>{ing.unite}</span>
                         {prixDuCatalogue ? (
                           <input
                             type="text"
                             readOnly
                             value={prixInfo.prix.toFixed(3)}
                             title={`Prix du catalogue (${prixInfo.produit?.nom || ''}). Délier la ligne dans la fiche pour saisir un prix à la main`}
-                            style={{ ...cts.ingInput, color: 'var(--text2)', background: 'var(--bg)', cursor: 'not-allowed' }}
+                            style={{ ...cts.ingInput, color: 'var(--text2)', background: 'var(--surface)', cursor: 'not-allowed' }}
                           />
                         ) : (
                           <DebouncedField
@@ -1009,7 +1009,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                             }}
                           />
                         )}
-                        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', alignSelf: 'center', textAlign: 'right' }}>
+                        <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text)', alignSelf: 'center', textAlign: 'right' }}>
                           {((Number(ing.quantite) || 0) * prixInfo.prix).toFixed(2)}
                         </span>
                       </div>

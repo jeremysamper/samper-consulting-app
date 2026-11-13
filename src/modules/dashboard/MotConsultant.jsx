@@ -92,27 +92,27 @@ const s = {
   figure: { margin: 0, minWidth: 0 },
   // Filet gauche en longhands : jamais le raccourci border (lint:borders).
   citation: {
-    margin: 0, padding: '2px 0 2px 18px', fontFamily: 'var(--font-serif)', lineHeight: 1.55, color: 'var(--text)',
+    margin: 0, padding: '2px 0 2px 18px', fontFamily: 'var(--font)', fontWeight: 'var(--g3)', lineHeight: 1.55, color: 'var(--text)',
     whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxWidth: '68ch',
     borderLeftWidth: 3, borderLeftStyle: 'solid', borderLeftColor: 'var(--accent-bd)',
   },
-  signature: { margin: '10px 0 0 21px', fontSize: 14, lineHeight: 1.4, color: 'var(--text2)' },
-  vide: { margin: 0, padding: '4px 0', fontSize: 15, lineHeight: 1.5, color: 'var(--text2)', maxWidth: '68ch' },
+  signature: { margin: '10px 0 0 21px', fontSize: 'var(--t2)', lineHeight: 1.4, color: 'var(--text2)' },
+  vide: { margin: 0, padding: '4px 0', fontSize: 'var(--t2)', lineHeight: 1.5, color: 'var(--text2)', maxWidth: '68ch' },
   modifier: {
     display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 6px', flexShrink: 0, cursor: 'pointer',
     borderRadius: 'var(--r-sm)',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--accent)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--lien)',
   },
   zone: {
     width: '100%', boxSizing: 'border-box', padding: '12px 14px', borderRadius: 'var(--r-sm)', resize: 'vertical',
-    fontFamily: 'var(--font)', fontSize: 15, lineHeight: 1.55, color: 'var(--text)', background: 'var(--surface)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', lineHeight: 1.55, color: 'var(--text)', background: 'var(--surface)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
   bouton: {
     minHeight: 44, padding: '10px 18px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, borderWidth: 1, borderStyle: 'solid',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', borderWidth: 1, borderStyle: 'solid',
   },
   principal: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
-  secondaire: { background: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--border)' },
+  secondaire: { background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderColor: 'var(--btn-bord)' },
   discret: { background: 'transparent', color: 'var(--danger-text)', borderColor: 'transparent' },
 };

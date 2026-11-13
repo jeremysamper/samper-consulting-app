@@ -60,7 +60,7 @@ export default function ChiffresGestion({
           : {
             texte: "Pas d'inventaire récent",
             detail: peutOuvrir('inventaire') ? "Ouvrir l'inventaire" : stock.detail,
-            couleurDetail: peutOuvrir('inventaire') ? 'var(--accent)' : 'var(--text2)',
+            couleurDetail: peutOuvrir('inventaire') ? 'var(--lien)' : 'var(--text2)',
           }),
     },
   ].filter(Boolean);
@@ -129,15 +129,15 @@ function Regularite({ r }) {
 }
 
 const s = {
-  label: { fontSize: 14, fontWeight: 600, color: 'var(--text2)' },
-  services: { display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: 14, color: 'var(--text2)' },
+  label: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
+  services: { display: 'flex', flexWrap: 'wrap', gap: '4px 14px', fontSize: 'var(--t2)', color: 'var(--text2)' },
   service: { display: 'inline-flex', alignItems: 'baseline', gap: 5 },
-  nombre: { fontWeight: 700, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  nombre: { fontWeight: 'var(--g3)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   regularite: {
     display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16, paddingTop: 14,
     borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--rule-soft)',
   },
   regLigne: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '4px 12px', minWidth: 0 },
-  regValeur: { fontFamily: 'var(--font-num)', fontSize: 22, lineHeight: 1.1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
-  regDetail: { fontSize: 14, color: 'var(--text2)' },
+  regValeur: { fontFamily: 'var(--font-num)', fontSize: 'var(--t4)', lineHeight: 1.1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  regDetail: { fontSize: 'var(--t2)', color: 'var(--text2)' },
 };

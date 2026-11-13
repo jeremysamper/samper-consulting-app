@@ -370,10 +370,10 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
         <div style={st.body}>
           {step === 'pick' && (
             <div style={st.pickZone}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
                 Choisir un fichier fournisseur
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', textAlign: 'center', maxWidth: 440 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', textAlign: 'center', maxWidth: 440 }}>
                 Excel (.xlsx, .xls), CSV ou PDF, quel que soit le format des colonnes.
                 Les gros fichiers sont analysés par lots pour traiter toutes les lignes.
               </div>
@@ -391,7 +391,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                     <option key={f.id} value={f.id}>{f.nom}</option>
                   ))}
                 </select>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4 }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4 }}>
                   Appliqué à tous les produits importés depuis ce fichier.
                 </div>
               </div>
@@ -411,10 +411,10 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
 
           {step === 'parsing' && (
             <div style={st.pickZone}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
                 Lecture en cours…
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                 {progress.total > 0
                   ? `Lot ${progress.done} / ${progress.total}`
                   : 'Préparation des lots…'}
@@ -451,7 +451,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                 <div style={st.sheetStats}>
                   {fileStats.map(s => (
                     <div key={s.sheet} style={{ ...st.sheetItem, ...(s.skipped ? st.sheetItemSkipped : {}) }}>
-                      <span style={{ fontWeight: 500 }}>{s.sheet}</span>
+                      <span style={{ fontWeight: 'var(--g2)' }}>{s.sheet}</span>
                       {s.skipped
                         ? <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>feuille vide, ignorée</span>
                         : <>
@@ -468,7 +468,7 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
                 </div>
               )}
               <CatalogueImportPreview produits={produits} onChange={setProduits} />
-              <div style={{ fontSize: 11, color: 'var(--text2)' }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                 Les lignes surlignées portent une anomalie ou une confiance faible.
                 Pour un produit déjà au catalogue, choisissez l'action : mettre à jour,
                 créer quand même ou ignorer.
@@ -478,10 +478,10 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
 
           {step === 'inserting' && (
             <div style={st.pickZone}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
                 Ajout au catalogue…
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                 {progress.done} / {progress.total} produit(s)
               </div>
               <div style={st.progressTrack}>
@@ -509,26 +509,26 @@ const CatalogueAiImporter = ({ etabId, existingProduits = [], fournisseurs = [],
 
 const st = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
-  modal: { background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 980, maxHeight: '90vh', display: 'flex', flexDirection: 'column' },
+  modal: { background: 'var(--surface)', borderRadius: 'var(--r)', width: '100%', maxWidth: 980, maxHeight: '90vh', display: 'flex', flexDirection: 'column' },
   head: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '14px 18px', borderBottom: '1px solid var(--border)', gap: 12 },
-  title: { fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  sub: { fontSize: 12, color: 'var(--text2)', marginTop: 3 },
-  closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
+  title: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' },
+  sub: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 3 },
+  closeBtn: { background: 'none', border: 'none', fontSize: 'var(--t3)', cursor: 'pointer', color: 'var(--text2)' },
   body: { padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 },
   foot: { padding: '12px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' },
   pickZone: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '32px 20px' },
-  fieldLabel: { display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 },
-  select: { width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
-  primaryBtn: { padding: '9px 18px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', display: 'inline-block' },
-  ghostBtn: { padding: '9px 16px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)' },
-  banner: { padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12, color: 'var(--text)' },
-  progressTrack: { width: 'min(360px,80vw)', height: 10, background: 'var(--bg)', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' },
+  fieldLabel: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', marginBottom: 4 },
+  select: { width: '100%', padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' },
+  primaryBtn: { padding: '9px 18px', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', display: 'inline-block' },
+  ghostBtn: { padding: '9px 16px', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)' },
+  banner: { padding: '9px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', color: 'var(--text)' },
+  progressTrack: { width: 'min(360px,80vw)', height: 10, background: 'var(--bg)', borderRadius: 'var(--r)', overflow: 'hidden', border: '1px solid var(--border)' },
   progressFill: { height: '100%', background: 'var(--accent)', transition: 'width 0.2s' },
   // Diagnostique par feuille
   sheetStats: { display: 'flex', flexWrap: 'wrap', gap: 6 },
-  sheetItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11, color: 'var(--text)' },
+  sheetItem: { display: 'flex', alignItems: 'center', gap: 8, padding: '4px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', color: 'var(--text)' },
   sheetItemSkipped: { opacity: 0.55 },
-  catHintBadge: { display: 'inline-block', padding: '1px 7px', borderRadius: 8, background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', fontSize: 11, fontWeight: 500 },
+  catHintBadge: { display: 'inline-block', padding: '1px 7px', borderRadius: 'var(--r)', background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)' },
 };
 
 export default CatalogueAiImporter;

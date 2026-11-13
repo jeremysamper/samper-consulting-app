@@ -38,6 +38,6 @@ const st = {
     padding: '14px 0', borderBottom: '1px solid var(--border)', minWidth: 0,
   },
   texte: { flex: '1 1 240px', minWidth: 0 },
-  titre: { fontSize: 15, fontWeight: 500, color: 'var(--text)' },
-  aide: { fontSize: 13, color: 'var(--text2)', marginTop: 3, lineHeight: 1.45 },
+  titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' },
+  aide: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 3, lineHeight: 1.45 },
 };

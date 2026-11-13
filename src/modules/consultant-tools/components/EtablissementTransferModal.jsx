@@ -115,7 +115,7 @@ export default function EtablissementTransferModal({
               {etablissements.map(e => (
                 <label
                   key={e.id}
-                  style={{ ...ts.row, background: cibleId === e.id ? 'var(--accent-light)' : 'transparent', cursor: busy ? 'default' : 'pointer' }}
+                  style={{ ...ts.row, background: cibleId === e.id ? 'var(--selection)' : 'transparent', cursor: busy ? 'default' : 'pointer' }}
                 >
                   <input
                     type="radio"
@@ -135,7 +135,7 @@ export default function EtablissementTransferModal({
               ))}
 
               <div style={ts.sectionLabel}>Que devient l'original ?</div>
-              <label style={{ ...ts.row, background: mode === 'copie' ? 'var(--accent-light)' : 'transparent', cursor: busy ? 'default' : 'pointer' }}>
+              <label style={{ ...ts.row, background: mode === 'copie' ? 'var(--selection)' : 'transparent', cursor: busy ? 'default' : 'pointer' }}>
                 <input
                   type="radio" name="transfert-mode" checked={mode === 'copie'} disabled={busy}
                   onChange={() => setMode('copie')} style={{ width: 16, height: 16, flexShrink: 0 }}
@@ -212,19 +212,19 @@ export default function EtablissementTransferModal({
 
 const ts = {
   header: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
-  title: { fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  subtitle: { fontSize: 11, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
-  closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', flexShrink: 0, lineHeight: 1 },
+  title: { fontWeight: 'var(--g3)', fontSize: 'var(--t3)', fontFamily: 'var(--font)', color: 'var(--text)' },
+  subtitle: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
+  closeBtn: { background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)', flexShrink: 0, lineHeight: 1 },
   body: { flex: 1, overflowY: 'auto', minHeight: 120, padding: '4px 20px 16px' },
-  empty: { padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13, lineHeight: 1.5 },
-  sectionLabel: { fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.6, margin: '14px 0 6px' },
+  empty: { padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)', lineHeight: 1.5 },
+  sectionLabel: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', margin: '14px 0 6px' },
   // flexShrink 0 : sans lui les lignes se superposent sur mobile (min-height
   // global 44px sur les contrôles vs hauteur calculée par flex).
-  row: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 6, flexShrink: 0 },
-  rowNom: { fontSize: 13, fontWeight: 500, color: 'var(--text)' },
-  rowMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 1, lineHeight: 1.4 },
-  doublonRow: { marginTop: 10, background: 'var(--surface2)' },
-  info: { marginTop: 10, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 11, color: 'var(--text2)', lineHeight: 1.4 },
-  note: { marginTop: 14, fontSize: 11, color: 'var(--text3)', lineHeight: 1.5 },
+  row: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', border: '1px solid var(--border)', borderRadius: 'var(--r)', marginBottom: 6, flexShrink: 0 },
+  rowNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' },
+  rowMeta: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 1, lineHeight: 1.4 },
+  doublonRow: { marginTop: 10, background: 'var(--selection)' },
+  info: { marginTop: 10, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 },
+  note: { marginTop: 14, fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5 },
   footer: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
 };

@@ -285,18 +285,18 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
 
   // ─────────── Rendu ───────────
   const overlay = { position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(20,16,12,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 };
-  const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(960px, 96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' };
-  const inp = { padding: '7px 10px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', color: 'var(--text)', fontSize: 12, fontFamily: 'var(--font)' };
+  const panel = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', width: 'min(960px, 96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 60px rgba(0,0,0,0.35)' };
+  const inp = { padding: '7px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t1)', fontFamily: 'var(--font)' };
 
   return (
     <div className="modal-full-overlay" style={overlay} onClick={e => { if (e.target === e.currentTarget && !progress) onClose(); }}>
       <div className="modal-full" style={panel}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+            <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
               Scanner une facture
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
               {etape === 'capture' && 'Photographiez la facture, page par page.'}
               {etape === 'analyse' && 'Lecture en cours…'}
               {etape === 'revue' && entete && (
@@ -314,11 +314,11 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             </div>
           </div>
           <button onClick={onClose} disabled={!!progress} title="Fermer"
-            className="ui-fermer" aria-label="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: progress ? 'not-allowed' : 'pointer', color: 'var(--text2)', flexShrink: 0 }}>×</button>
+            className="ui-fermer" aria-label="Fermer" style={{ background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: progress ? 'not-allowed' : 'pointer', color: 'var(--text2)', flexShrink: 0 }}>×</button>
         </div>
 
         {erreur && (
-          <div style={{ margin: '10px 18px 0', ...encadreStyle('erreur'), ...encadreTitreStyle('erreur'), fontSize: 12 }}>
+          <div style={{ margin: '10px 18px 0', ...encadreStyle('erreur'), ...encadreTitreStyle('erreur'), fontSize: 'var(--t1)' }}>
             {erreur}
           </div>
         )}
@@ -327,12 +327,12 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
         {etape === 'capture' && (
           <div style={{ padding: 18, overflowY: 'auto' }}>
             <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text2)', marginBottom: 4, textTransform: 'uppercase' }}>Fournisseur</label>
+              <label style={{ display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 4 }}>Fournisseur</label>
               <select style={{ ...inp, width: '100%', maxWidth: 320 }} value={fournisseurId} onChange={e => setFournisseurId(e.target.value)}>
                 <option value="">Le deviner depuis la facture</option>
                 {(fournisseurs || []).map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
               </select>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 4 }}>
                 Le fournisseur porte les prix et les libellés mémorisés. Il sera confirmé avant d'écrire.
               </div>
             </div>
@@ -353,13 +353,13 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
               <button
                 onClick={() => fileRef.current?.click()}
-                style={{ ...inp, cursor: 'pointer', background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)', fontWeight: 700, padding: '10px 16px', minHeight: 44 }}
+                style={{ ...inp, cursor: 'pointer', background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)', fontWeight: 'var(--g3)', padding: '10px 16px', minHeight: 44 }}
               >Choisir un PDF ou une image</button>
               <button
                 onClick={() => cameraRef.current?.click()}
                 style={{ ...inp, cursor: 'pointer', background: 'var(--surface)', padding: '10px 16px', minHeight: 44 }}
               >Photographier</button>
-              <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+              <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
                 {fichiers.length}/5. Un PDF multi-pages compte pour un seul fichier.
               </span>
             </div>
@@ -369,15 +369,15 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                 {apercus.map((a, i) => (
                   <div key={a.nom + i} style={{ position: 'relative' }}>
                     {a.pdf ? (
-                      <div style={{ width: 110, height: 140, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8 }}>
-                        <span data-no-translate style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.2 }}>{a.nom}</span>
+                      <div style={{ width: 110, height: 140, borderRadius: 'var(--r)', border: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, padding: 8 }}>
+                        <span data-no-translate style={{ fontSize: 'var(--t1)', color: 'var(--text2)', textAlign: 'center', wordBreak: 'break-word', lineHeight: 1.2 }}>{a.nom}</span>
                       </div>
                     ) : (
-                      <img src={a.url} alt={a.nom} style={{ width: 110, height: 140, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)' }} />
+                      <img src={a.url} alt={a.nom} style={{ width: 110, height: 140, objectFit: 'cover', borderRadius: 'var(--r)', border: '1px solid var(--border)' }} />
                     )}
                     <button
                       onClick={() => retirerPhoto(i)} title="Retirer ce document" aria-label="Retirer ce document"
-                      style={{ position: 'absolute', top: -6, right: -6, width: 26, height: 26, borderRadius: 13, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', cursor: 'pointer', fontSize: 12 }}
+                      style={{ position: 'absolute', top: -6, right: -6, width: 26, height: 26, borderRadius: 13, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', cursor: 'pointer', fontSize: 'var(--t1)' }}
                     >×</button>
                   </div>
                 ))}
@@ -387,9 +387,9 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
         )}
 
         {etape === 'analyse' && (
-          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
+          <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)' }}>
             Lecture en cours : {fichiers.length} page(s)…
-            <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 8 }}>Rien n'est encore écrit au catalogue.</div>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 8 }}>Rien n'est encore écrit au catalogue.</div>
           </div>
         )}
 
@@ -402,7 +402,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                 const actif = pile === p.id;
                 return (
                   <button key={p.id} onClick={() => setPile(p.id)}
-                    style={{ padding: '7px 12px', fontSize: 12, fontWeight: actif ? 700 : 500, whiteSpace: 'nowrap', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', color: actif ? 'var(--accent)' : 'var(--text2)', borderBottom: `2px solid ${actif ? 'var(--accent)' : 'transparent'}` }}
+                    style={{ padding: '7px 12px', fontSize: 'var(--t1)', fontWeight: actif ? 700 : 500, whiteSpace: 'nowrap', background: 'transparent', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', color: actif ? 'var(--text)' : 'var(--text2)', borderBottom: `2px solid ${actif ? 'var(--onglet)' : 'transparent'}` }}
                   >{p.label} ({n})</button>
                 );
               })}
@@ -411,7 +411,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             {/* Recoupement le moins cher qui existe, et le seul qui détecte une
                 ligne entière oubliée par la lecture. */}
             {entete?.ecartTotal != null && Math.abs(entete.ecartTotal) > 0.05 && (
-              <div style={{ margin: '8px 18px 0', ...encadreStyle('alerte'), fontSize: 11 }}>
+              <div style={{ margin: '8px 18px 0', ...encadreStyle('alerte'), fontSize: 'var(--t1)' }}>
                 La somme des lignes lues fait {fmt(entete.sommeLignes, 2)}, le document annonce
                 {' '}{fmt(entete.totalHT, 2)}, soit un écart de {fmt(Math.abs(entete.ecartTotal), 2)}.
                 Une ligne est probablement mal lue ou manquante.
@@ -419,7 +419,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             )}
 
             <div style={{ padding: '8px 18px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span style={{ fontSize: 11, color: 'var(--text3)', flex: '1 1 200px', minWidth: 0 }}>{PILES.find(p => p.id === pile)?.hint}</span>
+              <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', flex: '1 1 200px', minWidth: 0 }}>{PILES.find(p => p.id === pile)?.hint}</span>
               <select style={inp} value={fournisseurId} onChange={e => setFournisseurId(e.target.value)}>
                 <option value="">Fournisseur à choisir</option>
                 {(fournisseurs || []).map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
@@ -432,7 +432,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
 
             <div style={{ padding: 12, overflowY: 'auto', flex: 1 }}>
               {(parPile[pile] || []).length === 0 && (
-                <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text2)', fontSize: 13 }}>Rien dans cette pile.</div>
+                <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text2)', fontSize: 'var(--t2)' }}>Rien dans cette pile.</div>
               )}
               {(parPile[pile] || []).map(l => {
                 const impact = calculerImpact(l, l.produit);
@@ -441,7 +441,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                   <div key={l.id} style={{
                     border: '1px solid transparent',
                     background: l.applique ? 'var(--success-bg)' : 'var(--bg)',
-                    borderRadius: 8, padding: '9px 12px', marginBottom: 7,
+                    borderRadius: 'var(--r)', padding: '9px 12px', marginBottom: 7,
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                       {l.statut !== 'ignoree' && (
@@ -453,8 +453,8 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                       )}
                       <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                         {/* Libellé brut de facture : donnée, pas interface. */}
-                        <div data-no-translate style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', wordBreak: 'break-word' }}>{l.libelle}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
+                        <div data-no-translate style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', wordBreak: 'break-word' }}>{l.libelle}</div>
+                        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 1 }}>
                           {l.referenceFourn ? `réf. ${l.referenceFourn}, ` : ''}
                           {l.quantite != null ? `${l.quantite} × ` : ''}
                           {l.conditionnement || 'conditionnement non lu'}
@@ -465,13 +465,13 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                         </div>
                       </div>
                       {impact && (
-                        <div style={{ fontSize: 11, color: 'var(--text2)', textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', textAlign: 'right', flexShrink: 0 }}>
                           <div>
                             {fmt(impact.actuel)} puis <strong style={{ color: 'var(--text)' }}>{fmt(impact.nouveau)}</strong>
                             <span style={{ color: 'var(--text3)' }}> /{l.produit.uniteRef}</span>
                           </div>
                           {impact.ecartPct != null && (
-                            <span style={{ fontWeight: 700, color: impact.alerte ? 'var(--danger-text)' : 'var(--text3)' }}>
+                            <span style={{ fontWeight: 'var(--g3)', color: impact.alerte ? 'var(--danger-text)' : 'var(--text3)' }}>
                               {impact.ecartPct > 0 ? '+' : ''}{impact.ecartPct.toFixed(1)} %
                             </span>
                           )}
@@ -480,24 +480,24 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                     </div>
 
                     {impact?.alerte && (
-                      <div style={{ marginTop: 7, ...encadreStyle('alerte'), fontSize: 11 }}>
+                      <div style={{ marginTop: 7, ...encadreStyle('alerte'), fontSize: 'var(--t1)' }}>
                         Écart de plus de {SEUIL_ECART_PCT} % avec le prix actuel. Vraie variation, ou chiffre mal lu ? Vérifiez sur la facture avant d'appliquer.
                       </div>
                     )}
                     {impact?.verrouille && (
-                      <div style={{ marginTop: 7, fontSize: 11, color: 'var(--text3)' }}>
+                      <div style={{ marginTop: 7, fontSize: 'var(--t1)', color: 'var(--text3)' }}>
                         Produit verrouillé : son prix ne sera pas modifié.
                       </div>
                     )}
                     {impact?.uniteDivergente && (
-                      <div style={{ marginTop: 7, ...encadreStyle('alerte'), fontSize: 11 }}>
+                      <div style={{ marginTop: 7, ...encadreStyle('alerte'), fontSize: 'var(--t1)' }}>
                         Le document compte en {impact.uniteDivergente.document}, le produit
                         en {impact.uniteDivergente.produit}. Comparer les deux donnerait un prix
                         faux : corrigez l'unité de référence du produit, ou choisissez-en un autre.
                       </div>
                     )}
                     {l.applique && l.produit && doublons.ids.has(l.produit.id) && (
-                      <div style={{ marginTop: 7, ...encadreStyle('erreur'), fontSize: 11 }}>
+                      <div style={{ marginTop: 7, ...encadreStyle('erreur'), fontSize: 'var(--t1)' }}>
                         Une autre ligne cochée vise déjà « {l.produit.nom} ». Un fournisseur n'a qu'un prix
                         par produit : décochez celle qui ne doit pas faire foi.
                       </div>
@@ -505,7 +505,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                     {(l.issues || []).length > 0 && (
                       <div style={{ marginTop: 6, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
                         {l.issues.map(x => (
-                          <span key={x} style={{ fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10, background: 'var(--warning-bg)', color: 'var(--warning-text)' }}>{x}</span>
+                          <span key={x} style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '1px 6px', borderRadius: 'var(--r)', background: 'var(--warning-bg)', color: 'var(--warning-text)' }}>{x}</span>
                         ))}
                       </div>
                     )}
@@ -513,14 +513,14 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
                     {l.statut !== 'ignoree' && (
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 8, flexWrap: 'wrap' }}>
                         {l.produit && (
-                          <span style={{ fontSize: 11, color: 'var(--text2)' }}>
+                          <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                             Produit : <strong style={{ color: 'var(--text)' }}>{l.produit.nom}</strong>
                             {l.statut === 'alias' && <span style={{ color: 'var(--success-text)', marginLeft: 6 }}>libellé déjà connu</span>}
                           </span>
                         )}
                         {(l.suggestions || []).map(s => (
                           <button key={s.product?.id} onClick={() => choisirProduit(l.id, s.product)}
-                            style={{ padding: '5px 10px', borderRadius: 7, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)' }}>
+                            style={{ padding: '5px 10px', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--text)' }}>
                             {s.product?.nom} <span style={{ color: 'var(--text3)' }}>{s.confidence}%</span>
                           </button>
                         ))}
@@ -539,9 +539,9 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
             </div>
 
             <div style={{ padding: '10px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ fontSize: 12, color: 'var(--text2)', flex: '1 1 200px', minWidth: 0 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', flex: '1 1 200px', minWidth: 0 }}>
                 {doublons.noms.length > 0 ? (
-                  <span style={{ color: 'var(--danger-text)', fontWeight: 500 }}>
+                  <span style={{ color: 'var(--danger-text)', fontWeight: 'var(--g2)' }}>
                     Plusieurs lignes visent {doublons.noms.map(n => `« ${n} »`).join(', ')}. Décochez les doublons.
                   </span>
                 ) : nbApplique === 0 ? 'Aucune ligne sélectionnée.' : (
@@ -550,7 +550,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
               </div>
               <button onClick={onClose} disabled={!!progress} style={{ ...inp, cursor: 'pointer', background: 'var(--surface)', minHeight: 44 }}>Annuler</button>
               <button onClick={valider} disabled={!nbApplique || !!progress || doublons.noms.length > 0}
-                style={{ ...inp, cursor: nbApplique && !doublons.noms.length ? 'pointer' : 'not-allowed', background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)', fontWeight: 700, opacity: nbApplique && !doublons.noms.length ? 1 : 0.5, minHeight: 44 }}>
+                style={{ ...inp, cursor: nbApplique && !doublons.noms.length ? 'pointer' : 'not-allowed', background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)', fontWeight: 'var(--g3)', opacity: nbApplique && !doublons.noms.length ? 1 : 0.5, minHeight: 44 }}>
                 Appliquer {nbApplique || ''}
               </button>
             </div>
@@ -561,7 +561,7 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
           <div style={{ padding: '10px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
             <button onClick={onClose} style={{ ...inp, cursor: 'pointer', background: 'var(--surface)', minHeight: 44 }}>Annuler</button>
             <button onClick={analyser} disabled={!fichiers.length}
-              style={{ ...inp, cursor: fichiers.length ? 'pointer' : 'not-allowed', background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)', fontWeight: 700, opacity: fichiers.length ? 1 : 0.5, minHeight: 44 }}>
+              style={{ ...inp, cursor: fichiers.length ? 'pointer' : 'not-allowed', background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)', fontWeight: 'var(--g3)', opacity: fichiers.length ? 1 : 0.5, minHeight: 44 }}>
               Analyser {fichiers.length || ''}
             </button>
           </div>
@@ -571,8 +571,8 @@ export default function ScanFacture({ etabId, fournisseurs, catalogue, legacySB,
       {progress && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 9100, background: 'rgba(20,16,12,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', width: 'min(420px,94vw)', padding: 20 }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>Mise à jour des prix</div>
-            <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+            <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)', marginBottom: 4 }}>Mise à jour des prix</div>
+            <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>
               {progress.done}/{progress.total} produit(s){progress.echecs ? `, ${progress.echecs} échec(s)` : ''}
             </div>
             <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden', border: '1px solid var(--border)', margin: '12px 0' }}>

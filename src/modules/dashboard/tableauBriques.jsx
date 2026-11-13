@@ -62,7 +62,7 @@ export function SousSection({ titre, icone: Icone, compte, sousTitre, action, ni
       <div className={bandeau ? 'tdb-sous-tete' : undefined} style={b.sousTete}>
         <div style={{ flex: '1 1 auto', minWidth: 0 }}>
           <Titre style={bandeau ? b.sousTitreTexte : { ...b.sousTitreTexte, ...b.sousTitreFort }}>
-            {Icone && <Icone size={16} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--accent)', alignSelf: 'center', flexShrink: 0 }} />}
+            {Icone && <Icone size={16} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--lien)', alignSelf: 'center', flexShrink: 0 }} />}
             <span>{titre}</span>
             {compte != null && <span style={b.compte} data-no-translate>{compte}</span>}
           </Titre>
@@ -122,7 +122,7 @@ export function Repere({ repere, icone: Icone, onClick }) {
   const { id, valeur, libelle, detail, vide, echec, texte } = repere;
   const contenu = (
     <>
-      {Icone && <Icone className="tdb-repere-icone" size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--accent)' }} />}
+      {Icone && <Icone className="tdb-repere-icone" size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--lien)' }} />}
       {vide || echec ? (
         <span style={b.repereTexte}>{texte}</span>
       ) : (
@@ -145,7 +145,7 @@ export function Repere({ repere, icone: Icone, onClick }) {
 // Ligne d'action (« À faire maintenant ») : pictogramme du module, titre,
 // détail, et à droite ce qui presse. Bouton vers le module quand c'est permis.
 // titreBrut : le titre porte un nom de personne ou de groupe, jamais traduit.
-export function LigneAction({ icone: Icone, couleur = 'var(--accent)', titre, titreBrut, detail, droite, onClick }) {
+export function LigneAction({ icone: Icone, couleur = 'var(--lien)', titre, titreBrut, detail, droite, onClick }) {
   const contenu = (
     <>
       {Icone && <Icone size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: couleur, flexShrink: 0, marginTop: 1 }} />}
@@ -274,17 +274,17 @@ export const b = {
   section: { minWidth: 0, display: 'flex', flexDirection: 'column' },
   tete: { marginBottom: 8, minWidth: 0 },
   teteLigne: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0 16px', flexWrap: 'wrap', minWidth: 0 },
-  titre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, lineHeight: 1.2, color: 'var(--text)', flex: '1 1 auto', minWidth: 0 },
-  sousTitre: { margin: '2px 0 0', fontSize: 15, lineHeight: 1.45, color: 'var(--text2)', flex: '1 1 auto', minWidth: 0 },
+  titre: { margin: 0, fontFamily: 'var(--font)', fontWeight: 'var(--g3)', lineHeight: 1.2, color: 'var(--text)', flex: '1 1 auto', minWidth: 0 },
+  sousTitre: { margin: '2px 0 0', fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text2)', flex: '1 1 auto', minWidth: 0 },
   sousTete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0 12px', flexWrap: 'wrap', minWidth: 0, minHeight: 28 },
-  sousTitreTexte: { margin: 0, display: 'flex', alignItems: 'baseline', gap: 8, fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, lineHeight: 1.3, color: 'var(--text)' },
-  sousTitreFort: { fontFamily: 'var(--font-serif)', fontSize: 18, fontWeight: 400, marginBottom: 6 },
-  sousDetail: { margin: '2px 0 0', fontSize: 13, lineHeight: 1.4, color: 'var(--text2)' },
-  compte: { fontFamily: 'var(--font-num)', fontWeight: 400, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' },
+  sousTitreTexte: { margin: 0, display: 'flex', alignItems: 'baseline', gap: 8, fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.3, color: 'var(--text)' },
+  sousTitreFort: { fontFamily: 'var(--font)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', marginBottom: 6 },
+  sousDetail: { margin: '2px 0 0', fontSize: 'var(--t2)', lineHeight: 1.4, color: 'var(--text2)' },
+  compte: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' },
   lien: {
     display: 'inline-flex', alignItems: 'center', gap: 2, minHeight: 44, padding: '0 4px 0 6px', flexShrink: 0,
     borderRadius: 'var(--r-sm)', cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--accent)', whiteSpace: 'nowrap',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--lien)', whiteSpace: 'nowrap',
   },
   // Fond et bordure des boutons .tdb-lien : tableau.css (.tdb button.tdb-lien),
   // pour que le survol de la classe s'applique (un fond inline l'emporterait).
@@ -296,14 +296,14 @@ export const b = {
     padding: '4px 8px 4px 0', borderRadius: 'var(--r-sm)',
   },
   repereValeur: { fontFamily: 'var(--font-num)', lineHeight: 1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 2 },
-  repereLibelle: { fontSize: 14, fontWeight: 600, lineHeight: 1.3, color: 'var(--text)', overflowWrap: 'anywhere' },
-  repereDetail: { fontSize: 13, lineHeight: 1.4, color: 'var(--text2)', overflowWrap: 'anywhere' },
-  repereTexte: { fontSize: 15, fontWeight: 500, lineHeight: 1.35, color: 'var(--text2)', overflowWrap: 'anywhere', marginTop: 4 },
+  repereLibelle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.3, color: 'var(--text)', overflowWrap: 'anywhere' },
+  repereDetail: { fontSize: 'var(--t2)', lineHeight: 1.4, color: 'var(--text2)', overflowWrap: 'anywhere' },
+  repereTexte: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.35, color: 'var(--text2)', overflowWrap: 'anywhere', marginTop: 4 },
   ligne: {
     display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, minHeight: 56, boxSizing: 'border-box', padding: '8px 2px',
   },
-  ligneTitre: { display: 'block', fontSize: 15, fontWeight: 600, lineHeight: 1.35, color: 'var(--text)', overflowWrap: 'anywhere' },
-  ligneDetail: { display: 'block', fontSize: 13, lineHeight: 1.45, color: 'var(--text2)', marginTop: 1, overflowWrap: 'anywhere' },
+  ligneTitre: { display: 'block', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.35, color: 'var(--text)', overflowWrap: 'anywhere' },
+  ligneDetail: { display: 'block', fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text2)', marginTop: 1, overflowWrap: 'anywhere' },
   personne: { display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, minHeight: 44, boxSizing: 'border-box', padding: '4px 0' },
   personneTete: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, minWidth: 0 },
   personneCompacte: {
@@ -311,20 +311,20 @@ export const b = {
     minWidth: 0, minHeight: 36, boxSizing: 'border-box', padding: '7px 0',
   },
   compacteDroite: { display: 'inline-flex', alignItems: 'baseline', gap: 10, flexShrink: 0 },
-  nom: { display: 'block', flex: '0 1 auto', minWidth: 0, fontSize: 15, fontWeight: 500, lineHeight: 1.35, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  nom: { display: 'block', flex: '0 1 auto', minWidth: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.35, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   nomEtTel: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minWidth: 0 },
-  nomCompact: { fontSize: 15, fontWeight: 500, lineHeight: 1.35, color: 'var(--text)', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  detail: { display: 'block', fontSize: 13, lineHeight: 1.35, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' },
-  detailCompact: { fontSize: 13, lineHeight: 1.4, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
-  tel: { display: 'inline-flex', alignItems: 'center', minHeight: 28, fontSize: 13 },
-  etat: { display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600, lineHeight: 1.3 },
+  nomCompact: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.35, color: 'var(--text)', minWidth: 0, maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  detail: { display: 'block', fontSize: 'var(--t2)', lineHeight: 1.35, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums' },
+  detailCompact: { fontSize: 'var(--t2)', lineHeight: 1.4, color: 'var(--text2)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' },
+  tel: { display: 'inline-flex', alignItems: 'center', minHeight: 28, fontSize: 'var(--t2)' },
+  etat: { display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, whiteSpace: 'nowrap', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.3 },
   chiffre: {
     display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, minWidth: 0, boxSizing: 'border-box',
     padding: '14px 8px 10px 0', borderRadius: 0,
   },
-  chiffreLabel: { fontSize: 14, fontWeight: 600, lineHeight: 1.3, color: 'var(--text2)' },
+  chiffreLabel: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.3, color: 'var(--text2)' },
   chiffreValeur: { fontFamily: 'var(--font-num)', lineHeight: 1.05, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' },
-  chiffreTexte: { fontSize: 17, fontWeight: 500, lineHeight: 1.35, color: 'var(--text2)' },
-  chiffreDetail: { fontSize: 13, lineHeight: 1.45 },
-  vide: { margin: 0, padding: '8px 0', fontSize: 15, lineHeight: 1.5, color: 'var(--text2)' },
+  chiffreTexte: { fontSize: 'var(--t3)', fontWeight: 'var(--g2)', lineHeight: 1.35, color: 'var(--text2)' },
+  chiffreDetail: { fontSize: 'var(--t2)', lineHeight: 1.45 },
+  vide: { margin: 0, padding: '8px 0', fontSize: 'var(--t2)', lineHeight: 1.5, color: 'var(--text2)' },
 };

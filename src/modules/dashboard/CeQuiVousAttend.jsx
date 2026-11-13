@@ -102,7 +102,7 @@ function Colonne({ titre, date, sousTitre, semaine = false, actuel = false, chil
   return (
     <div className={classes} style={{ minWidth: 0 }}>
       <div className="tdb-tete">
-        <h3 style={{ ...s.colTitre, color: actuel ? 'var(--accent)' : s.colTitre.color }}>{titre}</h3>
+        <h3 style={{ ...s.colTitre, color: actuel ? 'var(--onglet)' : s.colTitre.color }}>{titre}</h3>
         <p style={s.colDate}>{date ? <Mots texte={dateLongue(date)} /> : sousTitre}</p>
       </div>
       {children}
@@ -193,14 +193,14 @@ function LigneGroupe({ g, onClick, quand }) {
     <span style={{ flex: '1 1 auto', minWidth: 0 }}>
       <span style={s.groupeTete}>
         <span style={{ ...b.ligneTitre, minWidth: 0 }}>
-          {quand ? <><span style={{ color: 'var(--text2)', fontWeight: 500 }}>{quand.charAt(0).toUpperCase() + quand.slice(1)}</span>{' : '}</> : null}
+          {quand ? <><span style={{ color: 'var(--text2)', fontWeight: 'var(--g2)' }}>{quand.charAt(0).toUpperCase() + quand.slice(1)}</span>{' : '}</> : null}
           <span data-no-translate>{g.nom}</span>
         </span>
         <StatutGroupe statut={g.statut} />
       </span>
       <span style={b.ligneDetail}>
         <PhraseGroupe g={g} />
-        {allergies ? <>, <span style={{ color: 'var(--warning-text)', fontWeight: 600 }}><span data-no-translate>{allergies}</span>{' '}<span>{allergies > 1 ? 'allergies' : 'allergie'}</span></span></> : null}
+        {allergies ? <>, <span style={{ color: 'var(--warning-text)', fontWeight: 'var(--g3)' }}><span data-no-translate>{allergies}</span>{' '}<span>{allergies > 1 ? 'allergies' : 'allergie'}</span></span></> : null}
       </span>
     </span>
   );
@@ -235,12 +235,12 @@ function EquipeDemain({ date, shifts, absences, telephones = {}, echec, lien }) 
       ))}
       {absents.length > 0 && (
         <p style={s.absencesDemain}>
-          <span style={{ fontWeight: 600, color: 'var(--text)' }}>Absences :</span>{' '}
+          <span style={{ fontWeight: 'var(--g3)', color: 'var(--text)' }}>Absences :</span>{' '}
           {absents.map((a, i) => (
             <React.Fragment key={a.id}>
               {i ? ', ' : ''}
               <span data-no-translate>{userDisplay(a.userId).name}</span>{' '}
-              <span style={{ color: metaMotif(a.motif).id === 'vacances' ? 'var(--text2)' : metaMotif(a.motif).texte, fontWeight: 600 }}>({metaMotif(a.motif).label})</span>
+              <span style={{ color: metaMotif(a.motif).id === 'vacances' ? 'var(--text2)' : metaMotif(a.motif).texte, fontWeight: 'var(--g3)' }}>({metaMotif(a.motif).label})</span>
             </React.Fragment>
           ))}
         </p>
@@ -306,7 +306,7 @@ function Semaine({
           <div key={d} style={s.barreCol}>
             <span style={{ ...s.barreValeur, color: totaux[i] ? 'var(--text)' : 'var(--text2)' }} data-no-translate>{totaux[i] || ''}</span>
             <span style={{ ...s.barre, height: `${Math.max(4, (totaux[i] / max) * 64)}px`, background: i === 0 ? 'var(--accent)' : 'var(--accent-bd)', opacity: totaux[i] ? 1 : 0.35 }} />
-            <span style={{ ...s.barreJour, color: i === 0 ? 'var(--accent)' : 'var(--text2)', fontWeight: i === 0 ? 700 : 500 }}>{abreges[i]}</span>
+            <span style={{ ...s.barreJour, color: i === 0 ? 'var(--onglet)' : 'var(--text2)', fontWeight: i === 0 ? 'var(--g3)' : 'var(--g2)' }}>{abreges[i]}</span>
           </div>
         ))}
       </div>
@@ -363,15 +363,15 @@ const s = {
   panneau: { display: 'flex', flexDirection: 'column', gap: 18, marginTop: 12, minWidth: 0 },
   pile: { display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 },
   groupeTete: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, minWidth: 0 },
-  absencesDemain: { margin: '8px 0 0', fontSize: 14, lineHeight: 1.5, color: 'var(--text2)' },
-  colTitre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 18, lineHeight: 1.25, color: 'var(--text)' },
-  colDate: { margin: '2px 0 0', fontSize: 13, lineHeight: 1.4, color: 'var(--text2)' },
+  absencesDemain: { margin: '8px 0 0', fontSize: 'var(--t2)', lineHeight: 1.5, color: 'var(--text2)' },
+  colTitre: { margin: 0, fontFamily: 'var(--font)', fontWeight: 'var(--g3)', fontSize: 'var(--t3)', lineHeight: 1.25, color: 'var(--text)' },
+  colDate: { margin: '2px 0 0', fontSize: 'var(--t2)', lineHeight: 1.4, color: 'var(--text2)' },
   services: { display: 'flex', flexWrap: 'wrap', gap: '8px 28px' },
   service: { display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 },
-  serviceValeur: { fontFamily: 'var(--font-num)', fontSize: 28, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' },
-  serviceMot: { fontSize: 15, color: 'var(--text2)' },
-  total: { margin: '6px 0 0', fontSize: 13, lineHeight: 1.4, color: 'var(--text2)' },
-  auTotal: { fontSize: 13, color: 'var(--text2)', whiteSpace: 'nowrap' },
+  serviceValeur: { fontFamily: 'var(--font-num)', fontSize: 'var(--t6)', lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' },
+  serviceMot: { fontSize: 'var(--t2)', color: 'var(--text2)' },
+  total: { margin: '6px 0 0', fontSize: 'var(--t2)', lineHeight: 1.4, color: 'var(--text2)' },
+  auTotal: { fontSize: 'var(--t2)', color: 'var(--text2)', whiteSpace: 'nowrap' },
   // Fond et bordure du bouton : tableau.css (.tdb button.tdb-lien), pour que
   // son survol s'applique.
   graphiqueBouton: {
@@ -385,8 +385,8 @@ const s = {
   },
   barres: { display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 6, alignItems: 'end', padding: '6px 2px 2px' },
   barreCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0 },
-  barreValeur: { fontSize: 13, fontWeight: 500, lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', minHeight: 16 },
+  barreValeur: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.2, fontVariantNumeric: 'tabular-nums', minHeight: 16 },
   // Bout arrondi côté valeur, pied carré posé sur la ligne de base.
   barre: { width: '100%', maxWidth: 28, borderRadius: '4px 4px 0 0' },
-  barreJour: { fontSize: 13, lineHeight: 1.2, whiteSpace: 'nowrap' },
+  barreJour: { fontSize: 'var(--t2)', lineHeight: 1.2, whiteSpace: 'nowrap' },
 };
