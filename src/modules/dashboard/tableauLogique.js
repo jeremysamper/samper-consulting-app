@@ -281,6 +281,41 @@ export function reperesDuJour({
   return reperes;
 }
 
+// ── Relevés HACCP du jour ─────────────────────────────────────────────────
+// Zones et tournées actives (tournées dans l'ordre de l'heure), et pour
+// chaque tournée les zones relevées aujourd'hui : un relevé compte pour la
+// tournée la plus proche de son heure.
+export function relevesParCreneau(haccp, aujourdhui) {
+  const zones = ((haccp && haccp.zones) || []).filter((z) => z.actif);
+  const creneaux = ((haccp && haccp.creneaux) || []).filter((c) => c.actif)
+    .sort((a, b) => (enMinutes(a.heure) ?? 0) - (enMinutes(b.heure) ?? 0));
+  const parCreneau = new Map(creneaux.map((c) => [c.id, new Set()]));
+  if (zones.length && creneaux.length) {
+    const zonesIds = new Set(zones.map((z) => z.id));
+    const plusProche = (heure) => {
+      const cible = enMinutes(heure);
+      let best = null; let dist = Infinity;
+      creneaux.forEach((c) => { const d = Math.abs((enMinutes(c.heure) ?? 0) - cible); if (d < dist) { best = c; dist = d; } });
+      return best;
+    };
+    (haccp.releves || []).forEach((r) => {
+      if (r.date !== aujourdhui || !zonesIds.has(r.zoneId)) return;
+      const c = plusProche(r.heure);
+      if (c) parCreneau.get(c.id).add(r.zoneId);
+    });
+  }
+  return { zones, creneaux, parCreneau };
+}
+
+// Widget « Relevés HACCP » : relevés faits sur relevés attendus du jour (une
+// zone par tournée), et l'heure de la prochaine tournée.
+export function relevesDuJour(haccp, aujourdhui, maintenant) {
+  const { zones, creneaux, parCreneau } = relevesParCreneau(haccp, aujourdhui);
+  const faits = creneaux.reduce((t, c) => t + Math.min(parCreneau.get(c.id).size, zones.length), 0);
+  const prochain = creneaux.find((c) => (enMinutes(c.heure) ?? -1) > maintenant);
+  return { faits, attendus: zones.length * creneaux.length, prochain: prochain ? prochain.heure : null };
+}
+
 // ── À faire ───────────────────────────────────────────────────────────────
 // Liste triée du plus urgent au moins urgent. ton : danger | warning | info.
 export function aFaire({
@@ -291,24 +326,12 @@ export function aFaire({
 
   // Relevés HACCP : tournées passées de plus de 30 min et incomplètes.
   if (avecHaccp && haccp) {
-    const zones = (haccp.zones || []).filter((z) => z.actif);
-    const creneaux = (haccp.creneaux || []).filter((c) => c.actif)
-      .sort((a, b) => (enMinutes(a.heure) ?? 0) - (enMinutes(b.heure) ?? 0));
+    const { zones, creneaux, parCreneau } = relevesParCreneau(haccp, aujourdhui);
     if (zones.length && creneaux.length) {
-      const zonesIds = new Set(zones.map((z) => z.id));
-      const plusProche = (heure) => {
-        const cible = enMinutes(heure);
-        let best = null; let dist = Infinity;
-        creneaux.forEach((c) => { const d = Math.abs((enMinutes(c.heure) ?? 0) - cible); if (d < dist) { best = c; dist = d; } });
-        return best;
-      };
       creneaux.forEach((c) => {
         const h = enMinutes(c.heure);
         if (h == null || maintenant - h < RETARD_RELEVE_MIN) return;
-        const faites = new Set();
-        (haccp.releves || []).forEach((r) => {
-          if (r.date === aujourdhui && zonesIds.has(r.zoneId) && plusProche(r.heure)?.id === c.id) faites.add(r.zoneId);
-        });
+        const faites = parCreneau.get(c.id);
         if (faites.size >= zones.length) return;
         items.push({
           id: `haccp-${c.id}`,
@@ -425,6 +448,26 @@ export function chiffresGestion({ pertes, shifts, couverts, aujourdhui }) {
   const couvertsSemaine = (couverts || []).reduce((t, c) =>
     t + (Number(c.couverts_midi) || 0) + (Number(c.couverts_soir) || 0) + (Number(c.couverts_brunch) || 0), 0);
   return { valeurPertes, aValider, heures: Math.round(minutes / 6) / 10, couvertsSemaine };
+}
+
+// Widget « Pertes du mois, par semaine » (direction) : pertes déclarées du
+// mois jusqu'à aujourd'hui, par tranche de sept jours (1-7, 8-14...), la
+// tranche du jour comprise ; et celles qui restent à valider.
+export function pertesParSemaine(pertes, aujourdhui) {
+  const debutMois = `${aujourdhui.slice(0, 7)}-01`;
+  const n = Math.floor((Number(aujourdhui.slice(8, 10)) - 1) / 7) + 1;
+  const nombres = Array(n).fill(0);
+  (pertes || []).forEach((p) => {
+    const jour = String(p.date || '').slice(0, 10);
+    if (jour < debutMois || jour > aujourdhui) return;
+    const i = Math.floor((Number(jour.slice(8, 10)) - 1) / 7);
+    if (i >= 0 && i < n) nombres[i] += 1;
+  });
+  return {
+    nombres,
+    total: nombres.reduce((a, x) => a + x, 0),
+    aValider: (pertes || []).filter((p) => !p.valide).length,
+  };
 }
 
 // Absences qui touchent un jour, et celles qui commencent dans les 7 jours.

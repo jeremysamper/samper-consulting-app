@@ -17,9 +17,9 @@
 }
 
 /* ── En-tête du jour (direction Galet) ───────────────────────────────────────
-   Le bonjour et l'état du service sont posés sur la page, en grand ; les
-   repères du jour (couverts, groupes, équipe) sont une rangée de petites
-   cartes blanches : picto dans un cercle, chiffre en grand, libellé. */
+   La date, le bonjour et l'état du service sont posés sur la page, en grand ;
+   « Personnaliser » à droite de la date. Les repères du jour sont des widgets
+   de la grille. */
 .tdb-hero {
   display: grid;
   gap: 16px;
@@ -27,43 +27,67 @@
   padding: 0;
 }
 .tdb-hero-salut { font-size: var(--t6); }
-.tdb-reperes {
+/* La carte de repère est une primitive (CarteRepere) : ici, son retrait. */
+.tdb .tdb-repere-carte { padding: 14px 16px; }
+
+/* ── Grille des widgets (lot W) ──────────────────────────────────────────────
+   Comme l'écran d'accueil d'un téléphone : des cellules rangées dans l'ordre
+   de la disposition, en comblant les trous (dense). Deux colonnes au
+   téléphone et quand le conteneur est étroit, quatre dès 760 px. Tailles :
+   petit 1 sur 1, moyen 2 sur 1, grand 2 sur 2, pleine largeur à la hauteur de
+   son contenu. La rangée a une hauteur minimale ; un contenu plus haut la fait
+   grandir : jamais de barre de défilement dans un widget, jamais de texte
+   coupé. La grille est un enfant du conteneur de requêtes (.tdb). */
+.tdb-grille {
+  --tdb-rang: 148px;
+  --tdb-ecart: 16px;
   display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: stretch;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(var(--tdb-rang), auto);
+  grid-auto-flow: row dense;
+  gap: var(--tdb-ecart);
+  min-width: 0;
 }
-/* La carte de repère est une primitive (CarteRepere) : ici, seuls son retrait
-   et son picto suivent la largeur du tableau de bord. */
-.tdb .tdb-repere-carte { padding: 12px 10px; }
-/* !important : le cercle pose son display en style inline. */
-.tdb .ui-repere-icone { display: none !important; }
+.tdb-widget {
+  container: widget / inline-size;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  grid-column: span 1;
+}
+.tdb-widget--moyen { grid-column: span 2; }
+.tdb-widget--grand { grid-column: span 2; grid-row: span 2; }
+.tdb-widget--pleine { grid-column: 1 / -1; }
+.tdb-widget-contenu {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.tdb-widget-contenu > * { flex: 1 1 auto; min-width: 0; box-sizing: border-box; }
+/* Une brique qui ne rend rien (table absente de l'établissement) ne laisse
+   pas de case vide. */
+.tdb-widget:not(:has(.tdb-widget-contenu > *)) { display: none; }
+.tdb-widget--ouvrable { cursor: pointer; }
+
+@container tdb (min-width: 560px) {
+  .tdb-grille { --tdb-rang: 132px; --tdb-ecart: 24px; }
+}
+@container tdb (min-width: 760px) {
+  .tdb-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 
 /* ── Sections ─────────────────────────────────────────────────────────────── */
 .tdb-titre { font-size: var(--t4); }
 .tdb-citation { font-size: var(--t3); }
 .tdb-chiffre-valeur { font-size: var(--t6); }
-
-/* Rangée « maintenant » : votre service et à faire | qui travaille. */
-.tdb-haut {
-  display: grid;
-  gap: 24px;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-}
-.tdb-pile {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  min-width: 0;
-}
 .tdb-equipe-services {
   display: grid;
   gap: 10px 28px;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
 }
-/* Au-delà de huit lignes dans un même service : masquées jusqu'à « Voir
+/* Au-delà des lignes permises dans un même service : masquées jusqu'à « Voir
    N autres personnes » (!important : la ligne pose son display en style
    inline). Jamais un service coupé ailleurs : son compte reste vrai. */
 .tdb .tdb-hors-groupe { display: none !important; }
@@ -78,11 +102,6 @@
   gap: 28px;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-}
-.tdb-chiffres {
-  display: grid;
-  gap: 12px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 /* ── Panneaux : chaque section et chaque colonne sur son fond ────────────────
@@ -111,26 +130,21 @@
 /* ── Cartes de mise en avant (CartesModele.jsx) ──────────────────────────────
    Une carte sombre à tuiles (l'équipe du jour par état) et deux cartes pastel
    à graphique (les couverts de la semaine, les couverts du jour par service) :
-   au plus une sombre et deux pastel sur l'écran. Les cartes écrivent leurs
-   couleurs elles-mêmes (primitives CarteAvant, Anneau, Barres, Arc et
-   BoutonFleche de src/components/ui/) ; cette feuille ne règle que leur mise
-   en page par largeur. */
-.tdb-modele {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  min-width: 0;
-}
+   au plus une sombre et deux pastel dans la disposition d'origine. Les cartes
+   écrivent leurs couleurs elles-mêmes (primitives CarteAvant, Anneau, Barres,
+   Arc et BoutonFleche de src/components/ui/) ; cette feuille ne règle que
+   leur mise en page, par la largeur du widget. */
 .tdb-tuiles {
   display: grid;
   gap: 10px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.tdb-duo {
-  display: grid;
-  gap: 16px;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: stretch;
+/* La carte sombre prend la hauteur de sa cellule : ses tuiles s'étirent. */
+.tdb-widget [data-carte-avant="nuit"] > .tdb-tuiles { flex: 1 1 auto; grid-auto-rows: 1fr; }
+/* Les quatre tuiles sur une ligne seulement quand chacune garde son libellé
+   sur une ligne ; plus étroit, deux rangées. */
+@container widget (min-width: 600px) {
+  .tdb-tuiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 .tdb-jour.tdb-panneau > .tdb-tete { margin-bottom: 14px; }
 /* La colonne du jour : un liseré en haut, à l'encre de l'onglet actif
@@ -156,28 +170,157 @@
 .tdb button.tdb-lien { border: 0; background: transparent; }
 .tdb .tdb-filet { border-radius: 0; }
 .tdb .tdb-filet + .tdb-filet { border-top: 1px solid var(--rule-soft); }
-/* Chiffres de gestion : une rangée de petites cartes blanches, comme les
+/* Chiffres de gestion : chacun est une petite carte blanche, comme les
    repères du jour. */
-.tdb .tdb-chiffres > .tdb-chiffre {
+.tdb .tdb-chiffre {
   background: var(--zone);
   border-radius: var(--r-lg);
   box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
 }
 
+/* ── Raccourcis : des pictos de modules en cercle, avec leur nom ─────────── */
+.tdb-raccourcis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+  min-width: 0;
+}
+.tdb .tdb-raccourci {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 6px 2px;
+  border-radius: var(--r);
+  cursor: pointer;
+  font-family: var(--font);
+  color: var(--text);
+}
+.tdb-raccourci-cercle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--piste);
+  color: var(--icone);
+}
+.tdb-raccourci-nom {
+  font-size: var(--t1);
+  font-weight: var(--g2);
+  line-height: 1.3;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* ── Mode « Personnaliser » ──────────────────────────────────────────────────
+   La barre du mode sous l'en-tête ; sur chaque widget, une barre de réglage
+   (poignée, nom, retirer ; flèches et tailles en pilules) au-dessus de son
+   contenu, rendu inerte. Le contour en tirets dit le mode, la cible d'un
+   glisser prend un contour plein. */
+.tdb-mode-barre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+  min-width: 0;
+}
+.tdb-mode-aide {
+  flex: 1 1 280px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--t2);
+  line-height: 1.45;
+  color: var(--text2);
+}
+.tdb-mode-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tdb-mode-vide { grid-column: 1 / -1; margin: 0; font-size: var(--t2); color: var(--text2); }
+.tdb-widget--edition {
+  border-radius: var(--r-lg);
+  outline: 2px dashed var(--btn-bord);
+  outline-offset: 4px;
+}
+.tdb-widget--edition:has(.est-cible) { outline-style: solid; outline-color: var(--accent); }
+.tdb-widget--edition:has(.est-souleve) { opacity: 0.65; }
+.tdb-widget-barre {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px;
+  border-radius: var(--r-lg);
+  background: var(--zone);
+  box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
+}
+.tdb-widget-barre-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.tdb-widget-nom {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--t2);
+  font-weight: var(--g3);
+  line-height: 1.3;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.tdb .tdb-cercle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--piste);
+  color: var(--text);
+  cursor: pointer;
+}
+.tdb .tdb-cercle:disabled { cursor: default; color: var(--text3); }
+.tdb .tdb-poignee { cursor: grab; touch-action: none; }
+.tdb-tailles {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r-full);
+  background: var(--piste);
+}
+.tdb .tdb-taille {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: var(--t2);
+  font-weight: var(--g2);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tdb .tdb-taille.is-actif {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: var(--g3);
+}
+
 @container tdb (min-width: 560px) {
   .tdb-panneau { padding: 18px 20px 14px; }
   .tdb-hero { gap: 18px; }
-  .tdb-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tdb .ui-repere-icone { display: inline-flex !important; }
-  .tdb .tdb-repere-carte { padding: 14px 16px; }
-  .tdb-reperes { gap: 12px; }
   .tdb-citation { font-size: var(--t4); }
 }
 @container tdb (min-width: 760px) {
-  .tdb-haut { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px; }
-  /* La colonne des cartes est étroite à cette largeur : les deux pastel s'empilent. */
-  .tdb-duo { grid-template-columns: minmax(0, 1fr); }
-  .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
   .tdb-jours { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
   .tdb-jour-semaine { grid-column: 1 / -1; }
   /* La semaine sur toute la largeur : barres et absences à gauche, groupes
@@ -190,10 +333,11 @@
     align-items: start;
   }
   .tdb-jour-semaine .tdb-semaine > .tdb-semaine-groupes { grid-column: 2; grid-row: span 2; }
-  /* L'équipe en deux colonnes : Midi à gauche, Soir puis les absences à
-     droite ; huit lignes par colonne avant « Voir toute l'équipe ». Dès ce
-     palier : « Qui travaille aujourd'hui » y occupe toute la largeur, les
-     cartes de mise en avant ayant pris sa place à côté de la liste. */
+}
+/* L'équipe en deux colonnes : Midi à gauche, Soir puis les absences à droite,
+   dès que le widget est assez large (pleine largeur à l'ordinateur et à la
+   tablette en paysage). */
+@container widget (min-width: 760px) {
   .tdb-equipe-services--deux {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-flow: row dense;
@@ -208,39 +352,10 @@
     border-left: 1px solid var(--rule-soft);
   }
 }
-/* Entre 760 et 1079 px (tablette en paysage, ordinateur étroit), avec les
-   trois cartes : la carte sombre reste à côté de la liste et prend sa hauteur
-   (ses tuiles s'étirent), les deux pastel passent côte à côte dessous, sur
-   toute la largeur. Empilées dans la colonne étroite, elles dépassaient la
-   liste de plusieurs centaines de pixels et laissaient un vide sous elle.
-   L'ordre de lecture ne change pas. */
-@container tdb (min-width: 760px) and (max-width: 1079.98px) {
-  .tdb-haut--trois { row-gap: 16px; }
-  .tdb-haut--trois > .tdb-modele { display: contents; }
-  .tdb-haut--trois > .tdb-modele > [data-carte-avant="nuit"] { align-self: stretch; }
-  .tdb-haut--trois > .tdb-modele > [data-carte-avant="nuit"] > .tdb-tuiles { flex: 1 1 auto; grid-auto-rows: 1fr; }
-  .tdb-haut--trois > .tdb-modele > .tdb-duo { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @container tdb (min-width: 1080px) {
-  .tdb-hero {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-    align-items: center;
-    column-gap: 32px;
-  }
-  .tdb-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
-  .tdb-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
   .tdb-jours { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
   .tdb-jour-semaine { grid-column: auto; }
   .tdb-jour-semaine .tdb-semaine { display: flex; flex-direction: column; align-items: stretch; }
-  .tdb-chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-
-/* Les quatre tuiles de la carte sombre sur une ligne seulement quand chacune
-   garde son libellé sur une ligne (menu replié en rail à 1440 px) ; menu
-   déplié, elles restent en deux rangées. */
-@container tdb (min-width: 1240px) {
-  .tdb-tuiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* ── Onglets (téléphone) : des pilules, la choisie en aplat sombre ───────── */
@@ -282,7 +397,8 @@
    tap). Plus spécifique que le fond transparent de .tdb button.tdb-lien. */
 @media (hover: hover) and (pointer: fine) {
   .tdb button.tdb-lien:not(:disabled):hover { background: var(--selection); }
-  .tdb .tdb-hero button.tdb-lien:not(:disabled):hover { background: var(--selection); }
+  .tdb .tdb-cercle:not(:disabled):hover,
+  .tdb .tdb-taille:not(.is-actif):hover { background: var(--selection); }
 }
 .tdb-lien:focus-visible,
 .tdb button:focus-visible {

@@ -8,16 +8,18 @@ import { LigneAction, Section } from './tableauBriques.jsx';
 // urgent (relevés HACCP en retard, groupes à lire ou à préparer, retards de
 // pointage, pertes à valider, messages). Chaque ligne porte le pictogramme
 // de son module (le même que sur l'accueil tactile) et mène au module quand
-// le rôle y a accès. Titres et détails tels que aFaire() les écrit.
+// le rôle y a accès. Titres et détails tels que aFaire() les écrit. Le
+// nombre de lignes visibles suit la taille du widget (max) ; la suite reste
+// derrière « Voir N autres points ».
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MAX = 6;
 const COULEURS = { danger: 'var(--danger-text)', warning: 'var(--warning-text)', info: 'var(--lien)' };
 
-export default function AFaire({ items, peutOuvrir, ouvrir }) {
+export default function AFaire({ items, max = MAX, peutOuvrir, ouvrir }) {
   const [tout, setTout] = React.useState(false);
   const urgents = items.filter((i) => i.ton === 'danger').length;
-  const visibles = tout ? items : items.slice(0, MAX);
+  const visibles = tout ? items : items.slice(0, max);
 
   // « 5 points à traiter, dont 1 urgent » : nombres et mots dans leurs nœuds.
   const sousTitre = items.length ? (
@@ -56,11 +58,11 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
           />
         ))}
       </div>
-      {items.length > MAX && (
+      {items.length > max && (
         <button type="button" className="tdb-lien" onClick={() => setTout((v) => !v)} style={s.plus}>
           {tout ? <span>Réduire</span>
-            : items.length - MAX === 1 ? <span>Voir le dernier point</span>
-              : <><span>Voir</span>{' '}<span data-no-translate>{items.length - MAX}</span>{' '}<span>autres points</span></>}
+            : items.length - max === 1 ? <span>Voir le dernier point</span>
+              : <><span>Voir</span>{' '}<span data-no-translate>{items.length - max}</span>{' '}<span>autres points</span></>}
         </button>
       )}
     </Section>
