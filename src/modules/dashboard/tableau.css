@@ -191,6 +191,19 @@
   }
   .tdb-jour-semaine .tdb-semaine > .tdb-semaine-groupes { grid-column: 2; grid-row: span 2; }
 }
+/* Entre 760 et 1079 px (tablette en paysage, ordinateur étroit), avec les
+   trois cartes : la carte sombre reste à côté de la liste et prend sa hauteur
+   (ses tuiles s'étirent), les deux pastel passent côte à côte dessous, sur
+   toute la largeur. Empilées dans la colonne étroite, elles dépassaient la
+   liste de plusieurs centaines de pixels et laissaient un vide sous elle.
+   L'ordre de lecture ne change pas. */
+@container tdb (min-width: 760px) and (max-width: 1079.98px) {
+  .tdb-haut--trois { row-gap: 16px; }
+  .tdb-haut--trois > .tdb-modele { display: contents; }
+  .tdb-haut--trois > .tdb-modele > [data-carte-avant="nuit"] { align-self: stretch; }
+  .tdb-haut--trois > .tdb-modele > [data-carte-avant="nuit"] > .tdb-tuiles { flex: 1 1 auto; grid-auto-rows: 1fr; }
+  .tdb-haut--trois > .tdb-modele > .tdb-duo { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @container tdb (min-width: 1080px) {
   .tdb-hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);

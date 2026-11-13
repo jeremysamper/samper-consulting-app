@@ -350,10 +350,10 @@
     --toast-danger: #a11616;
     --toast-alerte: #8a4a08;
     --logo-fond: #04222f;
-    --carte-nuit: #0c1c24;
+    --carte-nuit: #17404f;
     --carte-nuit-texte: #e9f1f4;
-    --carte-nuit-doux: #95a9b1;
-    --carte-nuit-tuile: #15303b;
+    --carte-nuit-doux: #a9c0c9;
+    --carte-nuit-tuile: #0c1c24;
     --carte-nuit-danger: #fb8f8f;
     --carte-nuit-alerte: #f5a524;
     --carte-nuit-succes: #86d6a0;
@@ -472,10 +472,10 @@ html[data-theme="dark"] {
   --toast-danger: #a11616;
   --toast-alerte: #8a4a08;
   --logo-fond: #04222f;
-  --carte-nuit: #0c1c24;
+  --carte-nuit: #17404f;
   --carte-nuit-texte: #e9f1f4;
-  --carte-nuit-doux: #95a9b1;
-  --carte-nuit-tuile: #15303b;
+  --carte-nuit-doux: #a9c0c9;
+  --carte-nuit-tuile: #0c1c24;
   --carte-nuit-danger: #fb8f8f;
   --carte-nuit-alerte: #f5a524;
   --carte-nuit-succes: #86d6a0;

@@ -283,7 +283,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
         <p style={s.chargement} aria-live="polite">Chargement du tableau de bord…</p>
       ) : (
         <>
-          <div className={carteEquipe || cartesCouverts ? 'tdb-haut' : 'tdb-haut tdb-haut--seul'}>
+          <div className={carteEquipe && cartesCouverts ? 'tdb-haut tdb-haut--trois' : carteEquipe || cartesCouverts ? 'tdb-haut' : 'tdb-haut tdb-haut--seul'}>
             <div className="tdb-pile">
               {montrerPointage && (
                 <CartePointage
