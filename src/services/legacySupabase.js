@@ -1927,6 +1927,10 @@ export function installLegacySupabase() {
         message: row.message,
         createdAt: row.created_at,
         readAt: row.read_at,
+        // Vocal (lot C3) : chemin dans le compartiment messages-vocaux et
+        // durée en secondes, les deux ou aucun (contrainte de la base).
+        audioPath: row.audio_path || null,
+        audioDureeS: row.audio_duree_s ?? null,
       };
     },
 
@@ -1979,9 +1983,56 @@ export function installLegacySupabase() {
       if (error) console.error('[markPrivateMessagesRead]', error);
     },
 
-    async deletePrivateMessage(id) {
+    // Message vocal (migration 20261113_messages_vocaux) : le fichier se dépose
+    // d'abord dans le compartiment privé messages-vocaux, au chemin
+    // <expéditeur>/<uuid>.<ext> calculé par l'appelant (upsert impossible : pas
+    // de droit UPDATE), puis le message le cite. Si l'insertion échoue, le
+    // fichier est retiré aussitôt pour ne pas laisser d'orphelin.
+    async sendPrivateVoiceMessage({ recipientId, senderId, path, blob, contentType, dureeS, message }) {
+      const store = client.storage.from('messages-vocaux');
+      // Un Blob part en multipart avec son propre type (storage-js ignore alors
+      // l'option contentType) : il est ré-enveloppé au type sans paramètre,
+      // le seul que le compartiment accepte (« audio/webm », pas
+      // « audio/webm;codecs=opus »).
+      const corps = blob.type === contentType ? blob : new Blob([blob], { type: contentType });
+      const { error: upErr } = await store.upload(path, corps, { contentType, upsert: false });
+      if (upErr) throw upErr;
+      const { data, error } = await client.from('private_messages').insert({
+        recipient_id: recipientId,
+        sender_id: senderId,
+        message,
+        audio_path: path,
+        audio_duree_s: dureeS,
+      }).select().single();
+      if (error) {
+        const { error: rmErr } = await store.remove([path]).catch((e) => ({ error: e }));
+        if (rmErr) console.error('[sendPrivateVoiceMessage] fichier non retiré', rmErr);
+        throw error;
+      }
+      return this.mapPrivateMessageFromDB(data);
+    },
+
+    // URL signées d'une heure, en une requête : { chemin: url }. Un chemin que
+    // la politique refuse est absent du résultat.
+    async getPrivateVoiceUrls(paths) {
+      if (!paths?.length) return {};
+      const { data, error } = await client.storage.from('messages-vocaux').createSignedUrls(paths, 3600);
+      if (error) throw error;
+      const urls = {};
+      (data || []).forEach((d) => { if (d?.path && d.signedUrl && !d.error) urls[d.path] = d.signedUrl; });
+      return urls;
+    },
+
+    // audioPath : le fichier d'un vocal est retiré après son message (une
+    // ligne supprimée ne cite plus le fichier, qui n'est plus lisible que par
+    // son auteur). Un retrait en échec laisse un orphelin pour la purge.
+    async deletePrivateMessage(id, audioPath = null) {
       const { error } = await client.from('private_messages').delete().eq('id', id);
       if (error) throw error;
+      if (audioPath) {
+        const { error: rmErr } = await client.storage.from('messages-vocaux').remove([audioPath]).catch((e) => ({ error: e }));
+        if (rmErr) console.error('[deletePrivateMessage] fichier non retiré', rmErr);
+      }
     },
 
     // ─── HACCP - Zones ───

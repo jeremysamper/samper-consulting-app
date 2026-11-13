@@ -54,4 +54,18 @@ export const sm = {
   saisieLigne: { display: 'flex', alignItems: 'flex-end', gap: 8, minWidth: 0 },
   champ: { flex: 1, minWidth: 0, padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box', resize: 'none', lineHeight: 1.5 },
   aide: { fontSize: 'var(--t1)', color: 'var(--text3)' },
+  // Bouton micro de la ligne de saisie : carré, à la hauteur d'une cible.
+  micro: { flexShrink: 0, padding: 0 },
+
+  // Zone vocale (lot C3) : le texte d'état prend la place libre, les boutons
+  // se rangent à droite et passent à la ligne quand la largeur manque.
+  vocalLigne: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 8, minWidth: 0 },
+  vocalCorps: { flex: '1 1 180px', minWidth: 0 },
+  vocalActions: { display: 'flex', gap: 8, flexShrink: 0, marginLeft: 'auto' },
+  vocalEtat: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flexWrap: 'wrap' },
+  vocalColonne: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
+  vocalPoint: { width: 10, height: 10, borderRadius: '50%', background: 'var(--danger-text)', flexShrink: 0 },
+  vocalTexte: { fontSize: 'var(--t2)', color: 'var(--text)', minWidth: 0, overflowWrap: 'break-word' },
+  vocalTemps: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t2)', color: 'var(--text2)', whiteSpace: 'nowrap' },
+  vocalAide: { fontSize: 'var(--t1)', color: 'var(--text2)', minWidth: 0, overflowWrap: 'break-word' },
 };
