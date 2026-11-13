@@ -190,7 +190,7 @@ export default function MaintenantHaccp({
           ? boutonHorsTournee
           : boutonReleve(etat.zonesFaitesJour > 0 ? 'Continuer le relevé' : 'Commencer le relevé')}
         pied={(
-          <div className="haccp-tournees">
+          <div className="haccp-tournees haccp-tournees--une">
             <div style={{ ...cs.tuile, ...st.tuile }}>
               <span style={{ ...st.ligne, minWidth: 0 }}><N>{etat.zonesFaitesJour}</N> sur <N>{etat.totalZones}</N> frigos et appareils relevés aujourd'hui</span>
               <Anneau

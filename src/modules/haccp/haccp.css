@@ -84,6 +84,8 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   min-width: 0;
 }
+/* Sans heures de relevé : une seule tuile, sur toute la largeur. */
+.haccp-tournees.haccp-tournees--une { grid-template-columns: minmax(0, 1fr); }
 .haccp-page [data-carte-avant="nuit"] button:focus-visible {
   outline: 2px solid var(--carte-nuit-texte);
   outline-offset: 2px;
@@ -103,6 +105,12 @@
 
 @media (min-width: 600px) {
   .haccp-page { gap: 24px; }
+}
+/* Téléphone : deux repères sur une ligne (!important : la carte pose son
+   display en style inline). */
+@container haccp (max-width: 559.98px) {
+  .haccp-reperes > [data-repere="hors-plage"],
+  .haccp-reperes > [data-repere="a-revoir"] { display: none !important; }
 }
 @container haccp (min-width: 560px) {
   .haccp-page .ui-repere { padding: 14px 16px; }
