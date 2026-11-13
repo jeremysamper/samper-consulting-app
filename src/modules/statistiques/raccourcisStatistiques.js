@@ -14,7 +14,8 @@
 const DOUZE_MOIS = { periode: 'douze_mois', pas: 'mois' };
 
 export const RACCOURCIS = {
-  // Factures & achats, « Analyses des dépenses » : ses cinq blocs, sur douze
+  // Factures & achats, « Analyses des dépenses » : quatre vues pour ses blocs
+  // de chiffres (les dates à vérifier sont restées dans le module), sur douze
   // mois comme l'écran d'origine ; le périmètre se choisit dans le module
   // (Tous par défaut, comme l'écran d'origine).
   achats: {

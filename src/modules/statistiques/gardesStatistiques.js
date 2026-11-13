@@ -48,5 +48,5 @@ export const FAMILLES_A_RACCOURCI = ['achats'];
 export function peutOuvrirStatistiques(user, permissions, etablissement) {
   if (peutOuvrirPage('statistiques', user, permissions || {})) return true;
   const contexte = { role: user?.role, permissions: permissions || {}, etablissement };
-  return FAMILLES_A_RACCOURCI.some((f) => GARDES_ECRANS[f] && GARDES_ECRANS[f](contexte));
+  return FAMILLES_A_RACCOURCI.some((f) => GARDES_ECRANS[f](contexte));
 }

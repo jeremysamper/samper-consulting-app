@@ -16,7 +16,7 @@ import { LECTURES, famillesVisibles } from './lecturesFamilles.js';
 import { useLectureStatistiques } from './useLectureStatistiques.js';
 import { PAS, bornesTranche, pasPossibles, trancheEntiere, tranchesDe } from './agregation.js';
 import {
-  CLE_VUE, CLE_VUES, COMPARAISONS, MAX_GRAPHIQUES, PERIODES, ajouterGraphique, bornesDe, bornesDeComparaison, majGraphique, nettoyerVue,
+  CLE_VUE, CLE_VUES, COMPARAISONS, MAX_GRAPHIQUES, PERIODES, ajouterGraphique, bornesDe, bornesDeComparaison, filtresEffectifs, majGraphique, nettoyerVue, vueAvecBornes,
   retirerGraphique, vueDepuisLien, vuesNommeesLues,
 } from './vueStatistiques.js';
 import { composer, tableauDe } from './composition.js';
@@ -82,11 +82,11 @@ function useLargeur(ref) {
 // au téléphone (D16).
 // La vue sur une autre période ; le pas suit s'il n'est plus possible.
 function vueAvecPeriode(vue, id, bornes, aujourdhui) {
-  const periode = id === 'libre' ? { id, debut: bornes.debut, fin: bornes.fin } : { id };
-  const b = bornesDe(periode, aujourdhui);
-  const p = pasPossibles(b.debut, b.fin);
-  return { ...vue, periode, pas: p.includes(vue.pas) ? vue.pas : p[0] };
+  return vueAvecBornes(vue, id === 'libre' ? { id, debut: bornes.debut, fin: bornes.fin } : { id }, aujourdhui);
 }
+
+// Raccourci nommé par une demande d'ouverture, ou rien.
+const raccourciDe = (demande) => (demande?.raccourci ? { id: demande.raccourci, vue: demande.vue } : null);
 
 // Sélecteur du périmètre des achats (S3) ; rien s'il n'y en a qu'un.
 function ChoixPerimetre({ vue, perimetres, onVue }) {
@@ -108,10 +108,8 @@ function Filtres({ vue, bornes, bornesComp, aujourdhui, perimetres, onVue }) {
   const changerPeriode = (id) => onVue(vueAvecPeriode(vue, id, bornes, aujourdhui));
   const changerDate = (champ, valeur) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(valeur)) return;
-    const periode = { id: 'libre', debut: bornes.debut, fin: bornes.fin, [champ]: valeur };
-    const b = bornesDe(periode, aujourdhui);
-    const p = pasPossibles(b.debut, b.fin);
-    onVue({ ...vue, periode: { id: 'libre', ...b }, pas: p.includes(vue.pas) ? vue.pas : p[0] });
+    const b = bornesDe({ id: 'libre', debut: bornes.debut, fin: bornes.fin, [champ]: valeur }, aujourdhui);
+    onVue(vueAvecBornes(vue, { id: 'libre', ...b }, aujourdhui));
   };
   return (
     <div className="statistiques-filtres" style={st.barre} data-stat-filtres="">
@@ -298,9 +296,11 @@ export default function Statistiques({ user, etablissement }) {
   // Filtres de famille (S3) : le périmètre des achats, comme les Analyses des
   // dépenses ; proposé dès que les pièces lues en portent plus d'un.
   const filtresCle = JSON.stringify(vue?.filtres || {});
-  const filtres = useMemo(() => JSON.parse(filtresCle), [filtresCle]);
-  const docsAchats = famillesDemandees.includes('achats') ? lectureDe('achats', bornes.debut, bornes.fin)?.data?.docs : null;
+  const luAchats = famillesDemandees.includes('achats') ? lectureDe('achats', bornes.debut, bornes.fin) : null;
+  const docsAchats = luAchats?.data?.docs;
   const perimetres = useMemo(() => [...new Set((docsAchats || []).map(perimetreDe))].sort((a, b) => a.localeCompare(b, 'fr')), [docsAchats]);
+  const achatsLus = luAchats?.status === 'ready';
+  const filtres = useMemo(() => filtresEffectifs(JSON.parse(filtresCle), perimetres, achatsLus), [filtresCle, perimetres, achatsLus]);
   const niveauCaisse = sondes.caisse?.status === 'ready' ? sondes.caisse.niveau : null;
   const mesures = useMemo(
     () => mesuresVisibles({ familles: signatureFamilles ? signatureFamilles.split(',') : [], niveauCaisse, direction, droits: { factures_achat: regleFactures } }),
@@ -326,7 +326,7 @@ export default function Statistiques({ user, etablissement }) {
     if (vue || !etabId || reglages.loading || !sondesPretes) return;
     const demande = prendreLien();
     const depuisLien = vueDepuisLien(demande, mesures, aujourdhui);
-    setRaccourci(depuisLien && demande?.raccourci ? { id: demande.raccourci, vue: demande.vue } : null);
+    setRaccourci(depuisLien ? raccourciDe(demande) : null);
     setVue(depuisLien || nettoyerVue(reglages.settings[CLE_VUE], mesures, aujourdhui));
   }, [vue, etabId, reglages.loading, reglages.settings, sondesPretes, mesures, aujourdhui, prendreLien]);
   // Module déjà monté (gardé en arrière-plan) : le lien prévient par un événement.
@@ -336,7 +336,7 @@ export default function Statistiques({ user, etablissement }) {
     const surLien = () => {
       const demande = prendreLien();
       const v = vueDepuisLien(demande, mesures, aujourdhui);
-      if (v) { setVue(v); setRaccourci(demande?.raccourci ? { id: demande.raccourci, vue: demande.vue } : null); }
+      if (v) { setVue(v); setRaccourci(raccourciDe(demande)); }
     };
     w.addEventListener(EVENEMENT_LIEN, surLien);
     return () => w.removeEventListener(EVENEMENT_LIEN, surLien);

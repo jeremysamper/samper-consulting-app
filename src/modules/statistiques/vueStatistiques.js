@@ -76,6 +76,22 @@ export function bornesDe(periode, aujourdhui) {
   return { debut: ajouterJours(aujourdhui, -29), fin: aujourdhui };
 }
 
+// La vue sur une autre période ; le pas courant reste s'il est encore possible.
+export function vueAvecBornes(vue, periode, aujourdhui) {
+  const b = bornesDe(periode, aujourdhui);
+  const p = pasPossibles(b.debut, b.fin);
+  return { ...vue, periode, pas: p.includes(vue.pas) ? vue.pas : p[0] };
+}
+
+// Filtres appliqués au calcul : un périmètre enregistré qui n'existe plus dans
+// les pièces lues retombe sur « Tous », comme son sélecteur (une fois la
+// lecture faite ; avant, la liste des périmètres est vide).
+export function filtresEffectifs(filtres, perimetres, lus) {
+  const f = { ...(filtres || {}) };
+  if (f.perimetre && lus && !(perimetres || []).includes(f.perimetre)) delete f.perimetre;
+  return f;
+}
+
 // Bornes de la comparaison, ou null sans comparaison.
 export function bornesDeComparaison(bornes, mode) {
   if (mode !== 'precedente' && mode !== 'n1') return null;

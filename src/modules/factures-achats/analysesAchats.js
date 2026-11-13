@@ -18,8 +18,8 @@ import { nomDepuisLibelle } from '../inventaire/achatsLogic.js';
 import { AUTRES, classerProduit, contexteClassement } from '../commande/classerProduit.js';
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
-export const NON_CLASSE = 'Non classé';
-export const SANS_FOURNISSEUR = 'Fournisseur non lu';
+const NON_CLASSE = 'Non classé';
+const SANS_FOURNISSEUR = 'Fournisseur non lu';
 const MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
@@ -60,7 +60,7 @@ const moisPlus = (cle, n) => {
   const t = a * 12 + (m - 1) + n;
   return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`;
 };
-export const libelleMois = (cle, { long = false, annee = false } = {}) => {
+const libelleMois = (cle, { long = false, annee = false } = {}) => {
   const [a, m] = cle.split('-').map(Number);
   const nom = (long ? MOIS_LONGS : MOIS_COURTS)[m - 1];
   return annee ? `${nom} ${a}` : nom;
@@ -188,7 +188,7 @@ export function parRayon(factures, catalogue = []) {
 
 // Prix unitaire d'une ligne lue : montant / quantité totale, ramenée au kg,
 // au litre ou à la pièce ; sinon par colis. null si rien ne se divise.
-export function prixLigne(l) {
+function prixLigne(l) {
   const m = nombre(l.montantLigne);
   if (m == null || m <= 0) return null;
   const total = nombre(l.quantiteTotale);
