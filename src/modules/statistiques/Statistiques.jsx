@@ -28,6 +28,7 @@ import VuesNommees from './VuesNommees.jsx';
 import ChiffresDenses, { TableauDense } from './ChiffresDenses.jsx';
 import { perimetreDe } from '../factures-achats/analysesAchats.js';
 import { SERVICES_LABELS } from '../previsions/rapport/computeReservationStats.js';
+import { dateComparable } from '../previsions/rapport/periodesRapport.js';
 import { RACCOURCIS, demandeRaccourci } from './raccourcisStatistiques.js';
 
 // ═════════════════════════════════════════════════════════════════════
@@ -315,6 +316,7 @@ export default function Statistiques({ user, etablissement }) {
   // Filtres de famille (S3) : le périmètre des achats, comme les Analyses des
   // dépenses ; proposé dès que les pièces lues en portent plus d'un.
   const filtresCle = JSON.stringify(vue?.filtres || {});
+  const vueComparaison = vue?.comparaison || '';
   const luAchats = famillesDemandees.includes('achats') ? lectureDe('achats', bornes.debut, bornes.fin) : null;
   const docsAchats = luAchats?.data?.docs;
   const perimetres = useMemo(() => [...new Set((docsAchats || []).map(perimetreDe))].sort((a, b) => a.localeCompare(b, 'fr')), [docsAchats]);
@@ -388,7 +390,10 @@ export default function Statistiques({ user, etablissement }) {
     const entiereAvant = bornesComp ? [trancheEntiere(bornesComp.debut, bornesComp.fin)] : null;
     const calculer = (id, donnees, donneesAvant) => {
       const f = familleDe(id);
-      const ctx = { aujourdhui, role, filtres };
+      // Date comparable (carnet à venir) : celle de la comparaison de la vue,
+      // comme le rapport des réservations.
+      const reference = bornesComp && vueComparaison ? dateComparable(aujourdhui, bornes, vueComparaison) : aujourdhui;
+      const ctx = { aujourdhui, role, filtres, reference };
       try {
         out.points[id] = f.calculer(donnees, tranches, ctx);
         out.totaux[id] = f.calculer(donnees, entiere, ctx)[0];
@@ -416,7 +421,7 @@ export default function Statistiques({ user, etablissement }) {
       if (out.etats[id] === 'ready') calculer(id, lu.data, luAvant?.data || null);
     });
     return out;
-  }, [famillesDemandees, lectureDe, etatCompta, syntheseDe, bornes, bornesComp, tranches, tranchesComp, aujourdhui, role, filtres]);
+  }, [famillesDemandees, lectureDe, etatCompta, syntheseDe, bornes, bornesComp, tranches, tranchesComp, aujourdhui, role, filtres, vueComparaison]);
 
   const compositions = useMemo(() => (vue ? vue.graphiques.map((g) => {
     const cochees = g.mesures.map((id) => mesures.find((m) => m.id === id)).filter(Boolean);

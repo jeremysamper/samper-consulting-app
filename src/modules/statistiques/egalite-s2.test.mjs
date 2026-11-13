@@ -23,7 +23,7 @@ import { totauxFactures } from '../inventaire/facturesLogic.js';
 import { jeuGroupes } from '../groupes/jeuGroupes.mjs';
 import { J1, J2, jeuEssai } from '../caisse/rapports/jeuEssai.mjs';
 import { rapportCaisse } from '../caisse/rapports/calculRapports.js';
-import { computeReservationStats } from '../previsions/rapport/computeReservationStats.js';
+import { carnetsAVenir, computeReservationStats } from '../previsions/rapport/computeReservationStats.js';
 import { statsPeriode } from '../hebergement/serieHotel.js';
 import { resumeVentes, ventesParJour } from '../comptabilite/ventesCompta.js';
 import { synthese } from '../comptabilite/syntheseCompta.js';
@@ -482,4 +482,28 @@ test('catalogue S2 : nombre de mesures par famille', () => {
   assert.equal(compte('catalogue'), 1);
   assert.equal(compte('marges'), 8);
   assert.equal(compte('chiffrage'), 5);
+});
+
+test('S3 : demandes en attente, repères, meilleurs clients, heures d\'arrivée et carnet à venir, ceux du rapport', () => {
+  const lignes = jeuResas();
+  const tables = [{ id: 't1', nom: 'T1', zone: 'Salle', nb_places: 4 }, { id: 't2', nom: 'T2', zone: 'Terrasse', nb_places: 6 }];
+  const donnees = { lignes, parametres: null, tables };
+  const lu = lire('reservations', donnees, '2026-01-01', '2026-10-31', 'mois');
+  const periode = { debut: '2026-01-01', fin: '2026-10-31' };
+  const r = computeReservationStats({ lignes, periode, comparaison: periode, aujourdhui: AUJ, reference: AUJ, tables });
+  const v = (id) => mesure(id).valeur(lu.total);
+  assert.equal(v('reservations.demandes_en_attente'), r.canaux.demandes.enAttente);
+  assert.equal(v('reservations.meilleur_jour'), r.temporalite.meilleurJour?.total ?? null);
+  assert.equal(v('reservations.jour_calme'), r.temporalite.pireJour?.total ?? null);
+  assert.equal(v('reservations.meilleure_semaine'), r.temporalite.meilleureSemaine?.couverts ?? null);
+  assert.ok(r.temporalite.meilleurJour, 'le jeu a un meilleur jour');
+  const clients = mesure('reservations.clients_couverts').ventilations[0].parts(lu.total).map((x) => [x.libelle, x.valeur]);
+  assert.deepEqual(clients, r.clientele.top.map((c) => [c.nom, c.couverts]));
+  assert.ok(clients.length > 0, 'le jeu a des clients');
+  const arrivees = [1, 2, 3, 4, 5, 6, 7].reduce((n, iso) => n + (v(`reservations.arrivees_${iso}`) || 0), 0);
+  assert.equal(arrivees, Object.values(r.temporalite.heatmap.valeurs).reduce((n, x) => n + x, 0));
+  // Carnet à venir : la fonction partagée, contre l'anticipation du rapport.
+  const reference = '2026-10-11';
+  const rr = computeReservationStats({ lignes, periode, comparaison: periode, aujourdhui: AUJ, reference, tables });
+  assert.deepEqual(carnetsAVenir({ lignes, aujourdhui: AUJ, reference }), rr.anticipation.carnets);
 });

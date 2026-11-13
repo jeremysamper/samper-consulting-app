@@ -23,7 +23,7 @@ import { userDisplayName } from '../../utils/userDisplay.js';
 import { lireGroupes } from '../../hooks/useGroupes.js';
 import { supabase } from '../../services/supabase.js';
 import { toutesLesPages } from '../../utils/lirePages.js';
-import { zurichAjouterJours, zurichMinuitIso } from '../../utils/zurichTime.js';
+import { zurichAjouterJours, zurichMinuitIso, zurichToday } from '../../utils/zurichTime.js';
 import { mapReservation as mapRdvSpa } from '../spa/spaData.js';
 import {
   mapActivite, mapChambre, mapDemande, mapInscription, mapJournal, mapLigne, mapLinge, mapOccupant, mapOrdre, mapSejour,
@@ -75,6 +75,18 @@ export const LECTURES = {
     visible: GARDES_ECRANS.reservations,
     async lire(etabId, debut, fin) {
       const [lignes, referentiel] = await Promise.all([lireReservations(etabId, debut, fin), lireReferentiel(etabId)]);
+      return { lignes, ...referentiel };
+    },
+  },
+  // Carnet à venir du rapport (S3) : les réservations d'un an en arrière à
+  // trente jours devant, pour le carnet d'aujourd'hui et celui de la date
+  // comparable. Même garde que le rapport.
+  carnet: {
+    sansFenetre: true,
+    visible: GARDES_ECRANS.reservations,
+    async lire(etabId) {
+      const auj = zurichToday();
+      const [lignes, referentiel] = await Promise.all([lireReservations(etabId, zurichAjouterJours(auj, -400), zurichAjouterJours(auj, 30)), lireReferentiel(etabId)]);
       return { lignes, ...referentiel };
     },
   },
