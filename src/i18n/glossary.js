@@ -4713,6 +4713,24 @@ export const UI_GLOSSARY = {
   "Prix de vente saisi dans la fiche ; n/a sans prix.": "Selling price entered in the recipe card; n/a without a price.",
   "Coût par portion divisé par le prix de vente ; n/a sans prix.": "Cost per portion divided by the selling price; n/a without a price.",
   "Prix de vente moins coût par portion ; n/a sans prix (le Chiffrage affiche alors 0).": "Selling price less cost per portion; n/a without a price (Costing then shows 0).",
+  // ── Statistiques S3, rapport des réservations ──
+  "Demandes en ligne en attente": "Online requests pending",
+  "Demandes de la réservation en ligne encore à confirmer, au jour du service demandé, comme le rapport.": "Online booking requests still to be confirmed, on the day of the requested service, as in the report.",
+  "Jour passé qui a compté le plus de couverts, comme les repères du rapport.": "Past day with the most covers, as in the report's benchmarks.",
+  "Jour d'ouverture passé qui a compté le moins de couverts, comme les repères du rapport.": "Past opening day with the fewest covers, as in the report's benchmarks.",
+  "Semaine complète et passée qui a compté le plus de couverts, comme les repères du rapport.": "Full past week with the most covers, as in the report's benchmarks.",
+  "Réservations des meilleurs clients": "Bookings of the best customers",
+  "Couverts des meilleurs clients": "Covers of the best customers",
+  "Par client": "By customer",
+  "Les dix clients qui ont le plus réservé sur la période (fiche client), comme les meilleurs clients du rapport ; sur la période entière seulement.": "The ten customers who booked the most over the period (customer record), as the report's best customers; over the whole period only.",
+  "Arrivées du lundi": "Monday arrivals",
+  "Arrivées du mardi": "Tuesday arrivals",
+  "Arrivées du mercredi": "Wednesday arrivals",
+  "Arrivées du jeudi": "Thursday arrivals",
+  "Arrivées du vendredi": "Friday arrivals",
+  "Arrivées du samedi": "Saturday arrivals",
+  "Arrivées du dimanche": "Sunday arrivals",
+  "Couverts arrivés ce jour de la semaine, par créneau de trente minutes, comme les heures d'arrivée du rapport.": "Covers arriving on this weekday, by thirty-minute slot, as the report's arrival times.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

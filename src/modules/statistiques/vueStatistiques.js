@@ -182,6 +182,8 @@ export function nettoyerVue(brute, mesuresVisibles, aujourdhui) {
   });
   // Filtre de famille (S3) : le périmètre des achats, un texte.
   const filtres = typeof brute.filtres?.perimetre === 'string' && brute.filtres.perimetre ? { perimetre: brute.filtres.perimetre } : {};
+  // Service des réservations (le filtre du rapport) : midi, soir ou brunch.
+  if (['midi', 'soir', 'brunch'].includes(brute.filtres?.service)) filtres.service = brute.filtres.service;
   // Lignes de la présentation dense (S3) : des mesures visibles, sans doublon,
   // vingt-quatre au plus.
   const chiffres = (Array.isArray(brute.chiffres) ? brute.chiffres : []).filter((id, i, a) => parId.has(id) && a.indexOf(id) === i).slice(0, MAX_CHIFFRES);

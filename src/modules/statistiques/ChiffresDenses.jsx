@@ -56,6 +56,7 @@ export default function ChiffresDenses({ lignes, colonnes = 1, libelleComparaiso
                 <button type="button" onClick={onReessayer} style={{ ...st.etat, minHeight: 44, background: 'none', borderWidth: 0, cursor: 'pointer', color: 'var(--lien)' }}>Non lu, réessayer</button>
               ) : null}
               {!l.etat ? <span style={st.valeur}><Valeur v={l.total} unite={l.unite} /></span> : null}
+              {!l.etat && l.detail ? <span style={st.avant}>{l.detail.jour ? <><span>{l.detail.jour}</span> </> : null}<span data-no-translate>{l.detail.date}</span></span> : null}
               {!l.etat && libelleComparaison && estNombre(l.totalComparaison) ? (
                 <span style={st.avant} data-no-translate>
                   <Valeur v={l.totalComparaison} unite={l.unite} />, <Ecart e={l.ecart} unite={l.unite} />

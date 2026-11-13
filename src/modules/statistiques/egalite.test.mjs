@@ -291,6 +291,9 @@ test('accès : une famille fermée n\'apporte aucune mesure, les salaires resten
   assert.ok(!mesuresVisibles({ familles: ['achats'] }).some((m) => m.reserve === 'factures_achat'));
 });
 
+// Blocs du rapport des réservations entrés au catalogue en S3.
+const AJOUTS_S3 = /^reservations\.(demandes_en_attente|meilleur_jour|jour_calme|meilleure_semaine|clients_reservations|clients_couverts|arrivees_[1-7])$/;
+
 test('catalogue : chaque mesure déclare ce qu\'il faut, les ids sont uniques', () => {
   assert.equal(new Set(MESURES.map((m) => m.id)).size, MESURES.length);
   MESURES.forEach((m) => {
@@ -301,5 +304,5 @@ test('catalogue : chaque mesure déclare ce qu\'il faut, les ids sont uniques', 
     assert.ok(m.pas.length > 0, m.id);
   });
   // Les quatre familles de S1 ; celles de S2 sont comptées dans egalite-s2.test.mjs.
-  assert.equal(MESURES.filter((m) => ['caisse', 'reservations', 'achats', 'comptabilite'].includes(m.famille) && !AJOUTS_S2.includes(m.id)).length, 36);
+  assert.equal(MESURES.filter((m) => ['caisse', 'reservations', 'achats', 'comptabilite'].includes(m.famille) && !AJOUTS_S2.includes(m.id) && !AJOUTS_S3.test(m.id)).length, 36);
 });

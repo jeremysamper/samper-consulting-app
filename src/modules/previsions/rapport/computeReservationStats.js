@@ -605,6 +605,7 @@ export function serieReservations({ lignes, tranches, aujourdhui, service = 'tou
     const c = canaux(dedans);
     const a = anticipation(dedans, [], ctx);
     const clients = clientele(dedans);
+    const top = clients.top;
     delete clients.top;
     const temps = temporalite(dedans, t, ctx, services);
     return {
@@ -619,6 +620,10 @@ export function serieReservations({ lignes, tranches, aujourdhui, service = 'tou
       clientele: clients,
       parJourSemaine: temps.parJourSemaine,
       heatmap: temps.heatmap,
+      // Repères (jours passés) et meilleurs clients du rapport : pour les
+      // Statistiques ; les clients seulement sur une tranche unique (la période).
+      reperes: { meilleurJour: temps.meilleurJour, pireJour: temps.pireJour, meilleureSemaine: temps.meilleureSemaine },
+      meilleursClients: liste.length === 1 ? top : null,
       services: services.map((s) => {
         const l = comptees.filter((r) => r.svc === s);
         return { service: s, tables: l.length, couverts: somme(l) };

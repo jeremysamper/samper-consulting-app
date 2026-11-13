@@ -11,6 +11,7 @@
 // chaque pas comme un taux (nature 'taux'), et la période donne le sien.
 
 import { SERVICES_LABELS, TYPES_TAGS, serieReservations } from '../../previsions/rapport/computeReservationStats.js';
+import { dateCh, jourIso } from '../../previsions/rapport/periodesRapport.js';
 
 const JOURS = { 1: 'Lundi', 2: 'Mardi', 3: 'Mercredi', 4: 'Jeudi', 5: 'Vendredi', 6: 'Samedi', 7: 'Dimanche' };
 // Moyenne de couverts par jour de la semaine, celle du rapport.
@@ -29,12 +30,30 @@ function parCreneau(p) {
   return [...par.entries()].sort((a, b) => a[0] - b[0]).map(([c, couverts]) => ({ cle: String(c), libelle: heure(c), brut: true, valeur: couverts }));
 }
 
+const meilleursClients = (id, libelle, champ) => ({
+  id, libelle, unite: 'nombre', nature: 'taux',
+  valeur: (p) => (p.meilleursClients ? p.meilleursClients.reduce((n, c) => n + c[champ], 0) : null),
+  ventilations: [{ id: 'client', libelle: 'Par client', parts: (p) => (p.meilleursClients || []).map((c) => ({ cle: String(c.id), libelle: c.nom, donnee: true, valeur: c[champ] })) }],
+  phrase: 'Les dix clients qui ont le plus réservé sur la période (fiche client), comme les meilleurs clients du rapport ; sur la période entière seulement.',
+});
+
+// Heures d'arrivée du rapport (jour de la semaine par créneau de trente
+// minutes) : une mesure par jour, ventilée par créneau ; le tableau dense les
+// range côte à côte, comme la carte de chaleur.
+const arriveesDu = (iso, libelle) => ({
+  id: `reservations.arrivees_${iso}`, libelle, unite: 'nombre', nature: 'flux',
+  valeur: (p) => (p.vide ? null : Object.entries(p.heatmap?.valeurs || {}).filter(([k]) => k.startsWith(`${iso}|`)).reduce((n, [, v]) => n + v, 0)),
+  ventilations: [{ id: 'creneau', libelle: 'Par créneau d\'arrivée', parts: (p) => (p.heatmap?.creneaux || []).map((c) => ({ cle: String(c), libelle: heure(c), brut: true, valeur: p.heatmap.valeurs[`${iso}|${c}`] || 0 })) }],
+  phrase: 'Couverts arrivés ce jour de la semaine, par créneau de trente minutes, comme les heures d\'arrivée du rapport.',
+});
+
 export const familleReservations = {
   id: 'reservations',
   libelle: 'Réservations',
   journee: 'la date du service réservé',
-  calculer(donnees, tranches, { aujourdhui }) {
-    return serieReservations({ lignes: donnees.lignes, tranches, aujourdhui, parametres: donnees.parametres, tables: donnees.tables || [] });
+  // Filtre de service de la vue (S3), celui du rapport : tous, midi, soir, brunch.
+  calculer(donnees, tranches, { aujourdhui, filtres }) {
+    return serieReservations({ lignes: donnees.lignes, tranches, aujourdhui, service: filtres?.service || 'tous', parametres: donnees.parametres, tables: donnees.tables || [] });
   },
   mesures: [
     {
@@ -109,6 +128,11 @@ export const familleReservations = {
         { id: 'semaine_fin', libelle: 'Du vendredi au dimanche', ordre: 'naturel', parts: (p) => joursDe(p, [5, 6, 7]) },
       ],
       phrase: 'Couverts divisés par les jours ouverts du pas ; sans réglages, par les jours qui ont une réservation. Par jour de la semaine : la moyenne du rapport.',
+    },
+    {
+      id: 'reservations.demandes_en_attente', libelle: 'Demandes en ligne en attente', unite: 'nombre', nature: 'flux',
+      valeur: (p) => p.demandes?.enAttente ?? null,
+      phrase: 'Demandes de la réservation en ligne encore à confirmer, au jour du service demandé, comme le rapport.',
     },
     {
       id: 'reservations.demandes_recues', libelle: 'Demandes en ligne reçues', unite: 'nombre', nature: 'flux',
@@ -188,5 +212,36 @@ export const familleReservations = {
       valeur: (p, type) => (p.clientele ? p.clientele.tags.find((t) => t.id === type)?.tables ?? 0 : null),
       phrase: 'Réservations comptées qui portent au moins un tag du type choisi (occasion, allergène, régime).',
     },
+    // Repères du rapport (jours passés) : la valeur et sa date ; un repère se
+    // recalcule sur chaque pas, il ne s'additionne pas.
+    {
+      id: 'reservations.meilleur_jour', libelle: 'Meilleur jour', unite: 'nombre', nature: 'taux',
+      valeur: (p) => p.reperes?.meilleurJour?.total ?? null,
+      detail: (p) => (p.reperes?.meilleurJour ? { jour: JOURS[jourIso(p.reperes.meilleurJour.date)], date: dateCh(p.reperes.meilleurJour.date) } : null),
+      phrase: 'Jour passé qui a compté le plus de couverts, comme les repères du rapport.',
+    },
+    {
+      id: 'reservations.jour_calme', libelle: 'Jour d\'ouverture le plus calme', unite: 'nombre', nature: 'taux',
+      valeur: (p) => p.reperes?.pireJour?.total ?? null,
+      detail: (p) => (p.reperes?.pireJour ? { jour: JOURS[jourIso(p.reperes.pireJour.date)], date: dateCh(p.reperes.pireJour.date) } : null),
+      phrase: 'Jour d\'ouverture passé qui a compté le moins de couverts, comme les repères du rapport.',
+    },
+    {
+      id: 'reservations.meilleure_semaine', libelle: 'Meilleure semaine', unite: 'nombre', nature: 'taux',
+      valeur: (p) => p.reperes?.meilleureSemaine?.couverts ?? null,
+      detail: (p) => (p.reperes?.meilleureSemaine ? { date: `${dateCh(p.reperes.meilleureSemaine.debut)} → ${dateCh(p.reperes.meilleureSemaine.fin)}` } : null),
+      phrase: 'Semaine complète et passée qui a compté le plus de couverts, comme les repères du rapport.',
+    },
+    // Meilleurs clients du rapport (dix, par réservations) : un classement, pas
+    // une partition des couverts ; lisible sur la période entière seulement.
+    meilleursClients('reservations.clients_reservations', 'Réservations des meilleurs clients', 'reservations'),
+    meilleursClients('reservations.clients_couverts', 'Couverts des meilleurs clients', 'couverts'),
+    arriveesDu(1, 'Arrivées du lundi'),
+    arriveesDu(2, 'Arrivées du mardi'),
+    arriveesDu(3, 'Arrivées du mercredi'),
+    arriveesDu(4, 'Arrivées du jeudi'),
+    arriveesDu(5, 'Arrivées du vendredi'),
+    arriveesDu(6, 'Arrivées du samedi'),
+    arriveesDu(7, 'Arrivées du dimanche'),
   ],
 };

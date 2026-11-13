@@ -27,6 +27,7 @@ import { telechargerTableaux } from './exportStatistiques.js';
 import VuesNommees from './VuesNommees.jsx';
 import ChiffresDenses, { TableauDense } from './ChiffresDenses.jsx';
 import { perimetreDe } from '../factures-achats/analysesAchats.js';
+import { SERVICES_LABELS } from '../previsions/rapport/computeReservationStats.js';
 import { RACCOURCIS, demandeRaccourci } from './raccourcisStatistiques.js';
 
 // ═════════════════════════════════════════════════════════════════════
@@ -104,7 +105,23 @@ function ChoixPerimetre({ vue, perimetres, onVue }) {
   );
 }
 
-function Filtres({ vue, bornes, bornesComp, aujourdhui, perimetres, onVue }) {
+// Service des réservations (S3, le filtre du rapport) ; seulement quand une
+// mesure des réservations est tracée.
+function ChoixService({ vue, services, onVue }) {
+  if (!services || !services.length) return null;
+  const valeur = services.includes(vue.filtres?.service) ? vue.filtres.service : '';
+  return (
+    <label style={st.champ}>
+      <span>Service</span>
+      <select style={st.select} value={valeur} onChange={(e) => onVue({ ...vue, filtres: { ...(vue.filtres || {}), service: e.target.value } })} data-stat-service="">
+        <option value="">Tous les services</option>
+        {services.map((s) => <option key={s} value={s}>{SERVICES_LABELS[s]}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function Filtres({ vue, bornes, bornesComp, aujourdhui, perimetres, services, onVue }) {
   const possibles = pasPossibles(bornes.debut, bornes.fin);
   const changerPeriode = (id) => onVue(vueAvecPeriode(vue, id, bornes, aujourdhui));
   const changerDate = (champ, valeur) => {
@@ -133,6 +150,7 @@ function Filtres({ vue, bornes, bornesComp, aujourdhui, perimetres, onVue }) {
         </>
       ) : null}
       <ChoixPerimetre vue={vue} perimetres={perimetres} onVue={onVue} />
+      <ChoixService vue={vue} services={services} onVue={onVue} />
       <div style={st.champ}>
         <span>Pas</span>
         <SegmentedTabs tabs={PAS.filter((p) => possibles.includes(p.id))} active={vue.pas} onChange={(pas) => onVue({ ...vue, pas })} />
@@ -412,9 +430,10 @@ export default function Statistiques({ user, etablissement }) {
     const etatFamille = sources.etats[m.famille];
     const etat = etatFamille === 'error' ? 'error' : ((etatFamille === 'loading' || !sources.points[m.famille]) ? 'loading' : null);
     if (etat) return { id: m.id, libelle: m.libelle, phrase: m.phrase, unite: m.unite, etat };
+    const detail = m.detail ? m.detail(sources.totaux[m.famille]) : null;
     const c = composer({ graphique: { mesures: [m.id], ventilation: '', type: '', choix: {} }, mesures: [m], tranches, tranchesComparaison: tranchesComp, sources, etats: sources.etats, familles: FAMILLES });
     const s = c.series?.[0];
-    return { id: m.id, libelle: m.libelle, phrase: m.phrase, unite: m.unite, total: s?.total ?? null, totalComparaison: s?.totalComparaison ?? null, ecart: s?.ecartTotal ?? null };
+    return { id: m.id, libelle: m.libelle, phrase: m.phrase, unite: m.unite, detail, total: s?.total ?? null, totalComparaison: s?.totalComparaison ?? null, ecart: s?.ecartTotal ?? null };
   }), [vue, mesures, tranches, tranchesComp, sources]);
 
   // Tableau dense : les catégories et valeurs telles que les rend la fonction
@@ -446,6 +465,11 @@ export default function Statistiques({ user, etablissement }) {
       choix: cleChoix ? { cle: cleChoix, libelle: premiere.choix.libelle, options, valeur: choixValeur } : null,
     };
   }, [vue, mesures, sources]);
+
+  // Services proposés : midi et soir, le brunch quand la maison en fait (vu
+  // dans les points lus) ou qu'il est choisi.
+  const avecBrunch = (sources.points?.reservations || []).some((p) => (p.services || []).some((x) => x.service === 'brunch')) || vue?.filtres?.service === 'brunch';
+  const servicesResa = famillesDemandees.includes('reservations') ? (avecBrunch ? ['midi', 'soir', 'brunch'] : ['midi', 'soir']) : null;
 
   const comparaisonChoisie = COMPARAISONS.find((c) => c.id === (vue?.comparaison || ''));
   const libelleComparaison = bornesComp ? comparaisonChoisie?.label || '' : '';
@@ -508,7 +532,7 @@ export default function Statistiques({ user, etablissement }) {
     setVue({ ...v, filtres: vue?.filtres || {} });
     setRaccourci({ id: raccourci.id, vue: id });
   };
-  const barreFiltres = vue ? <Filtres vue={vue} bornes={bornes} bornesComp={bornesComp} aujourdhui={aujourdhui} perimetres={perimetres} onVue={setVue} /> : null;
+  const barreFiltres = vue ? <Filtres vue={vue} bornes={bornes} bornesComp={bornesComp} aujourdhui={aujourdhui} perimetres={perimetres} services={servicesResa} onVue={setVue} /> : null;
   const periodeChoisie = PERIODES.find((p) => p.id === vue?.periode.id);
 
   return (
@@ -532,6 +556,7 @@ export default function Statistiques({ user, etablissement }) {
                   </select>
                 </label>
                 <ChoixPerimetre vue={vue} perimetres={perimetres} onVue={setVue} />
+                <ChoixService vue={vue} services={servicesResa} onVue={setVue} />
                 <Btn variant="ghost" onClick={() => setFiltresOuverts(true)} style={st.bouton}>Période et filtres</Btn>
                 <span style={st.resume}><span>{periodeChoisie?.label}</span>, <span data-no-translate>{bornesTranche(bornes)}</span></span>
               </div>
