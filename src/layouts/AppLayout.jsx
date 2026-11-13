@@ -25,6 +25,8 @@ import TotpRappel from '../components/nav/TotpRappel.jsx';
 import { peutChangerLogo, peutOrganiserMenu, regleLaCoque } from '../components/nav/gardesCoque.js';
 import NavBadge from '../components/nav/NavBadge.jsx';
 import MessagerieBarre from '../components/nav/MessagerieBarre.jsx';
+import BandeauAppel from '../modules/messages/BandeauAppel.jsx';
+import { useAppels } from '../hooks/useAppels.js';
 import CarteAlertes from '../components/CarteAlertes.jsx';
 import { ShellProvider } from './ShellContext.js';
 import { applyNavOrder } from '../hooks/useNavOrder.js';
@@ -232,6 +234,14 @@ export default function AppLayout({
       iconSize={iconSize}
     />
   ) : null);
+
+  // ── Appel audio dans l'app (lot C4) ────────────────────────────
+  // Le canal des appels est celui de la coque, un seul pour l'app : tout
+  // compte peut être appelé, quel que soit le module ouvert. Le bandeau est
+  // posé dans le flux, sous les bandeaux d'état : il ne couvre jamais un
+  // écran de service (caisse, KDS, pointage).
+  useAppels(user.id);
+  const bandeauAppel = <BandeauAppel tactile={tactile} />;
 
   // ── Carte d'activation des alertes ─────────────────────────────
   // Un seul exemplaire : l'accueil tactile la pose sous son en-tête
@@ -684,6 +694,7 @@ export default function AppLayout({
         <OfflineBanner />
         <HomeScreenIconBanner />
         {rappelTotp}
+        {bandeauAppel}
 
         <div style={mls.stage}>
           <header style={mls.topbar} className="app-glass-bar">
@@ -817,6 +828,7 @@ export default function AppLayout({
         <OfflineBanner />
         <HomeScreenIconBanner />
         {rappelTotp}
+        {bandeauAppel}
         {/* Scène : le header « verre » est posé en absolu sur la zone qui
             défile, le contenu passe dessous (--app-header-h, app.css). */}
         <div style={ls.stage}>

@@ -4,10 +4,13 @@
 // consultant) ; une conversation n'est lisible que par ses deux participants
 // (RLS, migration 20260926_messagerie_bidirectionnelle).
 //
-// Deux vues : Discussions (l'écran d'arrivée, conversations d'abord puis les
-// autres comptes actifs) et Contacts (l'annuaire, puis la fiche d'une
-// personne). Liste à gauche, fil ou fiche à droite ; au téléphone, la liste
+// Trois vues : Discussions (l'écran d'arrivée, conversations d'abord puis les
+// autres comptes actifs), Contacts (l'annuaire, puis la fiche d'une personne)
+// et Appels (le journal des appels dans l'app, lot C4 ; une ligne ouvre la
+// même fiche). Liste à gauche, fil ou fiche à droite ; au téléphone, la liste
 // seule, et le fil ou la fiche en calque refermé par le geste retour.
+// L'appel lui-même (canal, sonnerie, bandeau) vit dans la coque : la page ne
+// fait que le lancer.
 //
 // La page tient dans la hauteur de l'écran : la liste et le fil défilent
 // chacun dans leur zone, la zone de saisie ne quitte pas l'écran.
@@ -26,16 +29,20 @@ import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import { useHauteurRestante } from '../caisse/mesures.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { MAX_LENGTH, buildAnnuaire, buildContacts, formatListDate, groupConversations } from './conversations.js';
+import { MAX_LENGTH, buildAnnuaire, buildContacts, formatListDate, fullName, groupConversations } from './conversations.js';
 import LignePersonne from './LignePersonne.jsx';
 import FilConversation from './FilConversation.jsx';
 import FicheContact from './FicheContact.jsx';
 import { useEnregistreur } from './useEnregistreur.js';
+import VueAppels from './VueAppels.jsx';
+import { estOccupe, lancer, useMoteurAppel } from './moteurAppel.js';
+import { peutAppeler } from './appels.js';
 import { cibleDe, sm } from './messagerie.styles.js';
 
 const VUES = [
   { id: 'discussions', label: 'Discussions' },
   { id: 'contacts', label: 'Contacts' },
+  { id: 'appels', label: 'Appels' },
 ];
 
 const libelleRole = (profile) => (roleConfig[profile?.role] || { label: profile?.role || '' }).label;
@@ -77,7 +84,9 @@ const Messages = ({ user, isActive = true }) => {
   const rechercheOuverte = useRechercheOuverte(titreRef);
 
   const filOuvert = vue === 'discussions' && Boolean(selectedId);
-  const ficheOuverte = vue === 'contacts' && Boolean(ficheId);
+  const ficheOuverte = (vue === 'contacts' || vue === 'appels') && Boolean(ficheId);
+  const appel = useMoteurAppel();
+  const appelPossible = React.useMemo(() => peutAppeler(), []);
 
   // Un vocal en cours appartient au fil où il a commencé : il est abandonné,
   // sans rien laisser, dès que ce fil n'est plus affiché (autre personne,
@@ -136,9 +145,10 @@ const Messages = ({ user, isActive = true }) => {
     () => buildAnnuaire({ profiles, userId: user.id, search }),
     [profiles, search, user.id],
   );
-  // Numéros : lus seulement quand la vue Contacts est ouverte, et seulement
-  // par qui la base les laisse lire (consultant, patron).
-  const telephones = useTeamPhones(vue === 'contacts' ? user.role : null);
+  // Numéros : lus seulement quand la vue Contacts ou Appels est ouverte (la
+  // fiche y paraît), et seulement par qui la base les laisse lire
+  // (consultant, patron).
+  const telephones = useTeamPhones(vue === 'contacts' || vue === 'appels' ? user.role : null);
 
   const selected = selectedId ? (profileById.get(selectedId) || null) : null;
   const fiche = ficheId ? (profileById.get(ficheId) || null) : null;
@@ -204,6 +214,9 @@ const Messages = ({ user, isActive = true }) => {
     enregistreur.demarrer(id);
   };
 
+  // Appel dans l'app : le moteur de la coque le prend, le bandeau le montre.
+  const appeler = (id) => { lancer(id, fullName(profileById.get(id) || null)); };
+
   const remove = async (msg) => {
     if (!confirmLegacy('Supprimer ce message ? Il disparaîtra aussi chez votre interlocuteur.')) return;
     try {
@@ -241,11 +254,26 @@ const Messages = ({ user, isActive = true }) => {
     <div style={{ ...ms.colonne, gap: 8, ...(isMobile ? null : ms.colonneListeBureau) }}>
       <div ref={titreRef} style={ms.titreListe}>
         {!rechercheOuverte && (
-          <SegmentedTabs tabs={VUES} active={vue} onChange={setVue} style={ms.vues(cible)} />
+          <SegmentedTabs tabs={VUES} active={vue} onChange={setVue} style={ms.vues(cible)} className="messages-vues" />
         )}
         <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une personne…" style={{ minWidth: cible, minHeight: cible }} />
       </div>
-      <div style={sm.liste}>{vue === 'contacts' ? listeContacts : listeDiscussions}</div>
+      <div style={sm.liste}>
+        {vue === 'contacts' && listeContacts}
+        {vue === 'discussions' && listeDiscussions}
+        {vue === 'appels' && (
+          <VueAppels
+            userId={user.id}
+            profileById={profileById}
+            actifId={ficheId}
+            onOuvrir={setFicheId}
+            onAppeler={appeler}
+            peutAppeler={appelPossible}
+            occupe={estOccupe(appel)}
+            cible={cible}
+          />
+        )}
+      </div>
     </div>
   );
 
@@ -279,6 +307,8 @@ const Messages = ({ user, isActive = true }) => {
         tel={telephones[fiche.id]}
         onEcrire={() => ecrire(fiche.id)}
         onVocal={enregistreur.disponible ? () => vocal(fiche.id) : undefined}
+        onAppeler={appelPossible && fiche.actif !== false ? () => appeler(fiche.id) : undefined}
+        occupe={estOccupe(appel)}
         onRetour={isMobile ? closeFiche : undefined}
         empile={isMobile}
         cible={cible}
@@ -302,7 +332,7 @@ const Messages = ({ user, isActive = true }) => {
   if (isMobile) {
     contenu = filOuvert ? threadPanel : (ficheOuverte && fichePanel) || listPanel;
   } else {
-    const droite = vue === 'contacts' ? (fichePanel || videDroite) : (selectedId ? threadPanel : videDroite);
+    const droite = vue === 'discussions' ? (selectedId ? threadPanel : videDroite) : (fichePanel || videDroite);
     contenu = <>{listPanel}{droite}</>;
   }
 

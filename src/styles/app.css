@@ -821,6 +821,11 @@ html[data-theme="dark"] {
   -webkit-tap-highlight-color: transparent;
 }
 .segmented-tabs--sm .segmented-tab { padding: 5px 11px; font-size: 12px; }
+/* Messages : trois vues (Discussions, Contacts, Appels) et la loupe tiennent
+   sur la ligne de titre de la liste (316 px) avec 8 px entre deux cibles ; à
+   14 px de retrait, la loupe de 44 px de la tablette n'avait plus que 6,5 px
+   (banc K4, lot C4, 13.11.2026). */
+.messages-vues .segmented-tab { padding-left: 12px; padding-right: 12px; }
 
 .segmented-tab:hover:not(.is-active) { color: var(--text); background: rgba(125, 145, 155, 0.10); }
 
