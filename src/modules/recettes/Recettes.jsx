@@ -91,11 +91,11 @@ const lectureEnCours = (status) => {
 // réveil de la tablette.
 const PanneauEtat = ({ titre, texte, onRetry }) => (
   <div style={{padding:40, textAlign:'center', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)'}}>
-    <div style={{fontSize:16, fontWeight:700, marginTop:10, fontFamily:'var(--font-serif)'}}>{titre}</div>
-    <div style={{fontSize:13, color:'var(--text2)', marginTop:8}}>{texte}</div>
+    <div style={{fontSize: 'var(--t3)', fontWeight: 'var(--g3)', marginTop:10, fontFamily:'var(--font)'}}>{titre}</div>
+    <div style={{fontSize: 'var(--t2)', color:'var(--text2)', marginTop:8}}>{texte}</div>
     {onRetry && (
       <button
-        style={{marginTop:16, padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)'}}
+        style={{marginTop:16, padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor:'pointer', fontFamily:'var(--font)'}}
         onClick={onRetry}
       >
         Réessayer
@@ -135,7 +135,7 @@ const RecettePhoto = ({ src, alt = '', placeholder = '', style }) => {
 // Les trois fenêtres (DuplicateRecetteModal, ExportMultipleModal,
 // IngredientSearchModal) passent par Fenetre ; reste le bouton secondaire.
 const smStyle = {
-  ghostBtn: { padding: '8px 14px', background: 'none', border: '1px solid var(--border)', borderRadius: 7, color: 'var(--text)', fontSize: 13, fontFamily: 'var(--font)', cursor: 'pointer' },
+  ghostBtn: { padding: '8px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer' },
 };
 
 // ─── DuplicateRecetteModal : modale de duplication vers plusieurs établissements ───
@@ -290,14 +290,14 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
       largeur={640}
       pied={(
         <>
-          <span style={{ flex: 1, fontSize: 12, color: selectedEtabIds.size > 0 ? 'var(--text)' : 'var(--text2)' }}>
+          <span style={{ flex: 1, fontSize: 'var(--t1)', color: selectedEtabIds.size > 0 ? 'var(--text)' : 'var(--text2)' }}>
             {selectedEtabIds.size > 0
               ? <>Dupliquer vers <strong>{selectedEtabIds.size}</strong> établissement{selectedEtabIds.size > 1 ? 's' : ''}</>
               : 'Sélectionnez au moins un établissement'}
           </span>
           <button style={smStyle.ghostBtn} onClick={() => !saving && onClose()} disabled={saving}>Annuler</button>
           <button
-            style={{ padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', opacity: selectedEtabIds.size === 0 || saving ? 0.5 : 1 }}
+            style={{ padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', opacity: selectedEtabIds.size === 0 || saving ? 0.5 : 1 }}
             onClick={handleDuplicate}
             disabled={selectedEtabIds.size === 0 || saving}>
             {saving ? 'Duplication…' : `Dupliquer (${selectedEtabIds.size})`}
@@ -310,7 +310,7 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
           {loading && <div style={{ textAlign: 'center', color: 'var(--text2)', padding: 20 }}>Chargement des établissements…</div>}
 
           {!loading && accessibleEtabs.length === 0 && (
-            <div style={{ padding: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text2)' }}>
+            <div style={{ padding: 12, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text2)' }}>
               Aucun autre établissement accessible pour cette duplication.
             </div>
           )}
@@ -320,11 +320,11 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
               {/* ── Sélection établissements cibles ── */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                  <label style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' }}>
                     Établissements cibles ({selectedEtabIds.size} sélectionné{selectedEtabIds.size > 1 ? 's' : ''})
                   </label>
                   <button type="button"
-                    style={{ padding: '4px 8px', fontSize: 11, fontWeight: 500, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' }}
+                    style={{ padding: '4px 8px', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' }}
                     onClick={() => {
                       if (allSelected) setSelectedEtabIds(new Set());
                       else setSelectedEtabIds(new Set(accessibleEtabs.map(e => e.id)));
@@ -341,13 +341,13 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
                         style={{
                           display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
                           border: '1px solid transparent',
-                          borderRadius: 6, fontSize: 12, cursor: 'pointer',
-                          background: checked ? 'var(--accent-light)' : 'var(--surface)',
+                          borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer',
+                          background: checked ? 'var(--selection)' : 'var(--surface)',
                         }}>
                         <input type="checkbox" checked={checked} onChange={() => toggleEtab(e.id)} />
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: e.couleur || 'var(--accent)', flexShrink: 0 }} />
                         <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.nom}</span>
-                        {hasExisting && <span title="Une recette du même nom existe déjà ici" style={{ fontSize: 11, color: 'var(--warning-text)', fontWeight: 700 }}>déjà présente</span>}
+                        {hasExisting && <span title="Une recette du même nom existe déjà ici" style={{ fontSize: 'var(--t1)', color: 'var(--warning-text)', fontWeight: 'var(--g3)' }}>déjà présente</span>}
                       </label>
                     );
                   })}
@@ -355,9 +355,9 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
               </div>
 
               {/* ── Options de copie ── */}
-              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }}>Que copier ?</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6, fontSize: 12 }}>
+              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 12 }}>
+                <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 8 }}>Que copier ?</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 6, fontSize: 'var(--t1)' }}>
                   {[
                     { key: 'ingredients', label: 'Ingrédients' },
                     { key: 'etapes', label: 'Étapes de préparation' },
@@ -376,10 +376,10 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
               {/* ── Gestion des doublons (si conflit détecté parmi les sélectionnés) ── */}
               {Array.from(selectedEtabIds).some(id => existingByEtab[id]) && (
                 <div style={{ ...encadreStyle('alerte') }}>
-                  <div style={{ fontSize: 12, ...encadreTitreStyle('alerte'), marginBottom: 8 }}>
+                  <div style={{ fontSize: 'var(--t1)', ...encadreTitreStyle('alerte'), marginBottom: 8 }}>
                     Cette recette existe déjà dans certains établissements sélectionnés
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, color: 'var(--text)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 'var(--t1)', color: 'var(--text)' }}>
                     {[
                       { v: 'rename', label: 'Créer en doublon avec suffixe « (copie) »' },
                       { v: 'overwrite', label: 'Écraser la recette existante' },
@@ -593,7 +593,7 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
   // Colonne quantité élargie : elle porte un champ, et sur tablette la règle
   // globale « pointer: coarse » impose 16px de police (anti-zoom iOS).
   const ingCols = isMobile ? '1fr 78px 34px' : '1fr 96px 60px';
-  const sIngName = { ...rs.ingName, ...(tactile ? { fontSize: 16 } : (isMobile ? { fontSize: 15 } : null)) };
+  const sIngName = { ...rs.ingName, ...(tactile ? { fontSize: 'var(--t3)' } : (isMobile ? { fontSize: 'var(--t2)' } : null)) };
   const portionsFiche = Number(recette.portions) || 0;
   const statutAffiche = recette.statut && !STATUTS_EN_SERVICE.includes(recette.statut) ? statutRecette(recette.statut).label : null;
 
@@ -628,7 +628,7 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
           <button style={rs.etiquetteBtn} onClick={onDesarchiver}>Désarchiver</button>
         )}
         {canFiches && (
-          <button style={rs.etiquetteBtn} onClick={onModifier}>Modifier</button>
+          <button style={rs.printBtn} onClick={onModifier}>Modifier</button>
         )}
         {canFiches && (
           <button style={rs.printBtn} onClick={onDupliquer}>Dupliquer</button>
@@ -684,7 +684,7 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
           <div className="fv-bloc-tete">
             <h3 className="fv-titre-section">Ingrédients</h3>
             <div className="no-print" style={rs.portionsCtrl}>
-              <span style={{fontSize:12, color:'var(--text2)'}}>Portions :</span>
+              <span style={{fontSize: 'var(--t1)', color:'var(--text2)'}}>Portions :</span>
               <button type="button" className="touch-target" style={rs.portBtn} onClick={() => pasPortions(-1)} aria-label="Une portion de moins">−</button>
               <input
                 type="number" min="0.1" step="1" inputMode="decimal"
@@ -709,7 +709,7 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
                     restants forment UN seul nœud texte : sans cela le moteur
                     i18n verrait « Recalculé × 1.50 » comme une phrase inédite
                     et paierait une traduction IA par facteur affiché. */}
-                <span style={{fontWeight:700, color:'var(--warning-text)'}}>
+                <span style={{fontWeight: 'var(--g3)', color:'var(--warning-text)'}}>
                   Recalculé <span data-no-translate>{facteurAffiche}</span>
                 </span>
                 <span style={{color:'var(--warning-text)'}}>
@@ -742,13 +742,13 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
                            sans que personne ne le voie. On rend la main. */
                         onWheel={e => e.target.blur()}
                         onBlur={() => setSaisieQte(null)}
-                        style={{...rs.ingQtyInput, ...(estRef ? rs.ingQtyInputRef : null), ...(isMobile ? { fontSize: 15 } : null)}}
+                        style={{...rs.ingQtyInput, ...(estRef ? rs.ingQtyInputRef : null), ...(isMobile ? { fontSize: 'var(--t2)' } : null)}}
                         aria-label={`Quantité de ${i.nom || 'l’ingrédient'} : la modifier recalcule la recette`}
                       />
                       {isScaled && <div style={rs.ingQtyBase}>base <span data-no-translate>{fmtQte(base)}</span></div>}
                     </div>
                   ) : (
-                    <span style={{...rs.ingQty, ...(isMobile ? { fontSize: 15 } : null)}}>{fmtQte(base)}</span>
+                    <span style={{...rs.ingQty, ...(isMobile ? { fontSize: 'var(--t2)' } : null)}}>{fmtQte(base)}</span>
                   )}
                   <span style={{fontSize: isMobile ? 14 : 13, color:'var(--text2)'}}>{i.unite}</span>
                 </div>
@@ -813,7 +813,7 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
                 </div>
               ) : (
                 congelable == null && (
-                  <div className="no-print" style={{fontSize:11, color:'var(--text2)', fontStyle:'italic'}}>
+                  <div className="no-print" style={{fontSize: 'var(--t1)', color:'var(--text2)', fontStyle:'italic'}}>
                     Non qualifiée : à faire renseigner par le consultant ou le patron.
                   </div>
                 )
@@ -832,19 +832,19 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
                     { k: 'decongele', label: 'Après décongélation' },
                   ].map(f => (
                     <div key={f.k} style={{display:'flex', alignItems:'center', gap:10}}>
-                      <span style={{flex:1, minWidth:0, fontSize:12, color:'var(--text2)'}}>{f.label}</span>
+                      <span style={{flex:1, minWidth:0, fontSize: 'var(--t1)', color:'var(--text2)'}}>{f.label}</span>
                       <input
                         type="number" min="1" step="1" inputMode="numeric"
                         value={durees[f.k]}
                         disabled={savingDurees}
                         onChange={e => setDurees(prev => ({ ...prev, [f.k]: e.target.value }))}
-                        style={{width:64, flexShrink:0, padding:'7px 8px', border:'1px solid var(--border)', borderRadius:7, fontSize:13, fontWeight:700, textAlign:'right', color:'var(--text)', background:'var(--bg)', fontFamily:'var(--font)', outline:'none'}}
+                        style={{width:64, flexShrink:0, padding:'7px 8px', border:'1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', textAlign:'right', color:'var(--text)', background:'var(--bg)', fontFamily:'var(--font)', outline:'none'}}
                         aria-label={f.label}
                       />
-                      <span style={{width:38, flexShrink:0, fontSize:11, color:'var(--text2)'}}>jours</span>
+                      <span style={{width:38, flexShrink:0, fontSize: 'var(--t1)', color:'var(--text2)'}}>jours</span>
                     </div>
                   ))}
-                  <div style={{fontSize:11, color:'var(--text2)', lineHeight:1.5}}>
+                  <div style={{fontSize: 'var(--t1)', color:'var(--text2)', lineHeight:1.5}}>
                     Surgelé vide = préparation non congelable : les modes surgélation et décongélation
                     sont alors indisponibles à l'étiquetage.
                   </div>
@@ -858,7 +858,7 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
                   </div>
                 </div>
               ) : (
-                <div style={{fontSize:13, color:'var(--text)', lineHeight:1.7}}>
+                <div style={{fontSize: 'var(--t2)', color:'var(--text)', lineHeight:1.7}}>
                   <div>Froid positif : <strong>{dureesRef.frais} jours</strong></div>
                   <div>Surgelé : <strong>{dureesRef.congele == null ? 'non congelable' : `${dureesRef.congele} jours`}</strong></div>
                   <div>Après décongélation : <strong>{dureesRef.decongele} jours</strong></div>
@@ -1249,31 +1249,31 @@ const ms = {
   // les onglets avec la recherche, et le pied (récap + export), sont collants pour
   // rester visibles pendant qu'on parcourt les listes.
   controls: { position: 'sticky', top: 0, zIndex: 3, background: 'var(--surface)', padding: '4px 0 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 10 },
-  search: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
-  hint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
+  search: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
+  hint: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.45 },
   list: { padding: '6px 0 10px', display: 'flex', flexDirection: 'column', minHeight: 160 },
-  groupHead: { display: 'flex', alignItems: 'center', gap: 6, padding: '14px 6px 6px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
-  groupCount: { fontWeight: 500, color: 'var(--text3)' },
-  groupAllBtn: { marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 4px', textTransform: 'none', letterSpacing: 0, flexShrink: 0 },
-  row: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', cursor: 'pointer', marginBottom: 6, flexShrink: 0 },
+  groupHead: { display: 'flex', alignItems: 'center', gap: 6, padding: '14px 6px 6px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
+  groupCount: { fontWeight: 'var(--g2)', color: 'var(--text3)' },
+  groupAllBtn: { marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--lien)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 4px', textTransform: 'none', letterSpacing: 0, flexShrink: 0 },
+  row: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', cursor: 'pointer', marginBottom: 6, flexShrink: 0 },
   // Shorthand `border` complet (pas `borderColor`) : ms.row pose déjà le
   // shorthand, mélanger les deux fait retirer borderColor au re-render (warning React).
-  rowChecked: { border: '1px solid var(--accent)', background: 'var(--accent-light)' },
+  rowChecked: { border: '1px solid var(--onglet)', background: 'var(--selection)' },
   rowDisabled: { opacity: 0.45, cursor: 'not-allowed' },
   rowMain: { display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, cursor: 'pointer' },
-  rowName: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 500, color: 'var(--text)', overflowWrap: 'anywhere' },
-  rowMeta: { fontSize: 11, color: 'var(--text2)', whiteSpace: 'nowrap', flexShrink: 0 },
-  tagInclus: { fontSize: 11, fontWeight: 700, background: 'var(--success-bg)', color: 'var(--success-text)', padding: '2px 8px', borderRadius: 99, whiteSpace: 'nowrap', flexShrink: 0 },
-  expandBtn: { background: 'none', border: 'none', color: 'var(--text2)', fontSize: 11, cursor: 'pointer', padding: '4px 6px', fontFamily: 'var(--font)', flexShrink: 0 },
+  rowName: { flex: 1, minWidth: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflowWrap: 'anywhere' },
+  rowMeta: { fontSize: 'var(--t1)', color: 'var(--text2)', whiteSpace: 'nowrap', flexShrink: 0 },
+  tagInclus: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', background: 'var(--success-bg)', color: 'var(--success-text)', padding: '2px 8px', borderRadius: 'var(--r-full)', whiteSpace: 'nowrap', flexShrink: 0 },
+  expandBtn: { background: 'none', border: 'none', color: 'var(--text2)', fontSize: 'var(--t1)', cursor: 'pointer', padding: '4px 6px', fontFamily: 'var(--font)', flexShrink: 0 },
   cartePreview: { margin: '-2px 0 8px 14px', padding: '6px 12px 8px', borderLeft: '2px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 4 },
-  previewCat: { fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4 },
-  previewLine: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
-  empty: { padding: '28px 12px', textAlign: 'center', fontSize: 13, color: 'var(--text2)' },
+  previewCat: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', marginTop: 4 },
+  previewLine: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 },
+  empty: { padding: '28px 12px', textAlign: 'center', fontSize: 'var(--t2)', color: 'var(--text2)' },
   footer: { position: 'sticky', bottom: 0, zIndex: 3, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '12px 0 4px', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  footerInfo: { flex: 1, minWidth: 160, fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
-  clearBtn: { background: 'none', border: 'none', color: 'var(--danger-strong)', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', padding: 0 },
-  btnGhost: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
-  btnPrimary: { padding: '8px 18px', border: 'none', borderRadius: 8, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  footerInfo: { flex: 1, minWidth: 160, fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.45 },
+  clearBtn: { background: 'none', border: 'none', color: 'var(--danger-strong)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', padding: 0 },
+  btnGhost: { padding: '8px 16px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  btnPrimary: { padding: '8px 18px', border: 'none', borderRadius: 'var(--r)', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   btnDisabled: { opacity: 0.5, cursor: 'not-allowed' },
 };
 
@@ -1387,7 +1387,7 @@ const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, 
                         ))}
                       </div>
                     </div>
-                    <span style={{ color: 'var(--text2)', fontSize: 18, flexShrink: 0 }}>›</span>
+                    <span style={{ color: 'var(--text2)', fontSize: 'var(--t3)', flexShrink: 0 }}>›</span>
                   </button>
                 );
               })}
@@ -1399,22 +1399,22 @@ const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, 
 };
 
 const is = {
-  input: { width: '100%', padding: '10px 14px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
+  input: { width: '100%', padding: '10px 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box', outline: 'none' },
   chips: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 },
-  chip: { padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 99, background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  chip: { padding: '4px 10px', border: '1px solid var(--border)', borderRadius: 'var(--r-full)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   results: { display: 'flex', flexDirection: 'column', gap: 6, minHeight: 120 },
-  hint: { padding: '24px 14px', textAlign: 'center', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
-  countLine: { fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, padding: '4px 8px' },
+  hint: { padding: '24px 14px', textAlign: 'center', fontSize: 'var(--t2)', color: 'var(--text2)', fontStyle: 'italic' },
+  countLine: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', padding: '4px 8px' },
   // flexShrink:0 IMPÉRATIF : la règle globale mobile « button:not(.mini){min-height:44px} »
   // écrase le min-height:auto des flex-items → sans ça, flexbox comprime chaque ligne
   // à 44px dans la liste à hauteur contrainte (clavier ouvert) et le contenu déborde
   // par-dessus les lignes voisines (résultats superposés, illisibles).
-  row: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', flexShrink: 0, textAlign: 'left', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  rowName: { fontSize: 14, fontWeight: 700, color: 'var(--text)' },
-  rowMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
+  row: { display: 'flex', alignItems: 'center', gap: 10, width: '100%', flexShrink: 0, textAlign: 'left', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  rowName: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  rowMeta: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
   matchRow: { display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 6 },
-  matchIng: { fontSize: 11, fontWeight: 500, background: 'var(--accent-light)', color: 'var(--accent)', border: '1px solid var(--accent-bd)', padding: '2px 7px', borderRadius: 99 },
-  matchAllerg: { fontSize: 11, fontWeight: 500, background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)', padding: '2px 7px', borderRadius: 99 },
+  matchIng: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', background: 'var(--selection)', color: 'var(--text)', border: '1px solid var(--btn-bord)', padding: '2px 7px', borderRadius: 'var(--r-full)' },
+  matchAllerg: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', background: 'var(--warning-bg)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)', padding: '2px 7px', borderRadius: 'var(--r-full)' },
 };
 
 const Recettes = ({ user, etablissement }) => {
@@ -2156,7 +2156,7 @@ const Recettes = ({ user, etablissement }) => {
           <div style={rs.carteHeader}>
             <div>
               <div style={rs.carteName}>{activeCarte.nom}</div>
-              <div style={{fontSize:13, color:'var(--text2)'}}>
+              <div style={{fontSize: 'var(--t2)', color:'var(--text2)'}}>
                 {platsCarte.length} plat{platsCarte.length > 1 ? 's' : ''}
                 {activeCarte.dateDebut && <>, du {dateSuisse(activeCarte.dateDebut)}{activeCarte.dateFin && <> au {dateSuisse(activeCarte.dateFin)}</>}</>}
               </div>
@@ -2182,9 +2182,9 @@ const Recettes = ({ user, etablissement }) => {
                   explicitement que la brigade ne la voit pas, sinon rien ne
                   distingue à l'écran une carte publiée d'une carte masquée. */}
               {activeCarte.masquee === true ? (
-                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--warning-text)' }} title="Visible du consultant uniquement">Cachée</span>
+                <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--warning-text)' }} title="Visible du consultant uniquement">Cachée</span>
               ) : (
-                <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--success-text)' }}>Carte active</span>
+                <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--success-text)' }}>Carte active</span>
               )}
             </div>
           </div>
@@ -2240,7 +2240,7 @@ const Recettes = ({ user, etablissement }) => {
                     : 'Hors ligne : les recettes de cet établissement n’ont pas encore été chargées sur cet appareil. Elles s’afficheront au retour du réseau.')}
                 onRetry={dataStatus === 'error' ? retryAll : null}
               />
-            : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>{canFiches ? 'Aucune recette pour cet établissement. La tuile « Nouvelle fiche » en crée une.' : 'Aucune recette pour cet établissement.'}</div>
+            : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize: 'var(--t2)'}}>{canFiches ? 'Aucune recette pour cet établissement. La tuile « Nouvelle fiche » en crée une.' : 'Aucune recette pour cet établissement.'}</div>
         ) : (
           <VitrineFiches
             recettesEtab={recettesEtab}
@@ -2275,7 +2275,7 @@ const Recettes = ({ user, etablissement }) => {
                       : 'Hors ligne : les recettes de cet établissement n’ont pas encore été chargées sur cet appareil. Elles s’afficheront au retour du réseau.')}
                   onRetry={dataStatus === 'error' ? retryAll : null}
                 />
-              : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>{canFiches ? 'Aucune recette pour cet établissement. La tuile « Nouvelle fiche » en crée une.' : 'Aucune recette pour cet établissement.'}</div>
+              : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize: 'var(--t2)'}}>{canFiches ? 'Aucune recette pour cet établissement. La tuile « Nouvelle fiche » en crée une.' : 'Aucune recette pour cet établissement.'}</div>
           )}
 
           {selection.active && (
@@ -2368,13 +2368,13 @@ const Recettes = ({ user, etablissement }) => {
                 {canEtiqueter && r.statut !== 'archivée' && (
                   <button
                     type="button"
-                    style={rs.etiquetteBtn}
+                    style={rs.printBtn}
                     aria-label={`Imprimer l'étiquette DLC de ${r.nom}`}
                     onClick={e => { e.stopPropagation(); setEtiquetteRecette(r); }}
                     onKeyDown={e => e.stopPropagation()}
                   >Étiquette</button>
                 )}
-                <span style={{color:'var(--text2)', fontSize:18}}>›</span>
+                <span style={{color:'var(--text2)', fontSize: 'var(--t3)'}}>›</span>
               </div>
             );
 
@@ -2405,7 +2405,7 @@ const Recettes = ({ user, etablissement }) => {
                         <RecettePhoto src={plat.photoUrl} alt={plat.nom} style={rs.thumb} />
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={rs.platName}>
-                            <span style={{ marginRight: 8, fontSize: 12, color: 'var(--text2)' }}>{isExpanded ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
+                            <span style={{ marginRight: 8, fontSize: 'var(--t1)', color: 'var(--text2)' }}>{isExpanded ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                             {plat.nom}
                           </div>
                           <div style={rs.recetteMeta}>
@@ -2482,38 +2482,38 @@ const Recettes = ({ user, etablissement }) => {
 
 const rs = {
   root: {display:'flex',flexDirection:'column',gap:16},
-  searchEmpty: {display:'flex',flexDirection:'column',alignItems:'center',gap:10,padding:'28px 16px',textAlign:'center',color:'var(--text2)',fontSize:13,background:'var(--surface)',border:'1px dashed var(--border)',borderRadius:'var(--r)'},
-  searchElsewhereBtn: {alignSelf:'flex-start',padding:'8px 12px',borderRadius:8,border: '1px solid transparent',background:'var(--accent-light)',color:'var(--accent)',fontFamily:'var(--font)',fontSize:12,fontWeight:500,cursor:'pointer',textAlign:'left'},
+  searchEmpty: {display:'flex',flexDirection:'column',alignItems:'center',gap:10,padding:'28px 16px',textAlign:'center',color:'var(--text2)',fontSize: 'var(--t2)',background:'var(--surface)',border:'1px dashed var(--border)',borderRadius:'var(--r)'},
+  searchElsewhereBtn: {alignSelf:'flex-start',padding:'8px 12px',borderRadius: 'var(--r)',border: '1px solid transparent',background: 'var(--btn-fond)',color: 'var(--btn-texte)',fontFamily:'var(--font)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',textAlign:'left'},
   toolbar: {display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'},
   tabsWrap: {minWidth:0},
   tabsWrapMobile: {width:'100%',minWidth:0},
   toolbarActions: {display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginLeft:'auto'},
   toolbarActionsMobile: {width:'100%',marginLeft:0},
-  addBtn: {padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
+  addBtn: {padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
   // Sans cadre (la règle « Plus de carrés » l'aplatissait déjà) ni retrait
   // vertical : la place rendue va aux vignettes des plats.
   carteHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},
   carteHeaderRight: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
-  homeBtn: {padding:'6px 12px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text2)',fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
-  homeBtnActive: {borderColor:'var(--accent)',color:'var(--accent)',background:'var(--accent-light)'},
-  carteName: {fontSize:18,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)'},
+  homeBtn: {padding:'6px 12px',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',borderRadius: 'var(--r)',background: 'var(--btn-fond)',color: 'var(--btn-texte)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
+  homeBtnActive: {borderColor:'var(--onglet)',color:'var(--text)',background:'var(--selection)'},
+  carteName: {fontSize: 'var(--t3)',fontWeight: 'var(--g3)',fontFamily:'var(--font)',color:'var(--text)'},
   // Les plats de la carte et les fiches de Je cherche une fiche sont des
   // vignettes (VitrineCarte, VitrineFiches) : leur forme vit dans
   // src/components/fiches/fiches.css, hors de portée de la règle « Plus de
   // carrés » qui aplatissait les tuiles posées en style inline.
-  lienAction: {background:'none',border:'none',padding:0,color:'var(--accent)',fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',fontSize:'inherit',textDecoration:'underline'},
+  lienAction: {background:'none',border:'none',padding:0,color: 'var(--lien)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',fontSize:'inherit',textDecoration:'underline'},
   // Allergènes en texte simple, noms complets séparés par des virgules.
-  allergenesTexte: {fontSize:12,fontWeight:400,color:'var(--text2)',lineHeight:1.4},
+  allergenesTexte: {fontSize: 'var(--t1)',fontWeight: 'var(--g1)',color:'var(--text2)',lineHeight:1.4},
   // Dans une ligne de liste : une seule ligne, le reste au survol (title).
   allergenesLigne: {minWidth:0,maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'},
   // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
   // et fait se chevaucher les boutons d'une rangée sur mobile.
-  etiquetteBtn:{flexShrink:0,padding:'8px 14px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
-  printBtn:{padding:'8px 14px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
-  badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius:12,fontSize:11,fontWeight:500},
-  congBtn: {padding:'7px 14px',background:'var(--surface)',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',color:'var(--text2)',borderRadius:8,fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
-  congBtnActive: {background:'var(--accent)',borderColor:'var(--accent)',color:'var(--on-accent)'},
+  etiquetteBtn:{flexShrink:0,padding:'8px 14px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  printBtn:{padding:'8px 14px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)', fontWeight: 'var(--g2)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)'},
+  badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)'},
+  congBtn: {padding:'7px 14px',background: 'var(--btn-fond)',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  congBtnActive: {background:'var(--selection)',borderColor:'var(--onglet)',color:'var(--text)'},
   // Recettes list
   recettesWrap: {display:'flex',flexDirection:'column',gap:2,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--sh-xs)'},
   // flexWrap : sur mobile la rangee (vignette + nom + pastilles + statut +
@@ -2531,16 +2531,16 @@ const rs = {
   // un quasi-raté ne déclenche donc plus rien au lieu de déclencher la mauvaise
   // ligne. Le fond en retrait (--bg) rend ces gouttières visibles.
   sousListe: {display:'flex',flexDirection:'column',gap:8,padding:'8px 10px',background:'var(--bg)',borderBottom:'1px solid var(--border)'},
-  sousListeVide: {padding:'12px 10px 12px 40px',background:'var(--bg)',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--text2)',fontStyle:'italic'},
+  sousListeVide: {padding:'12px 10px 12px 40px',background:'var(--bg)',borderBottom:'1px solid var(--border)',fontSize: 'var(--t1)',color:'var(--text2)',fontStyle:'italic'},
   // Rail d'accent à gauche pour garder la hiérarchie visuelle ; minHeight pose
   // un plancher de rythme vertical (les hauteurs mesurées allaient de 91 à 123px).
-  recetteRowSub: {marginLeft:22,border:'1px solid var(--border)',borderLeft:'3px solid var(--accent-bd)',borderRadius:10,background:'var(--surface)',minHeight:72},
+  recetteRowSub: {marginLeft:22,border:'1px solid var(--border)',borderLeft:'3px solid var(--btn-bord)',borderRadius: 'var(--r)',background:'var(--surface)',minHeight:72},
   // Recettes sans plat : meme traitement que les sous-lignes, mais sans
   // indentation ni rail puisqu'elles ne dependent d'aucun plat. Elles etaient
   // separees de 2px seulement (le gap de recettesWrap), donc pas visables non
   // plus au doigt.
   orphelinListe: {display:'flex',flexDirection:'column',gap:8,padding:'8px 10px',background:'var(--bg)'},
-  recetteRowOrphelin: {border:'1px solid var(--border)',borderRadius:10,background:'var(--surface)',minHeight:72},
+  recetteRowOrphelin: {border:'1px solid var(--border)',borderRadius: 'var(--r)',background:'var(--surface)',minHeight:72},
   // minWidth 96 : avec minWidth:0 le nom cedait toute sa place aux elements de
   // droite (pastilles, statut) et tombait a 0px de large, le texte se lisant
   // alors verticalement. Le nom est l'information qu'on cherche : c'est lui qui
@@ -2550,42 +2550,42 @@ const rs = {
   // couleur). Le placeholder est rendu par RecettePhoto avec ce même style.
   thumb: { width: 72, height: 72, objectFit: 'cover', borderRadius: 'var(--r-sm)', flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)' },
   platBlock: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' },
-  platName: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', display: 'flex', alignItems: 'center' },
-  orphelinTitle: { padding: '12px 18px', fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
+  platName: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center' },
+  orphelinTitle: { padding: '12px 18px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
   // Titre repliable de la section Archivées : la même ligne, en bouton.
   archiveesTitre: { display: 'flex', alignItems: 'center', gap: 6, width: '100%', minHeight: 44, borderLeft: 'none', borderRight: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)' },
-  recetteName: {fontSize:14,fontWeight:500,color:'var(--text)'},
-  recetteMeta: {fontSize:11,color:'var(--text2)',marginTop:2},
+  recetteName: {fontSize: 'var(--t2)',fontWeight: 'var(--g2)',color:'var(--text)'},
+  recetteMeta: {fontSize: 'var(--t1)',color:'var(--text2)',marginTop:2},
   recetteBadges: {display:'flex',gap:4,flexShrink:0},
   // Detail
   // La fiche ouverte (héros, sections, colonnes) est en classes .fv-fiche de
   // src/components/fiches/fiches.css ; restent ici les contrôles de la fiche.
   detailRoot: {display:'flex',flexDirection:'column',gap:18},
-  backBtn: {background:'none',border:'1px solid var(--border)',borderRadius:7,padding:'6px 12px',cursor:'pointer',fontSize:12,color:'var(--text2)',fontFamily:'var(--font)',flexShrink:0},
+  backBtn: {background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',borderRadius: 'var(--r)',padding:'6px 12px',cursor:'pointer',fontSize: 'var(--t1)',color: 'var(--btn-texte)', fontWeight: 'var(--g2)',fontFamily:'var(--font)',flexShrink:0},
   portionsCtrl: {display:'flex',alignItems:'center',gap:6},
-  portBtn: {minWidth:30,height:30,borderRadius:8,borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',background:'var(--surface)',color:'var(--text)',cursor:'pointer',fontSize:16,fontWeight:700,lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:'var(--font)'},
-  portInput: {width:64,padding:'5px 6px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:8,background:'var(--surface)',color:'var(--text)',fontSize:15,fontWeight:700,textAlign:'center',fontFamily:'var(--font)',flexShrink:0},
+  portBtn: {minWidth:30,height:30,borderRadius: 'var(--r)',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',background: 'var(--btn-fond)',color: 'var(--btn-texte)',cursor:'pointer',fontSize: 'var(--t3)',fontWeight: 'var(--g3)',lineHeight:1,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontFamily:'var(--font)'},
+  portInput: {width:64,padding:'5px 6px',borderWidth:1,borderStyle:'solid',borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',background:'var(--surface)',color:'var(--text)',fontSize: 'var(--t2)',fontWeight: 'var(--g3)',textAlign:'center',fontFamily:'var(--font)',flexShrink:0},
   // ─── Barre d'échelle sous l'en-tête des ingrédients ───────────────────────
   // Au repos : la phrase qui apprend le geste (taper sur une quantité).
   // Active : d'où l'on part, de combien, et le retour en arrière.
   // Retraits latéraux réduits : la fiche n'est plus une carte, les lignes
   // s'alignent sur le titre de la section.
-  echelleBar: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'8px 10px',background:'var(--bg)',borderBottomWidth:1,borderBottomStyle:'solid',borderBottomColor:'var(--border)',fontSize:11,color:'var(--text2)',lineHeight:1.4},
+  echelleBar: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',padding:'8px 10px',background:'var(--bg)',borderBottomWidth:1,borderBottomStyle:'solid',borderBottomColor:'var(--border)',fontSize: 'var(--t1)',color:'var(--text2)',lineHeight:1.4},
   echelleBarActive: {background:'var(--warning-bg)',borderBottomColor:'var(--warning-bd)'},
-  echelleReset: {marginLeft:'auto',padding:'5px 12px',background:'none',borderWidth:1,borderStyle:'solid',borderColor:'var(--warning-bd)',borderRadius:7,color:'var(--warning-text)',fontSize:11,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  echelleReset: {marginLeft:'auto',padding:'5px 12px',background:'none',borderWidth:1,borderStyle:'solid',borderColor:'var(--warning-bd)',borderRadius: 'var(--r)',color:'var(--warning-text)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   ingTable: {display:'flex',flexDirection:'column'},
-  ingHead: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'8px 2px',background:'var(--bg)',fontSize:11,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:8},
+  ingHead: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'8px 2px',background:'var(--bg)',fontSize: 'var(--t1)',fontWeight: 'var(--g3)',color:'var(--text2)',borderBottom:'1px solid var(--border)',gap:8},
   ingRow: {display:'grid',gridTemplateColumns:'1fr 80px 60px',padding:'9px 2px',borderBottom:'1px solid var(--border)',gap:8,alignItems:'center'},
   ingRowRef: {background:'var(--warning-bg-soft)'},
-  ingName: {fontSize:13,color:'var(--text)'},
+  ingName: {fontSize: 'var(--t2)',color:'var(--text)'},
   // Ligne sans quantité chiffrée (« 1 feuille de laurier ») : pas de champ,
   // mais le même alignement à droite que les champs voisins.
-  ingQty: {fontSize:13,fontWeight:500,color:'var(--text)',textAlign:'right'},
+  ingQty: {fontSize: 'var(--t2)',fontWeight: 'var(--g2)',color:'var(--text)',textAlign:'right'},
   // Le champ porte le recalcul : il reste discret (fond de carte, bord léger)
   // pour ne pas se lire comme une modification de la fiche enregistrée.
-  ingQtyInput: {width:'100%',minWidth:0,padding:'5px 6px',borderWidth:1,borderStyle:'solid',borderColor:'var(--border)',borderRadius:7,background:'var(--bg)',color:'var(--text)',fontSize:13,fontWeight:500,textAlign:'right',fontFamily:'var(--font)'},
+  ingQtyInput: {width:'100%',minWidth:0,padding:'5px 6px',borderWidth:1,borderStyle:'solid',borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',background: 'var(--surface)',color:'var(--text)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',textAlign:'right',fontFamily:'var(--font)'},
   ingQtyInputRef: {borderColor:'var(--warning-bd)',background:'var(--warning-bg)',color:'var(--warning-text)'},
-  ingQtyBase: {fontSize:11,color:'var(--text3)',textAlign:'right',marginTop:2},
+  ingQtyBase: {fontSize: 'var(--t1)',color:'var(--text3)',textAlign:'right',marginTop:2},
 };
 
 export default Recettes;
