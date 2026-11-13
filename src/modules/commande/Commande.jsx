@@ -292,7 +292,7 @@ const Commande = ({ user, etablissement }) => {
         {totalCount > 0 && (
           <div style={{ ...s.progress, flex: 1, minWidth: 0 }}>
             <div style={s.progressBar}><div style={{ ...s.progressFill, width: `${totalCount ? (cocheCount / totalCount) * 100 : 0}%` }} /></div>
-            <span style={{ fontSize: 12, color: 'var(--text2)', whiteSpace: 'nowrap' }}>{cocheCount} / {totalCount} coché{cocheCount > 1 ? 's' : ''}</span>
+            <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{cocheCount} / {totalCount} coché{cocheCount > 1 ? 's' : ''}</span>
           </div>
         )}
       </div>
@@ -301,27 +301,27 @@ const Commande = ({ user, etablissement }) => {
       <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {totalCount === 0 ? (
           <div style={s.empty}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10, fontFamily: 'var(--font-serif)' }}>Liste de commande vide</div>
-            <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 8, maxWidth: 420 }}>
+            <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', marginTop: 10, fontFamily: 'var(--font)' }}>Liste de commande vide</div>
+            <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 8, maxWidth: 420 }}>
               {isConsultant
                 ? 'Ouvrez « Gérer » puis « Générer depuis les cartes » pour rassembler les produits de toutes les cartes, ou ajoutez un produit.'
                 : 'Aucun produit pour le moment. Vous pouvez ajouter un produit, ou demander au consultant de générer la liste depuis les cartes.'}
             </div>
           </div>
         ) : groups.length === 0 ? (
-          <div style={s.empty}><div style={{ fontSize: 13, color: 'var(--text2)' }}>Aucun produit pour ce filtre.</div></div>
+          <div style={s.empty}><div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Aucun produit pour ce filtre.</div></div>
         ) : (
           groups.map(group => {
             const isCollapsed = collapsed.has(group.categorie);
             return (
-              <div key={group.categorie} style={s.section}>
+              <div key={group.categorie} data-cadre="" style={s.section}>
                 <button
                   type="button"
                   aria-expanded={!isCollapsed}
                   style={s.sectionHead}
                   onClick={() => setCollapsed(prev => { const n = new Set(prev); n.has(group.categorie) ? n.delete(group.categorie) : n.add(group.categorie); return n; })}
                 >
-                  <span style={{ fontSize: 11, color: 'var(--text2)' }} className="no-print">{!isCollapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
+                  <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }} className="no-print">{!isCollapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                   <span style={s.sectionTitle}>{group.categorie}</span>
                   <span style={s.sectionCount}>{group.items.length}</span>
                 </button>
@@ -450,9 +450,9 @@ const GenerateModal = ({ loading, busy, cartes, plats, onClose, onConfirm }) => 
             Cochez les cartes à inclure. Les produits sont regroupés sans doublon pour faciliter la commande.
           </div>
           {loading ? (
-            <div style={{ padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>Chargement des cartes…</div>
+            <div style={{ padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement des cartes…</div>
           ) : cartes.length === 0 ? (
-            <div style={{ padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
+            <div style={{ padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)' }}>
               Aucune carte trouvée pour cet établissement.
             </div>
           ) : (
@@ -534,7 +534,7 @@ const AddProductModal = ({ onClose, onAdd }) => {
                 {CATS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
               {!categorieChoisie && nom.trim() && categorie !== AUTRES && (
-                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>Déduite du nom, modifiable.</div>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 4 }}>Déduite du nom, modifiable.</div>
               )}
             </div>
             <div style={{ width: 110 }}>
@@ -570,44 +570,44 @@ const s = {
   // Une seule ligne : la loupe à gauche, le compteur dans l'espace restant.
   ligneEtat: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
   cats: { display: 'flex', gap: 4, flexWrap: 'wrap' },
-  catBtn: { padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 20, background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)' },
+  catBtn: { padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)' },
   actions: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
-  ghostBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
-  aiBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', border: '1px solid var(--ai-bd)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  ghostBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  aiBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', border: '1px solid var(--ai-bd)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   progress: { display: 'flex', alignItems: 'center', gap: 10 },
   progressBar: { flex: 1, height: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden' },
   progressFill: { height: '100%', background: 'var(--accent)', transition: 'width 0.2s' },
   printHeader: { marginBottom: 4 },
-  section: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
+  section: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r)', overflow: 'hidden' },
   // En-tête de rayon repliable : un bouton (clavier, aria-expanded), même rendu
   // que l'ancien div. Le filet bas passe par une ombre intérieure : avec une
   // bordure, la règle « Plus de carrés » le prendrait pour une ligne de liste.
-  sectionHead: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', background: 'var(--bg)', border: 'none', boxShadow: 'inset 0 -1px 0 var(--border)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', color: 'inherit' },
-  sectionTitle: { flex: 1, fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5 },
-  sectionCount: { fontSize: 11, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px' },
-  row: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--border)' },
+  sectionHead: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', background: 'var(--bg)', border: 'none', boxShadow: 'inset 0 -1px 0 var(--rule-soft)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', color: 'inherit' },
+  sectionTitle: { flex: 1, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
+  sectionCount: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px' },
+  row: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--rule-soft)' },
   rowChecked: { background: 'var(--success-bg)' },
-  rowName: { fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'text' },
-  nameInput: { width: '100%', padding: '5px 8px', border: '1px solid var(--accent)', borderRadius: 'var(--r)', fontSize: 14, fontWeight: 500, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
-  manualTag: { marginLeft: 8, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: 8, padding: '1px 6px' },
+  rowName: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'text' },
+  nameInput: { width: '100%', padding: '5px 8px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
+  manualTag: { marginLeft: 8, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', border: '1px solid var(--btn-bord)', borderRadius: 'var(--r)', padding: '1px 6px' },
   qtyWrap: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
-  qtyInput: { width: 70, padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 13, textAlign: 'right', fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)' },
-  qtyUnit: { fontSize: 12, color: 'var(--text2)', width: 26 },
+  qtyInput: { width: 70, padding: '6px 8px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', textAlign: 'right', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)' },
+  qtyUnit: { fontSize: 'var(--t1)', color: 'var(--text2)', width: 26 },
   delBtn: { background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0 },
   empty: { padding: 40, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', display: 'flex', flexDirection: 'column', alignItems: 'center' },
-  label: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
-  input: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
-  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
+  label: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', display: 'block', marginBottom: 4 },
+  input: { width: '100%', padding: '9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
+  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)' },
   // Modale de generation
   genBody: { display: 'flex', flexDirection: 'column', gap: 12 },
-  genHint: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
-  selectAllBtn: { alignSelf: 'flex-start', padding: '5px 12px', background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  genHint: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.45 },
+  selectAllBtn: { alignSelf: 'flex-start', padding: '5px 12px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   carteList: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '46vh', overflowY: 'auto' },
-  carteRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, background: 'var(--surface)', cursor: 'pointer' },
+  carteRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', cursor: 'pointer' },
   // Carte cochée : filet accent, sans fond de couleur.
-  carteRowOn: { borderColor: 'var(--accent)' },
-  carteName: { fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  carteMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
+  carteRowOn: { borderColor: 'var(--onglet)', background: 'var(--selection)' },
+  carteName: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  carteMeta: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
 };
 
 export default Commande;

@@ -80,12 +80,12 @@ export default function CataloguePicker({ catalogue = [], mode = 'ligne', recher
               key={p.id}
               type="button"
               onClick={() => (multi ? basculer(p.id) : onChoisir(p))}
-              style={{ ...ligne, background: coche ? 'var(--accent-light)' : 'transparent' }}
+              style={{ ...ligne, background: coche ? 'var(--selection)' : 'transparent' }}
             >
               {multi && <input type="checkbox" checked={coche} readOnly tabIndex={-1} style={{ width: 18, height: 18, accentColor: 'var(--accent)', flexShrink: 0 }} />}
               <span style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2, textAlign: 'left' }}>
-                <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</span>
-                <span style={{ fontSize: 12, color: 'var(--text2)' }}>
+                <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</span>
+                <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                   {p.categorie}{p.fournisseurNom ? `, ${p.fournisseurNom}` : ''}{p.uniteRef ? `, par ${p.uniteRef}` : ''}
                 </span>
               </span>

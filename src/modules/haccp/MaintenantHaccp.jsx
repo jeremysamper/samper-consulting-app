@@ -53,7 +53,7 @@ function Barre({ faits, total }) {
 }
 
 const TONS = {
-  neutre: { fond: 'var(--surface2)', titre: 'var(--accent)' },
+  neutre: { fond: 'var(--zone)', titre: 'var(--lien)' },
   retard: { fond: 'var(--warning-bg-soft)', titre: 'var(--warning-text)' },
   grave: { fond: 'var(--danger-bg-soft)', titre: 'var(--danger-text)' },
   ok: { fond: 'var(--success-bg-soft)', titre: 'var(--success-text)' },
@@ -271,24 +271,24 @@ const st = {
   // large, le bouton passe dessous et s'étire.
   texte: { flex: '999 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 },
   action: { flex: '1 0 260px', minWidth: 0 },
-  surtitre: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, letterSpacing: 0.2 },
-  titre: { fontSize: 20, lineHeight: 1.2, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  titreSuite: { fontSize: 15, fontFamily: 'var(--font)', color: 'var(--text2)' },
-  sousTitre: { fontSize: 14, color: 'var(--text2)' },
-  ligne: { fontSize: 14, color: 'var(--text)', lineHeight: 1.4 },
-  ligneForte: { fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 },
-  ligneDiscrete: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 },
+  surtitre: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', letterSpacing: 0.2 },
+  titre: { fontSize: 'var(--t4)', lineHeight: 1.2, fontFamily: 'var(--font)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  titreSuite: { fontSize: 'var(--t2)', fontFamily: 'var(--font)', color: 'var(--text2)' },
+  sousTitre: { fontSize: 'var(--t2)', color: 'var(--text2)' },
+  ligne: { fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.4 },
+  ligneForte: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', lineHeight: 1.4 },
+  ligneDiscrete: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 },
   manque: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 },
-  aRevoir: { fontSize: 14, fontWeight: 600, color: 'var(--danger-text)', lineHeight: 1.4 },
+  aRevoir: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--danger-text)', lineHeight: 1.4 },
   piste: { height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden', marginTop: 2 },
   plein: { height: '100%', borderRadius: 3, background: 'var(--accent)' },
   primaire: {
     width: '100%', minHeight: 52, padding: '12px 18px', borderRadius: 'var(--r)', border: 'none',
-    background: 'var(--accent)', color: 'var(--on-accent)', fontFamily: 'var(--font)', fontSize: 16, fontWeight: 600, cursor: 'pointer',
+    background: 'var(--accent)', color: 'var(--on-accent)', fontFamily: 'var(--font)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', cursor: 'pointer',
   },
   secondaire: {
     width: '100%', minHeight: 44, padding: '10px 16px', borderRadius: 'var(--r)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--surface)', color: 'var(--accent)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },
 };

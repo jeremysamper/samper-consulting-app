@@ -6,7 +6,7 @@ import { AlertTriangle } from 'lucide-react';
 // Une recette est importable si elle a un nom et au moins un ingrédient.
 export const isRecipeValid = (r) => Boolean(r && String(r.nom || '').trim()) && (r.ingredients || []).length > 0;
 
-const cell = { padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 12 };
+const cell = { padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t1)' };
 
 // Aperçu éditable des recettes détectées avant insertion en base.
 // Props : recipes, onChange(recipes), unrecognizedUnits
@@ -44,13 +44,13 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
 
   return (
     <div>
-      <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 10 }}>
+      <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginBottom: 10 }}>
         <strong style={{ color: 'var(--text)' }}>{recipes.length}</strong> recette(s) détectée(s),{' '}
         <strong style={{ color: validCount === recipes.length ? 'var(--success-text)' : 'var(--warning-strong)' }}>{validCount}</strong> valide(s)
       </div>
 
       {unrecognizedUnits.length > 0 && (
-        <div style={{ margin: '0 0 10px', padding: '8px 0 8px 12px',   borderLeft: '2px solid var(--warning-bd)', fontSize: 12, color: 'var(--warning-text)' }}>
+        <div style={{ margin: '0 0 10px', padding: '8px 0 8px 12px',   borderLeft: '2px solid var(--warning-bd)', fontSize: 'var(--t1)', color: 'var(--warning-text)' }}>
           Unités non reconnues rencontrées : {unrecognizedUnits.join(', ')}. Les lignes concernées sont signalées en rouge - corrigez-les avant import.
         </div>
       )}
@@ -67,7 +67,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
           // collectées mais jamais affichées.
           const alertes = (r._warnings || []).filter(w => !/ingr[ée]dient/i.test(w));
           return (
-            <div key={id} style={{ border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', opacity: selected ? 1 : 0.55 }}>
+            <div key={id} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', opacity: selected ? 1 : 0.55 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', flexWrap: 'wrap' }}>
                 <input
                   type="checkbox"
@@ -79,7 +79,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                   value={r.nom}
                   onChange={e => patchRecipe(rIdx, { nom: e.target.value })}
                   placeholder="Nom de la recette"
-                  style={{ ...cell, flex: 1, minWidth: 160, fontWeight: 700, fontSize: 13 }}
+                  style={{ ...cell, flex: 1, minWidth: 160, fontWeight: 'var(--g3)', fontSize: 'var(--t2)' }}
                 />
                 <select value={r.categorie || 'Plats'} onChange={e => patchRecipe(rIdx, { categorie: e.target.value })} style={cell}>
                   {CATEGORIES_REC.map(c => <option key={c} value={c}>{c}</option>)}
@@ -89,17 +89,17 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                   onChange={e => patchRecipe(rIdx, { portions: Number(e.target.value) || 1 })}
                   title="Portions" style={{ ...cell, width: 56 }}
                 />
-                <span style={{ fontSize: 11, color: 'var(--text2)' }}>
+                <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                   {(r.ingredients || []).length} ingr., {(r.etapes || []).length} étape(s)
                 </span>
                 {!valid && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--danger-strong)' }}>non importable</span>
+                  <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--danger-strong)' }}>non importable</span>
                 )}
                 {valid && flagged > 0 && (
-                  <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-strong)' }}>{flagged} ligne(s) à vérifier</span>
+                  <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--warning-strong)' }}>{flagged} ligne(s) à vérifier</span>
                 )}
                 {alertes.map((w, i) => (
-                  <span key={i} style={{ fontSize: 11, fontWeight: 700, color: 'var(--warning-strong)' }}>{w}</span>
+                  <span key={i} style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--warning-strong)' }}>{w}</span>
                 ))}
                 <Btn small variant="ghost" onClick={() => toggleExpand(id)} style={{ marginLeft: 'auto' }}>
                   {open ? '▲ Réduire' : '▼ Détail'}
@@ -108,14 +108,14 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
 
               {open && (
                 <div style={{ padding: '4px 12px 12px', borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', margin: '8px 0 4px' }}>INGRÉDIENTS</div>
+                  <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', margin: '8px 0 4px' }}>INGRÉDIENTS</div>
                   {(r.ingredients || []).length === 0 && (
-                    <div style={{ fontSize: 12, color: 'var(--danger-strong)', fontStyle: 'italic' }}>Aucun ingrédient : recette non importable.</div>
+                    <div style={{ fontSize: 'var(--t1)', color: 'var(--danger-strong)', fontStyle: 'italic' }}>Aucun ingrédient : recette non importable.</div>
                   )}
                   {(r.ingredients || []).map((ing, iIdx) => {
                     const warn = ing._import && ing._import.warning;
                     return (
-                      <div key={ing.id} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center', padding: warn ? 4 : 0, background: warn ? 'var(--danger-bg-soft)' : 'transparent', borderRadius: 6, border: warn ? '1px solid var(--danger-bd)' : '1px solid transparent' }}>
+                      <div key={ing.id} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center', padding: warn ? 4 : 0, background: warn ? 'var(--danger-bg-soft)' : 'transparent', borderRadius: 'var(--r)', border: warn ? '1px solid var(--danger-bd)' : '1px solid transparent' }}>
                         <input
                           value={ing.nom}
                           onChange={e => patchIngredient(rIdx, iIdx, { nom: e.target.value })}
@@ -132,20 +132,20 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                           {!UNITES_REC.includes(ing.unite) && <option value={ing.unite}>{ing.unite}</option>}
                         </select>
                         {warn && ing._import.originalText && (
-                          <span title={`Texte source : ${ing._import.originalText}`} style={{ fontSize: 11, color: 'var(--danger-strong)', cursor: 'help', display: 'inline-flex' }}><AlertTriangle size={12} aria-hidden="true" /></span>
+                          <span title={`Texte source : ${ing._import.originalText}`} style={{ fontSize: 'var(--t1)', color: 'var(--danger-strong)', cursor: 'help', display: 'inline-flex' }}><AlertTriangle size={12} aria-hidden="true" /></span>
                         )}
                         <button type="button" onClick={() => removeIngredient(rIdx, iIdx)} title="Supprimer" aria-label="Supprimer l'ingrédient" style={{ ...cell, cursor: 'pointer', color: 'var(--danger-strong)', width: 28 }}>×</button>
                       </div>
                     );
                   })}
 
-                  <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text2)', margin: '10px 0 4px' }}>ÉTAPES</div>
+                  <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', margin: '10px 0 4px' }}>ÉTAPES</div>
                   {(r.etapes || []).length === 0 && (
-                    <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>Aucune étape détectée.</div>
+                    <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontStyle: 'italic' }}>Aucune étape détectée.</div>
                   )}
                   {(r.etapes || []).map((etape, eIdx) => (
                     <div key={eIdx} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'flex-start' }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', paddingTop: 6 }}>{eIdx + 1}</span>
+                      <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--lien)', paddingTop: 6 }}>{eIdx + 1}</span>
                       <textarea
                         value={etape}
                         onChange={e => patchEtape(rIdx, eIdx, e.target.value)}

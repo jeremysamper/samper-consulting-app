@@ -3,7 +3,7 @@ import { AlertTriangle, Link2, Loader2, Search } from 'lucide-react';
 import EcranTache from '../../../components/parcours/EcranTache.jsx';
 import DebouncedField from '../../../components/ui/DebouncedField.jsx';
 import { BoutonActions, Fenetre, st as fst } from '../../../components/ui/Fenetres.jsx';
-import { Encadre, encadreStyle, encadreTitreStyle } from '../../../components/ui/index.jsx';
+import { Encadre, Panneau, encadreStyle, encadreTitreStyle } from '../../../components/ui/index.jsx';
 import { ListeAncree } from '../../../components/ui/ListeAncree.jsx';
 import { getBrowserWindow, notifyLegacy } from '../../../legacy/legacyApi.js';
 import { dbService } from '../../../services/dbService.js';
@@ -537,7 +537,7 @@ export default function FicheEditeur({
 
       {brouillon && (
         <div className="no-print" style={{ ...encadreStyle('alerte'), display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 13, ...encadreTitreStyle('alerte'), flex: 1, minWidth: 200 }}>
+          <span style={{ fontSize: 'var(--t2)', ...encadreTitreStyle('alerte'), flex: 1, minWidth: 200 }}>
             Des modifications de cette fiche faites sur cet appareil n'ont pas été enregistrées.
           </span>
           <button type="button" style={es.bouton} onClick={() => { maj({ ...brouillon.recipe, id: fiche.id, masquee: fiche.masquee }); setBrouillon(null); }}>Restaurer</button>
@@ -545,14 +545,14 @@ export default function FicheEditeur({
         </div>
       )}
       {fiche.masquee === true && (
-        <div className="no-print" style={{ fontSize: 12, lineHeight: 1.4, ...encadreStyle('alerte') }}>
+        <div className="no-print" style={{ fontSize: 'var(--t1)', lineHeight: 1.4, ...encadreStyle('alerte') }}>
           Recette cachée : invisible dans Cartes & Recettes, pour tous les rôles. Elle reste utilisée par la mise en place, la commande et les étiquettes.
         </div>
       )}
 
       <div style={es.colonne}>
         {/* Nom et photo */}
-        <div style={{ ...es.carte, display: 'flex', gap: 14, alignItems: 'center', padding: 14 }}>
+        <Panneau style={{ ...es.carte, display: 'flex', gap: 14, alignItems: 'center', padding: 14 }}>
           <PhotoUploader
             photoUrl={fiche.photoUrl}
             onUpload={async (file) => {
@@ -574,10 +574,10 @@ export default function FicheEditeur({
             aria-label="Nom de la recette"
             style={es.nom}
           />
-        </div>
+        </Panneau>
 
         {/* Ingrédients */}
-        <div style={es.carte}>
+        <Panneau style={es.carte}>
           <div style={es.titreCarte}>
             <span>Ingrédients (<span data-no-translate>{ingredients.length}</span>)</span>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -636,7 +636,7 @@ export default function FicheEditeur({
                             {sugg.map(p => (
                               <div key={p.id} style={es.suggestion} onMouseDown={() => lierProduit(idx, p)}>
                                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nom}</span>
-                                {p.uniteRef && <span style={{ fontSize: 11, color: 'var(--text2)', marginLeft: 6 }}>{p.uniteRef}</span>}
+                                {p.uniteRef && <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginLeft: 6 }}>{p.uniteRef}</span>}
                               </div>
                             ))}
                           </ListeAncree>
@@ -663,10 +663,10 @@ export default function FicheEditeur({
               </>
             )}
           </div>
-        </div>
+        </Panneau>
 
         {/* Étapes */}
-        <div style={es.carte}>
+        <Panneau style={es.carte}>
           <div style={es.titreCarte}>
             <span>Étapes (<span data-no-translate>{etapes.length}</span>)</span>
             <button type="button" style={es.bouton} onClick={() => maj({ etapes: [...etapesCourantes(), ''] })}>Ajouter une étape</button>
@@ -685,10 +685,10 @@ export default function FicheEditeur({
               </div>
             ))}
           </div>
-        </div>
+        </Panneau>
 
         {/* Paramètres */}
-        <div style={es.carte}>
+        <Panneau style={es.carte}>
           <div style={es.titreCarte}><span>Paramètres</span></div>
           <div style={es.grille}>
             <label style={es.champLibelle}><span style={es.libelle}>Catégorie</span>
@@ -721,13 +721,13 @@ export default function FicheEditeur({
             <span style={es.libelle}>Temps total : <strong style={{ color: 'var(--text)' }} data-no-translate>{(Number(fiche.tempsPreparation) || 0) + (Number(fiche.tempsCuisson) || 0)}</strong> min</span>
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', minHeight: 44, marginLeft: 'auto' }}>
               <input type="checkbox" checked={surCarte} onChange={e => basculerCarte(e.target.checked)} style={{ width: 18, height: 18, accentColor: 'var(--success-text)' }} />
-              <span style={{ fontSize: 13, color: surCarte ? 'var(--success-text)' : 'var(--text2)' }}>{surCarte ? 'Publiée sur la carte active' : 'Publier sur la carte active'}</span>
+              <span style={{ fontSize: 'var(--t2)', color: surCarte ? 'var(--success-text)' : 'var(--text2)' }}>{surCarte ? 'Publiée sur la carte active' : 'Publier sur la carte active'}</span>
             </label>
           </div>
-        </div>
+        </Panneau>
 
         {/* Allergènes */}
-        <div style={es.carte}>
+        <Panneau style={es.carte}>
           <div style={es.titreCarte}>
             <span>Allergènes</span>
             {isConsultant && (
@@ -746,11 +746,11 @@ export default function FicheEditeur({
                   onClick={() => basculerAllergene(a.id)}
                   aria-pressed={actif}
                   style={{
-                    padding: '6px 12px', minHeight: 36, borderRadius: 20, borderWidth: 1, borderStyle: 'solid',
+                    padding: '6px 12px', minHeight: 36, borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid',
                     borderColor: actif ? 'var(--warning-strong)' : 'var(--border)',
                     background: actif ? 'var(--warning-bg)' : 'var(--surface)',
                     color: actif ? 'var(--warning-text)' : 'var(--text2)',
-                    fontSize: 13, fontWeight: actif ? 700 : 500, cursor: 'pointer', fontFamily: 'var(--font)',
+                    fontSize: 'var(--t2)', fontWeight: actif ? 700 : 500, cursor: 'pointer', fontFamily: 'var(--font)',
                   }}
                 >{a.label}</button>
               );
@@ -758,7 +758,7 @@ export default function FicheEditeur({
           </div>
           {inconnus.length > 0 && (
             <div style={{ margin: '0 14px 14px', ...encadreStyle('alerte') }}>
-              <div style={{ fontSize: 12, ...encadreTitreStyle('alerte'), marginBottom: 6 }}>
+              <div style={{ fontSize: 'var(--t1)', ...encadreTitreStyle('alerte'), marginBottom: 6 }}>
                 Valeurs hors liste (import ancien), à convertir ou à retirer
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -766,7 +766,7 @@ export default function FicheEditeur({
                   const { ids } = normalizeAllergenes([v]);
                   const restant = (fiche.allergenesIds || []).filter(a => a !== v);
                   return (
-                    <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 6px 4px 10px', border: '1.5px dashed var(--warning-bd)', borderRadius: 20, background: 'var(--surface)', fontSize: 12, color: 'var(--warning-text)' }}>
+                    <span key={v} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 6px 4px 10px', border: '1.5px dashed var(--warning-bd)', borderRadius: 'var(--r-full)', background: 'var(--surface)', fontSize: 'var(--t1)', color: 'var(--warning-text)' }}>
                       {v}
                       {ids.length > 0 && (
                         <button type="button" className="touch-target" onClick={() => maj({ allergenesIds: [...new Set([...restant, ...ids])] })} style={es.lien}>
@@ -780,10 +780,10 @@ export default function FicheEditeur({
               </div>
             </div>
           )}
-        </div>
+        </Panneau>
 
         {/* Dressage, conservation, notes */}
-        <div style={es.carte}>
+        <Panneau style={es.carte}>
           <div style={es.titreCarte}><span>Dressage et conservation</span></div>
           <div style={{ padding: '4px 14px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
             <label style={es.champLibelle}><span style={es.libelle}>Dressage</span>
@@ -793,18 +793,18 @@ export default function FicheEditeur({
               <DebouncedField as="textarea" value={fiche.conservation || ''} onCommit={v => { if (v !== (fiche.conservation || '')) maj({ conservation: v }); }} placeholder="Durée, température, conditionnement…" rows={2} style={{ ...es.champ, resize: 'vertical' }} />
             </label>
           </div>
-        </div>
+        </Panneau>
         {(isConsultant || fiche.notesConsultant) && (
-          <div style={es.carte}>
+          <Panneau style={es.carte}>
             <div style={es.titreCarte}><span>Notes du consultant</span></div>
             <div style={{ padding: '4px 14px 14px' }}>
               {isConsultant ? (
                 <DebouncedField as="textarea" value={fiche.notesConsultant || ''} onCommit={v => { if (v !== (fiche.notesConsultant || '')) maj({ notesConsultant: v }); }} placeholder="Conseils techniques, points d'attention, tours de main…" rows={4} aria-label="Notes du consultant" style={{ ...es.champ, resize: 'vertical' }} />
               ) : (
-                <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{fiche.notesConsultant}</div>
+                <div style={{ fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{fiche.notesConsultant}</div>
               )}
             </div>
-          </div>
+          </Panneau>
         )}
       </div>
 
@@ -878,9 +878,9 @@ export default function FicheEditeur({
           <Encadre ton="alerte">Généré automatiquement, à valider par un responsable avant utilisation.</Encadre>
           {(haccp.points || []).length === 0 && <div style={fst.remarque}>Aucun point de maîtrise identifié.</div>}
           {(haccp.points || []).map((p, i) => (
-            <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', background: 'var(--bg)' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{p.etape || '-'}{p.type ? `, ${p.type}` : ''}{p.ccp ? ' (CCP)' : ''}</div>
-              <div style={{ fontSize: 13, color: 'var(--text)', marginTop: 4 }}>{p.danger || '-'}</div>
+            <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '10px 12px', background: 'var(--bg)' }}>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>{p.etape || '-'}{p.type ? `, ${p.type}` : ''}{p.ccp ? ' (CCP)' : ''}</div>
+              <div style={{ fontSize: 'var(--t2)', color: 'var(--text)', marginTop: 4 }}>{p.danger || '-'}</div>
               {p.mesure && <div style={fst.remarque}>Maîtrise : {p.mesure}</div>}
               {p.limiteCritique && <div style={fst.remarque}>Limite critique : {p.limiteCritique}</div>}
               {p.surveillance && <div style={fst.remarque}>Surveillance : {p.surveillance}</div>}
@@ -898,7 +898,7 @@ export default function FicheEditeur({
           </div>
           {suggestions.ingredients.map((ing, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border)', padding: '4px 0' }}>
-              <span style={{ flex: 1, fontSize: 13 }}>{ing.nom}</span>
+              <span style={{ flex: 1, fontSize: 'var(--t2)' }}>{ing.nom}</span>
               <span style={fst.remarque}>{ing.quantite || ''} {ing.unite}</span>
               <button type="button" style={es.bouton} onClick={() => ajouterIngredientsSuggeres([ing])}>Ajouter</button>
             </div>
@@ -909,7 +909,7 @@ export default function FicheEditeur({
           </div>
           {suggestions.etapes.map((e, i) => (
             <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, borderBottom: '1px solid var(--border)', padding: '4px 0' }}>
-              <span style={{ flex: 1, fontSize: 13 }}>{e}</span>
+              <span style={{ flex: 1, fontSize: 'var(--t2)' }}>{e}</span>
               <button type="button" style={es.bouton} onClick={() => ajouterEtapesSuggerees([e])}>Ajouter</button>
             </div>
           ))}
@@ -921,24 +921,26 @@ export default function FicheEditeur({
 
 const es = {
   colonne: { display: 'flex', flexDirection: 'column', gap: 14, marginTop: 14, minWidth: 0 },
-  carte: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', minWidth: 0 },
-  titreCarte: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '12px 14px', fontSize: 15, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
-  nom: { flex: 1, minWidth: 0, fontSize: 22, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', outline: 'none', padding: '6px 0', minHeight: 44 },
-  ligneTete: { display: 'grid', gap: 8, fontSize: 12, color: 'var(--text2)', padding: '6px 0' },
+  // Carte de l'éditeur : la primitive Panneau (fond --zone, filet --rule-soft,
+  // rayon), sans son retrait : les rangées portent le leur.
+  carte: { padding: 0, minWidth: 0 },
+  titreCarte: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '12px 14px', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' },
+  nom: { flex: 1, minWidth: 0, fontSize: 'var(--t4)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', border: 'none', borderBottom: '1px solid var(--border)', background: 'transparent', outline: 'none', padding: '6px 0', minHeight: 44 },
+  ligneTete: { display: 'grid', gap: 8, fontSize: 'var(--t1)', color: 'var(--text2)', padding: '6px 0' },
   ligne: { display: 'grid', gap: 8, alignItems: 'center', padding: '4px 0' },
-  champ: { width: '100%', minWidth: 0, padding: '9px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 7, fontSize: 14, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', minHeight: 44 },
+  champ: { width: '100%', minWidth: 0, padding: '9px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box', minHeight: 44 },
   champLibelle: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
-  libelle: { fontSize: 12, color: 'var(--text2)' },
+  libelle: { fontSize: 'var(--t1)', color: 'var(--text2)' },
   grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12, padding: '4px 14px 14px' },
-  pastille: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, minHeight: 44, padding: 0, background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 7, color: 'var(--text2)', cursor: 'pointer', flexShrink: 0 },
-  suggestions: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 900 },
-  suggestion: { display: 'flex', alignItems: 'center', padding: '10px 12px', minHeight: 40, fontSize: 13, color: 'var(--text)', cursor: 'pointer', borderBottom: '1px solid var(--border)' },
-  retirer: { width: 40, minHeight: 44, border: 'none', background: 'none', color: 'var(--text2)', fontSize: 20, cursor: 'pointer', flexShrink: 0 },
-  petit: { width: 32, height: 28, minHeight: 0, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text2)', fontSize: 10, cursor: 'pointer', flexShrink: 0 },
-  numero: { width: 28, height: 28, flexShrink: 0, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, marginTop: 8 },
-  bouton: { padding: '9px 14px', minHeight: 44, background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
-  boutonPrincipal: { padding: '9px 14px', minHeight: 44, background: 'var(--accent)', border: 'none', color: 'var(--on-accent)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
-  lien: { border: 'none', background: 'none', color: 'var(--warning-text)', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', padding: '0 4px' },
-  etat: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text2)' },
-  vide: { padding: '10px 0', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
+  pastille: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 36, minHeight: 44, padding: 0, background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)', color: 'var(--text2)', cursor: 'pointer', flexShrink: 0 },
+  suggestions: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', overflow: 'hidden', zIndex: 900 },
+  suggestion: { display: 'flex', alignItems: 'center', padding: '10px 12px', minHeight: 40, fontSize: 'var(--t2)', color: 'var(--text)', cursor: 'pointer', borderBottom: '1px solid var(--border)' },
+  retirer: { width: 40, minHeight: 44, border: 'none', background: 'none', color: 'var(--text2)', fontSize: 'var(--t4)', cursor: 'pointer', flexShrink: 0 },
+  petit: { width: 32, height: 28, minHeight: 0, border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t1)', cursor: 'pointer', flexShrink: 0 },
+  numero: { width: 28, height: 28, flexShrink: 0, borderRadius: '50%', background: 'var(--selection)', color: 'var(--lien)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', marginTop: 8 },
+  bouton: { padding: '9px 14px', minHeight: 44, background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
+  boutonPrincipal: { padding: '9px 14px', minHeight: 44, background: 'var(--accent)', border: 'none', color: 'var(--on-accent)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
+  lien: { border: 'none', background: 'none', color: 'var(--warning-text)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '0 4px' },
+  etat: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--t1)', color: 'var(--text2)' },
+  vide: { padding: '10px 0', fontSize: 'var(--t2)', color: 'var(--text2)', fontStyle: 'italic' },
 };

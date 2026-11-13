@@ -167,7 +167,7 @@ export async function imprimerLot({
   }
 }
 
-const bandeauBase = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', background: 'var(--success-bg-soft)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)', borderRadius: 10, fontSize: 12, color: 'var(--text2)' };
+const bandeauBase = { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '10px 14px', background: 'var(--success-bg-soft)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', color: 'var(--text2)' };
 
 // ── Dernier lot ──
 // Le lien vers le PDF ne s'affiche que si l'ouverture automatique n'a pas eu

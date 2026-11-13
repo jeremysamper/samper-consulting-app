@@ -135,7 +135,7 @@ export default function PlatFenetre({ plat, carteIdDefaut, etabId, cartes = [], 
             {cartes.map((c) => {
               const coche = (p.carteIds || []).includes(c.id);
               return (
-                <label key={c.id} style={{ ...puce, background: coche ? 'var(--accent-light)' : 'var(--surface)', color: coche ? 'var(--accent)' : 'var(--text2)', fontWeight: coche ? 700 : 500 }}>
+                <label key={c.id} style={{ ...puce, background: coche ? 'var(--selection)' : 'var(--surface)', color: coche ? 'var(--text)' : 'var(--text2)', fontWeight: coche ? 'var(--g3)' : 'var(--g2)' }}>
                   <input
                     type="checkbox"
                     checked={coche}
@@ -180,6 +180,6 @@ export default function PlatFenetre({ plat, carteIdDefaut, etabId, cartes = [], 
   );
 }
 
-const puce = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', minHeight: 36, borderRadius: 20, fontSize: 13, cursor: 'pointer', boxSizing: 'border-box' };
-const retirer = { border: 'none', background: 'none', color: 'var(--text2)', fontSize: 16, cursor: 'pointer', padding: '0 2px', minHeight: 0, lineHeight: 1 };
-const suggestion = { textAlign: 'left', padding: '10px 12px', minHeight: 44, background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, fontSize: 14, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 };
+const puce = { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', minHeight: 36, borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', cursor: 'pointer', boxSizing: 'border-box' };
+const retirer = { border: 'none', background: 'none', color: 'var(--text2)', fontSize: 'var(--t3)', cursor: 'pointer', padding: '0 2px', minHeight: 0, lineHeight: 1 };
+const suggestion = { textAlign: 'left', padding: '10px 12px', minHeight: 44, background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 };
