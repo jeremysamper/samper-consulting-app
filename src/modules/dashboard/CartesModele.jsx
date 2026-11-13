@@ -79,6 +79,14 @@ export function CarteSemaine({ couverts, aujourdhui, onOuvrir }) {
     const rel = jourRelatif(d, aujourdhui);
     return rel === "aujourd'hui" ? 'Auj.' : rel === 'demain' ? 'Dem.' : `${rel.charAt(0).toUpperCase()}${rel.slice(1, 3)}.`;
   });
+  // Sous 280 px de large (widget petit à la tablette), les abréviations se
+  // touchent : le jour du mois prend leur place (tableau.css, .tdb-jour-court).
+  const libelles = jours.map((d, i) => (
+    <React.Fragment key={d}>
+      <span className="tdb-jour-long">{abreges[i]}</span>
+      <span className="tdb-jour-court" data-no-translate>{Number(d.slice(8, 10))}</span>
+    </React.Fragment>
+  ));
   return (
     <CarteAvant ton="soleil" data-carte="semaine">
       <div style={s.tete}>
@@ -94,7 +102,7 @@ export function CarteSemaine({ couverts, aujourdhui, onOuvrir }) {
       </p>
       {/* La barre du jour en aplat sombre ; les totaux jour par jour sont dits
           par les nombres posés sous chaque barre. */}
-      <Barres valeurs={totaux} libelles={abreges} fort={0} encre="var(--carte-soleil-texte)" />
+      <Barres valeurs={totaux} libelles={libelles} fort={0} encre="var(--carte-soleil-texte)" />
     </CarteAvant>
   );
 }

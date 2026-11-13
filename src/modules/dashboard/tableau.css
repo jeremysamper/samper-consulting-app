@@ -146,6 +146,13 @@
 @container widget (min-width: 600px) {
   .tdb-tuiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+/* Jours de la carte de la semaine : l'abréviation, ou le jour du mois quand
+   la carte est trop étroite pour que les abréviations ne se touchent pas. */
+.tdb-jour-court { display: none; }
+@container widget (max-width: 279.98px) {
+  .tdb-jour-long { display: none; }
+  .tdb-jour-court { display: inline; }
+}
 .tdb-jour.tdb-panneau > .tdb-tete { margin-bottom: 14px; }
 /* La colonne du jour : un liseré en haut, à l'encre de l'onglet actif
    (--onglet). C'est un marqueur d'état : il change de couleur avec la
