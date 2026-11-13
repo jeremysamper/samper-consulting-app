@@ -92,7 +92,7 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
     const faits = list.filter(i => i.fait).length;
     const pct = total > 0 ? Math.round(faits / total * 100) : 0;
     return (
-      <div style={{ ...s.section, ...(variant === 'urgent' ? s.sectionUrgent : s.sectionGrosse) }}>
+      <div data-cadre="" style={{ ...s.section, ...(variant === 'urgent' ? s.sectionUrgent : s.sectionGrosse) }}>
         <div style={s.sectionHead}>
           <div style={s.sectionTitleRow}>
             <span style={s.sectionTitle}>{title}</span>
@@ -102,7 +102,7 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
           <div style={s.progressTrack}><div style={{ ...s.progressFill, width: `${pct}%` }} /></div>
         </div>
         {total === 0 ? (
-          <div style={{ padding: '16px', color: 'var(--text2)', fontSize: 13 }}>Aucune préparation dans cette section.</div>
+          <div style={{ padding: '16px', color: 'var(--text2)', fontSize: 'var(--t2)' }}>Aucune préparation dans cette section.</div>
         ) : (
           list.map(i => (
             <div key={i.id} style={s.itemRow}>
