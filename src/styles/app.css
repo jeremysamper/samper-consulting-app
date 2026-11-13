@@ -2292,6 +2292,17 @@ html[data-theme="dark"] button:not(:disabled):active {
 .accueil-tuile:focus-visible,
 .sc-accueil-account:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 
+/* Carte de repère (CarteRepere, src/components/ui/index.jsx) : son retrait
+   est ici, pas en style inline, pour qu'un écran puisse le régler par largeur
+   de conteneur. En bouton, elle n'a ni bord ni retrait d'agent utilisateur. */
+.ui-repere { padding: 14px 16px; }
+button.ui-repere { border: 0; }
+.ui-repere:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+/* Bouton rond à flèche d'une carte (BoutonFleche) : l'anneau de focus se pose
+   hors du cercle ; sur la carte nuit, il prend l'encre claire de la carte. */
+.ui-fleche:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+[data-carte-avant="nuit"] .ui-fleche:focus-visible { outline-color: var(--carte-nuit-texte); }
+
 /* Barre de sélection du Planning (fixe en bas d'écran) : sur ordinateur, elle
    commence après la barre latérale ouverte, sinon elle en couvrait le bas (le
    menu de l'utilisateur). --largeur-menu est posée par AppLayout (bureau

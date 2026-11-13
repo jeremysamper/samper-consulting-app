@@ -5,7 +5,7 @@ import { userDisplay } from '../../utils/userDisplay.js';
 import { metaMotif } from '../../utils/absences.js';
 import { metaStatut } from '../groupes/typesGroupe.js';
 import { Avatar } from './tableauUi.jsx';
-import { pictoCercleStyle } from '../../components/ui/index.jsx';
+import { CarteRepere, pictoCercleStyle } from '../../components/ui/index.jsx';
 import { duree } from './tableauLogique.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -114,33 +114,25 @@ export function Duree({ minutes, style }) {
   return <span data-no-translate style={style}>{duree(minutes)}</span>;
 }
 
-// Repère de l'en-tête : une petite carte blanche, le picto dans un cercle,
-// un chiffre en grand, sa phrase, son détail. Mène au
-// module quand le rôle peut l'ouvrir. Vide ou en échec, la phrase prend la
-// place du chiffre (jamais un gros zéro). Pas d'aria-label : il remplacerait,
-// pour un lecteur d'écran, le texte visible (« 110 couverts aujourd'hui, 42 à
-// midi, 68 le soir ») par la seule destination.
-export function Repere({ repere, icone: Icone, onClick }) {
+// Repère de l'en-tête : la carte de repère des primitives (CarteRepere), avec
+// les données du jour. Mène au module quand le rôle peut l'ouvrir. Vide ou en
+// échec, la phrase prend la place du chiffre (jamais un gros zéro). Le retrait
+// et le picto suivent la largeur du tableau de bord (.tdb-repere-carte,
+// tableau.css).
+export function Repere({ repere, icone, onClick }) {
   const { id, valeur, libelle, detail, vide, echec, texte } = repere;
-  const contenu = (
-    <>
-      {Icone && <span className="tdb-repere-icone" style={pictoCercleStyle(36)} aria-hidden="true"><Icone size={18} strokeWidth={1.8} /></span>}
-      {vide || echec ? (
-        <span style={b.repereTexte}>{texte}</span>
-      ) : (
-        <>
-          <span className="tdb-repere-valeur" data-valeur="" style={b.repereValeur} data-no-translate>{valeur.toLocaleString('fr-CH')}</span>
-          <span style={b.repereLibelle}>{libelle}</span>
-          {detail && <span style={b.repereDetail}><Parties parties={detail} /></span>}
-        </>
-      )}
-    </>
-  );
-  if (!onClick) return <div data-repere={id} className="tdb-repere-carte" style={b.repere}>{contenu}</div>;
+  const sansChiffre = vide || echec;
   return (
-    <button type="button" data-repere={id} className="tdb-lien tdb-repere tdb-repere-carte" onClick={onClick} style={{ ...b.repere, ...b.bouton }}>
-      {contenu}
-    </button>
+    <CarteRepere
+      data-repere={id}
+      className={onClick ? 'tdb-lien tdb-repere tdb-repere-carte' : 'tdb-repere-carte'}
+      Icone={icone}
+      valeur={sansChiffre ? null : valeur.toLocaleString('fr-CH')}
+      libelle={libelle}
+      detail={detail ? <Parties parties={detail} /> : null}
+      texte={sansChiffre ? (texte ?? '') : null}
+      onClick={onClick}
+    />
   );
 }
 
@@ -297,15 +289,6 @@ export const b = {
   bouton: {
     cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', color: 'var(--text)', width: '100%',
   },
-  // Carte blanche : le retrait suit la largeur (.tdb-repere-carte, tableau.css).
-  repere: {
-    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0, boxSizing: 'border-box',
-    borderRadius: 'var(--r-lg)', background: 'var(--zone)', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)',
-  },
-  repereValeur: { fontFamily: 'var(--font-num)', lineHeight: 1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 6 },
-  repereLibelle: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.3, color: 'var(--text)', overflowWrap: 'anywhere' },
-  repereDetail: { fontSize: 'var(--t1)', lineHeight: 1.4, color: 'var(--text3)', overflowWrap: 'anywhere' },
-  repereTexte: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.35, color: 'var(--text2)', overflowWrap: 'anywhere', marginTop: 4 },
   ligne: {
     display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, minHeight: 56, boxSizing: 'border-box', padding: '8px 2px',
   },

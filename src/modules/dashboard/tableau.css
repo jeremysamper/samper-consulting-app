@@ -33,10 +33,11 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: stretch;
 }
-.tdb-repere-carte { padding: 12px 10px; }
-.tdb-repere-valeur { font-size: var(--t6); }
+/* La carte de repère est une primitive (CarteRepere) : ici, seuls son retrait
+   et son picto suivent la largeur du tableau de bord. */
+.tdb .tdb-repere-carte { padding: 12px 10px; }
 /* !important : le cercle pose son display en style inline. */
-.tdb .tdb-repere-icone { display: none !important; }
+.tdb .ui-repere-icone { display: none !important; }
 
 /* ── Sections ─────────────────────────────────────────────────────────────── */
 .tdb-titre { font-size: var(--t4); }
@@ -111,8 +112,9 @@
    Une carte sombre à tuiles (l'équipe du jour par état) et deux cartes pastel
    à graphique (les couverts de la semaine, les couverts du jour par service) :
    au plus une sombre et deux pastel sur l'écran. Les cartes écrivent leurs
-   couleurs elles-mêmes (primitive CarteAvant) ; cette feuille ne règle que
-   leur mise en page par largeur. */
+   couleurs elles-mêmes (primitives CarteAvant, Anneau, Barres, Arc et
+   BoutonFleche de src/components/ui/) ; cette feuille ne règle que leur mise
+   en page par largeur. */
 .tdb-modele {
   display: flex;
   flex-direction: column;
@@ -166,8 +168,8 @@
   .tdb-panneau { padding: 18px 20px 14px; }
   .tdb-hero { gap: 18px; }
   .tdb-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tdb .tdb-repere-icone { display: inline-flex !important; }
-  .tdb-repere-carte { padding: 14px 16px; }
+  .tdb .ui-repere-icone { display: inline-flex !important; }
+  .tdb .tdb-repere-carte { padding: 14px 16px; }
   .tdb-reperes { gap: 12px; }
   .tdb-citation { font-size: var(--t4); }
 }

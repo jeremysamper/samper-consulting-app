@@ -1,7 +1,9 @@
 import React from 'react';
+import { ArrowUpRight } from 'lucide-react';
 import SegmentedTabs from './SegmentedTabs.jsx';
 
 export { SegmentedTabs };
+export { Anneau, Arc, Barres } from './Graphiques.jsx';
 
 // Primitives de la direction Galet (.claude/rules/direction-galet.md). Elles
 // disent elles-mêmes leur fond, leur contour, leur rayon et leur graisse, par
@@ -246,6 +248,54 @@ export function KpiCard({ label, value, sub, delta, color, chart, Icone, glow = 
   );
 }
 
+// Carte de repère : une petite carte blanche qui dit un chiffre et sa phrase
+// (« 110 couverts aujourd'hui »), le picto dans un cercle au-dessus, un détail
+// en petit dessous. Avec onClick, c'est un bouton qui mène au module. Sans
+// chiffre à dire (rien à compter, lecture en échec), `texte` prend sa place :
+// jamais un gros zéro. Pas d'aria-label : il remplacerait, pour un lecteur
+// d'écran, le texte visible par la seule destination.
+//   Icone  : picto au trait (lucide), facultatif
+//   valeur : le nombre, déjà formaté ; il est posé dans son nœud
+//            (data-no-translate)
+//   libelle, detail, texte : des nœuds
+// Le retrait vient de la classe ui-repere (app.css), pas du style en ligne :
+// un écran peut ainsi le régler par largeur de conteneur.
+export function CarteRepere({ Icone, valeur, libelle, detail, texte, onClick, className = '', style = {}, ...props }) {
+  const contenu = (
+    <>
+      {Icone && <span className="ui-repere-icone" style={pictoCercleStyle(36)} aria-hidden="true"><Icone size={18} strokeWidth={1.8} /></span>}
+      {texte != null ? (
+        <span style={repere.texte}>{texte}</span>
+      ) : (
+        <>
+          <span className="ui-repere-valeur" style={repere.valeur} data-no-translate>{valeur}</span>
+          <span style={repere.libelle}>{libelle}</span>
+          {detail && <span style={repere.detail}>{detail}</span>}
+        </>
+      )}
+    </>
+  );
+  const classe = className ? `ui-repere ${className}` : 'ui-repere';
+  if (!onClick) return <div className={classe} style={{ ...repere.carte, ...style }} {...props}>{contenu}</div>;
+  return (
+    <button type="button" className={classe} onClick={onClick} style={{ ...repere.carte, ...repere.bouton, ...style }} {...props}>
+      {contenu}
+    </button>
+  );
+}
+
+const repere = {
+  carte: {
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0, boxSizing: 'border-box',
+    borderRadius: 'var(--r-lg)', background: 'var(--zone)', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)',
+  },
+  bouton: { cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', color: 'var(--text)', width: '100%' },
+  valeur: { fontFamily: 'var(--font-num)', fontSize: 'var(--t6)', lineHeight: 1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 6 },
+  libelle: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.3, color: 'var(--text)', overflowWrap: 'anywhere' },
+  detail: { fontSize: 'var(--t1)', lineHeight: 1.4, color: 'var(--text3)', overflowWrap: 'anywhere' },
+  texte: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.35, color: 'var(--text2)', overflowWrap: 'anywhere', marginTop: 4 },
+};
+
 // Carte de mise en avant : un résumé ou des chiffres, jamais un état (un état
 // garde ses jetons de statut). Trois tons : nuit (sombre), soleil (jaune
 // pastel), ciel (bleu pastel). Par écran : au plus une carte nuit et deux
@@ -284,5 +334,33 @@ export function CarteAvant({ ton = 'nuit', titre, action, children, style = {}, 
       ) : null}
       {children}
     </div>
+  );
+}
+
+// Bouton rond à flèche, en haut à droite d'une carte : il mène au module,
+// pour le rôle qui peut l'ouvrir (sans onClick, rien n'est rendu). Cercle de
+// 44 px, la cible au doigt. Sur la carte nuit (ton="nuit"), il prend le fond
+// de ses tuiles ; ailleurs, l'aplat sombre. Son anneau de focus est dans
+// app.css (.ui-fleche).
+//   libelle : dit la destination (aria-label et infobulle)
+export function BoutonFleche({ onClick, libelle, ton, Icone = ArrowUpRight }) {
+  if (!onClick) return null;
+  const nuit = ton === 'nuit';
+  return (
+    <button
+      type="button"
+      className="ui-fleche"
+      onClick={onClick}
+      aria-label={libelle}
+      title={libelle}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0,
+        padding: 0, border: 'none', borderRadius: '50%', cursor: 'pointer',
+        background: nuit ? 'var(--carte-nuit-tuile)' : 'var(--accent)',
+        color: nuit ? 'var(--carte-nuit-texte)' : 'var(--on-accent)',
+      }}
+    >
+      <Icone size={20} strokeWidth={1.8} aria-hidden="true" />
+    </button>
   );
 }
