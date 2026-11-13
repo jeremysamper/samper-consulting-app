@@ -40,17 +40,17 @@ export function Marqueur({ rang, taille = 10, creux = false }) {
 }
 
 const st = {
-  legende: { display: 'flex', flexWrap: 'wrap', gap: '6px 16px', fontSize: 13, color: 'var(--text2)', marginBottom: 10 },
+  legende: { display: 'flex', flexWrap: 'wrap', gap: '6px 16px', fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 10 },
   itemLegende: { display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 },
-  numero: { fontFamily: 'var(--font-num)', fontSize: 12, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  numero: { fontFamily: 'var(--font-num)', fontSize: 'var(--t1)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   graduation: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)', pointerEvents: 'none' },
-  chiffreAxe: { position: 'absolute', bottom: 2, fontSize: 11, lineHeight: '12px', color: 'var(--text3)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums', background: 'var(--surface)', padding: '0 3px' },
-  axe: { position: 'relative', height: 16, marginTop: 4, fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
-  detail: { marginTop: 8, minHeight: 44, fontSize: 13, color: 'var(--text2)' },
+  chiffreAxe: { position: 'absolute', bottom: 2, fontSize: 'var(--t1)', lineHeight: '14px', color: 'var(--text3)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums', background: 'var(--surface)', padding: '0 3px' },
+  axe: { position: 'relative', height: 16, marginTop: 4, fontSize: 'var(--t1)', color: 'var(--text3)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
+  detail: { marginTop: 8, minHeight: 44, fontSize: 'var(--t2)', color: 'var(--text2)' },
   detailTitre: { fontFamily: 'var(--font-num)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginBottom: 4 },
   detailLigne: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '2px 0' },
   valeur: { fontFamily: 'var(--font-num)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
-  bout: { position: 'absolute', transform: 'translate(6px, -50%)', display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--text)', fontFamily: 'var(--font-num)', background: 'var(--surface)', padding: '0 3px', borderRadius: 3, pointerEvents: 'none', whiteSpace: 'nowrap' },
+  bout: { position: 'absolute', transform: 'translate(6px, -50%)', display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 'var(--t1)', color: 'var(--text)', fontFamily: 'var(--font-num)', background: 'var(--surface)', padding: '0 3px', borderRadius: 'var(--r-sm)', pointerEvents: 'none', whiteSpace: 'nowrap' },
 };
 
 // Nom d'une série : une donnée saisie ou un chiffre ne se traduit pas.
@@ -219,7 +219,7 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
               data-stat-colonne=""
               style={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', cursor: 'pointer', background: sel === i && genre !== 'temps' ? 'var(--bg2)' : 'transparent', opacity: sel === i && genre !== 'temps' ? 0.35 : 1 }}
             >
-              {type !== 'courbe' && c.barres.every((b) => !estNombre(b.v)) ? <span style={{ fontSize: 10, color: 'var(--text3)', lineHeight: '12px', paddingBottom: 2 }}>n/a</span> : null}
+              {type !== 'courbe' && c.barres.every((b) => !estNombre(b.v)) ? <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: '14px', paddingBottom: 2 }}>n/a</span> : null}
             </div>
           ))}
         </div>
@@ -233,7 +233,7 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
           ))}
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 2, marginTop: 4, fontSize: 11, color: 'var(--text3)' }}>
+        <div style={{ display: 'flex', gap: 2, marginTop: 4, fontSize: 'var(--t1)', color: 'var(--text3)' }}>
           {colonnes.map((c) => (
             <span key={c.cle} style={{ flex: '1 1 0', minWidth: 0, textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }} data-no-translate>{c.serie.rang + 1}</span>
           ))}

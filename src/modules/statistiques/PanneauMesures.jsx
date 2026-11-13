@@ -11,12 +11,12 @@ import { MAX_SERIES, MAX_UNITES, peutCocher } from './vueStatistiques.js';
 
 const st = {
   famille: { marginBottom: 14 },
-  titre: { fontSize: 13, fontWeight: 600, color: 'var(--text2)', marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  ligne: { display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '2px 4px', cursor: 'pointer', borderRadius: 6, color: 'var(--text)', fontSize: 14 },
+  titre: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  ligne: { display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '2px 4px', cursor: 'pointer', borderRadius: 'var(--r-sm)', color: 'var(--text)', fontSize: 'var(--t2)' },
   case: { width: 20, height: 20, flexShrink: 0, accentColor: 'var(--accent)', margin: 0 },
-  unite: { marginLeft: 'auto', fontSize: 12, color: 'var(--text3)', flexShrink: 0 },
-  refus: { fontSize: 13, color: 'var(--warning-text)', background: 'var(--warning-bg-soft)', borderRadius: 8, padding: '10px 12px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 },
-  etat: { fontSize: 13, color: 'var(--text2)', minHeight: 44, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  unite: { marginLeft: 'auto', fontSize: 'var(--t1)', color: 'var(--text3)', flexShrink: 0 },
+  refus: { fontSize: 'var(--t1)', color: 'var(--warning-text)', background: 'var(--warning-bg-soft)', borderRadius: 'var(--r)', padding: '10px 12px', marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 },
+  etat: { fontSize: 'var(--t1)', color: 'var(--text2)', minHeight: 44, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
 };
 
 //   familles : [{ id, libelle, etat: 'ready' | 'loading' | 'error' }] visibles

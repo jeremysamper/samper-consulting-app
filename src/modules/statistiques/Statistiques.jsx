@@ -6,7 +6,7 @@ import { useUserSettings } from '../../hooks/useUserSettings.js';
 import { UI_STORAGE_KEYS, readJson, removeStorageKeys } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { notify } from '../../components/toast/index.js';
-import { Btn } from '../../components/ui/index.jsx';
+import { Btn, Panneau } from '../../components/ui/index.jsx';
 import { Fenetre } from '../../components/ui/Fenetres.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { useCompta } from '../comptabilite/useCompta.js';
@@ -50,14 +50,16 @@ const EVENEMENT_LIEN = 'sc:statistiques-ouvrir';
 const st = {
   page: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' },
   barre: { display: 'flex', flexWrap: 'wrap', gap: '10px 14px', alignItems: 'flex-end', minWidth: 0 },
-  champ: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text2)', minWidth: 0 },
-  select: { minHeight: 44, padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font)', maxWidth: '100%', minWidth: 0 },
-  resume: { fontSize: 13, color: 'var(--text2)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
-  carte: { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 12, padding: 16, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 },
+  champ: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--t1)', color: 'var(--text2)', minWidth: 0 },
+  select: { minHeight: 44, padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', maxWidth: '100%', minWidth: 0 },
+  resume: { fontSize: 'var(--t1)', color: 'var(--text2)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
+  // Cadre d'un graphique : la primitive Panneau (direction Office), ses
+  // réglages d'agencement seulement.
+  carte: { padding: 16, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 },
   entete: { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', minWidth: 0 },
-  titre: { fontSize: 15, fontWeight: 600, color: 'var(--text)', marginRight: 'auto' },
-  note: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
-  etat: { fontSize: 14, color: 'var(--text2)', minHeight: 44, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginRight: 'auto' },
+  note: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.45 },
+  etat: { fontSize: 'var(--t2)', color: 'var(--text2)', minHeight: 44, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   bouton: { minHeight: 44, flexShrink: 0 },
 };
 
@@ -158,7 +160,8 @@ function CarteGraphique({
   const axe = etat ? composition.tranches : tranches;
   const coupees = !etat && tranches.some((t) => !t.complet);
   return (
-    <div style={st.carte} data-stat-carte={rang}>
+    <div data-stat-carte={rang} style={{ minWidth: 0 }}>
+    <Panneau style={st.carte}>
       <div style={st.entete}>
         <div style={st.titre}>{nb > 1 ? <><span>Graphique</span> <span data-no-translate>{rang + 1}</span></> : <span>Graphique</span>}</div>
         {!enLigne ? (
@@ -198,7 +201,7 @@ function CarteGraphique({
               <Graphique composition={composition} tranches={axe} hauteur={etroit ? 220 : 280} libelleComparaison={etat ? '' : libelleComparaison} />
               <div style={st.note} data-stat-phrases="">
                 {composition.phrases.map((p) => (
-                  <div key={p.id}><strong style={{ fontWeight: 600 }}>{p.libelle}</strong> : <span>{p.phrase}</span></div>
+                  <div key={p.id}><strong style={{ fontWeight: 'var(--g3)' }}>{p.libelle}</strong> : <span>{p.phrase}</span></div>
                 ))}
                 {composition.journees.length > 1 ? <div data-stat-journees=""><span>Ces mesures ne comptent pas la même journée :</span> {composition.journees.map((j, i) => <span key={j}>{i ? ', ' : ''}<span>{j}</span></span>)}.</div> : null}
                 {composition.type === 'empile' ? <div>Les barres s'empilent de bas en haut, dans l'ordre de la légende.</div> : null}
@@ -218,6 +221,7 @@ function CarteGraphique({
           {panneau}
         </Fenetre>
       ) : null}
+    </Panneau>
     </div>
   );
 }

@@ -10,18 +10,18 @@ import { Marqueur, NomSerie, Valeur } from './Graphique.jsx';
 // leurs propres nœuds, en data-no-translate.
 
 const st = {
-  cadre: { overflowX: 'auto', maxWidth: '100%', minWidth: 0, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 8 },
-  table: { borderCollapse: 'collapse', fontSize: 13, minWidth: '100%' },
-  th: { textAlign: 'right', padding: '8px 10px', fontWeight: 600, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', verticalAlign: 'bottom', whiteSpace: 'nowrap' },
+  cadre: { overflowX: 'auto', maxWidth: '100%', minWidth: 0, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r)' },
+  table: { borderCollapse: 'collapse', fontSize: 'var(--t2)', minWidth: '100%' },
+  th: { textAlign: 'right', padding: '8px 10px', fontWeight: 'var(--g3)', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', verticalAlign: 'bottom', whiteSpace: 'nowrap' },
   // Couleur des en-têtes et fond de la colonne collée : dans statistiques.css,
   // sous .statistiques, pour que l'export PDF (clone hors de la section)
   // garde l'en-tête de l'impression, blanc sur plein.
   thPeriode: { textAlign: 'left', position: 'sticky', left: 0 },
-  td: { textAlign: 'right', padding: '7px 10px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', whiteSpace: 'nowrap', color: 'var(--text)' },
+  td: { textAlign: 'right', padding: '7px 10px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', whiteSpace: 'nowrap', color: 'var(--text)' },
   tdPeriode: { textAlign: 'left', position: 'sticky', left: 0, fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
-  avant: { display: 'block', fontSize: 12, color: 'var(--text3)' },
-  pied: { fontWeight: 600, background: 'var(--bg)' },
-  note: { fontSize: 12, color: 'var(--text2)', marginTop: 6 },
+  avant: { display: 'block', fontSize: 'var(--t1)', color: 'var(--text3)' },
+  pied: { fontWeight: 'var(--g3)', background: 'var(--bg)' },
+  note: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 6 },
 };
 
 const NATURE = { flux: 'total', taux: 'recalculé sur la période', stock: 'dernier relevé', etat: "valeur d'aujourd'hui" };
