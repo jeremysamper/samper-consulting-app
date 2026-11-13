@@ -32,20 +32,20 @@ function groupByDate(items) {
 }
 
 const gStyles = {
-  crumb: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text2)', marginBottom: 4 },
-  crumbBtn: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontWeight: 500, fontSize: 13, padding: 0, fontFamily: 'var(--font)' },
+  crumb: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--t2)', color: 'var(--text2)', marginBottom: 4 },
+  crumbBtn: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--lien)', fontWeight: 'var(--g2)', fontSize: 'var(--t2)', padding: 0, fontFamily: 'var(--font)' },
   tileGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 10 },
-  tile: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '16px 12px', textAlign: 'center', cursor: 'pointer', fontWeight: 500, color: 'var(--text)', fontFamily: 'var(--font)' },
-  tileCount: { fontSize: 11, color: 'var(--text2)', fontWeight: 400, marginTop: 4 },
+  tile: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '16px 12px', textAlign: 'center', cursor: 'pointer', fontWeight: 'var(--g2)', color: 'var(--text)', fontFamily: 'var(--font)' },
+  tileCount: { fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g1)', marginTop: 4 },
   photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 10 },
-  photoTile: { position: 'relative', borderRadius: 10, overflow: 'hidden', border: '1px solid var(--border)', cursor: 'pointer', aspectRatio: '1', background: 'var(--bg)' },
+  photoTile: { position: 'relative', borderRadius: 'var(--r)', overflow: 'hidden', border: '1px solid var(--border)', cursor: 'pointer', aspectRatio: '1', background: 'var(--bg)' },
   photoImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
-  photoLabel: { position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 11, padding: '4px 6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-  lightboxImg: { width: '100%', maxHeight: '55vh', objectFit: 'contain', background: 'var(--bg)', borderRadius: 8 },
+  photoLabel: { position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.55)', color: '#fff', fontSize: 'var(--t1)', padding: '4px 6px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  lightboxImg: { width: '100%', maxHeight: '55vh', objectFit: 'contain', background: 'var(--bg)', borderRadius: 'var(--r)' },
   // Aperçu de VALIDATION : grand format pour juger la netteté de l'étiquette
   // avant d'enregistrer (un 140px ne permettait pas de voir si c'était flou).
-  preview: { width: '100%', maxHeight: '42vh', objectFit: 'contain', borderRadius: 10, border: '1px solid var(--border)', background: 'var(--bg)', display: 'block', margin: '0 auto 10px' },
-  previewHint: { fontSize: 12, color: 'var(--text2)', textAlign: 'center', marginBottom: 14 },
+  preview: { width: '100%', maxHeight: '42vh', objectFit: 'contain', borderRadius: 'var(--r)', border: '1px solid var(--border)', background: 'var(--bg)', display: 'block', margin: '0 auto 10px' },
+  previewHint: { fontSize: 'var(--t1)', color: 'var(--text2)', textAlign: 'center', marginBottom: 14 },
 };
 
 export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite, canManage, registerCaptureTrigger }) {
@@ -350,15 +350,15 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
             </div>
             <div style={hs.modalBody}>
               <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 14px' }}>
-                <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--selection)', color: 'var(--lien)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Camera size={26} />
                 </div>
               </div>
-              <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.55, textAlign: 'center' }}>
+              <div style={{ fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.55, textAlign: 'center' }}>
                 Pour la traçabilité HACCP, l'application utilise l'appareil photo afin de
                 photographier les étiquettes des produits.
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.55, textAlign: 'center', marginTop: 10 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.55, textAlign: 'center', marginTop: 10 }}>
                 La caméra n'est sollicitée que lorsque vous prenez une photo depuis ce module,
                 jamais en arrière-plan. Votre appareil peut vous demander d'autoriser l'accès :
                 acceptez pour continuer.
@@ -384,7 +384,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
             </div>
             <div style={hs.modalBody}>
               <img src={lightbox.photoUrl} alt="" style={gStyles.lightboxImg} />
-              <div style={{ marginTop: 12, fontSize: 12, color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ marginTop: 12, fontSize: 'var(--t1)', color: 'var(--text2)', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <span>Date : {lightbox.date}</span>
                 {lightbox.operateur && <span>Opérateur : {userDisplayName(lightbox.operateur)}</span>}
                 {lightbox.notes && <span>Notes : {lightbox.notes}</span>}

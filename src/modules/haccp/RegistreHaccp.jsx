@@ -48,7 +48,7 @@ export default function RegistreHaccp({
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <input type="date" aria-label="Jour" style={{ ...hs.datePicker, minHeight: 44, minWidth: 200 }} value={date} onChange={e => e.target.value && setDate(e.target.value)} />
-        <div style={{ fontSize: 14, color: 'var(--text)' }}>
+        <div style={{ fontSize: 'var(--t2)', color: 'var(--text)' }}>
           <N>{moisLabel}</N> : <N>{duMois.length}</N> {duMois.length > 1 ? 'relevés' : 'relevé'}, <N>{horsPlageMois.length}</N> trop chaud ou trop froid.
         </div>
       </div>
@@ -61,7 +61,7 @@ export default function RegistreHaccp({
 
       <div id="haccp-releves-print" style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Relevés du <N>{jourLabel}</N></div>
+          <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>Relevés du <N>{jourLabel}</N></div>
           {canManage && !sel.active && duJour.length > 0 && (
             <button className="no-print" onClick={sel.enter} style={hs.exportBtn}>Sélectionner</button>
           )}
@@ -79,7 +79,7 @@ export default function RegistreHaccp({
             busy={bulkBusy}
           />
         )}
-        <div style={hs.tableCard} className={etroit ? undefined : 'grid-table-scroll'}>
+        <div data-cadre="" style={hs.tableCard} className={etroit ? undefined : 'grid-table-scroll'}>
           {duJour.length === 0 && <div style={hs.empty}>Aucun relevé pour cette date.</div>}
           {duJour.length > 0 && !etroit && (
             <div className="grid-table-row" style={{ ...hs.relHead, gridTemplateColumns: colonnes }}>
@@ -104,7 +104,7 @@ export default function RegistreHaccp({
             );
             if (etroit) {
               return (
-                <div key={r.id} data-registre-releve="" style={{ ...st.ligne, ...(choisi ? { background: 'var(--bg)' } : {}) }}>
+                <div key={r.id} data-registre-releve="" style={{ ...st.ligne, ...(choisi ? { background: 'var(--selection)' } : {}) }}>
                   {caseACocher}
                   <div style={st.texte}>
                     <div style={st.haut}>
@@ -112,7 +112,7 @@ export default function RegistreHaccp({
                       <span style={{ ...st.valeur, color: couleur }}><Mesure valeur={r.valeur} unite={zone?.unite || ''} /></span>
                     </div>
                     <div style={st.detail}>
-                      <N>{String(r.heure || '').slice(0, 5)}</N>, par <N>{userDisplay(r.operateur).name}</N>. <span style={{ color: couleur, fontWeight: 600 }}>{mot}</span>
+                      <N>{String(r.heure || '').slice(0, 5)}</N>, par <N>{userDisplay(r.operateur).name}</N>. <span style={{ color: couleur, fontWeight: 'var(--g3)' }}>{mot}</span>
                     </div>
                     {r.commentaire && <div style={st.commentaire}>{r.commentaire}</div>}
                   </div>
@@ -121,14 +121,14 @@ export default function RegistreHaccp({
               );
             }
             return (
-              <div key={r.id} data-registre-releve="" className="grid-table-row" style={{ ...hs.relRow, gridTemplateColumns: colonnes, ...(choisi ? { background: 'var(--bg)' } : {}) }}>
+              <div key={r.id} data-registre-releve="" className="grid-table-row" style={{ ...hs.relRow, gridTemplateColumns: colonnes, ...(choisi ? { background: 'var(--selection)' } : {}) }}>
                 {caseACocher}
-                <span style={{ fontSize: 13, fontWeight: 500 }}>{zone?.nom}</span>
+                <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>{zone?.nom}</span>
                 <span style={hs.cell}><N>{String(r.heure || '').slice(0, 5)}</N></span>
-                <span style={{ ...hs.cell, textAlign: 'right', fontWeight: 700, color: couleur, fontSize: 15, fontFamily: 'var(--font-num)' }}><Mesure valeur={r.valeur} unite={zone?.unite || ''} /></span>
+                <span style={{ ...hs.cell, textAlign: 'right', fontWeight: 'var(--g-chiffre)', color: couleur, fontSize: 'var(--t2)', fontFamily: 'var(--font-num)' }}><Mesure valeur={r.valeur} unite={zone?.unite || ''} /></span>
                 <span style={hs.cell}><N>{userDisplay(r.operateur).name}</N></span>
-                <span style={{ ...hs.cell, color: couleur, fontWeight: 600 }}>{mot}</span>
-                <span style={{ ...hs.cell, color: r.commentaire ? 'var(--text)' : 'var(--text2)', fontSize: 12 }}>{r.commentaire || '-'}</span>
+                <span style={{ ...hs.cell, color: couleur, fontWeight: 'var(--g3)' }}>{mot}</span>
+                <span style={{ ...hs.cell, color: r.commentaire ? 'var(--text)' : 'var(--text2)', fontSize: 'var(--t1)' }}>{r.commentaire || '-'}</span>
                 {canManage && <span className="no-print">{supprimer}</span>}
               </div>
             );
@@ -149,11 +149,11 @@ export default function RegistreHaccp({
 }
 
 const st = {
-  ligne: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--border)', minWidth: 0 },
+  ligne: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--rule-soft)', minWidth: 0 },
   texte: { flex: 1, minWidth: 0 },
   haut: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8 },
-  nom: { fontSize: 14, fontWeight: 600, color: 'var(--text)', minWidth: 0, overflowWrap: 'anywhere' },
-  valeur: { fontSize: 17, fontWeight: 700, fontFamily: 'var(--font-num)', flexShrink: 0 },
-  detail: { fontSize: 13, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
-  commentaire: { fontSize: 13, color: 'var(--text)', marginTop: 4, lineHeight: 1.4 },
+  nom: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', minWidth: 0, overflowWrap: 'anywhere' },
+  valeur: { fontSize: 'var(--t3)', fontWeight: 'var(--g-chiffre)', fontFamily: 'var(--font-num)', flexShrink: 0 },
+  detail: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
+  commentaire: { fontSize: 'var(--t2)', color: 'var(--text)', marginTop: 4, lineHeight: 1.4 },
 };

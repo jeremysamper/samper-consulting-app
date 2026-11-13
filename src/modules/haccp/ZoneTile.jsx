@@ -64,7 +64,7 @@ const ZoneTile = ({ zone, last, today, trend, actif, valeur, choix, canWrite, en
   else if (!duJour) etat = <span style={{ color: 'var(--text2)' }}>Dernier relevé <DernierJour date={last.date} today={today} /> à <N>{String(last.heure).slice(0, 5)}</N></span>;
   else {
     const mot = last.conforme ? 'Bon' : (verdictDernier?.ton === 'danger' ? verdictDernier.mot : 'À surveiller');
-    etat = <span style={{ color: last.conforme ? 'var(--success-text)' : 'var(--danger-strong)', fontWeight: 600 }}>{mot}, à <N>{String(last.heure).slice(0, 5)}</N></span>;
+    etat = <span style={{ color: last.conforme ? 'var(--success-text)' : 'var(--danger-strong)', fontWeight: 'var(--g3)' }}>{mot}, à <N>{String(last.heure).slice(0, 5)}</N></span>;
   }
 
   const verdictSaisie = actif ? verdictReleve(zone, valeur) : null;
@@ -110,11 +110,11 @@ const ZoneTile = ({ zone, last, today, trend, actif, valeur, choix, canWrite, en
                 if (e.key === 'Escape') onFermer();
               }}
             />
-            <span data-no-translate="" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text2)', flexShrink: 0 }}>{unite}</span>
+            <span data-no-translate="" style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text2)', flexShrink: 0 }}>{unite}</span>
             <button type="button" aria-label="Enregistrer" disabled={enCours} style={st.valider} onClick={onEnregistrer}>✓</button>
             <button type="button" aria-label="Annuler le relevé" style={st.annuler} onClick={onFermer}>×</button>
           </div>
-          {verdictSaisie?.ton === 'ok' && <div style={{ marginTop: 6, fontSize: 14, fontWeight: 600, color: 'var(--success-text)' }}>Bon</div>}
+          {verdictSaisie?.ton === 'ok' && <div style={{ marginTop: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--success-text)' }}>Bon</div>}
           <ActionsCorrectives zone={zone} valeur={valeur} choix={choix} onChoix={onChoix} rappelPlage desactive={enCours} />
         </div>
       )}
@@ -123,25 +123,25 @@ const ZoneTile = ({ zone, last, today, trend, actif, valeur, choix, canWrite, en
 };
 
 const st = {
-  zone: { ...hs.zoneTile, borderRadius: 0, borderBottom: '1px solid var(--border)', flexDirection: 'column', alignItems: 'stretch', gap: 0, padding: '10px 0', minWidth: 0 },
+  zone: { ...hs.zoneTile, borderRadius: 0, borderBottom: '1px solid var(--rule-soft)', flexDirection: 'column', alignItems: 'stretch', gap: 0, padding: '10px 0', minWidth: 0 },
   haut: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-  nom: { fontSize: 15, fontWeight: 600, color: 'var(--text)' },
-  plage: { fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.35 },
-  valeur: { fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-num)', display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'flex-end' },
-  etat: { fontSize: 13, marginTop: 4, lineHeight: 1.35 },
+  nom: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  plage: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.35 },
+  valeur: { fontSize: 'var(--t4)', fontWeight: 'var(--g-chiffre)', fontFamily: 'var(--font-num)', display: 'flex', alignItems: 'baseline', gap: 4, justifyContent: 'flex-end' },
+  etat: { fontSize: 'var(--t2)', marginTop: 4, lineHeight: 1.35 },
   droite: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 },
   relever: {
-    minHeight: 44, padding: '8px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)',
-    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600,
+    minHeight: 44, padding: '8px 18px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)',
+    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
   },
   champ: {
     flex: '1 1 50px', minWidth: 0, height: 44, boxSizing: 'border-box', padding: '0 10px', borderRadius: 'var(--r-sm)',
-    borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--accent)',
-    fontSize: 18, fontWeight: 700, textAlign: 'center', fontFamily: 'var(--font-num)', background: 'var(--bg)', color: 'var(--text)',
+    borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--champ-bord)',
+    fontSize: 'var(--t3)', fontWeight: 'var(--g-chiffre)', textAlign: 'center', fontFamily: 'var(--font-num)', background: 'var(--surface)', color: 'var(--text)',
   },
   champAlerte: { borderColor: 'var(--danger-strong)', color: 'var(--danger-text)' },
-  valider: { flexShrink: 0, width: 44, height: 44, background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 18, fontWeight: 700 },
-  annuler: { flexShrink: 0, width: 44, height: 44, background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 18 },
+  valider: { flexShrink: 0, width: 44, height: 44, background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 'var(--t3)', fontWeight: 'var(--g3)' },
+  annuler: { flexShrink: 0, width: 44, height: 44, background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 'var(--t3)' },
 };
 
 export default ZoneTile;

@@ -147,38 +147,38 @@ export default function ReleveGuide({
 
 const st = {
   ecran: { maxWidth: 720, minWidth: 0, display: 'flex', flexDirection: 'column' },
-  consigne: { margin: '4px 0 6px', fontSize: 14, lineHeight: 1.45, color: 'var(--text)' },
-  consigneDiscrete: { fontSize: 13, color: 'var(--text2)' },
-  ligne: { padding: '14px 0', borderBottom: '1px solid var(--border)', minWidth: 0 },
+  consigne: { margin: '4px 0 6px', fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text)' },
+  consigneDiscrete: { fontSize: 'var(--t2)', color: 'var(--text2)' },
+  ligne: { padding: '14px 0', borderBottom: '1px solid var(--rule-soft)', minWidth: 0 },
   rangee: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px' },
   // 150 px : le champ tient à droite du nom dès 375 px de large.
   texte: { flex: '1 1 150px', minWidth: 0 },
-  nom: { fontSize: 15, fontWeight: 600, color: 'var(--text)' },
-  plage: { fontSize: 13, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
-  deja: { fontSize: 12, color: 'var(--text2)', marginTop: 2 },
+  nom: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  plage: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
+  deja: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
   saisie: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
   // 56 px de haut, chiffre en 28 px : une cible confortable au doigt, lisible
   // d'un coup d'œil, en chiffres tabulaires.
   champ: {
     width: 120, height: 56, boxSizing: 'border-box', padding: '0 10px', textAlign: 'center',
-    borderRadius: 'var(--r)', borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font-num)', fontSize: 28, fontWeight: 600,
+    borderRadius: 'var(--r)', borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--champ-bord)',
+    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font-num)', fontSize: 'var(--t6)', fontWeight: 'var(--g-chiffre)',
   },
   champBon: { borderColor: 'var(--success-bd)' },
   champAlerte: { borderColor: 'var(--danger-strong)', color: 'var(--danger-text)' },
-  unite: { fontSize: 16, fontWeight: 600, color: 'var(--text2)', width: 28 },
-  bon: { marginTop: 6, fontSize: 14, fontWeight: 600, color: 'var(--success-text)' },
-  enregistre: { marginTop: 6, fontSize: 14, fontWeight: 600, color: 'var(--success-text)' },
-  echec: { marginTop: 6, fontSize: 14, fontWeight: 600, color: 'var(--danger-text)' },
+  unite: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text2)', width: 28 },
+  bon: { marginTop: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--success-text)' },
+  enregistre: { marginTop: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--success-text)' },
+  echec: { marginTop: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--danger-text)' },
   pied: {
     position: 'sticky', bottom: 0, zIndex: 2, marginTop: 8,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10,
-    padding: '12px 0', background: 'var(--surface)', borderTop: '1px solid var(--border)',
+    padding: '12px 0', background: 'var(--surface)', borderTop: '1px solid var(--rule-soft)',
   },
-  compte: { fontSize: 13, color: 'var(--text2)' },
+  compte: { fontSize: 'var(--t2)', color: 'var(--text2)' },
   enregistrer: {
     flex: '1 1 220px', maxWidth: 360, minHeight: 52, padding: '10px 18px', borderRadius: 'var(--r)', border: 'none',
-    background: 'var(--accent)', color: 'var(--on-accent)', fontFamily: 'var(--font)', fontSize: 16, fontWeight: 600, cursor: 'pointer',
+    background: 'var(--accent)', color: 'var(--on-accent)', fontFamily: 'var(--font)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', cursor: 'pointer',
   },
   enregistrerInactif: { opacity: 0.55, cursor: 'not-allowed' },
 };

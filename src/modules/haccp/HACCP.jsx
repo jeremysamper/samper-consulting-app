@@ -36,7 +36,7 @@ import { messageErreur } from '../../utils/messageErreur.js';
 import { ouvrirCompte } from '../../services/navigationService.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { peutConfigurerHaccp } from './gardesHaccp.js';
-import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
+import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -931,7 +931,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
           <ProgrammeDuJour tournees={etatJour.tournees} titre="Le programme du jour" />
           {activeZones.length > 0 && (
             <section style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)' }}>Frigos et appareils</div>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>Frigos et appareils</div>
               <div style={hs.zoneGrid}>
                 {activeZones.map(z => (
                   <ZoneTile
@@ -1051,15 +1051,15 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
       {activeTab==='config' && isConsultant && pret && (
         <div style={{display:'flex',flexDirection:'column',gap:20}}>
           {/* Banner */}
-          <div style={{background:'var(--zone)',borderRadius:10,padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
+          <div style={{background:'var(--zone)',borderRadius: 'var(--r)',padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
             <div style={{flex:1,minWidth:220}}>
-              <div style={{color:'var(--text)',fontWeight:700,fontSize:15,fontFamily:'var(--font-serif)'}}>Configuration HACCP, réservée au consultant</div>
-              <div style={{color:'var(--text2)',fontSize:12,marginTop:3}}>Ces réglages valent pour toute l'équipe de l'établissement.</div>
+              <div style={{color:'var(--text)',fontWeight: 'var(--g3)',fontSize: 'var(--t2)',fontFamily: 'var(--font)'}}>Configuration HACCP, réservée au consultant</div>
+              <div style={{color:'var(--text2)',fontSize: 'var(--t1)',marginTop:3}}>Ces réglages valent pour toute l'équipe de l'établissement.</div>
             </div>
           </div>
 
           {/* Créneaux de relevé - grille horaire propre à l'établissement */}
-          <div style={hcfg.section}>
+          <Panneau style={{padding:0,overflow:'hidden'}}>
             <div style={hcfg.sectionHeader}>
               <div>
                 <div style={hcfg.sectionTitle}>Heures de relevé</div>
@@ -1069,21 +1069,21 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                     : <><N>{creneaux.length}</N> {creneaux.length>1?'heures réglées':'heure réglée'}, <N>{activeCreneaux.length}</N> {activeCreneaux.length>1?'actives':'active'}</>}
                 </div>
               </div>
-              <button style={hs.addBtn} onClick={()=>setCreneauModal('new')}>Ajouter une heure de relevé</button>
+              <button style={hs.exportBtn} onClick={()=>setCreneauModal('new')}>Ajouter une heure de relevé</button>
             </div>
 
             {creneaux.length === 0 ? (
               <div style={{padding:'16px 18px'}}>
-                <div style={{fontSize:12,color:'var(--text2)',lineHeight:1.55,marginBottom:14}}>
+                <div style={{fontSize: 'var(--t1)',color:'var(--text2)',lineHeight:1.55,marginBottom:14}}>
                   Les heures de relevé ne sont pas les mêmes d'une maison à l'autre : un seul service qui démarre à 6h ne se relève pas comme un double service midi et soir. Réglez ici les heures de l'établissement : la carte de l'accueil HACCP dit à l'équipe quand relever, et le tableau de bord signale un relevé en retard. Un relevé en dehors de ces heures reste toujours possible.
                 </div>
                 <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
                   {CRENEAUX_PRESETS.map(p=>(
                     <button key={p.id} onClick={()=>appliquerPresetCreneaux(p)} style={{...hs.periodBtn,width:'auto',flex:'1 1 240px',maxWidth:340}}>
                       <span style={{flex:1,minWidth:0}}>
-                        <span style={{display:'block',fontSize:13,fontWeight:700,color:'var(--text)'}}>{p.label}</span>
-                        <span style={{display:'block',fontSize:11,color:'var(--text2)',marginTop:2}}>{p.sub}</span>
-                        <span style={{display:'block',fontSize:11,color:'var(--accent)',marginTop:3,fontWeight:500}}>{p.creneaux.map(c=>c.heure).join(', ')}</span>
+                        <span style={{display:'block',fontSize: 'var(--t2)',fontWeight: 'var(--g3)',color:'var(--text)'}}>{p.label}</span>
+                        <span style={{display:'block',fontSize: 'var(--t1)',color:'var(--text2)',marginTop:2}}>{p.sub}</span>
+                        <span style={{display:'block',fontSize: 'var(--t1)',color: 'var(--lien)',marginTop:3,fontWeight: 'var(--g2)'}}>{p.creneaux.map(c=>c.heure).join(', ')}</span>
                       </span>
                     </button>
                   ))}
@@ -1093,13 +1093,13 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
               <div style={{display:'flex',flexDirection:'column',gap:0}}>
                 {trierCreneaux(creneaux).map(c=>(
                   <div key={c.id} style={{...hcfg.row, opacity:c.actif?1:0.5}}>
-                    <div style={{...hcfg.rowIcon,width:58,fontSize:14,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--accent)'}}>{c.heure}</div>
+                    <div style={{...hcfg.rowIcon,width:58,fontSize: 'var(--t2)',fontWeight: 'var(--g-chiffre)',fontFamily:'var(--font-num)',color: 'var(--lien)'}}>{c.heure}</div>
                     <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontSize:13,fontWeight:500,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
+                      <div style={{fontSize: 'var(--t2)',fontWeight: 'var(--g2)',color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                         {c.label}
-                        {!c.actif && <span style={{fontSize:11,fontWeight:500,background:'var(--bg)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
+                        {!c.actif && <span style={{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',background:'var(--selection)',color:'var(--text2)',padding:'2px 7px',borderRadius: 'var(--r)'}}>Inactif</span>}
                       </div>
-                      <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
+                      <div style={{fontSize: 'var(--t1)',color:'var(--text2)',marginTop:2}}>
                         Relevé de <N>{activeZones.length}</N> {activeZones.length>1?'frigos et appareils':'frigo ou appareil'}
                       </div>
                     </div>
@@ -1112,26 +1112,26 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                 ))}
               </div>
             )}
-          </div>
+          </Panneau>
 
           {/* Zones */}
-          <div style={hcfg.section}>
+          <Panneau style={{padding:0,overflow:'hidden'}}>
             <div style={hcfg.sectionHeader}>
               <div>
                 <div style={hcfg.sectionTitle}>Frigos et appareils à relever</div>
                 <div style={hcfg.sectionSub}><N>{zones.length}</N> {zones.length>1?'frigos et appareils':'frigo ou appareil'}, <N>{activeZones.length}</N> à relever</div>
               </div>
-              <button style={hs.addBtn} onClick={()=>setZoneModal('new')}>Ajouter un frigo ou appareil</button>
+              <button style={hs.exportBtn} onClick={()=>setZoneModal('new')}>Ajouter un frigo ou appareil</button>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {zones.map(z=>(
                 <div key={z.id} style={{...hcfg.row, opacity:z.actif?1:0.5}}>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:500,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{fontSize: 'var(--t2)',fontWeight: 'var(--g2)',color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                       {z.nom}
-                      {!z.actif && <span style={{fontSize:11,fontWeight:500,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
+                      {!z.actif && <span style={{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',background:'var(--selection)',color:'var(--text2)',padding:'2px 7px',borderRadius: 'var(--r)'}}>Inactif</span>}
                     </div>
-                    <div style={{fontSize:12,color:'var(--text2)',marginTop:2,lineHeight:1.4}}>
+                    <div style={{fontSize: 'var(--t1)',color:'var(--text2)',marginTop:2,lineHeight:1.4}}>
                       {ZONE_TYPES.find(t=>t.id===z.type)?.label}. <PlageTexte zone={z} />.
                       {z.cible != null && z.cible !== '' && <> Idéal : <Mesure valeur={z.cible} unite={z.unite || '°C'} />.</>}
                     </div>
@@ -1146,27 +1146,27 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                 </div>
               ))}
             </div>
-          </div>
+          </Panneau>
 
           {/* Contrôles templates */}
-          <div style={hcfg.section}>
+          <Panneau style={{padding:0,overflow:'hidden'}}>
             <div style={hcfg.sectionHeader}>
               <div>
                 <div style={hcfg.sectionTitle}>Contrôles d'hygiène</div>
                 <div style={hcfg.sectionSub}>{ctrlTpls.length} contrôle{ctrlTpls.length>1?'s':''} configuré{ctrlTpls.length>1?'s':''}, {activeTpls.length} actif{activeTpls.length>1?'s':''}</div>
               </div>
-              <button style={hs.addBtn} onClick={()=>setCtrlModal('new')}>Ajouter un contrôle</button>
+              <button style={hs.exportBtn} onClick={()=>setCtrlModal('new')}>Ajouter un contrôle</button>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {ctrlTpls.map(c=>(
                 <div key={c.id} style={{...hcfg.row,opacity:c.actif?1:0.5}}>
-                  <div style={{...hcfg.rowIcon,fontSize:16,background:'var(--bg)',color:'var(--text2)'}}>{CTRL_TYPES.find(t=>t.id===c.type)?.label.slice(0,1)||'?'}</div>
+                  <div style={{...hcfg.rowIcon,fontSize: 'var(--t3)',background:'var(--selection)',color:'var(--text2)'}}>{CTRL_TYPES.find(t=>t.id===c.type)?.label.slice(0,1)||'?'}</div>
                   <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:13,fontWeight:500,color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
+                    <div style={{fontSize: 'var(--t2)',fontWeight: 'var(--g2)',color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                       {c.label}
-                      {!c.actif&&<span style={{fontSize:11,fontWeight:500,background:'var(--surface2)',color:'var(--text2)',padding:'2px 7px',borderRadius:10}}>Inactif</span>}
+                      {!c.actif&&<span style={{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',background:'var(--selection)',color:'var(--text2)',padding:'2px 7px',borderRadius: 'var(--r)'}}>Inactif</span>}
                     </div>
-                    <div style={{fontSize:11,color:'var(--text2)',marginTop:2}}>
+                    <div style={{fontSize: 'var(--t1)',color:'var(--text2)',marginTop:2}}>
                       {CTRL_TYPES.find(t=>t.id===c.type)?.label}, {c.frequence}
                       {c.description&&<span>, <em>{c.description.slice(0,60)}{c.description.length>60?'…':''}</em></span>}
                     </div>
@@ -1180,7 +1180,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                 </div>
               ))}
             </div>
-          </div>
+          </Panneau>
         </div>
       )}
 
@@ -1221,11 +1221,11 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                   return (
                     <div style={hs.field}>
                       <label style={hs.fLabel}>Valeur mesurée * (<N>{zone?.unite}</N>)</label>
-                      <input type="number" step="0.1" style={{...hs.fInput,fontSize:22,fontWeight:700,textAlign:'center',color:'var(--accent)'}}
+                      <input type="number" step="0.1" style={{...hs.fInput,fontSize: 'var(--t4)',fontWeight: 'var(--g3)',textAlign:'center',color: 'var(--lien)'}}
                         placeholder={zone?.cible != null ? String(zone.cible) : ''}
                         value={formRel.valeur} onChange={e=>setFormRel({...formRel,valeur:e.target.value})}/>
                       {zone && verdict && (
-                        <div style={{marginTop:8,...encadreStyle(verdict.ton === 'ok'?'succes':'erreur'),...encadreTitreStyle(verdict.ton === 'ok'?'succes':'erreur'),fontSize:13}}>
+                        <div style={{marginTop:8,...encadreStyle(verdict.ton === 'ok'?'succes':'erreur'),...encadreTitreStyle(verdict.ton === 'ok'?'succes':'erreur'),fontSize: 'var(--t2)'}}>
                           {verdict.mot}. <PlageTexte zone={zone} />.
                         </div>
                       )}
@@ -1264,7 +1264,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                   <label style={hs.fLabel}>Résultat</label>
                   <div style={{display:'flex',gap:8}}>
                     {['conforme','non-conforme'].map(s=>(
-                      <button key={s} onClick={()=>setFormCtrl({...formCtrl,statut:s})} style={{flex:1,minHeight:44,padding:'10px',borderWidth:2,borderStyle:'solid',borderColor:formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--border)',borderRadius:8,background:formCtrl.statut===s?(s==='conforme'?'var(--success-bg)':'var(--danger-bg)'):'var(--surface)',color:formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--text2)',fontWeight:700,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'}}>
+                      <button key={s} onClick={()=>setFormCtrl({...formCtrl,statut:s})} style={{flex:1,minHeight:44,padding:'10px',borderWidth:2,borderStyle:'solid',borderColor:formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--btn-bord)',borderRadius: 'var(--r)',background:formCtrl.statut===s?(s==='conforme'?'var(--success-bg)':'var(--danger-bg)'):'var(--btn-fond)',color:formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--btn-texte)',fontWeight: 'var(--g3)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)'}}>
                         {s==='conforme'?'Bon':'Un problème'}
                       </button>
                     ))}
@@ -1295,7 +1295,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
               <button type="button" className="ui-fermer" aria-label="Fermer" style={hs.closeBtn} onClick={()=>!exportRelevesBusy && setExportRelevesMode(null)}>×</button>
             </div>
             <div style={hs.modalBody}>
-              <div style={{fontSize:12, color:'var(--text2)', marginBottom:14, lineHeight:1.5}}>
+              <div style={{fontSize: 'var(--t1)', color:'var(--text2)', marginBottom:14, lineHeight:1.5}}>
                 Choisissez la période du registre. Elle se base sur la date sélectionnée dans la barre d'outils.
               </div>
               <div style={{display:'flex', flexDirection:'column', gap:10}}>
@@ -1307,14 +1307,14 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                     style={{...hs.periodBtn, opacity:(opt.count===0 || exportRelevesBusy) ? 0.55 : 1}}
                     onClick={()=>runRelevesExport(opt.id)}>
                     <span style={{flex:1, minWidth:0}}>
-                      <span style={{display:'block', fontSize:14, fontWeight:700, color:'var(--text)'}}>{opt.label}</span>
-                      <span style={{display:'block', fontSize:11, color:'var(--text2)', marginTop:2}}>{opt.sub}, {opt.count} relevé{opt.count>1?'s':''}</span>
+                      <span style={{display:'block', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color:'var(--text)'}}>{opt.label}</span>
+                      <span style={{display:'block', fontSize: 'var(--t1)', color:'var(--text2)', marginTop:2}}>{opt.sub}, {opt.count} relevé{opt.count>1?'s':''}</span>
                     </span>
-                    <span style={{color:'var(--text2)', fontSize:18, flexShrink:0}}>›</span>
+                    <span style={{color:'var(--text2)', fontSize: 'var(--t3)', flexShrink:0}}>›</span>
                   </button>
                 ))}
               </div>
-              {exportRelevesBusy && <div style={{marginTop:12, fontSize:12, color:'var(--text2)', textAlign:'center'}}>Génération du document…</div>}
+              {exportRelevesBusy && <div style={{marginTop:12, fontSize: 'var(--t1)', color:'var(--text2)', textAlign:'center'}}>Génération du document…</div>}
             </div>
           </div>
         </div>

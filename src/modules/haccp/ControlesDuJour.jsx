@@ -43,8 +43,8 @@ const frequenceEnClair = (f) => (f === 'Quotidien' ? 'Tous les jours' : f);
 
 function Resultat({ statut }) {
   return statut === 'conforme'
-    ? <span style={{ color: 'var(--success-text)', fontWeight: 600 }}>Bon</span>
-    : <span style={{ color: 'var(--danger-text)', fontWeight: 600 }}>Problème signalé</span>;
+    ? <span style={{ color: 'var(--success-text)', fontWeight: 'var(--g3)' }}>Bon</span>
+    : <span style={{ color: 'var(--danger-text)', fontWeight: 'var(--g3)' }}>Problème signalé</span>;
 }
 
 export default function ControlesDuJour({
@@ -180,7 +180,7 @@ export function HistoriqueControles({ tpls, controls, today, canManage, onSuppri
   );
 
   return (
-    <div style={hs.tableCard} className={etroit ? undefined : 'grid-table-scroll'}>
+    <div data-cadre="" style={hs.tableCard} className={etroit ? undefined : 'grid-table-scroll'}>
       <div style={hs.tableCardHeader}>Tout l'historique</div>
       {!tous.length && <div style={hs.empty}>Aucun contrôle enregistré.</div>}
       {!etroit && visibles.length > 0 && (
@@ -211,12 +211,12 @@ export function HistoriqueControles({ tpls, controls, today, canManage, onSuppri
         const bon = c.statut === 'conforme';
         return (
           <div key={c.id} data-historique-controle="" className="grid-table-row" style={{ ...hs.relRow, gridTemplateColumns: colonnes }}>
-            <span style={{ ...hs.cell, fontWeight: 500 }}>{tpl?.label}</span>
+            <span style={{ ...hs.cell, fontWeight: 'var(--g2)' }}>{tpl?.label}</span>
             <span style={hs.cell}><Jour date={c.date} today={today} /></span>
             <span style={hs.cell}><N>{heure}</N></span>
             <span style={hs.cell}><N>{op.name}</N></span>
-            <span style={{ ...hs.cell, fontWeight: 600, color: bon ? 'var(--success-text)' : 'var(--danger-strong)' }}>{bon ? 'Bon' : 'Problème signalé'}</span>
-            <span style={{ ...hs.cell, fontSize: 12, color: 'var(--text2)' }}>{c.notes || '-'}</span>
+            <span style={{ ...hs.cell, fontWeight: 'var(--g3)', color: bon ? 'var(--success-text)' : 'var(--danger-strong)' }}>{bon ? 'Bon' : 'Problème signalé'}</span>
+            <span style={{ ...hs.cell, fontSize: 'var(--t1)', color: 'var(--text2)' }}>{c.notes || '-'}</span>
             {canManage && <span className="no-print">{supprimer(c)}</span>}
           </div>
         );
@@ -233,37 +233,37 @@ export function HistoriqueControles({ tpls, controls, today, canManage, onSuppri
 const st = {
   racine: { display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 },
   section: { display: 'flex', flexDirection: 'column', minWidth: 0 },
-  titre: { fontSize: 15, fontWeight: 600, color: 'var(--text)', paddingBottom: 4 },
-  ligne: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 16px', padding: '12px 0', borderBottom: '1px solid var(--border)', minWidth: 0 },
+  titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', paddingBottom: 4 },
+  ligne: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 16px', padding: '12px 0', borderBottom: '1px solid var(--rule-soft)', minWidth: 0 },
   texte: { flex: '1 1 260px', minWidth: 0 },
-  nom: { fontSize: 15, fontWeight: 600, color: 'var(--text)' },
-  detail: { fontSize: 13, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
-  notes: { fontSize: 13, color: 'var(--text)', marginTop: 4, fontStyle: 'italic' },
+  nom: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  detail: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
+  notes: { fontSize: 'var(--t2)', color: 'var(--text)', marginTop: 4, fontStyle: 'italic' },
   // Téléphone : les deux boutons passent sous le libellé et se partagent la
   // largeur ; iPad et ordinateur : à droite du libellé.
   boutons: { display: 'flex', gap: 8, flex: '1 1 300px', maxWidth: 360, minWidth: 0 },
   fait: {
     flex: '1 1 140px', minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r)', border: 'none',
-    background: 'var(--success-fill)', color: 'var(--on-success)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 600, cursor: 'pointer',
+    background: 'var(--success-fill)', color: 'var(--on-success)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer',
   },
   probleme: {
     flex: '1 1 140px', minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 500, cursor: 'pointer',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },
   annuler: {
     flex: '0 0 auto', minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, cursor: 'pointer',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },
-  vide: { fontSize: 14, color: 'var(--text2)' },
-  histoLigne: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--border)', minWidth: 0 },
+  vide: { fontSize: 'var(--t2)', color: 'var(--text2)' },
+  histoLigne: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderBottom: '1px solid var(--rule-soft)', minWidth: 0 },
   histoTexte: { flex: 1, minWidth: 0 },
-  histoHaut: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', fontSize: 14 },
-  histoNom: { fontSize: 14, fontWeight: 600, color: 'var(--text)', minWidth: 0 },
+  histoHaut: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', fontSize: 'var(--t2)' },
+  histoNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', minWidth: 0 },
   voirPlusRangee: { padding: '4px 16px' },
   voirPlus: {
-    minHeight: 44, padding: '8px 0', background: 'none', border: 'none', color: 'var(--accent)',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer',
+    minHeight: 44, padding: '8px 0', background: 'none', border: 'none', color: 'var(--lien)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer',
   },
 };

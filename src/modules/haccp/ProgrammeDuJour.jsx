@@ -12,7 +12,7 @@ import React from 'react';
 
 const ETATS = {
   fait: { mot: 'Fait', couleur: 'var(--success-text)' },
-  a_faire: { mot: 'À faire', couleur: 'var(--accent)' },
+  a_faire: { mot: 'À faire', couleur: 'var(--lien)' },
   en_retard: { mot: 'En retard', couleur: 'var(--warning-text)' },
   plus_tard: { mot: 'Plus tard', couleur: 'var(--text2)' },
   pas_fait: { mot: 'Pas fait', couleur: 'var(--danger-text)' },
@@ -46,12 +46,12 @@ export default function ProgrammeDuJour({ tournees = [], titre, aujourdhui = tru
 
 const st = {
   section: { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 },
-  titre: { fontSize: 15, fontWeight: 600, color: 'var(--text)' },
+  titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
   // 165 px : une colonne à 375 px de large, quatre sur un iPad portrait.
   grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 165px), 1fr))', columnGap: 24 },
-  bloc: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '2px 10px', padding: '8px 0', borderBottom: '1px solid var(--border)', minWidth: 0 },
-  heure: { fontFamily: 'var(--font-num)', fontSize: 16, fontWeight: 600, color: 'var(--text)', width: 48, flexShrink: 0 },
-  libelle: { flex: '1 1 90px', minWidth: 0, fontSize: 14, color: 'var(--text2)' },
-  etat: { fontSize: 14, fontWeight: 600 },
-  compte: { fontWeight: 400, color: 'var(--text2)' },
+  bloc: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '2px 10px', padding: '8px 0', borderBottom: '1px solid var(--rule-soft)', minWidth: 0 },
+  heure: { fontFamily: 'var(--font-num)', fontSize: 'var(--t3)', fontWeight: 'var(--g-chiffre)', color: 'var(--text)', width: 48, flexShrink: 0 },
+  libelle: { flex: '1 1 90px', minWidth: 0, fontSize: 'var(--t2)', color: 'var(--text2)' },
+  etat: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)' },
+  compte: { fontWeight: 'var(--g1)', color: 'var(--text2)' },
 };
