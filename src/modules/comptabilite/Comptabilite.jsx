@@ -3,7 +3,8 @@ import './compta.css';
 import { getPermissionsForRole } from '../../data/demoData.js';
 import { isPageActiveForEtab } from '../moduleConfig.js';
 import { dbService } from '../../services/dbService.js';
-import { navigateToPage, ouvrirCompte } from '../../services/navigationService.js';
+import { navigateToPage, ouvrirCompte, ouvrirStatistiques } from '../../services/navigationService.js';
+import { demandeRaccourci } from '../statistiques/raccourcisStatistiques.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { readJson, writeJson } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
@@ -134,7 +135,19 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
     repris,
     surRetour: () => setJourSaisie(null),
   });
-  const ouvrir = (e) => { if (e) setEcran(e); };
+  // S3 : la vue d'ensemble est partie dans Statistiques, préréglée sur la
+  // période du module (la période en cours garde son nom). Une période
+  // d'inventaire garde l'écran d'origine : la variation de stock n'est pas
+  // comptée par les Statistiques.
+  const ouvrir = (e) => {
+    if (e === 'ensemble' && periode && periode.type !== 'inventaire') {
+      const courante = periodeCourante(type, aujourdhui);
+      const enCours = courante && courante.debut === periode.debut && courante.fin === periode.fin;
+      ouvrirStatistiques(demandeRaccourci('comptabilite', null, enCours ? periode.type : { id: 'libre', debut: periode.debut, fin: periode.fin }));
+      return;
+    }
+    if (e) setEcran(e);
+  };
   const ouvrirAchats = () => (typeof setPage === 'function' ? setPage('achats') : navigateToPage('achats'));
   // « Je règle les factures » de l'échéancier : Factures & achats s'ouvre sur cet écran.
   const ouvrirReglement = () => { writeLegacyStorage('sc_achats_ecran', 'reglement'); ouvrirAchats(); };

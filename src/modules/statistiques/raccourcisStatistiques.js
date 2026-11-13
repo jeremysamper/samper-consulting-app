@@ -14,6 +14,19 @@
 const DOUZE_MOIS = { periode: 'douze_mois', pas: 'mois' };
 
 export const RACCOURCIS = {
+  // Comptabilité, « Vue d'ensemble » (carte Résultat estimé) : ses neuf
+  // chiffres en lignes, comparés à la période précédente, sur la période du
+  // module. Une période d'inventaire garde l'écran d'origine (variation de
+  // stock, que les Statistiques ne comptent pas).
+  comptabilite: {
+    famille: 'comptabilite',
+    vues: [
+      { id: 'ensemble', libelle: 'Vue d\'ensemble', periode: 'mois', pas: 'mois', comparaison: 'precedente',
+        chiffres: ['comptabilite.ca_ht', 'comptabilite.matiere', 'comptabilite.marge_brute', 'comptabilite.personnel', 'comptabilite.charges',
+          'comptabilite.resultat', 'comptabilite.matiere_pct', 'comptabilite.personnel_pct', 'comptabilite.tva_estimee'],
+        graphiques: [{ mesures: ['comptabilite.ca_ht', 'comptabilite.resultat'] }] },
+    ],
+  },
   // Factures & achats, « Analyses des dépenses » : quatre vues pour ses blocs
   // de chiffres (les dates à vérifier sont restées dans le module), sur douze
   // mois comme l'écran d'origine ; le périmètre se choisit dans le module
@@ -29,10 +42,11 @@ export const RACCOURCIS = {
   },
 };
 
-// Demande d'ouverture d'un raccourci (sa première vue, ou celle nommée).
-export function demandeRaccourci(id, vueId = null) {
+// Demande d'ouverture d'un raccourci (sa première vue, ou celle nommée), sur
+// la période de la vue ou sur celle donnée par le module d'origine.
+export function demandeRaccourci(id, vueId = null, periode = null) {
   const r = RACCOURCIS[id];
   if (!r) return null;
   const v = r.vues.find((x) => x.id === vueId) || r.vues[0];
-  return { famille: r.famille, raccourci: id, vue: v.id, periode: v.periode, pas: v.pas, comparaison: v.comparaison || '', graphiques: v.graphiques, chiffres: v.chiffres || [] };
+  return { famille: r.famille, raccourci: id, vue: v.id, periode: periode || v.periode, pas: v.pas, comparaison: v.comparaison || '', graphiques: v.graphiques, chiffres: v.chiffres || [] };
 }

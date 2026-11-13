@@ -119,3 +119,11 @@ test('chaque raccourci ne nomme que des mesures du catalogue, graphiques et lign
     }
   }
 });
+
+test('la vue d\'ensemble part sur la période du module', async () => {
+  const { demandeRaccourci } = await import('./raccourcisStatistiques.js');
+  assert.equal(demandeRaccourci('comptabilite').periode, 'mois');
+  assert.equal(demandeRaccourci('comptabilite', null, 'trimestre').periode, 'trimestre');
+  assert.deepEqual(demandeRaccourci('comptabilite', null, { id: 'libre', debut: '2026-09-01', fin: '2026-09-30' }).periode, { id: 'libre', debut: '2026-09-01', fin: '2026-09-30' });
+  assert.equal(demandeRaccourci('comptabilite').chiffres.length, 9);
+});
