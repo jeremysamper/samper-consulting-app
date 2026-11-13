@@ -16,22 +16,28 @@
   .tdb { gap: 32px; }
 }
 
-/* ── En-tête du jour : le seul aplat de la page ───────────────────────────── */
+/* ── En-tête du jour (direction Galet) ───────────────────────────────────────
+   Le bonjour et l'état du service sont posés sur la page, en grand ; les
+   repères du jour (couverts, groupes, équipe) sont une rangée de petites
+   cartes blanches : picto dans un cercle, chiffre en grand, libellé. */
 .tdb-hero {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   grid-template-columns: minmax(0, 1fr);
-  padding: 18px 16px;
+  padding: 0;
 }
 .tdb-hero-salut { font-size: var(--t6); }
 .tdb-reperes {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
+  align-items: stretch;
 }
-.tdb-repere-valeur { font-size: var(--t6); }
-.tdb-repere-icone { display: none; }
+/* La carte de repère est une primitive (CarteRepere) : ici, seuls son retrait
+   et son picto suivent la largeur du tableau de bord. */
+.tdb .tdb-repere-carte { padding: 12px 10px; }
+/* !important : le cercle pose son display en style inline. */
+.tdb .ui-repere-icone { display: none !important; }
 
 /* ── Sections ─────────────────────────────────────────────────────────────── */
 .tdb-titre { font-size: var(--t4); }
@@ -75,7 +81,7 @@
 }
 .tdb-chiffres {
   display: grid;
-  gap: 4px 20px;
+  gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -87,12 +93,13 @@
    les limites sans revenir aux encadrés épais ; le titre se sépare du contenu
    par un filet. Classes seulement : la règle globale « Plus de carrés »
    (app.css) ne lit que les styles inline et ne les aplatit pas.
-   Direction Office : le panneau est une zone (--zone), cernée d'un filet
-   doux, sans ombre portée. */
+   Direction Galet : le panneau est une carte blanche (--zone), au rayon des
+   cartes, avec l'ombre douce --sh et un filet fin qui la porte en thème
+   sombre. */
 .tdb-panneau {
   background: var(--zone);
-  border-radius: var(--r-xl);
-  box-shadow: 0 0 0 1px var(--rule-soft);
+  border-radius: var(--r-lg);
+  box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
   padding: 14px 14px 10px;
   min-width: 0;
 }
@@ -100,13 +107,38 @@
   padding-bottom: 10px;
   border-bottom: 1px solid var(--rule-soft);
 }
+
+/* ── Cartes de mise en avant (CartesModele.jsx) ──────────────────────────────
+   Une carte sombre à tuiles (l'équipe du jour par état) et deux cartes pastel
+   à graphique (les couverts de la semaine, les couverts du jour par service) :
+   au plus une sombre et deux pastel sur l'écran. Les cartes écrivent leurs
+   couleurs elles-mêmes (primitives CarteAvant, Anneau, Barres, Arc et
+   BoutonFleche de src/components/ui/) ; cette feuille ne règle que leur mise
+   en page par largeur. */
+.tdb-modele {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.tdb-tuiles {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.tdb-duo {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
 .tdb-jour.tdb-panneau > .tdb-tete { margin-bottom: 14px; }
 /* La colonne du jour : un liseré en haut, à l'encre de l'onglet actif
    (--onglet). C'est un marqueur d'état : il change de couleur avec la
    direction Office, il ne s'éteint pas. Plus spécifique que .tdb-panneau,
    il garde son ombre quand le panneau pose la sienne. */
 .tdb .tdb-jour--actuel {
-  box-shadow: inset 0 3px 0 var(--onglet), 0 0 0 1px var(--rule-soft);
+  box-shadow: inset 0 3px 0 var(--onglet), 0 0 0 1px var(--rule-soft), var(--sh);
 }
 /* Sous-titres (Midi, Soir, Réservations, Groupes...) sur un bandeau teinté. */
 .tdb-sous-tete {
@@ -117,8 +149,6 @@
 }
 .tdb-equipe-services { row-gap: 16px; }
 
-/* Les chiffres : le filet du titre suffit au-dessus de la première rangée. */
-.tdb-panneau .tdb-chiffres > .tdb-chiffre:nth-child(-n+2) { border-top: 0; }
 
 /* Lignes de liste : un filet entre deux lignes, pas de boîte. Les boutons
    perdent leur bordure et leur fond d'agent utilisateur par la classe, pas
@@ -126,17 +156,27 @@
 .tdb button.tdb-lien { border: 0; background: transparent; }
 .tdb .tdb-filet { border-radius: 0; }
 .tdb .tdb-filet + .tdb-filet { border-top: 1px solid var(--rule-soft); }
-.tdb .tdb-chiffres > .tdb-chiffre { border-top: 1px solid var(--rule-soft); }
+/* Chiffres de gestion : une rangée de petites cartes blanches, comme les
+   repères du jour. */
+.tdb .tdb-chiffres > .tdb-chiffre {
+  background: var(--zone);
+  border-radius: var(--r-lg);
+  box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
+}
 
 @container tdb (min-width: 560px) {
   .tdb-panneau { padding: 18px 20px 14px; }
-  .tdb-hero { padding: 22px 26px; gap: 18px; }
-  .tdb-repere-icone { display: block; margin-bottom: 4px; }
-  .tdb-reperes { gap: 16px; }
+  .tdb-hero { gap: 18px; }
+  .tdb-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tdb .ui-repere-icone { display: inline-flex !important; }
+  .tdb .tdb-repere-carte { padding: 14px 16px; }
+  .tdb-reperes { gap: 12px; }
   .tdb-citation { font-size: var(--t4); }
 }
 @container tdb (min-width: 760px) {
   .tdb-haut { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px; }
+  /* La colonne des cartes est étroite à cette largeur : les deux pastel s'empilent. */
+  .tdb-duo { grid-template-columns: minmax(0, 1fr); }
   .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
   .tdb-jours { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
   .tdb-jour-semaine { grid-column: 1 / -1; }
@@ -150,17 +190,10 @@
     align-items: start;
   }
   .tdb-jour-semaine .tdb-semaine > .tdb-semaine-groupes { grid-column: 2; grid-row: span 2; }
-}
-@container tdb (min-width: 1080px) {
-  .tdb-hero {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-    align-items: end;
-    column-gap: 32px;
-  }
-  .tdb-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; }
-  .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
   /* L'équipe en deux colonnes : Midi à gauche, Soir puis les absences à
-     droite ; huit lignes par colonne avant « Voir toute l'équipe ». */
+     droite ; huit lignes par colonne avant « Voir toute l'équipe ». Dès ce
+     palier : « Qui travaille aujourd'hui » y occupe toute la largeur, les
+     cartes de mise en avant ayant pris sa place à côté de la liste. */
   .tdb-equipe-services--deux {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-flow: row dense;
@@ -174,20 +207,49 @@
     padding-left: 20px;
     border-left: 1px solid var(--rule-soft);
   }
+}
+/* Entre 760 et 1079 px (tablette en paysage, ordinateur étroit), avec les
+   trois cartes : la carte sombre reste à côté de la liste et prend sa hauteur
+   (ses tuiles s'étirent), les deux pastel passent côte à côte dessous, sur
+   toute la largeur. Empilées dans la colonne étroite, elles dépassaient la
+   liste de plusieurs centaines de pixels et laissaient un vide sous elle.
+   L'ordre de lecture ne change pas. */
+@container tdb (min-width: 760px) and (max-width: 1079.98px) {
+  .tdb-haut--trois { row-gap: 16px; }
+  .tdb-haut--trois > .tdb-modele { display: contents; }
+  .tdb-haut--trois > .tdb-modele > [data-carte-avant="nuit"] { align-self: stretch; }
+  .tdb-haut--trois > .tdb-modele > [data-carte-avant="nuit"] > .tdb-tuiles { flex: 1 1 auto; grid-auto-rows: 1fr; }
+  .tdb-haut--trois > .tdb-modele > .tdb-duo { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container tdb (min-width: 1080px) {
+  .tdb-hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    align-items: center;
+    column-gap: 32px;
+  }
+  .tdb-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+  .tdb-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
   .tdb-jours { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-  .tdb-panneau .tdb-chiffres > .tdb-chiffre:nth-child(-n+4) { border-top: 0; }
   .tdb-jour-semaine { grid-column: auto; }
   .tdb-jour-semaine .tdb-semaine { display: flex; flex-direction: column; align-items: stretch; }
   .tdb-chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
-/* ── Onglets (téléphone) : soulignés, pas de pilule ──────────────────────── */
+/* Les quatre tuiles de la carte sombre sur une ligne seulement quand chacune
+   garde son libellé sur une ligne (menu replié en rail à 1440 px) ; menu
+   déplié, elles restent en deux rangées. */
+@container tdb (min-width: 1240px) {
+  .tdb-tuiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* ── Onglets (téléphone) : des pilules, la choisie en aplat sombre ───────── */
 .tdb-onglets {
   display: flex;
   gap: 4px;
   min-width: 0;
   overflow-x: auto;
-  border-bottom: 1px solid var(--rule-soft);
+  padding-bottom: 1px;
   scrollbar-width: none;
 }
 .tdb-onglets::-webkit-scrollbar { display: none; }
@@ -196,7 +258,7 @@
   min-height: 44px;
   padding: 0 10px;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--r-full);
   background: transparent;
   color: var(--text2);
   font-family: var(--font);
@@ -206,9 +268,9 @@
   cursor: pointer;
 }
 .tdb .tdb-onglet.is-actif {
-  color: var(--text);
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: var(--g3);
-  box-shadow: inset 0 -2px 0 var(--onglet);
 }
 
 /* ── Interactions ─────────────────────────────────────────────────────────── */
@@ -220,13 +282,15 @@
    tap). Plus spécifique que le fond transparent de .tdb button.tdb-lien. */
 @media (hover: hover) and (pointer: fine) {
   .tdb button.tdb-lien:not(:disabled):hover { background: var(--selection); }
-  .tdb .tdb-hero button.tdb-lien:not(:disabled):hover { background: var(--surface); }
+  .tdb .tdb-hero button.tdb-lien:not(:disabled):hover { background: var(--selection); }
 }
 .tdb-lien:focus-visible,
 .tdb button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+/* Sur la carte sombre, l'anneau du bouton à flèche prend l'encre claire. */
+.tdb [data-carte-avant="nuit"] button:focus-visible { outline-color: var(--carte-nuit-texte); }
 
 /* Point « en poste » : fixe, sans halo animé. */
 .tdb-live {

@@ -16,8 +16,10 @@ import { useShell } from './ShellContext.js';
 // (module_labels, sinon mobileLabel, sinon label), badge dans le coin. Hauteur
 // minimale 72 px posée en inline : la règle tactile globale (44 px) ne peut pas
 // la rabaisser. Les colonnes (2, 3, 4 selon la largeur) sont dans app.css
-// (.accueil-grille). data-cadre : le bouton garde son fond (règle « Plus de
-// carrés »). Aucun filter ni transform inline : l'affordance au tap est globale.
+// (.accueil-grille). La tuile est une carte blanche (rayon --r-lg, ombre
+// --sh), son picto dans un cercle --piste (.accueil-tuile-picto, app.css).
+// data-cadre : le bouton garde son fond (règle « Plus de carrés »). Aucun
+// filter ni transform inline : l'affordance au tap est globale.
 //
 // Sur ordinateur, la page « accueil » affiche le tableau de bord
 // (LegacyModuleHost) : ce composant n'y est jamais monté.
@@ -84,7 +86,7 @@ export default function AccueilTactile() {
                   style={s.tuile}
                   onClick={() => setPage(item.id)}
                 >
-                  <Icone size={28} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+                  <span className="accueil-tuile-picto" aria-hidden="true"><Icone size={24} strokeWidth={1.75} /></span>
                   <span style={s.libelle}>{getLabelForModule(item.id, item.mobileLabel || item.label)}</span>
                   <NavBadge itemId={item.id} badges={badges} style={s.badge} />
                 </button>
@@ -100,11 +102,11 @@ export default function AccueilTactile() {
 const s = {
   page: { display: 'flex', flexDirection: 'column', gap: 22, maxWidth: 900, margin: '0 auto', width: '100%', minWidth: 0 },
   entete: { display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', padding: '4px 2px 2px' },
-  logo: { width: 48, height: 48, borderRadius: 10, overflow: 'hidden', flexShrink: 0 },
+  logo: { width: 48, height: 48, borderRadius: 'var(--r-sm)', overflow: 'hidden', flexShrink: 0 },
   logoImg: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   qui: { flex: '1 1 200px', minWidth: 0 },
   nomEtab: {
-    margin: 0, fontFamily: 'var(--font)', fontWeight: 'var(--g3)', fontSize: 22, lineHeight: 1.15, color: 'var(--text)',
+    margin: 0, fontFamily: 'var(--font)', fontWeight: 'var(--g2)', fontSize: 22, lineHeight: 1.15, color: 'var(--text)',
     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
   },
   bonjour: { margin: '3px 0 0', fontSize: 15, lineHeight: 1.4, color: 'var(--text2)' },
@@ -112,9 +114,9 @@ const s = {
   compteFlexible: { flex: '1 1 auto', minWidth: 0 },
   rubriqueTitre: { margin: '0 0 8px 2px', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text3)', letterSpacing: 0.2 },
   tuile: {
-    position: 'relative', display: 'flex', alignItems: 'center', gap: 12, minHeight: 72, width: '100%',
-    padding: '22px 14px', borderRadius: 'var(--r)', background: 'var(--btn-fond)', color: 'var(--lien)',
-    border: 'none', boxShadow: 'inset 0 0 0 1px var(--btn-bord)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 'var(--g2)', lineHeight: 1.2, textAlign: 'left', cursor: 'pointer',
+    position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minHeight: 72, width: '100%',
+    padding: '22px 10px', borderRadius: 'var(--r-lg)', background: 'var(--surface)', color: 'var(--lien)',
+    border: 'none', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 'var(--g3)', lineHeight: 1.2, textAlign: 'left', cursor: 'pointer',
   },
   libelle: { flex: 1, minWidth: 0 },
   badge: { position: 'absolute', top: 8, right: 8 },

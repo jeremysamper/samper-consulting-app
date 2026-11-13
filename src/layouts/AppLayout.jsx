@@ -30,7 +30,8 @@ import { ShellProvider } from './ShellContext.js';
 import { applyNavOrder } from '../hooks/useNavOrder.js';
 import { navigateToPage, ouvrirCompte as ouvrirSection } from '../services/navigationService.js';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
-import { readJson, removeStorageKeys } from '../utils/storage.js';
+import { readJson, readText, removeStorageKeys, writeText } from '../utils/storage.js';
+import { getModuleIcon } from '../modules/moduleIcons.js';
 import { dbService } from '../services/dbService.js';
 import { messageErreur } from '../utils/messageErreur.js';
 
@@ -91,7 +92,12 @@ export default function AppLayout({
   // Barre latérale (ordinateur) : reste ouverte tant que l'utilisateur ne la
   // replie pas lui-même ; un passage transitoire par la coque tactile (iPad
   // qui change de pointeur) ne la touche pas.
-  const [sidebarOpen, setSidebarOpen] = React.useState(true);
+  // Menu de l'ordinateur : un rail d'icônes par défaut, déplié en menu à
+  // libellés par le bouton de la barre du haut (ou Ctrl/Cmd + B). Le choix est
+  // gardé sur le poste (sc_menu_deplie) ; seul ce bouton l'écrit.
+  const [sidebarOpen, setSidebarOpen] = React.useState(() => readText('sc_menu_deplie', '0') === '1');
+  const menuDeplieRef = React.useRef(sidebarOpen);
+  menuDeplieRef.current = sidebarOpen;
   const [notifOpen, setNotifOpen] = React.useState(false);
   const [msgOpen, setMsgOpen] = React.useState(false);
   const [logoHover, setLogoHover] = React.useState(false);
@@ -306,13 +312,17 @@ export default function AppLayout({
   // ── Liste des modules, seul contenu du milieu de la barre ────────
   // Plus d'intitulé de rubrique à l'écran : un filet sépare les rubriques, et
   // leur nom reste annoncé aux lecteurs d'écran (role group + aria-label).
-  const renderNavGroups = ({ itemStyle, activeStyle, dividerStyle, activeMarker }) => groupedNav.map((group, index) => (
+  // En rail (rail = true) : le picto du module dans un cercle, son libellé en
+  // info-bulle et pour les lecteurs d'écran.
+  const renderNavGroups = ({ itemStyle, activeStyle, dividerStyle, rail = false }) => groupedNav.map((group, index) => (
     <div key={group.label} role="group" aria-label={group.label}>
       {index > 0 && <div style={dividerStyle} aria-hidden="true" />}
       {group.items.map(item => {
         // Page « accueil » sur ordinateur (iPad passé de tactile à clavier) :
         // elle affiche le tableau de bord, c'est lui qui est surligné.
         const active = currentPage === item.id || (currentPage === 'accueil' && item.id === 'dashboard');
+        const libelle = getLabelForModule(item.id, item.label);
+        const Icone = rail ? getModuleIcon(item.id) : null;
         return (
           <button
             key={item.id}
@@ -320,11 +330,13 @@ export default function AppLayout({
             className="sc-nav-item"
             style={{ ...itemStyle, ...(active ? activeStyle : {}) }}
             aria-current={active ? 'page' : undefined}
+            title={rail ? libelle : undefined}
+            aria-label={rail ? libelle : undefined}
             onClick={() => handleSetPage(item.id)}
           >
-            <span style={ls.navLabel}>{getLabelForModule(item.id, item.label)}</span>
-            {renderNavBadge(item.id)}
-            {active && activeMarker}
+            {Icone ? <Icone size={20} strokeWidth={1.75} aria-hidden="true" /> : null}
+            <span style={rail ? ls.navLabelCache : ls.navLabel}>{libelle}</span>
+            {rail ? <NavBadge itemId={item.id} badges={badges} style={ls.railBadge} /> : renderNavBadge(item.id)}
           </button>
         );
       })}
@@ -340,10 +352,14 @@ export default function AppLayout({
   // « Mon compte » est une section de la page des réglages : le clic sur son
   // nom ouvre la page dessus.
   const ouvrirMonCompte = React.useCallback(() => ouvrirSection('mon_compte'), []);
+  // Rôle affiché sous le nom, dans la barre du haut : le libellé du rôle
+  // tel que l'app le connaît (données de démarrage, complétées de moduleConfig).
+  const roleDuCompte = getDemoData()?.roles?.[user.role]?.label || '';
   const renderAccountButton = (variant, style) => (
     <AccountButton
       user={accountUser}
       variant={variant}
+      role={variant === 'barre' ? roleDuCompte : ''}
       onOpen={ouvrirMonCompte}
       style={style}
     />
@@ -369,7 +385,11 @@ export default function AppLayout({
   };
 
   // ── Raccourcis clavier, palette Ctrl/⌘+K, Échap ───────────────
-  const toggleSidebar = React.useCallback(() => setSidebarOpen((o) => !o), []);
+  const toggleSidebar = React.useCallback(() => {
+    const suivant = !menuDeplieRef.current;
+    writeText('sc_menu_deplie', suivant ? '1' : '0');
+    setSidebarOpen(suivant);
+  }, []);
   const togglePalette = React.useCallback((forceOpen) => {
     setHelpOpen(false);
     setPaletteOpen((o) => (forceOpen === true ? true : !o));
@@ -564,7 +584,7 @@ export default function AppLayout({
           'aria-label': 'Changer le logo',
         } : {})}
         style={{
-          width: size, height: size, borderRadius: 'var(--r)', padding: 0,
+          width: size, height: size, borderRadius: 'var(--r-sm)', padding: 0,
           // Le logo d'un établissement se pose sur une pastille à la couleur
           // du menu d'avant Office (--logo-fond) : un logo importé clair, sur
           // fond transparent, garde l'allure qu'il avait sur le menu sombre.
@@ -757,53 +777,40 @@ export default function AppLayout({
   // ════════════════════════════════
   // DESKTOP
   // ════════════════════════════════
+  // Le rangement du menu (« Organiser le menu ») a besoin des libellés.
+  const menuLarge = sidebarOpen || organizing;
   // --largeur-menu : place prise par la barre latérale, pour les barres fixes
   // en bas d'écran qui doivent commencer après elle (sélection du Planning).
   return (
     <ShellProvider value={shellValue}>
-    <div style={{ ...ls.root, '--largeur-menu': sidebarOpen ? '234px' : '0px' }} onClick={fermerPanneaux}>
-      {/* Barre au strict minimum : logo en haut, modules, nom de l'utilisateur
-          en bas. L'établissement est dans le header, les actions de compte
-          dans le menu du nom, le repli dans le bouton du header.
-          Repliée = la barre disparaît complètement (width 0 + visibility
-          hidden après la transition). */}
+    <div style={{ ...ls.root, '--largeur-menu': menuLarge ? '234px' : '76px' }} onClick={fermerPanneaux}>
+      {/* Menu de l'ordinateur : le logo en haut, les modules, les réglages en
+          bas. Replié, c'est un rail d'icônes de 76 px (un cercle par module,
+          l'entrée choisie en aplat sombre) ; déplié, le menu à libellés de
+          234 px. L'établissement et le compte sont dans la barre du haut, le
+          bouton de la barre replie et déplie. */}
       <aside
         id="app-sidebar"
         aria-label="Menu principal"
-        style={{
-          ...ls.sidebar,
-          width: sidebarOpen ? 234 : 0,
-          borderRight: sidebarOpen ? '1px solid var(--nav-border)' : 'none',
-          visibility: sidebarOpen ? 'visible' : 'hidden',
-          transition: sidebarOpen
-            ? 'width .2s cubic-bezier(.4,0,.2,1)'
-            : 'width .2s cubic-bezier(.4,0,.2,1), visibility 0s linear .2s',
-        }}
+        style={{ ...ls.sidebar, width: menuLarge ? 234 : 76 }}
       >
-        <div style={ls.sidebarTop}>
+        <div style={menuLarge ? ls.sidebarTop : ls.sidebarTopRail}>
           <div style={{ position: 'relative' }}>
             {renderLogoMark(36, 13)}
           </div>
         </div>
 
-        <nav style={ls.nav} aria-label="Modules" data-nav-scroll>
-          {organizing ? renderOrganizer() : renderNavGroups({
-            itemStyle: ls.navItem,
-            activeStyle: ls.navActive,
-            dividerStyle: ls.navDivider,
-            activeMarker: <span style={ls.navActiveLine} aria-hidden="true" />,
-          })}
+        <nav style={menuLarge ? ls.nav : ls.navRail} className={menuLarge ? undefined : 'sc-nav-rail'} aria-label="Modules" data-nav-scroll>
+          {organizing ? renderOrganizer() : renderNavGroups(menuLarge
+            ? { itemStyle: ls.navItem, activeStyle: ls.navActive, dividerStyle: ls.navDivider }
+            : { itemStyle: ls.railItem, activeStyle: ls.navActive, dividerStyle: ls.railDivider, rail: true })}
         </nav>
 
-        <div style={ls.userArea}>
-          {ouvrirCompte ? (
-            // Une seule ligne : la hauteur du pied, donc celle du menu, ne change pas.
-            <div style={ls.userRow}>
-              {renderAccountButton('desktop', ls.userRowAccount)}
-              <CompteButton onOpen={ouvrirCompte} actif={currentPage === 'compte'} />
-            </div>
-          ) : renderAccountButton('desktop')}
-        </div>
+        {ouvrirCompte ? (
+          <div style={menuLarge ? ls.userArea : ls.userAreaRail}>
+            <CompteButton onOpen={ouvrirCompte} actif={currentPage === 'compte'} rail={!menuLarge} />
+          </div>
+        ) : null}
       </aside>
 
       <div style={ls.main}>
@@ -847,22 +854,23 @@ export default function AppLayout({
                 onSelect={setEtablissement}
               />
             </div>
-            {/* Langue, recherche, thème, messages, alertes, rien d'autre.
-                La déconnexion est dans « Mon compte » (clic sur le nom, en
-                bas de la barre latérale). */}
+            {/* Recherche en pilule, langue, thème, messages, alertes, puis le
+                compte. La déconnexion est dans « Mon compte » (clic sur son
+                nom, à droite de la barre). */}
             <div style={ls.topbarRight} className="topbar-right">
-              <LanguageToggle compact etablissementId={etablissement?.id || null} />
               <button
                 type="button"
-                className="app-bar-btn"
-                style={ls.iconBtn}
+                className="app-bar-recherche"
                 onClick={(e) => { e.stopPropagation(); togglePalette(true); }}
                 aria-label="Aller à un module"
                 aria-keyshortcuts={MOD_LABEL === '⌘' ? 'Meta+K' : 'Control+K'}
                 title={`Aller à… (${MOD_LABEL} K)`}
               >
                 <Search size={18} strokeWidth={2} aria-hidden="true" />
+                <span>Aller à un module</span>
+                <span className="sc-kbd" data-no-translate="">{MOD_LABEL} K</span>
               </button>
+              <LanguageToggle compact etablissementId={etablissement?.id || null} />
               <button
                 type="button"
                 className="app-bar-btn"
@@ -889,6 +897,7 @@ export default function AppLayout({
                 </button>
                 {notifOpen && renderAlertPanel(ls.notifPanel, ls.notifHeader, ls.notifItem)}
               </div>
+              {renderAccountButton('barre')}
             </div>
           </header>
 
@@ -907,31 +916,40 @@ export default function AppLayout({
 }
 
 const ls = {
-  // Desktop - navigation « encre pétrole » : la sidebar est en aplat uni
-  // (--nav, sans dégradé) dans les DEUX thèmes, avec les tokens nav-* pour les
-  // textes et filets. La coque tactile (mls) n'a pas de barre : seul son
-  // header « verre » reprend ces tokens. Fond transparent sur la coque :
-  // l'ambiance (--ambient) posée sur <body> respire sous le contenu.
+  // Ordinateur : le menu est posé sur le fond de page (--nav vaut --bg), sans
+  // filet à droite ; ses entrées sont des pilules, l'entrée choisie un aplat
+  // sombre (--nav-active, texte --nav-text-active). La coque tactile (mls)
+  // n'a pas de menu. Fond transparent sur la coque : la couleur de page est
+  // celle de <body>.
   // height 100% et non 100vh : #root porte déjà les zones de sécurité iOS, une
   // coque en 100vh dépasse par le bas de la hauteur de l'indicateur d'accueil et
   // fait sortir de l'écran le bas de la zone de contenu (barres d'action posées).
   root: { display: 'flex', height: '100%', fontFamily: 'var(--font)', background: 'transparent', overflow: 'hidden' },
   // minWidth 0 + overflow hidden : la barre peut s'animer jusqu'à width 0 sans
   // être bloquée par la taille min-content de ses enfants flex.
-  sidebar: { background: 'var(--nav)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', borderRight: '1px solid var(--nav-border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
+  sidebar: { background: 'var(--nav)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
   // Haut de barre : le logo seul, aligné sur le texte des modules.
   sidebarTop: { display: 'flex', alignItems: 'center', padding: '18px 16px 12px', flexShrink: 0 },
+  sidebarTopRail: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px 0 12px', flexShrink: 0 },
   nav: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 7px 12px', overflowY: 'auto' },
+  // Rail d'icônes : un cercle de 44 px par module, à la couleur des cartes ;
+  // l'entrée choisie prend l'aplat sombre (navActive). Le libellé reste dans
+  // le bouton, hors de vue (navLabelCache), et en info-bulle.
+  navRail: { flex: 1, display: 'flex', flexDirection: 'column', padding: '8px 0 12px', overflowY: 'auto', overflowX: 'hidden' },
+  railItem: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0, margin: '0 auto 6px', padding: 0, borderRadius: '50%', border: 'none', background: 'var(--surface)', color: 'var(--nav-text)', cursor: 'pointer', position: 'relative', transition: 'background .15s,color .15s' },
+  // Les rubriques du rail se séparent par un espace, sans filet.
+  railDivider: { height: 14 },
+  railBadge: { position: 'absolute', top: -4, right: -6, padding: '1px 5px' },
+  navLabelCache: { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 },
   // Filet entre deux rubriques, à la place de leur intitulé.
   navDivider: { height: 1, background: 'var(--nav-border)', margin: '7px 10px' },
-  navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 'var(--r)', border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 'var(--g2)', position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
-  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 'var(--g2)', boxShadow: 'var(--nav-glow)' },
-  navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 16, background: 'var(--nav-accent)', borderRadius: 2, opacity: 0.85 },
+  navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderRadius: 'var(--r-full)', border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 'var(--g2)', position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
+  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 'var(--g2)' },
   navLabel: { flex: 1, minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   // Pied de barre : le nom de l'utilisateur (menu de compte, UserMenu.jsx).
-  userArea: { padding: '8px 6px 10px', borderTop: '1px solid var(--nav-border)', flexShrink: 0 },
-  userRow: { display: 'flex', alignItems: 'center', gap: 6 },
-  userRowAccount: { flex: 1, minWidth: 0, width: 'auto' },
+  // Pied du menu : les réglages (une pilule, ou un cercle dans le rail).
+  userArea: { padding: '8px 10px 12px', borderTop: '1px solid var(--nav-border)', flexShrink: 0 },
+  userAreaRail: { padding: '8px 0 12px', display: 'flex', justifyContent: 'center', borderTop: '1px solid var(--nav-border)', flexShrink: 0 },
   main: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   // Scène du header « verre » : il est posé en absolu, <main> défile dessous.
   // --app-header-h = hauteur du header, reprise par le padding haut de <main>.
@@ -943,16 +961,19 @@ const ls = {
   // droit jamais : ses boutons écrasés devenaient intouchables.
   topbarLeft: { display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: '1 1 auto', marginRight: 12 },
   topbarRight: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
-  sidebarToggle: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -8, background: 'none', border: 'none', borderRadius: 'var(--r)', color: 'var(--text2)', cursor: 'pointer', padding: 0 },
-  // Les quatre boutons du header : même carré de 44 px, sans bordure (survol :
-  // .app-bar-btn dans app.css), comme le sélecteur de langue compact.
-  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 'var(--r)', color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
+  // Bouton de repli : la même cible de 44 px que les autres, son cercle de
+  // 40 px peint par .app-bar-btn ; les marges gardent le titre à sa place.
+  sidebarToggle: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -10, marginRight: -2, background: 'none', border: 'none', borderRadius: '50%', color: 'var(--text2)', cursor: 'pointer', padding: 0 },
+  // Les boutons du header : même cible de 44 px, le picto dans un cercle de
+  // 40 px à la couleur des cartes (fond, retrait et survol : .app-bar-btn dans
+  // app.css), comme le sélecteur de langue compact.
+  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: '50%', color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
   // Compteur d'alertes : une seule forme, ordinateur et téléphone (pilule qui
   // s'élargit au-delà de 9).
   notifDot: { position: 'absolute', top: 4, right: 4, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
   // Hauteur bornée : une longue liste d'alertes sortait du bas de la zone
   // (overflow hidden) sans pouvoir défiler.
-  notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
+  notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
   notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
   // minHeight 0 : sans lui <main> prend la hauteur de son contenu et ne défile pas.
@@ -994,9 +1015,9 @@ const mls = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
     padding: '0 8px',
   },
-  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 'var(--r)', color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
+  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: '50%', color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
   notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
-  notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
+  notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
   notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
 

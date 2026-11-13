@@ -238,7 +238,7 @@ const st = {
   deroulant: {
     position: 'absolute', right: 0, width: 380, maxWidth: 'calc(100vw - 24px)',
     height: 'min(560px, calc(100vh - 90px))', display: 'flex', flexDirection: 'column',
-    background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)',
+    background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)',
     boxShadow: 'var(--sh-lg)', zIndex: 200, overflow: 'hidden', fontFamily: 'var(--font)',
   },
   // Au-dessus de la barre du haut (50), au niveau des fenêtres des modules.

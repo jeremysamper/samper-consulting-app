@@ -104,16 +104,16 @@ Modules subscribe to Postgres changes via `SB.realtime.subscribe(tableName, call
 
 ### Styling
 
-All styles are plain JS objects (inline `style={...}` props): no CSS modules, no Tailwind. Theming is driven by CSS variables set on `<html data-theme="light|dark">` via `useTheme` (`src/hooks/useTheme.js`). The look is the Office direction (light side menu, light panels on a grey page, sans-serif titles, outlined secondary buttons, 8 px radius, accent kept for the main action); its scale, role tokens and bans live in `.claude/rules/direction-office.md`. Key tokens: `var(--accent)` with `var(--on-accent)` (main action only), `var(--surface)`, `var(--bg)`, `var(--text)`, `var(--text2)`, `var(--text3)`, `var(--border)`, `var(--selection)` (hover, chosen row), `var(--lien)`, `var(--font)`, `var(--font-num)` (highlighted figures: KPIs, amounts, temperatures). `var(--nav*)` belongs to the shell only; `var(--font-serif)` now equals `var(--font)`.
+All styles are plain JS objects (inline `style={...}` props): no CSS modules, no Tailwind. Theming is driven by CSS variables set on `<html data-theme="light|dark">` via `useTheme` (`src/hooks/useTheme.js`). The look is the Galet direction (cool grey page, white cards with a large radius and a soft shadow, pill buttons and tabs, a dark fill for the main action and for the chosen item, highlight cards); its scale, role tokens and bans live in `.claude/rules/direction-galet.md`. Key tokens: `var(--accent)` with `var(--on-accent)` (main action, chosen pill), `var(--surface)`, `var(--bg)`, `var(--text)`, `var(--text2)`, `var(--text3)`, `var(--border)`, `var(--selection)` (hover, chosen row), `var(--piste)` (pill group, inner tile, icon circle), `var(--sh)` (card shadow), `var(--lien)`, `var(--font)`, `var(--font-num)` (highlighted figures: KPIs, amounts, temperatures). `var(--nav*)` belongs to the shell only; `var(--font-serif)` now equals `var(--font)`.
 
 ### UI primitives
 
-`src/components/ui/index.jsx` exports shared components used by new modules. They carry the Office direction themselves, through tokens:
-- `Card`, also exported as `Panneau`: a panel, the visible limit of a group (`data-cadre`, `--zone`, soft rule)
-- `Btn`: button with variants `primary` (the only accent fill), `ghost` (outlined secondary), `danger`, `success`, `tab`, `tabActive`
+`src/components/ui/index.jsx` exports shared components used by new modules. They carry the Galet direction themselves, through tokens:
+- `Card`, also exported as `Panneau`: a white card, the visible limit of a group (`data-cadre`, `--zone`, `--r-lg`, `--sh`)
+- `Btn`: pill button with variants `primary` (dark fill), `ghost` (outlined secondary), `danger`, `success`, `tab`, `tabActive`
 - `Input`: themed text input; `TabBar`: horizontal tab row from `[{ id, label, icon? }]`
 - `SectionHeader`: title + optional subtitle + optional action slot
-- `KpiCard`: metric card with value, delta, and optional chart slot
+- `KpiCard`: metric card (icon circle, label, large value, delta, optional chart slot); `CarteAvant`: highlight card (tones `nuit`, `soleil`, `ciel`)
 - `ligneStyle()`: shared style of a list row; windows and their form styles (`Fenetre`, `st`) live in `Fenetres.jsx`
 
 ### Toast notifications

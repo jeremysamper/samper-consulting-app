@@ -5,11 +5,11 @@
 }
 
 :root {
-  /* Direction Office (choisie le 11.11.2026) : menu clair, panneaux légers sur
-     fond gris, titres sans serif, boutons secondaires à contour, rayon de
-     8 px, accent réservé à l'action principale. Les valeurs de ce bloc et des
-     deux blocs sombres viennent de la feuille de l'essai ; la règle durable
-     est dans .claude/rules/direction-office.md. */
+  /* Direction Galet (13.11.2026, remplace la direction Office) : fond gris
+     froid, cartes blanches à grand rayon et ombre douce, boutons et onglets en
+     pilules, aplat sombre (le pétrole de la marque) pour l'action principale
+     et pour l'élément choisi, cartes de mise en avant. Les polices ne changent
+     pas. La règle durable est dans .claude/rules/direction-galet.md. */
   /* IBM Plex Sans pour toute l'app, module Spa compris. Fichiers servis par
      l'app (public/fonts/ui, déclarés dans src/styles/fonts.css), précachés par
      le service worker. Les titres sont sans serif : --font-serif renvoie sur
@@ -20,21 +20,25 @@
      quantités) : la même famille que le texte. Les chiffres de Plex sont
      tabulaires par défaut ; la règle « Chiffres » garde la largeur égale. */
   --font-num: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
-  /* Fond gris sous des surfaces presque blanches : c'est cet écart, et non une
-     ombre, qui détache les panneaux en mode clair. Neutres froids, teintés
-     vers le pétrole de la marque : jamais de crème, jamais de blanc pur.
+  /* Fond gris froid sous des cartes blanches : l'écart de fond et une ombre
+     douce (--sh) détachent les cartes en mode clair. Neutres froids, teintés
+     vers le pétrole de la marque : jamais de crème.
      --surface2 vaut la surface : un état (survol, ligne choisie) se pose sur
-     --selection, jamais sur --surface2. */
-  --bg: #f3f5f7;
+     --selection, jamais sur --surface2. --piste est le fond d'un groupe de
+     pilules, d'une tuile intérieure, du cercle d'un picto. */
+  --bg: #e8ebee;
   --bg2: #eaeef1;
-  --surface: #fbfcfd;
-  --surface2: #fbfcfd;
+  --surface: #ffffff;
+  --surface2: #ffffff;
+  --piste: #eef1f4;
   --border: #b7c1c7;
   --border2: #b7c1c7;
-  /* Filet doux sous les éléments d'une liste aplatie (« Plus de carrés », en
-     fin de feuille) et autour des panneaux. Une vue capturée en PDF le
-     reprend sur le filet de marque (règle .pdf-render-root, même endroit). */
-  --rule-soft: #d5dbdf;
+  /* Filet doux entre les lignes d'une carte, autour d'une carte, et sous les
+     éléments d'une liste aplatie (« Plus de carrés », en fin de feuille) : il
+     doit se voir sur le blanc d'une carte comme sur le gris de la page. Une
+     vue capturée en PDF le reprend sur le filet de marque (règle
+     .pdf-render-root, même endroit). */
+  --rule-soft: #d6dce0;
   --text: oklch(19% 0.012 235);
   --text2: #47535a;
   --text3: #57636a;
@@ -46,45 +50,49 @@
      du clair, encre foncée sur l'aqua du sombre (le blanc y manque de
      contraste). */
   --on-accent: #ffffff;
-  /* ─── Menu latéral clair ──────────────────────────────────────────────
-     Le menu a la couleur de la surface, l'entrée choisie se pose sur
-     --nav-active (la valeur de --selection), sans halo. Ces jetons sont
+  /* ─── Menu latéral posé sur la page ───────────────────────────────────
+     Le menu a la couleur du fond de page, sans filet à droite. Ses entrées
+     sont des pilules ; l'entrée choisie est un aplat sombre : --nav-active
+     vaut --accent, --nav-text-active vaut --on-accent. Ces jetons sont
      réservés à la coque (AppLayout.jsx, src/components/nav/, règles
-     .sc-nav-* et .nav-organizer*) : un module ne lit jamais --nav*, un texte
-     blanc posé dessus serait blanc sur blanc (npm run lint:on-color).
-     --nav-grad reste défini, égal à --nav, pour ce qui le lirait encore. */
-  --nav: #fbfcfd;
+     .sc-nav-* et .nav-organizer*) : un module ne lit jamais --nav*
+     (npm run lint:on-color). --nav-grad reste défini, égal à --nav, pour ce
+     qui le lirait encore. */
+  --nav: #e8ebee;
   --nav-grad: var(--nav);
   --nav-text: #47535a;
-  --nav-text-active: #10191d;
-  --nav-active: #dfe5e9;
-  --nav-border: #d5dbdf;
+  --nav-text-active: #ffffff;
+  --nav-active: #003042;
+  --nav-border: #d6dce0;
   --nav-accent: #10191d;
   /* Sélection posée, pas lumineuse : ni filet intérieur ni halo. */
   --nav-glow: none;
   /* ─── Barre du haut ────────────────────────────────────────────────────
-     Opaque, à la couleur du fond de page, sans flou (.app-glass-bar). Les
-     noms « glass » sont gardés pour leurs lecteurs. */
-  --glass-bg: #f3f5f7;
-  --glass-border: #d5dbdf;
+     Opaque, à la couleur du fond de page, sans flou ni filet
+     (.app-glass-bar). Les noms « glass » sont gardés pour leurs lecteurs. */
+  --glass-bg: #e8ebee;
+  --glass-border: #d6dce0;
   --glass-hover: rgba(10, 30, 40, 0.06);
-  /* Un seul rayon, 8 px, pour les contrôles comme pour les panneaux. Les
-     quatre noms restent déclarés pour leurs lecteurs ; ils ne changent pas
-     avec le thème. Les pilules (999px) restent réservées aux étiquettes. */
-  --r: 8px;
-  --r-sm: 8px;
-  --r-lg: 8px;
-  --r-xl: 8px;
+  /* Rayons, du plus petit au plus grand : petits éléments (case, pastille
+     carrée), champs et tuiles intérieures, cartes et tuiles d'accueil,
+     fenêtres et cartes de mise en avant. La pilule (--r-full) est la forme
+     des boutons, des onglets et des étiquettes. Ils ne changent pas avec le
+     thème ; une vue capturée en PDF garde les 8 px d'avant (règle
+     .pdf-render-root, en fin de feuille). */
+  --r-sm: 10px;
+  --r: 14px;
+  --r-lg: 20px;
+  --r-xl: 24px;
   --r-full: 999px;
 
   /* ─── Échelle d'élévation (teintée pétrole-ardoise, jamais noir pur) ──
-     Une ombre dit « cet objet flotte » : seuls les menus, fenêtres et
-     tiroirs flottent (--sh, --sh-lg). Les cartes posées sur la page n'ont
-     pas d'ombre (--sh-xs vide) : leur filet et l'écart de fond suffisent. */
+     --sh est l'ombre douce d'une carte posée sur la page ; --sh-lg celle de
+     ce qui flotte (fenêtre, menu, tiroir). Une ombre ne s'écrit que par ces
+     deux jetons. --sh-xs et --sh-sm restent déclarés, vides. */
   --sh-xs: none;
   --sh-sm: none;
-  --sh: 0 2px 8px rgba(9, 30, 40, 0.14);
-  --sh-lg: 0 12px 32px rgba(9, 30, 40, 0.2);
+  --sh: 0 1px 2px rgba(9, 30, 40, 0.04), 0 8px 24px rgba(9, 30, 40, 0.06);
+  --sh-lg: 0 24px 64px rgba(9, 30, 40, 0.18);
 
   /* ─── Mise en avant ───────────────────────────────────────────────────
      glow-accent = liseré accent des surfaces mises en avant (chips KPI,
@@ -96,7 +104,7 @@
   /* Anneau de focus : un trait plein de 3 px, lu en box-shadow. */
   --focus-ring: #12587a;
 
-  /* ─── Échelle d'Office (ne change pas avec le thème) ──────────────────
+  /* ─── Échelle (ne change pas avec le thème) ───────────────────────────
      Six tailles de texte, trois graisses, la hauteur d'une ligne de liste et
      celle d'un contrôle. Les chiffres mis en avant sont en graisse normale. */
   --t1: 12px;
@@ -119,12 +127,17 @@
      juste après ce bloc. */
   --marge: 24px;
 
-  /* ─── Rôles d'Office ──────────────────────────────────────────────────
+  /* ─── Jetons par rôle ─────────────────────────────────────────────────
      btn-*      bouton secondaire : fond, texte, contour
-     selection  survol, ligne ou entrée choisie, puce active
-     zone       fond d'un panneau
+     selection  survol, ligne choisie dans une liste
+     zone       fond d'une carte
      champ-bord contour d'un champ
-     onglet     trait et texte de l'onglet actif, liseré du jour
+     onglet     encre du marqueur du jour et des repères au trait
+     carte-*    cartes de mise en avant : nuit (sombre), soleil (jaune pastel),
+                ciel (bleu pastel), avec leur encre ; au plus une nuit et deux
+                pastel par écran, jamais pour dire un état. Sur la carte nuit,
+                un état posé dans la carte prend son encre claire
+                (carte-nuit-danger, -alerte, -succes, -info)
      lien       texte qui portait l'accent (l'accent reste à l'action principale)
      icone, coche, nav-marque : encres des pictos, des coches et de la marque
      toast-*    fond et texte d'un toast, encres de ses trois statuts
@@ -132,12 +145,12 @@
                 d'avant Office, pour qu'un logo importé garde son allure
      Tout jeton de couleur de ce groupe a son miroir dans THEME_VAR_OVERRIDES
      (src/design/brandTokens.js). */
-  --btn-fond: #fbfcfd;
+  --btn-fond: #ffffff;
   --btn-texte: #10191d;
-  --btn-bord: #93a0a8;
-  --selection: #dfe5e9;
-  --zone: #fbfcfd;
-  --champ-bord: #7f8d95;
+  --btn-bord: #c2cad0;
+  --selection: #dae1e6;
+  --zone: #ffffff;
+  --champ-bord: #b4bdc4;
   --onglet: #10191d;
   --lien: #10191d;
   --icone: #47535a;
@@ -149,6 +162,18 @@
   --toast-danger: #fb8f8f;
   --toast-alerte: #f5a524;
   --logo-fond: #032a3a;
+  --carte-nuit: #06222d;
+  --carte-nuit-texte: #ffffff;
+  --carte-nuit-doux: #a9c0c9;
+  --carte-nuit-tuile: #123a48;
+  --carte-nuit-danger: #fb8f8f;
+  --carte-nuit-alerte: #f5a524;
+  --carte-nuit-succes: #86d6a0;
+  --carte-nuit-info: #a9c8f7;
+  --carte-soleil: #f5e4a8;
+  --carte-soleil-texte: #2b2408;
+  --carte-ciel: #d2deee;
+  --carte-ciel-texte: #10233a;
 
   /* ─── Aplats de marque (noms historiques « grad- » conservés) ─────────
      grad-brand   : encre pétrole (splash, login, vignettes sans photo)
@@ -179,7 +204,7 @@
   --danger-bg-soft: #fef2f2;
   --danger-text: #a11616;
   --danger-bd: #fca5a5;
-  --danger-strong: #d32f2f;
+  --danger-strong: #c62828;
 
   /* Aplats pleins de statut (bouton, pastille) et leur texte, qui suit le
      thème : blanc en clair, encre en sombre où l'aplat s'éclaircit (WCAG 2 :
@@ -209,7 +234,7 @@
   /* Services de réservation : midi orange, soir bleu (le brunch est le midi
      du dimanche). Les mêmes partout (planning de la semaine, vue jour, mode
      service). */
-  --svc-midi: #c2410c;
+  --svc-midi: #b93c0a;
   --svc-midi-bg: #fff7ed;
   --svc-midi-bd: #fdba74;
   --svc-soir: #1e40af;
@@ -270,13 +295,15 @@
    ─────────────────────────────────────────────────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    /* Sombre d'Office : neutres à la teinte de la marque, menu et zones un
-       ton sous la surface. Ce bloc et html[data-theme="dark"] restent
-       identiques, jeton pour jeton. */
+    /* Sombre : neutres à la teinte de la marque, mêmes formes qu'en clair. Les
+       cartes sont à la surface, un ton au-dessus du fond de page ; le menu est
+       posé sur le fond de page ; l'aplat du choix est l'aqua de l'accent. Ce
+       bloc et html[data-theme="dark"] restent identiques, jeton pour jeton. */
     --bg: #071319;
     --bg2: #0c1c24;
     --surface: #11252e;
-    --surface2: #0c1c24;
+    --surface2: #11252e;
+    --piste: #0c1c24;
     --border: #38525e;
     --border2: #38525e;
     --rule-soft: #223a45;
@@ -288,11 +315,11 @@
     --accent-light: #1b3540;
     --accent-bd: #38525e;
     --on-accent: #06202b;
-    --nav: #0c1c24;
+    --nav: #071319;
     --nav-grad: var(--nav);
     --nav-text: #b5c5cc;
-    --nav-text-active: #e9f1f4;
-    --nav-active: #1b3540;
+    --nav-text-active: #06202b;
+    --nav-active: #74aec3;
     --nav-border: #223a45;
     --nav-accent: #e9f1f4;
     --nav-glow: none;
@@ -306,11 +333,11 @@
     --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30);
     --glow-soft: none;
     --focus-ring: #74aec3;
-    --btn-fond: #0c1c24;
+    --btn-fond: #11252e;
     --btn-texte: #e9f1f4;
     --btn-bord: #4f6d79;
     --selection: #1b3540;
-    --zone: #0c1c24;
+    --zone: #11252e;
     --champ-bord: #66838f;
     --onglet: #e9f1f4;
     --lien: #e9f1f4;
@@ -323,6 +350,18 @@
     --toast-danger: #a11616;
     --toast-alerte: #8a4a08;
     --logo-fond: #04222f;
+    --carte-nuit: #17404f;
+    --carte-nuit-texte: #e9f1f4;
+    --carte-nuit-doux: #a9c0c9;
+    --carte-nuit-tuile: #0c1c24;
+    --carte-nuit-danger: #fb8f8f;
+    --carte-nuit-alerte: #f5a524;
+    --carte-nuit-succes: #86d6a0;
+    --carte-nuit-info: #a9c8f7;
+    --carte-soleil: #3a3216;
+    --carte-soleil-texte: #f3e7b5;
+    --carte-ciel: #1c3146;
+    --carte-ciel-texte: #d6e3f2;
     --ambient: none;
     --success-bg: oklch(28% 0.06 150);
     --success-bg-soft: oklch(22% 0.04 150);
@@ -385,7 +424,8 @@ html[data-theme="dark"] {
   --bg: #071319;
   --bg2: #0c1c24;
   --surface: #11252e;
-  --surface2: #0c1c24;
+  --surface2: #11252e;
+  --piste: #0c1c24;
   --border: #38525e;
   --border2: #38525e;
   --rule-soft: #223a45;
@@ -397,11 +437,11 @@ html[data-theme="dark"] {
   --accent-light: #1b3540;
   --accent-bd: #38525e;
   --on-accent: #06202b;
-  --nav: #0c1c24;
+  --nav: #071319;
   --nav-grad: var(--nav);
   --nav-text: #b5c5cc;
-  --nav-text-active: #e9f1f4;
-  --nav-active: #1b3540;
+  --nav-text-active: #06202b;
+  --nav-active: #74aec3;
   --nav-border: #223a45;
   --nav-accent: #e9f1f4;
   --nav-glow: none;
@@ -415,11 +455,11 @@ html[data-theme="dark"] {
   --glow-accent: 0 0 0 1px rgba(116, 174, 195, 0.30);
   --glow-soft: none;
   --focus-ring: #74aec3;
-  --btn-fond: #0c1c24;
+  --btn-fond: #11252e;
   --btn-texte: #e9f1f4;
   --btn-bord: #4f6d79;
   --selection: #1b3540;
-  --zone: #0c1c24;
+  --zone: #11252e;
   --champ-bord: #66838f;
   --onglet: #e9f1f4;
   --lien: #e9f1f4;
@@ -432,6 +472,18 @@ html[data-theme="dark"] {
   --toast-danger: #a11616;
   --toast-alerte: #8a4a08;
   --logo-fond: #04222f;
+  --carte-nuit: #17404f;
+  --carte-nuit-texte: #e9f1f4;
+  --carte-nuit-doux: #a9c0c9;
+  --carte-nuit-tuile: #0c1c24;
+  --carte-nuit-danger: #fb8f8f;
+  --carte-nuit-alerte: #f5a524;
+  --carte-nuit-succes: #86d6a0;
+  --carte-nuit-info: #a9c8f7;
+  --carte-soleil: #3a3216;
+  --carte-soleil-texte: #f3e7b5;
+  --carte-ciel: #1c3146;
+  --carte-ciel-texte: #d6e3f2;
   --ambient: none;
 
   /* ─── Tokens sémantiques (dark mode) ─────────────────────────────────
@@ -691,7 +743,7 @@ html[data-theme="dark"] {
     width: 100% !important;
     max-width: 100% !important;
     max-height: 85vh !important;
-    border-radius: var(--r) var(--r) 0 0 !important;
+    border-radius: var(--r-xl) var(--r-xl) 0 0 !important;
     overflow-y: auto !important;
     padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
     animation: slideUp 0.22s ease;
@@ -766,14 +818,14 @@ html[data-theme="dark"] {
 .carte-tab-bar--scroll > * { flex-shrink: 0; }
 
 /* ─── SegmentedTabs - onglets de module compacts, 1 ligne scrollable ───────
-   Direction Office : ni piste ni pilule. La barre est posée sur la page,
-   l'onglet actif est souligné d'un trait à l'encre --onglet, qui porte aussi
-   son texte. Le contour transparent garde la hauteur d'avant. Sur mobile la
-   barre défile horizontalement au lieu d'empiler les onglets sur plusieurs
-   lignes. Tokens CSS uniquement - s'adapte automatiquement au dark mode.
-   La barre de modes de la caisse (.caisse-modes, plus bas) garde un aplat
-   d'accent pour son mode actif : elle est exclue par écrit de la règle de
-   l'onglet actif. */
+   Direction Galet : une rangée de pilules posée sur la page. L'onglet choisi
+   est un aplat sombre (--accent, texte --on-accent), les autres sont en texte
+   --text2, sans contour ni filet sous la rangée. Le contour transparent garde
+   la hauteur d'avant. Sur mobile la barre défile horizontalement au lieu
+   d'empiler les onglets sur plusieurs lignes. Tokens CSS uniquement -
+   s'adapte automatiquement au dark mode. La barre de modes de la caisse
+   (.caisse-modes, plus bas) a ses propres règles : elle est exclue par écrit
+   de la règle de l'onglet choisi. */
 .segmented-tabs {
   display: flex;
   align-items: center;
@@ -814,7 +866,7 @@ html[data-theme="dark"] {
   font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-full);
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
@@ -825,10 +877,18 @@ html[data-theme="dark"] {
 .segmented-tab:hover:not(.is-active) { color: var(--text); background: rgba(125, 145, 155, 0.10); }
 
 .segmented-tab.is-active:not(.caisse-modes .segmented-tab) {
-  background: transparent;
-  color: var(--onglet);
-  box-shadow: inset 0 -2px 0 var(--onglet);
-  border-radius: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+/* Focus clavier : un anneau plein, posé dans la pilule (la rangée défile et
+   rognerait un anneau extérieur). Sur l'aplat de l'onglet choisi, l'anneau
+   est à l'encre du texte, décollé du bord. */
+.segmented-tab:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus-ring);
+}
+.segmented-tab.is-active:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 4px var(--on-accent);
 }
 
 .segmented-tab-icon {
@@ -909,7 +969,7 @@ html[data-theme="dark"] {
 .module-toolbar > button,
 .module-toolbar > label {
   min-height: 38px;
-  border-radius: 8px !important;
+  border-radius: var(--r-full) !important;
   font-size: 13px !important;
   font-weight: 500;
   line-height: 1.2;
@@ -925,6 +985,12 @@ html[data-theme="dark"] {
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+/* Un champ ou une liste posés dans une barre gardent le rayon des champs. */
+.module-actions > input,
+.module-actions > select {
+  border-radius: var(--r) !important;
 }
 
 /* ─── Barres d'actions : la cible tactile prime sur la compacité ────────────
@@ -947,8 +1013,9 @@ html[data-theme="dark"] {
 }
 
 /* ─── SearchToggle : loupe qui déplie la recherche (gain de place) ──────────
-   Replié : bouton carré loupe. Déplié : champ + croix, il prend l'espace
-   disponible de la ligne (flex 1). Fermer efface le filtre (SearchToggle.jsx). */
+   Replié : bouton rond à loupe. Déplié : champ en pilule + croix, il prend
+   l'espace disponible de la ligne (flex 1). Fermer efface le filtre
+   (SearchToggle.jsx). */
 .search-toggle-btn {
   display: inline-flex;
   align-items: center;
@@ -956,9 +1023,9 @@ html[data-theme="dark"] {
   width: 36px;
   height: 36px;
   flex: 0 0 auto;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
+  border: 1px solid var(--btn-bord);
+  border-radius: 50%;
+  background: var(--btn-fond);
   color: var(--text2);
   cursor: pointer;
 }
@@ -979,12 +1046,12 @@ html[data-theme="dark"] {
   flex: 1 1 140px;
   min-width: 0;
   max-width: 320px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--champ-bord);
+  border-radius: var(--r-full);
   background: var(--surface);
   color: var(--text2);
 }
-.search-toggle:focus-within { border-color: var(--accent); }
+.search-toggle:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
 
 .search-toggle-input {
   flex: 1;
@@ -1623,25 +1690,73 @@ html[data-theme="dark"] button:not(:disabled):active {
 
 /* ─── Barre du haut (AppLayout) ─────────────────────────────────────────────
    Posée en absolu sur la zone qui défile (--app-header-h) : le contenu passe
-   dessous. Opaque, à la couleur du fond de page, sans flou (direction
-   Office). Filet bas en ombre intérieure : il ne compte pas dans la hauteur.
-   La classe garde son nom d'avant, lu par AppLayout. */
+   dessous. Opaque, à la couleur du fond de page, sans flou ni filet
+   (direction Galet). La classe garde son nom d'avant, lu par AppLayout. */
 .app-glass-bar {
   background: var(--glass-bg);
-  box-shadow: inset 0 -1px 0 var(--glass-border);
 }
 
-/* Boutons du header (langue, recherche, thème, alertes, repli, accueil) :
-   sans cadre, un voile au survol. !important : leur fond est inline ;
-   .is-active (langue traduite) garde son fond accent. */
-.app-bar-btn { transition: background-color 0.15s ease, color 0.15s ease; }
+/* Boutons du header (langue, recherche, thème, messages, alertes, repli,
+   accueil) : chaque picto dans un cercle à la couleur des cartes. La cible
+   reste le carré de 44 px du bouton ; le cercle de 40 px est son fond, peint
+   dans la boîte de contenu (2 px de retrait, 1 px quand le bouton porte une
+   bordure d'un pixel). !important : fond, retrait et rayon sont inline ;
+   .is-active (langue traduite) garde son fond d'état, peint dans le même
+   cercle. */
+.app-bar-btn {
+  padding: 2px !important;
+  border-radius: 50% !important;
+  background-clip: content-box !important;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.app-bar-btn[style*="border-width: 1px"] { padding: 1px !important; }
+.app-bar-btn:not(.is-active) { background-color: var(--surface) !important; }
 @media (hover: hover) {
   .app-bar-btn:not(.is-active):hover {
-    background: var(--glass-hover) !important;
+    background-color: var(--selection) !important;
     color: var(--text) !important;
   }
 }
-.app-bar-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.app-bar-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* Recherche de la barre du haut (ordinateur) : une pilule à la couleur des
+   cartes, la loupe, « Aller à un module » et son raccourci. Sous 1180 px de
+   large, la pilule se replie en cercle, comme les autres boutons. Elle ouvre
+   la palette (Ctrl ou Cmd + K), rien d'autre. */
+.app-bar-recherche {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  margin: 2px 6px 2px 2px;
+  padding: 0 12px 0 14px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--text3);
+  font-family: var(--font);
+  font-size: var(--t2);
+  font-weight: var(--g1);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.app-bar-recherche svg { color: var(--text2); flex-shrink: 0; }
+.app-bar-recherche:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+@media (hover: hover) {
+  .app-bar-recherche:hover { background: var(--selection); color: var(--text); }
+}
+@media (max-width: 1179.98px) {
+  .app-bar-recherche { width: 40px; margin-right: 2px; padding: 0; justify-content: center; }
+  .app-bar-recherche > span { display: none; }
+}
+/* Nom du compte dans la barre du haut : il cède sa place avant le titre. */
+@media (max-width: 1279.98px) {
+  .app-bar-compte-nom { display: none; }
+}
+/* Rail d'icônes du menu : pas de barre de défilement visible. */
+.sc-nav-rail { scrollbar-width: none; }
+.sc-nav-rail::-webkit-scrollbar { display: none; }
 
 .cmdk-overlay {
   position: fixed;
@@ -1664,8 +1779,8 @@ html[data-theme="dark"] button:not(:disabled):active {
   flex-direction: column;
   overflow: hidden;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--r-xl);
   box-shadow: var(--sh-lg);
   animation: cmdkIn 0.16s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -1716,17 +1831,17 @@ html[data-theme="dark"] button:not(:disabled):active {
   gap: 10px;
   min-height: 40px;
   padding: 0 10px;
-  border-radius: 8px;
+  border-radius: var(--r);
   color: var(--text);
   font-size: 14px;
   cursor: pointer;
 }
+/* Ligne choisie d'une liste : --selection, sans trait d'accent. */
 .cmdk-item.is-active {
-  background: var(--accent-light);
-  box-shadow: inset 3px 0 0 var(--accent);
+  background: var(--selection);
 }
 .cmdk-icon { color: var(--text3); flex-shrink: 0; }
-.cmdk-item.is-active .cmdk-icon { color: var(--accent); }
+.cmdk-item.is-active .cmdk-icon { color: var(--text); }
 .cmdk-dot { width: 16px; display: inline-flex; justify-content: center; }
 .cmdk-dot::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.6; }
 .cmdk-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1838,29 +1953,33 @@ html[data-theme="dark"] button:not(:disabled):active {
    consultant).
    (hover: hover) : pas d'état survolé qui reste collé après un tap sur iPad. */
 @media (hover: hover) {
-  /* Menu clair : le survol se pose sur --nav-active, un voile blanc ne s'y
-     verrait pas. */
+  /* Le survol d'une entrée se pose sur --selection : --nav-active est
+     l'aplat sombre de l'entrée choisie, il ne sert pas au survol. */
   .sc-nav-item:not([aria-current="page"]):hover,
   .sc-nav-account:hover {
-    background: var(--nav-active) !important;
-    color: var(--nav-text-active) !important;
+    background: var(--selection) !important;
+    color: var(--text) !important;
   }
   .sc-pop-item:not([aria-checked="true"]):hover,
   .sc-title-switch:hover { background: var(--selection) !important; }
 }
+/* Anneau hors de la pilule : posé dedans, il se perdrait sur l'aplat sombre
+   de l'entrée choisie. */
 .sc-nav-item:focus-visible,
-.sc-nav-account:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: -2px; }
+.sc-nav-account:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 .sc-pop-item:focus-visible,
 .sc-title-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* ─── Organiser le menu (NavOrganizer, consultant) ──────────────────────────
-   Posé dans le menu latéral, clair depuis la direction Office : les encres
-   et les filets sont les jetons nav-*, le survol se pose sur --nav-active,
-   le champ de renommage est un champ (--champ-bord sur --surface), « Terminé »
-   est l'action principale (--accent), les deux autres boutons sont des
-   secondaires (--btn-*). Plus de voile blanc ni de halo : ils ne se voyaient
-   que sur l'ancien menu sombre. On y entre par la page des réglages (« Ordre
-   du menu ») ou la palette Ctrl/⌘+K, à l'ordinateur seulement. */
+   Posé dans le menu latéral, lui-même posé sur le fond de page : les lignes
+   à ranger sont des cartes blanches, les titres de rubrique sont en --t1 et
+   --text3, le survol se pose sur --selection, le champ de renommage est un
+   champ (--champ-bord sur --surface), « Terminé » est l'action principale
+   (--accent), les deux autres boutons sont des secondaires (--btn-*), tous en
+   pilule. --nav-text-active et --nav-active ne s'y lisent plus : ils sont
+   l'encre et l'aplat de l'entrée choisie du menu. On y entre par la page des
+   réglages (« Ordre du menu ») ou la palette Ctrl/⌘+K, à l'ordinateur
+   seulement. */
 .nav-organizer button:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 1px; }
 
 .nav-organizer { display: flex; flex-direction: column; gap: 2px; padding: 0 2px; }
@@ -1878,9 +1997,9 @@ html[data-theme="dark"] button:not(:disabled):active {
   gap: 6px;
   padding: 8px 4px 4px 8px;
   font-size: var(--t1);
-  font-weight: var(--g3);
+  font-weight: var(--g2);
   letter-spacing: 0;
-  color: var(--nav-text-active);
+  color: var(--text3);
 }
 .nav-organizer-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Renommage d'une rubrique : un champ, comme les autres. */
@@ -1892,7 +2011,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   border: 1px solid var(--champ-bord);
   border-radius: var(--r-sm);
   background: var(--surface);
-  color: var(--nav-text-active);
+  color: var(--text);
   font-family: var(--font);
   font-size: 13px;
   font-weight: var(--g2);
@@ -1906,15 +2025,15 @@ html[data-theme="dark"] button:not(:disabled):active {
   margin: 6px 2px 2px;
   padding: 9px 10px;
   border: 1px dashed var(--btn-bord);
-  border-radius: var(--r);
+  border-radius: var(--r-full);
   background: transparent;
-  color: var(--nav-text-active);
+  color: var(--text);
   font-family: var(--font);
   font-size: var(--t1);
   font-weight: var(--g2);
   cursor: pointer;
 }
-.nav-organizer-add:hover:not(:disabled) { border-style: solid; background: var(--nav-active); }
+.nav-organizer-add:hover:not(:disabled) { border-style: solid; background: var(--selection); }
 .nav-organizer-add:focus-visible,
 .nav-organizer-input:focus-visible { outline: 2px solid var(--nav-accent); outline-offset: 1px; }
 .nav-organizer-row {
@@ -1924,10 +2043,10 @@ html[data-theme="dark"] button:not(:disabled):active {
   min-height: 38px;
   padding: 0 2px 0 0;
   border-radius: var(--r);
-  background: var(--nav);
+  background: var(--surface);
   border: 1px solid var(--nav-border);
   margin-bottom: 4px;
-  color: var(--nav-text-active);
+  color: var(--text);
   font-size: 13px;
   font-weight: var(--g2);
   transition: opacity 0.12s ease;
@@ -1963,7 +2082,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   color: var(--nav-text);
   cursor: pointer;
 }
-.nav-organizer-arrows button:hover:not(:disabled) { background: var(--nav-active); color: var(--nav-text-active); }
+.nav-organizer-arrows button:hover:not(:disabled) { background: var(--selection); color: var(--text); }
 .nav-organizer-arrows button:disabled { opacity: 0.25; cursor: default; }
 .nav-organizer-empty {
   font-size: var(--t1);
@@ -1993,7 +2112,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   flex: 1 1 100%;
   padding: 9px 12px;
   border: none;
-  border-radius: var(--r);
+  border-radius: var(--r-full);
   background: var(--accent);
   color: var(--on-accent);
   font-family: var(--font);
@@ -2005,7 +2124,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   flex: 1 1 0;
   padding: 7px 8px;
   border: 1px solid var(--btn-bord);
-  border-radius: var(--r);
+  border-radius: var(--r-full);
   background: var(--btn-fond);
   color: var(--btn-texte);
   font-family: var(--font);
@@ -2077,6 +2196,12 @@ html[data-theme="dark"] button:not(:disabled):active {
   --success-fill: var(--success-strong);
   --on-danger: var(--on-accent);
   --on-success: var(--on-accent);
+  /* La direction de l'écran ne s'applique pas à un export : une vue capturée
+     garde le rayon de 8 px d'avant, pour sortir identique au pixel. */
+  --r: 8px;
+  --r-sm: 8px;
+  --r-lg: 8px;
+  --r-xl: 8px;
 }
 
 /* Bouton de fermeture « × », le même partout que celui de Fenetre
@@ -2128,9 +2253,13 @@ html[data-theme="dark"] button:not(:disabled):active {
 /* ─── Page d'accueil tactile (AccueilTactile.jsx) ───────────────────────────
    Colonnes de la grille des modules selon la largeur : 2 sur téléphone, 3 sur
    iPad en portrait, 4 dès 1024 px (paysage). La tuile dit elle-même le reste
-   en style inline (hauteur minimale 72 px, fond --btn-fond, contour
-   --btn-bord, rayon --r) dans ses trois fichiers : AccueilTactile.jsx,
-   AccueilModule.jsx, ImportDocumentsAchats.jsx. Survol sous (hover: hover)
+   en style inline (carte blanche, hauteur minimale 72 px, rayon --r-lg,
+   ombre --sh) dans ses trois fichiers : AccueilTactile.jsx,
+   AccueilModule.jsx, ImportDocumentsAchats.jsx. Son picto est posé dans un
+   cercle --piste (.accueil-tuile-picto) de 40 px, 36 px au téléphone. Ses
+   marges négatives gardent à la tuile sa hauteur d'avant ; le retrait et
+   l'écart de la tuile (10 et 8 px, 10 et 12 px au téléphone) gardent au
+   libellé sa largeur d'avant, au pixel. Survol sous (hover: hover)
    seulement : pas d'état collé après un tap ; !important car le fond est
    inline. */
 .accueil-grille { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -2140,12 +2269,39 @@ html[data-theme="dark"] button:not(:disabled):active {
 @media (min-width: 1024px) {
   .accueil-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+.accueil-tuile-picto {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  margin: -6px 0;
+  border-radius: 50%;
+  background: var(--piste);
+}
+@media (max-width: 767.98px) {
+  .accueil-tuile { gap: 12px !important; }
+  .accueil-tuile-picto { width: 36px; height: 36px; margin: -4px 0; }
+  .accueil-tuile-picto svg { width: 22px; height: 22px; }
+}
 @media (hover: hover) {
   .accueil-tuile:hover,
-  .sc-accueil-account:hover { background: var(--accent-light) !important; }
+  .sc-accueil-account:hover { background: var(--selection) !important; }
 }
 .accueil-tuile:focus-visible,
-.sc-accueil-account:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sc-accueil-account:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
+/* Carte de repère (CarteRepere, src/components/ui/index.jsx) : son retrait
+   est ici, pas en style inline, pour qu'un écran puisse le régler par largeur
+   de conteneur. En bouton, elle n'a ni bord ni retrait d'agent utilisateur. */
+.ui-repere { padding: 14px 16px; }
+button.ui-repere { border: 0; }
+.ui-repere:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+/* Bouton rond à flèche d'une carte (BoutonFleche) : l'anneau de focus se pose
+   hors du cercle ; sur la carte nuit, il prend l'encre claire de la carte. */
+.ui-fleche:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+[data-carte-avant="nuit"] .ui-fleche:focus-visible { outline-color: var(--carte-nuit-texte); }
 
 /* Barre de sélection du Planning (fixe en bas d'écran) : sur ordinateur, elle
    commence après la barre latérale ouverte, sinon elle en couvrait le bas (le
@@ -2163,16 +2319,16 @@ button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var
   padding-right: 0 !important;
 }
 
-/* Boutons secondaires (direction Office) : fond, contour et texte par les
-   jetons --btn-*. Le contour est une ombre intérieure, la bordure d'origine
-   devient transparente : la hauteur ne bouge pas. Les boutons d'action pleins
-   (accent, danger, succès), les états actifs et les lignes de liste pleine
-   largeur ne sont pas concernés. */
+/* Boutons secondaires (direction Galet) : une pilule, fond, contour et texte
+   par les jetons --btn-*. Le contour est une ombre intérieure, la bordure
+   d'origine devient transparente : la hauteur ne bouge pas. Les boutons
+   d'action pleins (accent, danger, succès), les états actifs et les lignes de
+   liste pleine largeur ne sont pas concernés. */
 button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"]):is([style*="background: var(--surface)"], [style*="background: var(--bg)"], [style*="background: var(--surface2)"], [style*="background: transparent"], [style*="background: none"]):not([data-cadre]):not([style*="position: absolute"]):not([style*="width: 100%"]),
 .ui-btn--ghost {
   background: var(--btn-fond) !important;
   border-color: transparent !important;
-  border-radius: var(--r-sm) !important;
+  border-radius: var(--r-full) !important;
   box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
   color: var(--btn-texte) !important;
   font-weight: var(--g2) !important;
@@ -2182,6 +2338,11 @@ button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var
 .ui-btn--ghost:disabled {
   color: var(--text3) !important;
   box-shadow: inset 0 0 0 1px var(--rule-soft) !important;
+}
+/* Un secondaire en bloc (picto au-dessus du libellé, texte aligné à gauche)
+   n'est pas une pilule : il prend le rayon des tuiles intérieures. */
+button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"]):is([style*="background: var(--surface)"], [style*="background: var(--bg)"], [style*="background: var(--surface2)"], [style*="background: transparent"], [style*="background: none"]):not([data-cadre]):not([style*="position: absolute"]):not([style*="width: 100%"]):is([style*="flex-direction: column"], [style*="text-align: left"], [style*="aspect-ratio"]) {
+  border-radius: var(--r) !important;
 }
 /* Un secondaire écrit à la source (contour --btn-bord en style inline : les
    styles partagés de Fenetres.jsx) s'éteint de la même façon. Un état ne peut
@@ -2217,9 +2378,10 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
 
 /* ─── Caisse v4 : barre de modes et onglets de catégories ────────────────────
    La barre de modes (En direct, À suivre...) décide où tombe chaque produit
-   touché : le mode actif se lit de loin, en aplat d'accent, là où les onglets
-   ordinaires se contentent d'un soulignement. Cibles de 48 px (modes) et de
-   44 px (catégories), à la souris comme au doigt. */
+   touché : le mode actif se lit de loin, en aplat d'accent, et les modes
+   inactifs gardent un contour, là où les onglets ordinaires sont en texte.
+   Cibles de 48 px (modes) et de 44 px (catégories), à la souris comme au
+   doigt. */
 .caisse-modes { gap: 6px; flex-shrink: 0; }
 .caisse-modes .segmented-tab {
   min-height: 48px;
@@ -2228,7 +2390,7 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   font-weight: 600;
   color: var(--text);
   background: var(--surface2);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-full);
 }
 /* Un mode inactif a le contour du bouton secondaire (--surface2 vaut la
    surface, il n'aurait plus de limite). */
@@ -2239,7 +2401,7 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   background: var(--accent) !important;
   color: var(--on-accent) !important;
   box-shadow: none !important;
-  border-radius: var(--r-lg) !important;
+  border-radius: var(--r-full) !important;
 }
 .caisse-onglets { flex-shrink: 0; }
 .caisse-onglets .segmented-tab { min-height: 44px; padding: 8px 14px; font-size: 14px; }
@@ -2257,11 +2419,11 @@ span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2p
   padding-right: 0 !important;
 }
 
-/* ─── Direction Office ───────────────────────────────────────────────────────
-   Les familles de la direction qui n'avaient pas de règle d'origine. Les
-   autres sont posées à leur place, plus haut : boutons secondaires, onglets,
-   toasts, barre du haut, survol du menu, chiffres, tuiles ; le panneau du
-   tableau de bord est dans tableau.css.
+/* ─── Direction Galet (béquilles) ────────────────────────────────────────────
+   Les familles de la direction qui n'ont pas de règle d'origine. Les autres
+   sont posées à leur place, plus haut : boutons secondaires, onglets, toasts,
+   barre du haut, survol du menu, chiffres, tuiles ; le panneau du tableau de
+   bord est dans tableau.css.
    Ce sont des béquilles : elles rattrapent par sélecteur d'attribut un style
    posé en ligne dans un module, d'où leurs !important. Chacune tombe quand
    plus aucun élément ne l'atteint, le module repris à la source disant
@@ -2275,14 +2437,14 @@ span:is([style*="padding: 0px "], [style*="padding: 1px "], [style*="padding: 2p
    - à spécificité égale la dernière gagne : graisses, puis chiffres, puis
      titres. */
 
-/* Champs : contour lisible, fond de surface, rayon de la direction. Le
-   contour n'est repris que s'il est neutre : le vert d'une quantité comptée
-   et le rouge d'une erreur restent. */
+/* Champs : contour --champ-bord, fond de surface, rayon --r. Le contour
+   n'est repris que s'il est neutre : le vert d'une quantité comptée et le
+   rouge d'une erreur restent. */
 :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea):is([style*="border: 1px solid var(--border)"], [style*="border-color: var(--border)"], [style*="border: 1px solid var(--border2)"], [style*="border-color: var(--border2)"]):not(.pdf-render-root *) {
   border-color: var(--champ-bord) !important;
 }
 :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea)[style*="border"]:not(.pdf-render-root *) {
-  border-radius: var(--r-sm) !important;
+  border-radius: var(--r) !important;
 }
 :is(input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"], [type="file"], [type="button"], [type="submit"], [type="hidden"]), select, textarea):is([style*="background: var(--bg)"], [style*="background: var(--bg2)"], [style*="background: var(--surface2)"]):not(.pdf-render-root *) {
   background: var(--surface) !important;
@@ -2329,21 +2491,41 @@ th:not(.pdf-render-root *) {
   font-weight: var(--g3) !important;
 }
 
-/* Rayons en ligne : 6, 7 et 8 px vers --r-sm ; 10 et 12 px vers --r-xl.
-   Bornée aux contrôles, pastilles, images, fenêtres et éléments data-cadre :
-   les conteneurs aplatis par « Plus de carrés » gardent leur filet droit. */
-:is(button, a, input, select, textarea, span, img, label, [role="button"], [data-cadre], [role="dialog"], [role="menu"], [role="listbox"]):is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="border-radius: 8px"]):not(.pdf-render-root *) {
-  border-radius: var(--r-sm) !important;
+/* Rayons en ligne d'avant, par famille. Bornée aux contrôles, pastilles,
+   images, fenêtres et menus : les conteneurs aplatis par « Plus de carrés »
+   gardent leur filet droit.
+   - bouton ou lien en bouton écrit à la main (rayon numérique de 6 à 12 px,
+     ou jeton --r ou --r-sm, qui valaient 8 px) : 24 px (--r-xl), soit une
+     pilule jusqu'à 48 px de haut et un grand rayon au-delà, là où 999 px
+     ferait une gélule d'un bouton à plusieurs lignes ; un bouton en bloc
+     (tuile, ligne de liste, bouton pleine largeur, data-cadre) prend --r ;
+   - étiquette (span à rayon numérique) : la même pilule ;
+   - champ, image, libellé cliquable, ligne en bouton (role="button"), menu
+     flottant : --r ;
+   - fenêtre : --r-xl.
+   Les primitives (Btn, onglets, entrées du menu) écrivent --r-full à la
+   source et ne passent pas par ces règles. */
+:is(button, a):is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="border-radius: 8px"], [style*="border-radius: 10px"], [style*="border-radius: 12px"], [style*="border-radius: var(--r)"], [style*="border-radius: var(--r-sm)"]):not(.pdf-render-root *) {
+  border-radius: var(--r-xl) !important;
 }
-:is(button, a, input, select, textarea, span, img, label, [role="button"], [data-cadre], [role="dialog"], [role="menu"], [role="listbox"]):is([style*="border-radius: 10px"], [style*="border-radius: 12px"]):not(.pdf-render-root *) {
+:is(button, a):is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="border-radius: 8px"], [style*="border-radius: 10px"], [style*="border-radius: 12px"], [style*="border-radius: var(--r)"], [style*="border-radius: var(--r-sm)"]):is([style*="flex-direction: column"], [style*="text-align: left"], [style*="width: 100%"], [style*="aspect-ratio"], [data-cadre]):not(.pdf-render-root *) {
+  border-radius: var(--r) !important;
+}
+span:is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="border-radius: 8px"], [style*="border-radius: 10px"], [style*="border-radius: 12px"]):not(.pdf-render-root *) {
+  border-radius: var(--r-xl) !important;
+}
+:is(input, select, textarea, img, label, [role="button"], [role="menu"], [role="listbox"]):is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="border-radius: 8px"], [style*="border-radius: 10px"], [style*="border-radius: 12px"]):not(.pdf-render-root *) {
+  border-radius: var(--r) !important;
+}
+[role="dialog"]:is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="border-radius: 8px"], [style*="border-radius: 10px"], [style*="border-radius: 12px"]):not(.pdf-render-root *) {
   border-radius: var(--r-xl) !important;
 }
 
-/* Blocs : un élément marqué data-cadre prend le rayon de la direction, et
-   son filet neutre s'adoucit. Un filet d'état (accent, statut, service,
-   teinte en dur) garde sa couleur, même posé sur un seul côté. */
+/* Blocs : un élément marqué data-cadre prend le rayon des cartes, et son
+   filet neutre s'adoucit. Un filet d'état (accent, statut, service, teinte en
+   dur) garde sa couleur, même posé sur un seul côté. */
 :is(div, section, article, li)[data-cadre]:not(.pdf-render-root *) {
-  border-radius: var(--r-xl) !important;
+  border-radius: var(--r-lg) !important;
 }
 :is(div, section, article, li)[data-cadre]:is([style*="solid var(--border)"], [style*="solid var(--border2)"], [style*="border-color: var(--border)"], [style*="border-color: var(--border2)"]):not([style*="solid var(--accent)"], [style*="solid var(--danger"], [style*="solid var(--success"], [style*="solid var(--warning"], [style*="solid var(--info"], [style*="solid var(--svc"], [style*="solid var(--ai"], [style*="solid var(--caisse"], [style*="solid rgb"], [style*="solid #"]):not(.pdf-render-root *) {
   border-color: var(--rule-soft) !important;
@@ -2371,3 +2553,16 @@ th:not(.pdf-render-root *) {
     min-height: max(var(--controle), 44px);
   }
 }
+
+/* Contraste des encres atténuées par une opacité (direction Galet).
+   - Le compteur d'un onglet (.fv-onglet-nombre, opacité 0,7) garde l'encre
+     pleine sur l'onglet choisi : sur l'aplat, en thème sombre, l'encre à 0,7
+     tombait à 3,86.
+   - Deux éléments éteints par une opacité en ligne passaient sous 4,5, l'un
+     sur le fond de page gris (carte d'une réservation close, 0,6), l'autre
+     sur la surface sombre (ligne d'un contrôle retiré des réglages du HACCP,
+     0,5). Le cran remonte juste assez ; l'élément reste visiblement éteint.
+     Béquilles : elles tombent quand ces deux écrans seront repris. */
+.segmented-tab.is-active .fv-onglet-nombre { opacity: 1; }
+[style*="background: var(--surface); opacity: 0.6;"]:not(.pdf-render-root *) { opacity: 0.66 !important; }
+[style*="transition: background 0.12s; opacity: 0.5;"]:not(.pdf-render-root *) { opacity: 0.56 !important; }

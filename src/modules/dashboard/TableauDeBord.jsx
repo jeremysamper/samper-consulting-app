@@ -5,7 +5,10 @@
 //   En-tête du jour   bonjour, état du service, trois repères (couverts,
 //                     groupes, équipe), le seul aplat de la page
 //   Maintenant        Votre service aujourd'hui (pointage de l'équipier) et
-//                     À faire maintenant | Qui travaille aujourd'hui
+//                     À faire maintenant | les cartes de mise en avant :
+//                     l'équipe du jour en tuiles (carte sombre), les couverts
+//                     de la semaine et ceux du jour (cartes pastel)
+//   Qui travaille aujourd'hui  la liste, sur tablette et ordinateur
 //   Aujourd'hui à l'hôtel (établissement hôtelier)
 //   Le mot du consultant
 //   Ce qui vous attend  aujourd'hui, demain, cette semaine
@@ -47,6 +50,7 @@ import QuiTravaille from './QuiTravaille.jsx';
 import CeQuiVousAttend from './CeQuiVousAttend.jsx';
 import ChiffresGestion from './ChiffresGestion.jsx';
 import CarteHotel from './CarteHotel.jsx';
+import { CarteCouverts, CarteEquipe, CarteSemaine } from './CartesModele.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // Heure de Zurich, rafraîchie toutes les 30 s (durée en poste, retards) et au
@@ -252,6 +256,12 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
     />
   ) : null);
   const equipeAPart = avecPlanning && !mobile;
+  // Cartes de mise en avant : seulement avec leur donnée (module activé,
+  // lecture aboutie). Aucune n'est simulée.
+  const carteEquipe = avecPlanning && !nonLu('shifts');
+  const cartesCouverts = avecCouvertsLus && !nonLu('couverts');
+  const versPlanning = peutOuvrir('planning') ? () => ouvrir('planning') : null;
+  const versReservations = peutOuvrir('previsions') ? () => ouvrir('previsions') : null;
 
   return (
     <div className="tdb" style={s.page}>
@@ -273,7 +283,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
         <p style={s.chargement} aria-live="polite">Chargement du tableau de bord…</p>
       ) : (
         <>
-          <div className={equipeAPart ? 'tdb-haut' : 'tdb-haut tdb-haut--seul'}>
+          <div className={carteEquipe && cartesCouverts ? 'tdb-haut tdb-haut--trois' : carteEquipe || cartesCouverts ? 'tdb-haut' : 'tdb-haut tdb-haut--seul'}>
             <div className="tdb-pile">
               {montrerPointage && (
                 <CartePointage
@@ -291,8 +301,20 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
               )}
               <AFaire items={items} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />
             </div>
-            {equipeAPart && quiTravaille(false)}
+            {(carteEquipe || cartesCouverts) && (
+              <div className="tdb-modele">
+                {carteEquipe && <CarteEquipe shifts={d.shifts} aujourdhui={aujourdhui} maintenant={maintenant} onOuvrir={versPlanning} />}
+                {cartesCouverts && (
+                  <div className="tdb-duo">
+                    <CarteSemaine couverts={d.couverts} aujourdhui={aujourdhui} onOuvrir={versReservations} />
+                    <CarteCouverts couverts={d.couverts} aujourdhui={aujourdhui} onOuvrir={versReservations} />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {equipeAPart && quiTravaille(false)}
 
           {avecHotel && <CarteHotel etabId={etabId} aujourdhui={aujourdhui} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />}
 

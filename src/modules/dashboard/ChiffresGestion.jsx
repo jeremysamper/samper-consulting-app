@@ -2,6 +2,7 @@ import React from 'react';
 import { useRegulariteEquipe } from '../planning/contratsService.js';
 import { formatSolde } from '../planning/soldesHeures.js';
 import { userDisplay } from '../../utils/userDisplay.js';
+import { getModuleIcon } from '../moduleIcons.js';
 import { Chiffre, Section } from './tableauBriques.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,7 +69,7 @@ export default function ChiffresGestion({
   if (!blocs.length) return null;
 
   return (
-    <Section id="tdb-chiffres" titre="Les chiffres de la semaine et du mois" sousTitre="Visible par la direction seulement">
+    <Section id="tdb-chiffres" titre="Les chiffres de la semaine et du mois" sousTitre="Visible par la direction seulement" panneau={false}>
       <div className="tdb-chiffres">
         {blocs.map((c) => (
           <Chiffre
@@ -79,6 +80,7 @@ export default function ChiffresGestion({
             texte={c.texte}
             detail={c.detail}
             couleurDetail={c.couleurDetail}
+            icone={getModuleIcon(c.page)}
             onClick={peutOuvrir(c.page) ? () => ouvrir(c.page) : null}
           />
         ))}
@@ -93,7 +95,7 @@ export default function ChiffresGestion({
 function Regularite({ r }) {
   const prenom = (id) => userDisplay(id).prenom || userDisplay(id).name;
   return (
-    <div style={s.regularite} data-chiffre="regularite">
+    <div className="tdb-panneau" style={s.regularite} data-chiffre="regularite">
       <div style={s.regLigne}>
         <span style={s.label}>Retards aujourd&apos;hui</span>
         <span style={s.regValeur}>{r.retardsJour.length}</span>
@@ -134,8 +136,7 @@ const s = {
   service: { display: 'inline-flex', alignItems: 'baseline', gap: 5 },
   nombre: { fontWeight: 'var(--g3)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   regularite: {
-    display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16, paddingTop: 14,
-    borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--rule-soft)',
+    display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12,
   },
   regLigne: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '4px 12px', minWidth: 0 },
   regValeur: { fontFamily: 'var(--font-num)', fontSize: 'var(--t4)', lineHeight: 1.1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
