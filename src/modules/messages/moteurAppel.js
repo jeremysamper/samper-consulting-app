@@ -222,17 +222,24 @@ async function relaisUtilise() {
   try { return viaRelais(await x.pc?.getStats()); } catch { return null; }
 }
 
-function texteEchec() {
-  return etat.relais
+function texteEchec(relais = etat.relais) {
+  return relais
     ? "La connexion n'a pas pu s'établir."
     : "La connexion n'a pas pu s'établir. Entre deux réseaux différents (Wi-Fi et 4G par exemple), l'appel peut ne pas aboutir.";
 }
 
+// Un seul échec par appel : le minuteur de connexion et l'état « failed »
+// peuvent tomber ensemble ; le second, arrivé pendant la lecture des
+// statistiques du premier, trouve le jeton changé et s'arrête. Le relais est
+// lu avant l'attente : finir() le remet à zéro.
 async function echec() {
+  const jeton = x.jeton;
   const id = x.ligne?.id;
+  const relais = etat.relais;
   const via = await relaisUtilise();
+  if (jeton !== x.jeton) return;
   if (id) client().rpc('appel_terminer', { p_id: id, p_issue: 'echec', p_via_relais: via }).then(() => {}, () => {});
-  finir(texteEchec(), true);
+  finir(texteEchec(relais), true);
 }
 
 function lancerBattement() {
