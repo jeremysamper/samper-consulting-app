@@ -758,7 +758,7 @@ const ros = {
   addBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40 },
   ghostBtn: { padding: '8px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   smallGhost: { padding: '6px 10px', minHeight: 36, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  titre: { fontSize: 'var(--t4)', fontWeight: 'var(--g1)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.2 },
+  titre: { fontSize: 'var(--t4)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.2 },
   permLayout: { display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 14, alignItems: 'start' },
   // Qui fait quoi : une carte par personne, empilées.
   peopleCol: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
