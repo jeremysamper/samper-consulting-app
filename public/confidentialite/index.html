@@ -71,6 +71,7 @@
       <h2>Quelles données sont traitées</h2>
       <ul>
         <li><strong>Comptes des équipes</strong> : nom, e-mail, rôle, établissements rattachés, et selon les modules utilisés : planning, pointages, absences, contrats et estimations de salaire (visibles de la direction seulement), messages internes.</li>
+        <li><strong>Appels audio entre membres d'une équipe</strong> : le son va d'un appareil à l'autre, chiffré de bout en bout, et n'est jamais enregistré. L'application garde un journal des appels (qui a appelé qui, heures, durée, état), lu par les deux participants seulement et effacé après 90 jours. Quand deux appareils ne peuvent pas se joindre directement, l'appel passe par un relais de Cloudflare, qui voit les adresses IP, les ports, les horaires et le volume de la connexion, mais ne peut pas écouter le son.</li>
         <li><strong>Clients des restaurants</strong> : nom, téléphone, e-mail, date de la réservation, notes libres (par exemple une allergie signalée).</li>
         <li><strong>Clients des spas</strong> : coordonnées et, avec consentement exprès, des indications de santé utiles aux soins (contre-indications, grossesse).</li>
         <li><strong>Hôtes des hôtels</strong> : coordonnées, séjours, et les données du registre des occupants prévues par le droit cantonal (dont la pièce d'identité).</li>
@@ -98,10 +99,12 @@
         <tr><td>Google, Microsoft</td><td>envoi d'e-mails quand l'établissement connecte sa propre boîte</td><td>selon le fournisseur de la boîte</td></tr>
         <tr><td>Lightspeed</td><td>caisse (ventes, sans données nominatives de clients)</td><td>États-Unis, Canada</td></tr>
         <tr><td>Passerelle SMS</td><td>SMS de confirmation, via le téléphone de l'établissement</td><td>non vérifié</td></tr>
+        <tr><td>Cloudflare</td><td>relais des appels audio (adresses IP, ports, horaires et volume de la connexion ; jamais le son)</td><td>réseau mondial, au centre le plus proche de l'appareil ; Cloudflare, Inc. (États-Unis) est certifiée au cadre de protection des données Suisse-États-Unis</td></tr>
       </table>
       <p class="note">
         Pour les transferts hors de Suisse et de l'Union européenne, des garanties au sens de l'art. 16 de la loi fédérale
         sur la protection des données (nLPD) sont requises ; leur formalisation contractuelle avec chaque prestataire est en cours.
+        Pour Cloudflare, le niveau de protection est adéquat au sens de l'annexe 1 de l'ordonnance sur la protection des données (organisation certifiée au cadre Suisse-États-Unis) ; pour ses filiales situées hors des pays adéquats, des clauses contractuelles types reconnues par le PFPDT s'appliquent.
       </p>
 
       <h2>Combien de temps</h2>
