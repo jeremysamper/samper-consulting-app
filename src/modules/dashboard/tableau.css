@@ -190,6 +190,23 @@
     align-items: start;
   }
   .tdb-jour-semaine .tdb-semaine > .tdb-semaine-groupes { grid-column: 2; grid-row: span 2; }
+  /* L'équipe en deux colonnes : Midi à gauche, Soir puis les absences à
+     droite ; huit lignes par colonne avant « Voir toute l'équipe ». Dès ce
+     palier : « Qui travaille aujourd'hui » y occupe toute la largeur, les
+     cartes de mise en avant ayant pris sa place à côté de la liste. */
+  .tdb-equipe-services--deux {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row dense;
+  }
+  .tdb-equipe-services--deux > .tdb-equipe-groupe:first-child { grid-row: span 2; }
+  .tdb-equipe-services--deux > button { grid-column: 1 / -1; }
+  /* Soir et les absences à droite d'un filet vertical : deux colonnes nettes. */
+  .tdb-equipe-services--deux { column-gap: 20px; }
+  .tdb-equipe-services--deux > .tdb-equipe-groupe:not(:first-child),
+  .tdb-equipe-services--deux > .tdb-equipe-absences {
+    padding-left: 20px;
+    border-left: 1px solid var(--rule-soft);
+  }
 }
 /* Entre 760 et 1079 px (tablette en paysage, ordinateur étroit), avec les
    trois cartes : la carte sombre reste à côté de la liste et prend sa hauteur
@@ -213,21 +230,6 @@
   .tdb-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
   .tdb-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
-  /* L'équipe en deux colonnes : Midi à gauche, Soir puis les absences à
-     droite ; huit lignes par colonne avant « Voir toute l'équipe ». */
-  .tdb-equipe-services--deux {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-flow: row dense;
-  }
-  .tdb-equipe-services--deux > .tdb-equipe-groupe:first-child { grid-row: span 2; }
-  .tdb-equipe-services--deux > button { grid-column: 1 / -1; }
-  /* Soir et les absences à droite d'un filet vertical : deux colonnes nettes. */
-  .tdb-equipe-services--deux { column-gap: 20px; }
-  .tdb-equipe-services--deux > .tdb-equipe-groupe:not(:first-child),
-  .tdb-equipe-services--deux > .tdb-equipe-absences {
-    padding-left: 20px;
-    border-left: 1px solid var(--rule-soft);
-  }
   .tdb-jours { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
   .tdb-jour-semaine { grid-column: auto; }
   .tdb-jour-semaine .tdb-semaine { display: flex; flex-direction: column; align-items: stretch; }

@@ -2553,3 +2553,16 @@ span:is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="b
     min-height: max(var(--controle), 44px);
   }
 }
+
+/* Contraste des encres atténuées par une opacité (direction Galet).
+   - Le compteur d'un onglet (.fv-onglet-nombre, opacité 0,7) garde l'encre
+     pleine sur l'onglet choisi : sur l'aplat, en thème sombre, l'encre à 0,7
+     tombait à 3,86.
+   - Deux éléments éteints par une opacité en ligne passaient sous 4,5, l'un
+     sur le fond de page gris (carte d'une réservation close, 0,6), l'autre
+     sur la surface sombre (ligne d'un contrôle retiré des réglages du HACCP,
+     0,5). Le cran remonte juste assez ; l'élément reste visiblement éteint.
+     Béquilles : elles tombent quand ces deux écrans seront repris. */
+.segmented-tab.is-active .fv-onglet-nombre { opacity: 1; }
+[style*="background: var(--surface); opacity: 0.6;"]:not(.pdf-render-root *) { opacity: 0.66 !important; }
+[style*="transition: background 0.12s; opacity: 0.5;"]:not(.pdf-render-root *) { opacity: 0.56 !important; }
