@@ -1,5 +1,6 @@
 import React from 'react';
 import ActionsCorrectives, { Mesure, PlageTexte } from './ActionsCorrectives.jsx';
+import { Panneau } from '../../components/ui/index.jsx';
 import { creneauLePlusProche, parseHaccpNumber } from './HACCP.utils.js';
 import { verdictReleve } from './haccpJour.js';
 
@@ -77,15 +78,15 @@ export default function ReleveGuide({
         <span style={st.consigneDiscrete}>Une ligne vide n'est pas enregistrée.</span>
       </p>
 
-      <div>
-        {zones.map(z => {
+      <Panneau style={st.liste}>
+        {zones.map((z, i) => {
           const ligne = brouillon[z.id] || {};
           const etat = etatLignes[z.id];
           const verdict = verdictReleve(z, ligne.valeur);
           const d = deja[z.id];
           const fige = enregistrement || etat === 'ok';
           return (
-            <div key={z.id} data-haccp-ligne={z.id} style={st.ligne}>
+            <div key={z.id} data-haccp-ligne={z.id} style={i === zones.length - 1 ? st.ligneDerniere : st.ligne}>
               <div style={st.rangee}>
                 <div style={st.texte}>
                   <div id={`haccp-nom-${z.id}`} style={st.nom}>{z.nom}</div>
@@ -126,11 +127,13 @@ export default function ReleveGuide({
             </div>
           );
         })}
-      </div>
+      </Panneau>
 
       {/* Pied collant : la coque a une hauteur fixe et fait défiler son
-          contenu, le pied reste en bas de l'écran sur les trois coques. */}
-      <div style={st.pied}>
+          contenu, le pied reste en bas de l'écran sur les trois coques.
+          Une carte flottante (rayon des cartes, ombre de ce qui flotte),
+          hors de la carte de la liste : un parent qui rogne tuerait le collant. */}
+      <div data-cadre="" style={st.pied}>
         <span style={st.compte}>
           <span data-no-translate="">{tapes}</span> {tapes > 1 ? 'chiffres tapés sur' : 'chiffre tapé sur'} <span data-no-translate="">{zones.length}</span>
         </span>
@@ -149,7 +152,9 @@ const st = {
   ecran: { maxWidth: 720, minWidth: 0, display: 'flex', flexDirection: 'column' },
   consigne: { margin: '4px 0 6px', fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text)' },
   consigneDiscrete: { fontSize: 'var(--t2)', color: 'var(--text2)' },
+  liste: { padding: '2px 18px' },
   ligne: { padding: '14px 0', borderBottom: '1px solid var(--rule-soft)', minWidth: 0 },
+  ligneDerniere: { padding: '14px 0', minWidth: 0 },
   rangee: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px 12px' },
   // 150 px : le champ tient à droite du nom dès 375 px de large.
   texte: { flex: '1 1 150px', minWidth: 0 },
@@ -171,13 +176,13 @@ const st = {
   enregistre: { marginTop: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--success-text)' },
   echec: { marginTop: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--danger-text)' },
   pied: {
-    position: 'sticky', bottom: 0, zIndex: 2, marginTop: 8,
+    position: 'sticky', bottom: 8, zIndex: 2, marginTop: 12,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10,
-    padding: '12px 0', background: 'var(--surface)', borderTop: '1px solid var(--rule-soft)',
+    padding: '12px 16px', background: 'var(--surface)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh-lg)',
   },
   compte: { fontSize: 'var(--t2)', color: 'var(--text2)' },
   enregistrer: {
-    flex: '1 1 220px', maxWidth: 360, minHeight: 52, padding: '10px 18px', borderRadius: 'var(--r)', border: 'none',
+    flex: '1 1 220px', maxWidth: 360, minHeight: 52, padding: '10px 18px', borderRadius: 'var(--r-full)', border: 'none',
     background: 'var(--accent)', color: 'var(--on-accent)', fontFamily: 'var(--font)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', cursor: 'pointer',
   },
   enregistrerInactif: { opacity: 0.55, cursor: 'not-allowed' },

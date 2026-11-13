@@ -35,7 +35,7 @@ const gStyles = {
   crumb: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--t2)', color: 'var(--text2)', marginBottom: 4 },
   crumbBtn: { background: 'none', border: 'none', cursor: 'pointer', color: 'var(--lien)', fontWeight: 'var(--g2)', fontSize: 'var(--t2)', padding: 0, fontFamily: 'var(--font)' },
   tileGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 10 },
-  tile: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '16px 12px', textAlign: 'center', cursor: 'pointer', fontWeight: 'var(--g2)', color: 'var(--text)', fontFamily: 'var(--font)' },
+  tile: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)', padding: '16px 12px', textAlign: 'center', cursor: 'pointer', fontWeight: 'var(--g2)', color: 'var(--text)', fontFamily: 'var(--font)' },
   tileCount: { fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g1)', marginTop: 4 },
   photoGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(130px,1fr))', gap: 10 },
   photoTile: { position: 'relative', borderRadius: 'var(--r)', overflow: 'hidden', border: '1px solid var(--border)', cursor: 'pointer', aspectRatio: '1', background: 'var(--bg)' },
@@ -254,7 +254,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
             {years.map(y => {
               const count = Object.values(grouped[y]).reduce((s, days) => s + Object.values(days).reduce((s2, arr) => s2 + arr.length, 0), 0);
               return (
-                <div key={y} style={gStyles.tile} onClick={() => setYear(y)}>
+                <div key={y} data-cadre="" style={gStyles.tile} onClick={() => setYear(y)}>
                   {y}
                   <div style={gStyles.tileCount}>{count} photo{count > 1 ? 's' : ''}</div>
                 </div>
@@ -270,7 +270,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
           {Object.keys(grouped[year] || {}).sort((a, b) => b.localeCompare(a)).map(m => {
             const count = Object.values(grouped[year][m]).reduce((s, arr) => s + arr.length, 0);
             return (
-              <div key={m} style={gStyles.tile} onClick={() => setMonth(m)}>
+              <div key={m} data-cadre="" style={gStyles.tile} onClick={() => setMonth(m)}>
                 {MOIS[Number(m) - 1]}
                 <div style={gStyles.tileCount}>{count} photo{count > 1 ? 's' : ''}</div>
               </div>
@@ -283,7 +283,7 @@ export default function Tracabilite({ etabId, legacySB, user, demoData, canWrite
       {year && month && !day && (
         <div style={gStyles.tileGrid}>
           {Object.keys(grouped[year]?.[month] || {}).sort((a, b) => b.localeCompare(a)).map(d => (
-            <div key={d} style={gStyles.tile} onClick={() => setDay(d)}>
+            <div key={d} data-cadre="" style={gStyles.tile} onClick={() => setDay(d)}>
               {d} {MOIS[Number(month) - 1]}
               <div style={gStyles.tileCount}>{grouped[year][month][d].length} photo{grouped[year][month][d].length > 1 ? 's' : ''}</div>
             </div>

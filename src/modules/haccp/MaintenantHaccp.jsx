@@ -1,5 +1,6 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
+import { Anneau, BoutonFleche, Btn, CarteAvant, Encadre, Panneau, carteAvantStyles } from '../../components/ui/index.jsx';
 import { heureEnMinutes } from './HACCP.utils.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8,10 +9,19 @@ import { heureEnMinutes } from './HACCP.utils.js';
 // l'avancement en clair, ce qui est en retard, un gros bouton. Elle est
 // l'entrée des températures (relevé guidé) : pas de tuile « relevé » en plus.
 //
+// Direction Galet : c'est la carte nuit de l'écran (CarteAvant). Sa couleur ne
+// dit pas un état : l'état se lit dans le surtitre, à l'encre d'alerte de la
+// carte (--carte-nuit-info, -alerte, -danger, -succes). Sous le texte, une
+// tuile par heure de relevé, avec son anneau (zones relevées sur zones à
+// relever) : c'est le programme du jour, qui n'est plus répété dessous. La
+// flèche en haut à droite ouvre le registre. Le bouton du relevé est écrit à
+// l'encre inversée de la carte (un aplat d'accent ne s'y verrait pas).
+//
 // États (etat = etatDuJour de haccpJour.js) : à faire, en retard, tout est à
 // jour, manque (une tournée passée incomplète), sans heures de relevé, pas
 // encore réglé ; plus le chargement et la lecture en échec, qui ne disent
-// jamais « Tout est à jour » : un écran sans données ne rassure pas. Un frigo
+// jamais « Tout est à jour » : un écran sans données ne rassure pas. Ces deux
+// derniers sont une carte blanche (un encadré pour l'échec). Un frigo
 // dont le dernier relevé du jour est hors plage (etat.aRevoir) est rappelé
 // dans tous les états, en ton danger, jusqu'à un relevé bon.
 // Relecture en échec avec des données à l'écran (enEchecRelecture) : la carte
@@ -22,7 +32,7 @@ import { heureEnMinutes } from './HACCP.utils.js';
 //
 // Crochets du banc : data-haccp-maintenant (la carte), data-haccp-action="releve"
 // (le gros bouton du relevé, quel que soit son libellé), data-haccp-a-revoir
-// (chaque frigo à relever de nouveau).
+// (chaque frigo à relever de nouveau), data-haccp-creneau (chaque tuile).
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Un tic par minute : le composant qui l'appelle se redessine, et recalcule
@@ -35,6 +45,8 @@ export function useTicMinute() {
   }, []);
 }
 
+// Nombres et heures dans leurs propres nœuds : la phrase autour reste une
+// entrée du glossaire.
 const N = ({ children }) => <span data-no-translate="">{children}</span>;
 
 // Retard d'une tournée en mots : « prévu il y a 35 min », « prévu il y a 2 h ».
@@ -43,25 +55,54 @@ function Retard({ minutes }) {
   return <>prévu il y a <N>{Math.floor(minutes / 60)}</N> h</>;
 }
 
-function Barre({ faits, total }) {
-  const pct = total > 0 ? Math.min(100, Math.round(faits / total * 100)) : 0;
+// Encre du surtitre selon l'état, sur la carte nuit.
+const ENCRES = {
+  neutre: 'var(--carte-nuit-info)',
+  retard: 'var(--carte-nuit-alerte)',
+  grave: 'var(--carte-nuit-danger)',
+  ok: 'var(--carte-nuit-succes)',
+};
+
+// Les mots du programme du jour (ProgrammeDuJour.jsx), à l'encre de la carte.
+const ETATS_TOURNEE = {
+  fait: { mot: 'Fait', encre: 'var(--carte-nuit-succes)' },
+  a_faire: { mot: 'À faire', encre: 'var(--carte-nuit-info)' },
+  en_retard: { mot: 'En retard', encre: 'var(--carte-nuit-alerte)' },
+  plus_tard: { mot: 'Plus tard', encre: 'var(--carte-nuit-doux)' },
+};
+
+const cs = carteAvantStyles('nuit');
+
+// Une tuile par heure de relevé : l'heure, son nom, où elle en est, et
+// l'anneau des zones relevées. Muet : les nombres sont dits par le texte.
+function Tournees({ tournees }) {
+  if (!tournees?.length) return null;
   return (
-    <div aria-hidden="true" data-cadre="" style={st.piste}>
-      <div style={{ ...st.plein, width: pct + '%' }} />
+    <div className="haccp-tournees">
+      {tournees.map(t => {
+        const e = ETATS_TOURNEE[t.etat] || ETATS_TOURNEE.plus_tard;
+        const partiel = t.etat !== 'fait' && t.faites > 0;
+        return (
+          <div key={t.id} data-haccp-creneau={t.heure} style={{ ...cs.tuile, ...st.tuile }}>
+            <span style={{ minWidth: 0 }}>
+              <span style={{ ...cs.chiffre, ...st.tuileHeure }} data-no-translate="">{t.heure}</span>
+              <span style={{ ...cs.libelle, ...st.tuileLibelle }} data-no-translate="">{t.label}</span>
+              <span style={{ ...st.tuileEtat, color: e.encre }}>
+                {e.mot}
+                {partiel && <span style={st.tuileCompte}> (<N>{t.faites}</N> sur <N>{t.total}</N>)</span>}
+              </span>
+            </span>
+            <Anneau part={t.total ? t.faites / t.total : 0} couleur={e.encre} piste="var(--carte-nuit)" />
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-const TONS = {
-  neutre: { fond: 'var(--zone)', titre: 'var(--lien)' },
-  retard: { fond: 'var(--warning-bg-soft)', titre: 'var(--warning-text)' },
-  grave: { fond: 'var(--danger-bg-soft)', titre: 'var(--danger-text)' },
-  ok: { fond: 'var(--success-bg-soft)', titre: 'var(--success-text)' },
-};
-
 export default function MaintenantHaccp({
   lecture, enEchecRelecture, derniereMaj, etat, maintenant,
-  canWrite, isConsultant, onReleve, onReglages, onReessayer,
+  canWrite, isConsultant, onReleve, onReglages, onReessayer, onRegistre,
 }) {
   const [reessaiEnCours, setReessaiEnCours] = React.useState(false);
   const monteRef = React.useRef(true);
@@ -75,27 +116,33 @@ export default function MaintenantHaccp({
   // ─── Lecture en échec, chargement : rien qui rassure à tort ───
   if (lecture === 'echec') {
     return (
-      <Carte ton="retard" bouton={(
-        <button type="button" style={st.secondaire} data-cadre="" disabled={reessaiEnCours} onClick={reessayer}>
-          {reessaiEnCours ? 'Actualisation…' : 'Réessayer'}
-        </button>
-      )}>
-        <div style={st.titre}>Impossible de lire les relevés</div>
-        <div style={st.ligne}>Vérifiez le réseau, puis réessayez.</div>
-      </Carte>
+      <section data-haccp-maintenant="" style={{ minWidth: 0 }}>
+        <Panneau style={st.panneau}>
+          <Encadre ton="alerte" titre="Impossible de lire les relevés" style={st.panneauTexte}>
+            <div style={st.panneauLigne}>Vérifiez le réseau, puis réessayez.</div>
+          </Encadre>
+          <Btn variant="ghost" disabled={reessaiEnCours} onClick={reessayer} style={st.panneauBouton}>
+            {reessaiEnCours ? 'Actualisation…' : 'Réessayer'}
+          </Btn>
+        </Panneau>
+      </section>
     );
   }
   if (lecture === 'chargement' || !etat) {
-    return <Carte ton="neutre"><div style={st.ligne}>Chargement…</div></Carte>;
+    return (
+      <section data-haccp-maintenant="" style={{ minWidth: 0 }}>
+        <Panneau><div style={st.chargement}>Chargement…</div></Panneau>
+      </section>
+    );
   }
 
   // ─── Rien de réglé ───
   if (etat.statut === 'non_regle') {
     return (
       <Carte ton="neutre" bouton={isConsultant ? (
-        <button type="button" style={st.primaire} data-haccp-action="reglages" onClick={onReglages}>Ajouter les frigos et appareils</button>
+        <button type="button" style={st.primaire} data-cadre="" data-haccp-action="reglages" onClick={onReglages}>Ajouter les frigos et appareils</button>
       ) : null}>
-        <div style={{ ...st.surtitre, color: TONS.neutre.titre }}>Pas encore prêt</div>
+        <div style={{ ...st.surtitre, color: ENCRES.neutre }}>Pas encore prêt</div>
         <div style={st.ligne}>Aucun frigo à relever n'est réglé pour cet établissement.</div>
         {!isConsultant && <div style={st.ligne}>Le consultant ajoute les frigos à relever. En attendant, les étiquettes et les contrôles fonctionnent.</div>}
       </Carte>
@@ -136,15 +183,28 @@ export default function MaintenantHaccp({
   // ─── Sans heures de relevé : toutes les zones, une fois par jour ───
   if (!etat.tournees.length) {
     return (
-      <Carte ton={aJour ? tonAJour : 'neutre'} bouton={aJour
-        ? boutonHorsTournee
-        : boutonReleve(etat.zonesFaitesJour > 0 ? 'Continuer le relevé' : 'Commencer le relevé')}>
+      <Carte
+        ton={aJour ? tonAJour : 'neutre'}
+        onRegistre={onRegistre}
+        bouton={aJour
+          ? boutonHorsTournee
+          : boutonReleve(etat.zonesFaitesJour > 0 ? 'Continuer le relevé' : 'Commencer le relevé')}
+        pied={(
+          <div className="haccp-tournees">
+            <div style={{ ...cs.tuile, ...st.tuile }}>
+              <span style={{ ...st.ligne, minWidth: 0 }}><N>{etat.zonesFaitesJour}</N> sur <N>{etat.totalZones}</N> frigos et appareils relevés aujourd'hui</span>
+              <Anneau
+                part={etat.totalZones ? etat.zonesFaitesJour / etat.totalZones : 0}
+                couleur={aJour ? ENCRES.ok : ENCRES.neutre} piste="var(--carte-nuit)"
+              />
+            </div>
+          </div>
+        )}
+      >
         <Surtitre ton={aJour ? tonAJour : 'neutre'} ok={aJour && coche}>
           {aJour ? surtitreAJour : <>À faire aujourd'hui</>}
         </Surtitre>
         <div style={st.titre}>Relever les températures</div>
-        <div style={st.ligne}><N>{etat.zonesFaitesJour}</N> sur <N>{etat.totalZones}</N> frigos et appareils relevés aujourd'hui</div>
-        <Barre faits={etat.zonesFaitesJour} total={etat.totalZones} />
         {lignesARevoir}
         {isConsultant && <div style={st.ligneDiscrete}>Pour savoir à quelle heure relever, réglez les heures de relevé dans Réglages.</div>}
         {lectureSeule}
@@ -166,13 +226,14 @@ export default function MaintenantHaccp({
       <div style={st.ligne}>{manquent(t)}</div>
     </div>
   ));
+  const tuiles = <Tournees tournees={etat.tournees} />;
 
   // ─── Une tournée à faire maintenant, ou en retard ───
   if (etat.statut === 'a_faire' || etat.statut === 'en_retard') {
     const retard = etat.statut === 'en_retard' ? Math.max(0, maintenantMin - (heureEnMinutes(courante.heure) ?? 0)) : 0;
     const ton = etat.statut === 'a_faire' ? 'neutre' : retard >= 120 ? 'grave' : 'retard';
     return (
-      <Carte ton={ton} bouton={boutonReleve(courante.faites > 0 ? 'Continuer le relevé' : 'Commencer le relevé')}>
+      <Carte ton={ton} onRegistre={onRegistre} pied={tuiles} bouton={boutonReleve(courante.faites > 0 ? 'Continuer le relevé' : 'Commencer le relevé')}>
         <Surtitre ton={ton}>{etat.statut === 'a_faire' ? <>À faire maintenant</> : <>En retard</>}</Surtitre>
         <div style={st.titre}>
           Relevé de <N>{courante.heure}</N>
@@ -180,7 +241,6 @@ export default function MaintenantHaccp({
         </div>
         <div style={st.sousTitre} data-no-translate="">{courante.label}</div>
         <div style={st.ligne}><N>{courante.faites}</N> sur <N>{courante.total}</N> frigos et appareils relevés</div>
-        <Barre faits={courante.faites} total={courante.total} />
         {lignesARevoir}
         {aujourdhui}
         {lignesManquees}
@@ -197,7 +257,7 @@ export default function MaintenantHaccp({
   if (etat.statut === 'manque') {
     const seule = manquees.length === 1 ? manquees[0] : null;
     return (
-      <Carte ton="retard" bouton={boutonHorsTournee}>
+      <Carte ton="retard" onRegistre={onRegistre} pied={tuiles} bouton={boutonHorsTournee}>
         <Surtitre ton="retard">En retard</Surtitre>
         <div style={st.titre}>
           {seule ? <>Relevé de <N>{seule.heure}</N> pas fait</> : <><N>{manquees.length}</N> relevés pas faits</>}
@@ -217,7 +277,7 @@ export default function MaintenantHaccp({
 
   // ─── Rien à faire maintenant, rien en retard ───
   return (
-    <Carte ton={tonAJour} bouton={boutonHorsTournee}>
+    <Carte ton={tonAJour} onRegistre={onRegistre} pied={tuiles} bouton={boutonHorsTournee}>
       <Surtitre ton={tonAJour} ok={coche}>{surtitreAJour}</Surtitre>
       {prochaine ? (
         <>
@@ -244,51 +304,61 @@ function Manquent({ manque, total }) {
 
 function Surtitre({ ton, ok = false, children }) {
   return (
-    <div style={{ ...st.surtitre, color: TONS[ton].titre }}>
+    <div style={{ ...st.surtitre, color: ENCRES[ton] }}>
       {ok && <CheckCircle2 size={18} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />}
       <span>{children}</span>
     </div>
   );
 }
 
-// La carte : texte à gauche, bouton à droite quand la largeur le permet
-// (iPad, ordinateur), bouton sous le texte et pleine largeur sur téléphone.
-function Carte({ ton, bouton, children }) {
+// La carte nuit : le texte et la flèche du registre, le bouton du relevé
+// (pleine largeur au téléphone, borné au-delà), puis les tuiles des heures de
+// relevé. data-haccp-ton garde l'état lisible pour le banc.
+function Carte({ ton, bouton, pied, onRegistre, children }) {
   return (
-    <section data-haccp-maintenant="" data-cadre="" style={{ ...st.carte, background: TONS[ton].fond }}>
-      <div style={st.texte}>{children}</div>
-      {bouton && <div style={st.action}>{bouton}</div>}
-    </section>
+    <CarteAvant ton="nuit" data-haccp-maintenant="" data-haccp-ton={ton}>
+      <div className="haccp-maintenant-tete">
+        <div style={st.texte}>{children}</div>
+        <BoutonFleche onClick={onRegistre} libelle="Le registre" ton="nuit" />
+      </div>
+      {bouton && <div className="haccp-maintenant-action">{bouton}</div>}
+      {pied}
+    </CarteAvant>
   );
 }
 
 const st = {
-  carte: {
-    display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: 16, minWidth: 0,
-    padding: '18px 16px', borderRadius: 'var(--r-lg)', color: 'var(--text)',
-  },
-  // Le texte prend la place, le bouton garde ~260 px à côté ; sous 560 px de
-  // large, le bouton passe dessous et s'étire.
-  texte: { flex: '999 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 },
-  action: { flex: '1 0 260px', minWidth: 0 },
+  texte: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 },
   surtitre: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', letterSpacing: 0.2 },
-  titre: { fontSize: 'var(--t4)', lineHeight: 1.2, fontFamily: 'var(--font)', fontWeight: 'var(--g3)', color: 'var(--text)' },
-  titreSuite: { fontSize: 'var(--t2)', fontFamily: 'var(--font)', color: 'var(--text2)' },
-  sousTitre: { fontSize: 'var(--t2)', color: 'var(--text2)' },
-  ligne: { fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.4 },
-  ligneForte: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', lineHeight: 1.4 },
-  ligneDiscrete: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 },
+  titre: { fontSize: 'var(--t4)', lineHeight: 1.2, fontFamily: 'var(--font)', fontWeight: 'var(--g3)', color: 'var(--carte-nuit-texte)' },
+  titreSuite: { fontSize: 'var(--t2)', fontFamily: 'var(--font)', fontWeight: 'var(--g1)', color: 'var(--carte-nuit-doux)' },
+  sousTitre: { fontSize: 'var(--t2)', color: 'var(--carte-nuit-doux)' },
+  ligne: { fontSize: 'var(--t2)', color: 'var(--carte-nuit-texte)', lineHeight: 1.4 },
+  ligneForte: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--carte-nuit-texte)', lineHeight: 1.4 },
+  ligneDiscrete: { fontSize: 'var(--t1)', color: 'var(--carte-nuit-doux)', lineHeight: 1.4 },
   manque: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 },
-  aRevoir: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--danger-text)', lineHeight: 1.4 },
-  piste: { height: 6, borderRadius: 3, background: 'var(--border)', overflow: 'hidden', marginTop: 2 },
-  plein: { height: '100%', borderRadius: 3, background: 'var(--accent)' },
+  aRevoir: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--carte-nuit-danger)', lineHeight: 1.4 },
+  // Tuile d'une heure de relevé.
+  tuile: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  tuileHeure: { display: 'block', fontSize: 'var(--t5)' },
+  tuileLibelle: { display: 'block', marginTop: 4, overflowWrap: 'anywhere' },
+  tuileEtat: { display: 'block', marginTop: 4, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', lineHeight: 1.35 },
+  tuileCompte: { fontWeight: 'var(--g1)', color: 'var(--carte-nuit-doux)' },
+  // Sur la carte nuit, l'action principale est à l'encre inversée : fond clair
+  // de son texte, encre de la carte. Une pilule : le libellé tient sur une ligne.
   primaire: {
-    width: '100%', minHeight: 52, padding: '12px 18px', borderRadius: 'var(--r)', border: 'none',
-    background: 'var(--accent)', color: 'var(--on-accent)', fontFamily: 'var(--font)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', cursor: 'pointer',
+    width: '100%', minHeight: 52, padding: '12px 18px', borderRadius: 'var(--r-full)', border: 'none',
+    background: 'var(--carte-nuit-texte)', color: 'var(--carte-nuit)', fontFamily: 'var(--font)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', cursor: 'pointer',
   },
   secondaire: {
-    width: '100%', minHeight: 44, padding: '10px 16px', borderRadius: 'var(--r)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
-    background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
+    width: '100%', minHeight: 44, padding: '10px 16px', borderRadius: 'var(--r-full)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--carte-nuit-doux)',
+    background: 'transparent', color: 'var(--carte-nuit-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },
+  // Chargement et lecture en échec : une carte blanche.
+  panneau: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16 },
+  panneauTexte: { flex: '999 1 260px', minWidth: 0 },
+  panneauLigne: { fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.4 },
+  panneauBouton: { minHeight: 44, flex: '1 0 200px' },
+  chargement: { fontSize: 'var(--t2)', color: 'var(--text3)' },
 };
