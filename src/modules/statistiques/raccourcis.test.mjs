@@ -98,3 +98,24 @@ test('chaque famille à raccourci a sa garde d\'écran et son raccourci', async 
     assert.ok(Object.values(RACCOURCIS).some((r) => r.famille === f), f);
   }
 });
+
+test('présentation dense : la vue garde ses lignes visibles, sans doublon, et le lien les porte', async () => {
+  const { nettoyerVue, vueDepuisLien, MAX_CHIFFRES } = await import('./vueStatistiques.js');
+  const visibles = [{ id: 'a', unite: 'chf', famille: 'f' }, { id: 'b', unite: 'pct', famille: 'f' }];
+  const v = nettoyerVue({ periode: { id: 'mois' }, pas: 'jour', comparaison: '', graphiques: [{ mesures: ['a'] }], chiffres: ['b', 'x', 'a', 'b'] }, visibles, AUJ);
+  assert.deepEqual(v.chiffres, ['b', 'a']);
+  const l = vueDepuisLien({ famille: 'f', periode: 'mois', graphiques: [{ mesures: ['a'] }], chiffres: ['a', 'b'] }, visibles, AUJ);
+  assert.deepEqual(l.chiffres, ['a', 'b']);
+  assert.ok(MAX_CHIFFRES >= 9);
+});
+
+test('chaque raccourci ne nomme que des mesures du catalogue, graphiques et lignes', async () => {
+  const { RACCOURCIS } = await import('./raccourcisStatistiques.js');
+  const { MESURES } = await import('./catalogueMesures.js');
+  for (const [id, r] of Object.entries(RACCOURCIS)) {
+    for (const v of r.vues) {
+      const ids = [...v.graphiques.flatMap((g) => g.mesures), ...(v.chiffres || [])];
+      for (const m of ids) assert.ok(MESURES.some((x) => x.id === m && x.famille === r.famille), `${id}/${v.id} : ${m}`);
+    }
+  }
+});

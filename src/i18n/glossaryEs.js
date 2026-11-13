@@ -1130,6 +1130,8 @@ export const UI_GLOSSARY_ES = {
   'sans TVA': 'sin IVA',
   'Possible doublon avec une charge fixe :': 'Posible duplicado de un gasto fijo:',
   'Par fournisseur': 'Por proveedor',
+  'Comparé à': 'Comparado con',
+  'Non lu, réessayer': 'No leído, reintentar',
   'Dépenses': 'Gastos',
   'Rayons': 'Secciones',
   "Prix d'un produit": 'Precio de un producto',

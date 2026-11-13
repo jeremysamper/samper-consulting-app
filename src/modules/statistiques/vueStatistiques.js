@@ -23,6 +23,7 @@ export const MAX_NOM_VUE = 60;
 export const MAX_GRAPHIQUES = 4;
 export const MAX_SERIES = 6;
 export const MAX_UNITES = 2;
+export const MAX_CHIFFRES = 24;
 
 // S3 : les périodes des écrans d'analyse devenus des raccourcis s'ajoutent à
 // celles de D10 (14 jours des meilleures ventes, semaines, mois dernier et
@@ -164,8 +165,11 @@ export function nettoyerVue(brute, mesuresVisibles, aujourdhui) {
   });
   // Filtre de famille (S3) : le périmètre des achats, un texte.
   const filtres = typeof brute.filtres?.perimetre === 'string' && brute.filtres.perimetre ? { perimetre: brute.filtres.perimetre } : {};
-  if (!graphiques.length || graphiques.every((g) => !g.mesures.length)) return { ...defaut, periode, pas, comparaison, filtres };
-  return { periode, pas, comparaison, graphiques, filtres };
+  // Lignes de la présentation dense (S3) : des mesures visibles, sans doublon,
+  // vingt-quatre au plus.
+  const chiffres = (Array.isArray(brute.chiffres) ? brute.chiffres : []).filter((id, i, a) => parId.has(id) && a.indexOf(id) === i).slice(0, MAX_CHIFFRES);
+  if (!graphiques.length || graphiques.every((g) => !g.mesures.length)) return { ...defaut, periode, pas, comparaison, filtres, chiffres };
+  return { periode, pas, comparaison, graphiques, filtres, chiffres };
 }
 
 // Types de graphique valides pour un graphique, le premier étant celui que la
@@ -196,7 +200,7 @@ export function vueDepuisLien(demande, mesuresVisibles, aujourdhui) {
   const visibles = mesuresVisibles || [];
   let ids = (Array.isArray(demande.mesures) ? demande.mesures : []).filter((id) => visibles.some((m) => m.id === id));
   const periode = typeof demande.periode === 'string' ? { id: demande.periode } : demande.periode;
-  const commun = { periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '', filtres: demande.filtres || {} };
+  const commun = { periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '', filtres: demande.filtres || {}, chiffres: demande.chiffres || [] };
   // Raccourci d'un écran d'analyse (S3) : plusieurs graphiques préréglés. Un
   // graphique dont aucune mesure n'est visible tombe ; rien de visible, rien
   // d'ouvert.

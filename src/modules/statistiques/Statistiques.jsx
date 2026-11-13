@@ -25,6 +25,7 @@ import TableauValeurs from './TableauValeurs.jsx';
 import PanneauMesures from './PanneauMesures.jsx';
 import { telechargerTableaux } from './exportStatistiques.js';
 import VuesNommees from './VuesNommees.jsx';
+import ChiffresDenses from './ChiffresDenses.jsx';
 import { perimetreDe } from '../factures-achats/analysesAchats.js';
 import { RACCOURCIS, demandeRaccourci } from './raccourcisStatistiques.js';
 
@@ -276,7 +277,7 @@ export default function Statistiques({ user, etablissement }) {
   const tranchesComp = useMemo(() => (bornesComp ? tranchesDe(bornesComp.debut, bornesComp.fin, pas) : null), [bornesComp, pas]);
 
   // Familles à lire : celles des mesures cochées, parmi les familles visibles.
-  const signatureCochees = vue ? vue.graphiques.map((g) => g.mesures.join(',')).join(';') : '';
+  const signatureCochees = vue ? [...vue.graphiques.map((g) => g.mesures.join(',')), (vue.chiffres || []).join(',')].join(';') : '';
   const famillesDemandees = useMemo(() => {
     const ouvertes = signatureFamilles ? signatureFamilles.split(',') : [];
     const ids = new Set();
@@ -405,6 +406,17 @@ export default function Statistiques({ user, etablissement }) {
     return { composition: c, tableau: tableauDe(c, c.etat ? c.tranches : tranches) };
   }) : []), [vue, mesures, tranches, tranchesComp, sources]);
 
+  // Présentation dense : une composition d'une seule mesure par ligne, le
+  // total de la période et son écart (aucun calcul de plus).
+  const lignesChiffres = useMemo(() => (vue?.chiffres || []).map((id) => mesures.find((m) => m.id === id)).filter(Boolean).map((m) => {
+    const etatFamille = sources.etats[m.famille];
+    const etat = etatFamille === 'error' ? 'error' : ((etatFamille === 'loading' || !sources.points[m.famille]) ? 'loading' : null);
+    if (etat) return { id: m.id, libelle: m.libelle, phrase: m.phrase, unite: m.unite, etat };
+    const c = composer({ graphique: { mesures: [m.id], ventilation: '', type: '', choix: {} }, mesures: [m], tranches, tranchesComparaison: tranchesComp, sources, etats: sources.etats, familles: FAMILLES });
+    const s = c.series?.[0];
+    return { id: m.id, libelle: m.libelle, phrase: m.phrase, unite: m.unite, total: s?.total ?? null, totalComparaison: s?.totalComparaison ?? null, ecart: s?.ecartTotal ?? null };
+  }), [vue, mesures, tranches, tranchesComp, sources]);
+
   const comparaisonChoisie = COMPARAISONS.find((c) => c.id === (vue?.comparaison || ''));
   const libelleComparaison = bornesComp ? comparaisonChoisie?.label || '' : '';
 
@@ -501,6 +513,7 @@ export default function Statistiques({ user, etablissement }) {
               <Btn variant="ghost" onClick={exporterPdf} disabled={pdfEnCours} style={st.bouton}>{pdfEnCours ? 'Export en cours' : 'Exporter en PDF'}</Btn>
             </div>
           </div>
+          <ChiffresDenses lignes={lignesChiffres} colonnes={largeur >= 720 ? 2 : 1} libelleComparaison={libelleComparaison} onReessayer={relancer} />
           <div id="stat-export" style={{ display: 'grid', gridTemplateColumns: colonnes, gap: 16, minWidth: 0 }}>
             {vue.graphiques.map((g, i) => (
               <CarteGraphique

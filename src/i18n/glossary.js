@@ -1149,6 +1149,8 @@ export const UI_GLOSSARY = {
   'sans TVA': 'without VAT',
   'Possible doublon avec une charge fixe :': 'Possible duplicate of a fixed cost:',
   'Par fournisseur': 'By supplier',
+  'Comparé à': 'Compared with',
+  'Non lu, réessayer': 'Not read, try again',
   'Dépenses': 'Spending',
   'Rayons': 'Aisles',
   "Prix d'un produit": 'Price of a product',
