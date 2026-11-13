@@ -297,7 +297,7 @@ export function SectionFacturesEmail({ user, revenir }) {
             value={reglages.template}
             onChange={e => regler('template', e.target.value)}
             rows={14}
-            style={{ ...s.modalInput, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.55, minHeight: 280 }}
+            style={{ ...s.modalInput, resize: 'vertical', fontFamily: 'inherit', lineHeight: 1.44, minHeight: 280 }}
           />
         </div>
 
