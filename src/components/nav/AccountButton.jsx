@@ -37,21 +37,22 @@ export default function AccountButton({ user, onOpen, variant = 'desktop', style
 const s = {
   trigger: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44,
-    padding: '6px 10px', background: 'none', border: 'none', borderRadius: 'var(--r)',
-    color: 'var(--nav-text-active)', fontFamily: 'var(--font)', cursor: 'pointer', textAlign: 'left',
+    padding: '6px 10px', background: 'none', border: 'none', borderRadius: 'var(--r-full)',
+    color: 'var(--text)', fontFamily: 'var(--font)', cursor: 'pointer', textAlign: 'left',
   },
   triggerMobile: { minHeight: 52, padding: '6px 12px' },
-  triggerAccueil: { width: 'auto', minHeight: 48, padding: '6px 12px 6px 8px', borderRadius: 'var(--r-lg)', color: 'var(--text)' },
-  // Initiales neutres : l'ancienne pastille à la couleur du rôle se fondait
-  // dans l'encre pétrole (consultant #003042 sur #032d3f ≈ 1:1).
+  triggerAccueil: { width: 'auto', minHeight: 48, padding: '6px 12px 6px 8px', borderRadius: 'var(--r-full)', color: 'var(--text)' },
+  // Initiales neutres, dans un cercle à la couleur des cartes : le menu et
+  // l'accueil sont posés sur le fond de page. --nav-active n'y sert plus,
+  // c'est l'aplat sombre de l'entrée choisie.
   avatar: {
     width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    background: 'var(--nav-active)', border: '1px solid var(--nav-border)',
-    color: 'var(--nav-text-active)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', letterSpacing: 0.3,
+    background: 'var(--surface)', border: '1px solid var(--nav-border)',
+    color: 'var(--text2)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', letterSpacing: 0.3,
   },
   avatarMobile: { width: 32, height: 32, fontSize: 12 },
-  avatarAccueil: { width: 32, height: 32, fontSize: 12, background: 'var(--selection)', border: 'none', color: 'var(--text2)' },
+  avatarAccueil: { width: 32, height: 32, fontSize: 12, background: 'var(--surface)', border: 'none', color: 'var(--text2)' },
   name: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 'var(--g2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   nameMobile: { fontSize: 14 },
   chevron: { flexShrink: 0, color: 'var(--nav-text)' },

@@ -306,7 +306,7 @@ export default function AppLayout({
   // ── Liste des modules, seul contenu du milieu de la barre ────────
   // Plus d'intitulé de rubrique à l'écran : un filet sépare les rubriques, et
   // leur nom reste annoncé aux lecteurs d'écran (role group + aria-label).
-  const renderNavGroups = ({ itemStyle, activeStyle, dividerStyle, activeMarker }) => groupedNav.map((group, index) => (
+  const renderNavGroups = ({ itemStyle, activeStyle, dividerStyle }) => groupedNav.map((group, index) => (
     <div key={group.label} role="group" aria-label={group.label}>
       {index > 0 && <div style={dividerStyle} aria-hidden="true" />}
       {group.items.map(item => {
@@ -324,7 +324,6 @@ export default function AppLayout({
           >
             <span style={ls.navLabel}>{getLabelForModule(item.id, item.label)}</span>
             {renderNavBadge(item.id)}
-            {active && activeMarker}
           </button>
         );
       })}
@@ -564,7 +563,7 @@ export default function AppLayout({
           'aria-label': 'Changer le logo',
         } : {})}
         style={{
-          width: size, height: size, borderRadius: 'var(--r)', padding: 0,
+          width: size, height: size, borderRadius: 'var(--r-sm)', padding: 0,
           // Le logo d'un établissement se pose sur une pastille à la couleur
           // du menu d'avant Office (--logo-fond) : un logo importé clair, sur
           // fond transparent, garde l'allure qu'il avait sur le menu sombre.
@@ -773,7 +772,6 @@ export default function AppLayout({
         style={{
           ...ls.sidebar,
           width: sidebarOpen ? 234 : 0,
-          borderRight: sidebarOpen ? '1px solid var(--nav-border)' : 'none',
           visibility: sidebarOpen ? 'visible' : 'hidden',
           transition: sidebarOpen
             ? 'width .2s cubic-bezier(.4,0,.2,1)'
@@ -791,7 +789,6 @@ export default function AppLayout({
             itemStyle: ls.navItem,
             activeStyle: ls.navActive,
             dividerStyle: ls.navDivider,
-            activeMarker: <span style={ls.navActiveLine} aria-hidden="true" />,
           })}
         </nav>
 
@@ -907,26 +904,25 @@ export default function AppLayout({
 }
 
 const ls = {
-  // Desktop - navigation « encre pétrole » : la sidebar est en aplat uni
-  // (--nav, sans dégradé) dans les DEUX thèmes, avec les tokens nav-* pour les
-  // textes et filets. La coque tactile (mls) n'a pas de barre : seul son
-  // header « verre » reprend ces tokens. Fond transparent sur la coque :
-  // l'ambiance (--ambient) posée sur <body> respire sous le contenu.
+  // Ordinateur : le menu est posé sur le fond de page (--nav vaut --bg), sans
+  // filet à droite ; ses entrées sont des pilules, l'entrée choisie un aplat
+  // sombre (--nav-active, texte --nav-text-active). La coque tactile (mls)
+  // n'a pas de menu. Fond transparent sur la coque : la couleur de page est
+  // celle de <body>.
   // height 100% et non 100vh : #root porte déjà les zones de sécurité iOS, une
   // coque en 100vh dépasse par le bas de la hauteur de l'indicateur d'accueil et
   // fait sortir de l'écran le bas de la zone de contenu (barres d'action posées).
   root: { display: 'flex', height: '100%', fontFamily: 'var(--font)', background: 'transparent', overflow: 'hidden' },
   // minWidth 0 + overflow hidden : la barre peut s'animer jusqu'à width 0 sans
   // être bloquée par la taille min-content de ses enfants flex.
-  sidebar: { background: 'var(--nav)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', borderRight: '1px solid var(--nav-border)', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
+  sidebar: { background: 'var(--nav)', display: 'flex', flexDirection: 'column', flexShrink: 0, minWidth: 0, overflow: 'hidden', transition: 'width .2s cubic-bezier(.4,0,.2,1)' },
   // Haut de barre : le logo seul, aligné sur le texte des modules.
   sidebarTop: { display: 'flex', alignItems: 'center', padding: '18px 16px 12px', flexShrink: 0 },
   nav: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 7px 12px', overflowY: 'auto' },
   // Filet entre deux rubriques, à la place de leur intitulé.
   navDivider: { height: 1, background: 'var(--nav-border)', margin: '7px 10px' },
-  navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 10px', borderRadius: 'var(--r)', border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 'var(--g2)', position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
-  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 'var(--g2)', boxShadow: 'var(--nav-glow)' },
-  navActiveLine: { position: 'absolute', right: 0, top: '50%', transform: 'translateY(-50%)', width: 3, height: 16, background: 'var(--nav-accent)', borderRadius: 2, opacity: 0.85 },
+  navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderRadius: 'var(--r-full)', border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 'var(--g2)', position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
+  navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 'var(--g2)' },
   navLabel: { flex: 1, minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   // Pied de barre : le nom de l'utilisateur (menu de compte, UserMenu.jsx).
   userArea: { padding: '8px 6px 10px', borderTop: '1px solid var(--nav-border)', flexShrink: 0 },
@@ -943,16 +939,19 @@ const ls = {
   // droit jamais : ses boutons écrasés devenaient intouchables.
   topbarLeft: { display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: '1 1 auto', marginRight: 12 },
   topbarRight: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
-  sidebarToggle: { width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -8, background: 'none', border: 'none', borderRadius: 'var(--r)', color: 'var(--text2)', cursor: 'pointer', padding: 0 },
-  // Les quatre boutons du header : même carré de 44 px, sans bordure (survol :
-  // .app-bar-btn dans app.css), comme le sélecteur de langue compact.
-  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 'var(--r)', color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
+  // Bouton de repli : la même cible de 44 px que les autres, son cercle de
+  // 40 px peint par .app-bar-btn ; les marges gardent le titre à sa place.
+  sidebarToggle: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginLeft: -10, marginRight: -2, background: 'none', border: 'none', borderRadius: '50%', color: 'var(--text2)', cursor: 'pointer', padding: 0 },
+  // Les boutons du header : même cible de 44 px, le picto dans un cercle de
+  // 40 px à la couleur des cartes (fond, retrait et survol : .app-bar-btn dans
+  // app.css), comme le sélecteur de langue compact.
+  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: '50%', color: 'var(--text2)', cursor: 'pointer', position: 'relative', padding: 0 },
   // Compteur d'alertes : une seule forme, ordinateur et téléphone (pilule qui
   // s'élargit au-delà de 9).
   notifDot: { position: 'absolute', top: 4, right: 4, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
   // Hauteur bornée : une longue liste d'alertes sortait du bas de la zone
   // (overflow hidden) sans pouvoir défiler.
-  notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
+  notifPanel: { position: 'absolute', right: 0, top: 46, width: 300, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto', background: 'var(--surface)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh-lg)', zIndex: 200 },
   notifHeader: { padding: '12px 16px', borderBottom: '1px solid var(--border)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
   // minHeight 0 : sans lui <main> prend la hauteur de son contenu et ne défile pas.
@@ -994,9 +993,9 @@ const mls = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4,
     padding: '0 8px',
   },
-  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: 'var(--r)', color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
+  iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: '50%', color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
   notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
-  notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
+  notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
   notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
   notifItem: { padding: '10px 14px', fontSize: 13, color: 'var(--text)', borderBottom: '1px solid var(--border)', lineHeight: 1.4 },
 

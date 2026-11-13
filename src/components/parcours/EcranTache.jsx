@@ -40,6 +40,7 @@ const st = {
   gauche: { display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flex: '1 1 260px' },
   // 44 px au toucher comme à la souris : c'est le bouton le plus pressé du module.
   retour: { minHeight: 44, flexShrink: 0 },
-  titre: { fontSize: 20, fontWeight: 400, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  // Titre d'écran : --t4, graisse --g2 (les titres de carte sont en --g3).
+  titre: { fontSize: 'var(--t4)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.15, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   etat: { fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
 };

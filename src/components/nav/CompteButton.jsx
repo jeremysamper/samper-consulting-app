@@ -5,8 +5,10 @@
 // 1440 px). Affichée par l'appelant si peutOuvrirCompte (moduleConfig) :
 // toute personne connectée, chacune avec ses seules sections.
 //
-// Variantes : 'desktop' (sur l'encre de la barre) et 'accueil' (fond clair).
-// Texte seul, pas de pictogramme devant le libellé.
+// Variantes : 'desktop' (pied du menu) et 'accueil' (en-tête de l'accueil
+// tactile). Une pilule de bouton secondaire ; quand la page des réglages est
+// ouverte, c'est l'entrée choisie : l'aplat sombre. Texte seul, pas de
+// pictogramme devant le libellé.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function CompteButton({ onOpen, actif = false, variant = 'desktop' }) {
@@ -27,14 +29,13 @@ export default function CompteButton({ onOpen, actif = false, variant = 'desktop
 const s = {
   bouton: {
     flexShrink: 0, minHeight: 44, padding: '6px 10px',
-    background: 'none', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--nav-border)', borderRadius: 'var(--r)',
-    color: 'var(--nav-text-active)', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 'var(--g2)',
+    background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)',
+    color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 'var(--g2)',
     cursor: 'pointer', whiteSpace: 'nowrap',
   },
   boutonAccueil: {
-    minHeight: 48, padding: '6px 14px', borderRadius: 'var(--r-lg)',
-    background: 'var(--btn-fond)', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontSize: 14,
+    minHeight: 48, padding: '6px 14px', fontSize: 14,
   },
-  actif: { background: 'var(--nav-active)' },
-  actifAccueil: { background: 'var(--selection)' },
+  actif: { background: 'var(--nav-active)', borderColor: 'var(--nav-active)', color: 'var(--nav-text-active)' },
+  actifAccueil: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' },
 };
