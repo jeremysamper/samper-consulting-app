@@ -38,7 +38,7 @@ export const hs = {
 
   // ─── Modale d'export des relevés : options de période (journalier / mensuel) ───
   // Un choix à l'habit du bouton secondaire.
-  periodBtn:{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'12px 14px',background:'var(--btn-fond)',borderWidth:1,borderStyle:'solid',borderColor:'var(--btn-bord)',borderRadius: 'var(--r)',cursor:'pointer',fontFamily:'var(--font)',textAlign:'left'},
+  periodBtn:{display:'flex',alignItems:'center',gap:12,width:'100%',padding:'12px 14px',background:'var(--btn-fond)',color:'var(--btn-texte)',borderWidth:1,borderStyle:'solid',borderColor:'var(--btn-bord)',borderRadius: 'var(--r)',cursor:'pointer',fontFamily:'var(--font)',textAlign:'left'},
 
   // ─── Lien « Revoir l'aide », en bas de l'accueil ───
   // Un lien texte, 44 px au doigt, sans cadre.
