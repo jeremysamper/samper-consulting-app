@@ -155,7 +155,7 @@ function EditeurTextes({ clientId, client, modifieRef, signaler, revenir }) {
                   onChange={e => setBrouillon(prev => ({ ...prev, [f.key]: e.target.checked }))}
                   style={{ accentColor: 'var(--accent)', width: 18, height: 18, flexShrink: 0 }}
                 />
-                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{f.label}</span>
+                <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>{f.label}</span>
               </label>
             ) : (
               <>
@@ -179,7 +179,7 @@ function EditeurTextes({ clientId, client, modifieRef, signaler, revenir }) {
               </>
             )}
             {f.hint && (
-              <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 }}>{f.hint}</div>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 }}>{f.hint}</div>
             )}
           </div>
         ))}
@@ -259,7 +259,7 @@ export function SectionFacturesEmail({ user, revenir }) {
             onChange={e => regler('enabled', e.target.checked)}
             style={{ accentColor: 'var(--accent)', width: 18, height: 18, flexShrink: 0 }}
           />
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Notification client</span>
+          <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>Notification client</span>
         </label>
         <div style={s.aide}>
           {reglages.enabled
@@ -302,7 +302,7 @@ export function SectionFacturesEmail({ user, revenir }) {
         </div>
 
         <div>
-          <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 6 }}>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 6 }}>
             Variables remplacées à l'envoi (cliquez pour insérer dans le message) :
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -349,34 +349,34 @@ const s = {
     display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '12px 0', borderTop: '1px solid var(--border)',
     position: 'sticky', bottom: 0, background: 'var(--bg)', zIndex: 1,
   },
-  aide: { fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 },
+  aide: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 },
   clients: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 8 },
   puce: {
     display: 'inline-flex', alignItems: 'center', gap: 7, minHeight: 44, boxSizing: 'border-box',
     padding: '7px 14px', borderRadius: 22,
     background: 'var(--bg)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13, cursor: 'pointer',
+    color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', cursor: 'pointer',
   },
-  puceActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' },
+  puceActive: { background: 'var(--selection)', borderColor: 'var(--onglet)', color: 'var(--text)' },
 
   // Champs et boutons : les styles des fenêtres d'origine de Factures.jsx. Le
   // bouton principal prend le jeton --on-accent, lisible aussi en sombre.
-  modalLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, display: 'block', marginBottom: 4 },
-  modalInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
-  modalPrimaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
-  modalGhostBtn: { padding: '8px 14px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
-  modalDangerBtn: { padding: '8px 14px', background: 'none', color: 'var(--danger-strong)', border: '1px solid var(--danger-bd)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
+  modalLabel: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', display: 'block', marginBottom: 4 },
+  modalInput: { width: '100%', padding: '9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' },
+  modalPrimaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)' },
+  modalGhostBtn: { padding: '8px 14px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)' },
+  modalDangerBtn: { padding: '8px 14px', background: 'none', color: 'var(--danger-strong)', border: '1px solid var(--danger-bd)', borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)' },
   modalGroupTitle: {
-    fontSize: 12, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)',
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)',
     paddingTop: 6, marginBottom: 10, borderTop: '1px solid var(--border)',
   },
   modalCheckRow: {
     display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer',
   },
   varChip: {
-    padding: '5px 9px', borderRadius: 14, background: 'var(--bg)',
+    padding: '5px 9px', borderRadius: 'var(--r)', background: 'var(--bg)',
     border: '1px solid var(--border)', color: 'var(--text2)',
-    fontFamily: 'var(--font)', fontSize: 11, cursor: 'pointer',
+    fontFamily: 'var(--font)', fontSize: 'var(--t1)', cursor: 'pointer',
   },
 };

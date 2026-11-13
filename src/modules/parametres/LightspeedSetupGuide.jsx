@@ -31,11 +31,11 @@ function CopyBtn({ value }) {
       type="button"
       onClick={copy}
       style={{
-        padding: '3px 10px', borderRadius: 6,
+        padding: '3px 10px', borderRadius: 'var(--r)',
         border: '1px solid transparent',
         background: copied ? 'var(--success-bg-soft)' : 'var(--surface)',
         color: copied ? 'var(--success-text)' : 'var(--text2)',
-        fontSize: 11, fontWeight: 500, cursor: 'pointer',
+        fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer',
         fontFamily: 'var(--font)', whiteSpace: 'nowrap', flexShrink: 0,
         transition: 'all 0.15s',
       }}
@@ -51,9 +51,9 @@ function CodeLine({ value }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 5 }}>
       <code style={{
-        flex: 1, padding: '5px 10px', borderRadius: 6,
-        background: 'var(--surface2)', border: '1px solid var(--border)',
-        fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font)',
+        flex: 1, padding: '5px 10px', borderRadius: 'var(--r)',
+        background: 'var(--selection)', border: '1px solid var(--rule-soft)',
+        fontSize: 'var(--t1)', color: 'var(--text)', fontFamily: 'var(--font)',
         wordBreak: 'break-all',
       }}>
         {value}
@@ -69,8 +69,8 @@ function StepBadge({ n }) {
   return (
     <div style={{
       width: 26, height: 26, borderRadius: '50%',
-      background: 'var(--accent)', color: 'var(--on-accent)',
-      fontSize: 13, fontWeight: 700, flexShrink: 0,
+      background: 'var(--selection)', color: 'var(--text)',
+      fontSize: 'var(--t2)', fontWeight: 'var(--g3)', flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
       {n}
@@ -92,7 +92,7 @@ export default function LightspeedSetupGuide({ onClose }) {
     >
       <div
         style={{
-          background: 'var(--surface)', borderRadius: 14,
+          background: 'var(--surface)', borderRadius: 'var(--r)',
           width: 580, maxWidth: '100%', maxHeight: '90vh',
           display: 'flex', flexDirection: 'column',
           boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
@@ -106,16 +106,16 @@ export default function LightspeedSetupGuide({ onClose }) {
           flexShrink: 0,
         }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text)', fontFamily: 'var(--font-serif)' }}>
+            <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
               Guide de configuration Lightspeed
             </div>
-            <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
               K-Series, OAuth2, environ 5 minutes
             </div>
           </div>
           <button
             type="button" onClick={onClose} className="ui-fermer" aria-label="Fermer"
-            style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: 'var(--text2)', padding: '2px 6px' }}
+            style={{ background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)', padding: '2px 6px' }}
           >
             ×
           </button>
@@ -128,16 +128,16 @@ export default function LightspeedSetupGuide({ onClose }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <StepBadge n="1" />
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+              <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: 'var(--text)' }}>
                 Créer une app sur le portail développeur Lightspeed
               </div>
             </div>
             <div style={{ paddingLeft: 36, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--text)', fontSize: 13, lineHeight: 1.7 }}>
+              <ol style={{ margin: 0, paddingLeft: 18, color: 'var(--text)', fontSize: 'var(--t2)', lineHeight: 1.7 }}>
                 <li>
                   Allez sur{' '}
                   <a href={DEV_PORTAL_URL} target="_blank" rel="noreferrer"
-                    style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 500 }}>
+                    style={{ color: 'var(--lien)', textDecoration: 'none', fontWeight: 'var(--g2)' }}>
                     developers.lightspeedhq.com
                   </a>
                 </li>
@@ -145,15 +145,15 @@ export default function LightspeedSetupGuide({ onClose }) {
                 <li>Créez une nouvelle app et renseignez ces valeurs&nbsp;:</li>
               </ol>
               <div>
-                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Redirect URI</div>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 2 }}>Redirect URI</div>
                 <CodeLine value={REDIRECT_URI} />
               </div>
               <div>
-                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 2 }}>Scopes requis</div>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 2 }}>Scopes requis</div>
                 <CodeLine value={SCOPES} />
               </div>
               <div style={{
-                fontSize: 12, color: 'var(--warning-text)',  borderLeft: '2px solid var(--warning-bd)',  padding: '7px 0 7px 12px', marginTop: 2,
+                fontSize: 'var(--t1)', color: 'var(--warning-text)',  borderLeft: '2px solid var(--warning-bd)',  padding: '7px 0 7px 12px', marginTop: 2,
               }}>
                 Notez le <strong>Client ID</strong> et le <strong>Client Secret</strong> après création :
                 vous en aurez besoin à l'étape&nbsp;2.
@@ -167,12 +167,12 @@ export default function LightspeedSetupGuide({ onClose }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <StepBadge n="2" />
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+              <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: 'var(--text)' }}>
                 Configurer les secrets dans Supabase
               </div>
             </div>
             <div style={{ paddingLeft: 36, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <p style={{ margin: 0, fontSize: 13, color: 'var(--text)', lineHeight: 1.6 }}>
+              <p style={{ margin: 0, fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.6 }}>
                 Dans <strong>Supabase Dashboard</strong>, puis <strong>Edge Functions</strong>, puis <strong>Manage secrets</strong>,
                 ajoutez ces 4 valeurs&nbsp;:
               </p>
@@ -185,20 +185,20 @@ export default function LightspeedSetupGuide({ onClose }) {
                 ].map(({ key, note, copyVal }) => (
                   <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                     <code style={{
-                      padding: '3px 9px', borderRadius: 5,
-                      background: 'var(--surface2)', border: '1px solid var(--border)',
-                      fontSize: 12, fontFamily: 'var(--font)', fontWeight: 700, color: 'var(--text)',
+                      padding: '3px 9px', borderRadius: 'var(--r)',
+                      background: 'var(--selection)', border: '1px solid var(--rule-soft)',
+                      fontSize: 'var(--t1)', fontFamily: 'var(--font)', fontWeight: 'var(--g3)', color: 'var(--text)',
                       flexShrink: 0, minWidth: 148,
                     }}>
                       {key}
                     </code>
-                    <span style={{ fontSize: 12, color: 'var(--text2)', flex: 1 }}>{note}</span>
+                    <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', flex: 1 }}>{note}</span>
                     {copyVal && <CopyBtn value={copyVal} />}
                   </div>
                 ))}
               </div>
               <div style={{
-                fontSize: 12, color: 'var(--info-text)',  borderLeft: '2px solid var(--info-bd)',  padding: '7px 0 7px 12px', marginTop: 2,
+                fontSize: 'var(--t1)', color: 'var(--info-text)',  borderLeft: '2px solid var(--info-bd)',  padding: '7px 0 7px 12px', marginTop: 2,
               }}>
                 Une fois les secrets ajoutés, rechargez cette page : le bouton
                 "Connecter" s'activera automatiquement.
@@ -212,11 +212,11 @@ export default function LightspeedSetupGuide({ onClose }) {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
               <StepBadge n="3" />
-              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text)' }}>
+              <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: 'var(--text)' }}>
                 Autoriser la connexion dans l'application
               </div>
             </div>
-            <div style={{ paddingLeft: 36, fontSize: 13, color: 'var(--text)', lineHeight: 1.7 }}>
+            <div style={{ paddingLeft: 36, fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.7 }}>
               Cliquez sur <strong>« Connecter Lightspeed »</strong> dans cette page.<br />
               Vous serez redirigé vers Lightspeed pour autoriser l'accès.<br />
               Une fois l'accès autorisé, vous revenez automatiquement ici et le module de caisse est opérationnel.
@@ -234,9 +234,9 @@ export default function LightspeedSetupGuide({ onClose }) {
           <button
             type="button" onClick={onClose}
             style={{
-              padding: '8px 22px', borderRadius: 8,
+              padding: '8px 22px', borderRadius: 'var(--r)',
               border: '1px solid var(--border)', background: 'var(--surface)',
-              color: 'var(--text)', fontSize: 13, fontWeight: 500,
+              color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
               cursor: 'pointer', fontFamily: 'var(--font)',
             }}
           >

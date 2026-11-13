@@ -417,7 +417,7 @@ const Roles = ({ user }) => {
         />
       </div>
       {personnes.length === 0 && (
-        <div style={{ padding: 16, fontSize: 13, color: 'var(--text3)' }}>Aucune personne trouvée.</div>
+        <div style={{ padding: 16, fontSize: 'var(--t2)', color: 'var(--text3)' }}>Aucune personne trouvée.</div>
       )}
       {personnes.map((u) => {
         const role = getRoleInfo(u.role);
@@ -436,7 +436,7 @@ const Roles = ({ user }) => {
             aria-pressed={active}
             style={{ ...ros.personCard, ...(active ? ros.personActive : {}) }}
           >
-            <div style={{ ...ros.userAvatar, width: 34, height: 34, fontSize: 12, background: role.couleur || '#888' }} data-no-translate>{u.avatar}</div>
+            <div style={{ ...ros.userAvatar, width: 34, height: 34, fontSize: 'var(--t1)', background: role.couleur || '#888' }} data-no-translate>{u.avatar}</div>
             <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
               <div style={ros.personNom} data-no-translate>
                 {u.prenom} {u.nom}
@@ -452,8 +452,8 @@ const Roles = ({ user }) => {
                 {etabsNoms && <><span>, </span><span data-no-translate>{etabsNoms}</span></>}
               </div>
             </div>
-            {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)' }}>Inactif</span>}
-            {ajustee && <span style={{ ...ros.permBadge, background: 'var(--accent-light)', color: 'var(--accent)' }}>Ajusté</span>}
+            {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--selection)', color: 'var(--text2)' }}>Inactif</span>}
+            {ajustee && <span style={{ ...ros.permBadge, background: 'var(--selection)', color: 'var(--text)' }}>Ajusté</span>}
           </button>
         );
       })}
@@ -477,18 +477,18 @@ const Roles = ({ user }) => {
           <div style={{ display: 'flex', gap: 12, minWidth: 0, flex: '1 1 260px' }}>
             <div style={{ ...ros.userAvatar, background: role.couleur || '#888' }}>{u.avatar}</div>
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)' }}>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)' }}>
                 <span data-no-translate>{u.prenom} {u.nom}</span>
-                {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--surface2)', color: 'var(--text2)', marginLeft: 8 }}>Inactif</span>}
+                {u.actif === false && <span style={{ ...ros.permBadge, background: 'var(--selection)', color: 'var(--text2)', marginLeft: 8 }}>Inactif</span>}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' }}>
                 <span data-no-translate>{u.email}</span>
                 {phones[u.id] && (<>{', '}<PhoneLink tel={phones[u.id]} /></>)}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
                 {role.label}{u.poste ? `, ${u.poste}` : ''}
               </div>
-              <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
                 {etabs.length ? <span data-no-translate>{etabs.map(e => e.nom).join(', ')}</span> : 'Aucun établissement'}
               </div>
             </div>
@@ -521,12 +521,12 @@ const Roles = ({ user }) => {
 
         {/* ── Ses droits ── */}
         {estConsultant ? (
-          <div style={{ padding: '16px 18px', fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 }}>
+          <div style={{ padding: '16px 18px', fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.5 }}>
             Accès complet : le rôle Consultant voit et gère tous les modules, il n'y a rien à régler.
           </div>
         ) : (
           <>
-            <div style={{ padding: '10px 18px', fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ padding: '10px 18px', fontSize: 'var(--t1)', color: 'var(--text2)', borderBottom: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ flex: 1, minWidth: 200, lineHeight: 1.5 }}>
                 Les droits partent de ceux du rôle <strong>{role.label}</strong>. Ce que vous changez ne concerne que {u.prenom}.
                 {' '}L'interrupteur ouvre le module dans son menu. « Modifier » : il peut y créer, modifier et supprimer.
@@ -538,7 +538,7 @@ const Roles = ({ user }) => {
               )}
             </div>
             {erreurEcarts && (
-              <div style={{ padding: '10px 18px', fontSize: 12, color: 'var(--danger-text)', background: 'var(--danger-bg-soft)', borderBottom: '1px solid var(--danger-bd)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ padding: '10px 18px', fontSize: 'var(--t1)', color: 'var(--danger-text)', background: 'var(--danger-bg-soft)', borderBottom: '1px solid var(--danger-bd)', display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ flex: 1 }}>
                   Les droits personnels n'ont pas pu être lus. Les cases sont bloquées pour ne pas écraser des réglages existants.
                 </span>
@@ -570,9 +570,9 @@ const Roles = ({ user }) => {
                   <div key={m.permKey} style={{ ...ros.moduleBloc, opacity: e.accesVerrouille ? 0.6 : 1 }}>
                     <div style={ros.moduleRow}>
                       <div style={{ flex: 1, minWidth: 0, padding: '8px 0' }}>
-                        <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{label}</div>
+                        <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' }}>{label}</div>
                         {note && (
-                          <div style={{ fontSize: 11, marginTop: 2, color: e.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{note}</div>
+                          <div style={{ fontSize: 'var(--t1)', marginTop: 2, color: e.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{note}</div>
                         )}
                       </div>
                       <Interrupteur
@@ -584,7 +584,7 @@ const Roles = ({ user }) => {
                     </div>
                     {(e.acces || aCle(ecarts, cleGerer(m.permKey))) && GERABLES.has(m.permKey) && (
                       <div style={ros.droitRow}>
-                        <div style={{ flex: 1, minWidth: 0, padding: '6px 0', fontSize: 13, color: 'var(--text2)' }}>Modifier</div>
+                        <div style={{ flex: 1, minWidth: 0, padding: '6px 0', fontSize: 'var(--t2)', color: 'var(--text2)' }}>Modifier</div>
                         <Case
                           checked={e.gerer}
                           disabled={!casesActives || e.gererVerrouille || !e.acces}
@@ -606,9 +606,9 @@ const Roles = ({ user }) => {
                       return (
                         <div key={d.id} style={ros.droitRow}>
                           <div style={{ flex: 1, minWidth: 0, padding: '6px 0' }}>
-                            <div style={{ fontSize: 13, color: 'var(--text2)' }}>{d.label}</div>
+                            <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>{d.label}</div>
                             {noteDroit && (
-                              <div style={{ fontSize: 11, marginTop: 2, color: da.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{noteDroit}</div>
+                              <div style={{ fontSize: 'var(--t1)', marginTop: 2, color: da.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{noteDroit}</div>
                             )}
                           </div>
                           <Case
@@ -635,7 +635,7 @@ const Roles = ({ user }) => {
       <div style={ros.tabs} className="no-print">
         <div style={{ flex: '1 1 260px', minWidth: 0 }}>
           <div style={ros.titre}>Qui fait quoi</div>
-          <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 2 }}>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 2 }}>
             {utilisateurs.length} compte{utilisateurs.length > 1 ? 's' : ''}, les droits se règlent personne par personne
           </div>
         </div>
@@ -653,7 +653,7 @@ const Roles = ({ user }) => {
         <div style={ros.permLayout}>
           {listePersonnes}
           {panneau || (
-            <div style={{ ...ros.modulesCol, padding: 24, fontSize: 13, color: 'var(--text3)' }}>Choisissez une personne.</div>
+            <div style={{ ...ros.modulesCol, padding: 24, fontSize: 'var(--t2)', color: 'var(--text3)' }}>Choisissez une personne.</div>
           )}
         </div>
       )}
@@ -662,7 +662,7 @@ const Roles = ({ user }) => {
         <div className="modal-full-overlay" style={ros.overlay} onClick={() => setShowUserForm(false)}>
           <div className="modal-full" style={ros.modal} onClick={e => e.stopPropagation()}>
             <div style={ros.modalHeader}>
-              <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>{editingUser.id ? 'Modifier utilisateur' : 'Ajouter une personne'}</div>
+              <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t3)', fontFamily: 'var(--font)' }}>{editingUser.id ? 'Modifier utilisateur' : 'Ajouter une personne'}</div>
               <button type="button" className="ui-fermer" aria-label="Fermer" style={ros.closeBtn} onClick={() => setShowUserForm(false)}>×</button>
             </div>
             <div style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -677,7 +677,7 @@ const Roles = ({ user }) => {
                   <label style={ros.fieldLabel}>E-mail</label>
                   <input type="email" style={ros.fieldInput} value={editingUser.email} onChange={e => setEditingUser({ ...editingUser, email: e.target.value })} />
                   {editingUser.id && (
-                    <div style={{fontSize:11, color:'var(--text2)', marginTop:4}}>Modifier l'e-mail change aussi l'identifiant de connexion de l'utilisateur.</div>
+                    <div style={{fontSize: 'var(--t1)', color:'var(--text2)', marginTop:4}}>Modifier l'e-mail change aussi l'identifiant de connexion de l'utilisateur.</div>
                   )}
                 </div>
                 <div><label style={ros.fieldLabel}>Poste / Fonction</label><input type="text" style={ros.fieldInput} value={editingUser.poste} placeholder="Ex: Cheffe de partie" onChange={e => setEditingUser({ ...editingUser, poste: e.target.value })} /></div>
@@ -693,7 +693,7 @@ const Roles = ({ user }) => {
                     setEditingUser({ ...editingUser, password: pwd });
                   }}>Générer</button>
                 </div>
-                <div style={{fontSize:11, color:'var(--text2)', marginTop:4}}>
+                <div style={{fontSize: 'var(--t1)', color:'var(--text2)', marginTop:4}}>
                   {editingUser.id
                     ? 'Renseignez un mot de passe uniquement pour le réinitialiser, puis transmettez-le à l\'utilisateur.'
                     : 'Vous devrez transmettre ce mot de passe à l\'utilisateur. Il pourra le changer après sa première connexion.'}
@@ -716,7 +716,7 @@ const Roles = ({ user }) => {
                         onClick={() => setEditingUser({ ...editingUser, role: k })}
                         style={{ ...stFenetre.choix, ...ros.roleTuile, ...(choisi ? ros.roleTuileChoisie : null) }}
                       >
-                        <span style={{ ...stFenetre.choixTitre, fontSize: 13, lineHeight: 1.25 }}>{v.label}</span>
+                        <span style={{ ...stFenetre.choixTitre, fontSize: 'var(--t2)', lineHeight: 1.25 }}>{v.label}</span>
                       </button>
                     );
                   })}
@@ -726,10 +726,10 @@ const Roles = ({ user }) => {
                 <label style={ros.fieldLabel}>Établissements attribués</label>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))', gap: 6, marginTop: 4 }}>
                   {(demoData.etablissements || []).map(e => (
-                    <label key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer' }}>
+                    <label key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', cursor: 'pointer' }}>
                       <input type="checkbox" checked={editingUser.etablissementIds?.includes(e.id)} onChange={() => toggleEtabForUser(e.id)} style={{ accentColor: 'var(--accent)' }} />
-                      <span style={{ fontSize: 13 }} data-no-translate>{e.nom}</span>
-                      <span style={{ fontSize: 11, color: 'var(--text2)' }}>- {e.type}</span>
+                      <span style={{ fontSize: 'var(--t2)' }} data-no-translate>{e.nom}</span>
+                      <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>- {e.type}</span>
                     </label>
                   ))}
                 </div>
@@ -737,7 +737,7 @@ const Roles = ({ user }) => {
               {/* « Compte actif » sur la ligne des boutons : « Créer » reste à
                   l'écran du téléphone malgré les tuiles de rôle. */}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginRight: 'auto', minHeight: 44 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--t2)', marginRight: 'auto', minHeight: 44 }}>
                   <input type="checkbox" checked={editingUser.actif !== false} onChange={e => setEditingUser({ ...editingUser, actif: e.target.checked })} style={{ accentColor: 'var(--accent)' }} />
                   Compte actif
                 </label>
@@ -755,10 +755,10 @@ const Roles = ({ user }) => {
 const ros = {
   root: { display: 'flex', flexDirection: 'column', gap: 14 },
   tabs: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  addBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40 },
-  ghostBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
-  smallGhost: { padding: '6px 10px', minHeight: 36, background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 6, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)' },
-  titre: { fontSize: 20, fontWeight: 400, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.2 },
+  addBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40 },
+  ghostBtn: { padding: '8px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  smallGhost: { padding: '6px 10px', minHeight: 36, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  titre: { fontSize: 'var(--t4)', fontWeight: 'var(--g1)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.2 },
   permLayout: { display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 14, alignItems: 'start' },
   // Qui fait quoi : une carte par personne, empilées.
   peopleCol: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
@@ -767,10 +767,10 @@ const ros = {
     background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)',
     cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left',
   },
-  personActive: { background: 'var(--accent-light)', borderColor: 'var(--accent)' },
-  personNom: { fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  personLigne: { fontSize: 12, color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 },
-  modulesCol: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden', minWidth: 0 },
+  personActive: { background: 'var(--selection)', borderColor: 'var(--onglet)' },
+  personNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  personLigne: { fontSize: 'var(--t1)', color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 },
+  modulesCol: { background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)', overflow: 'hidden', minWidth: 0 },
   modulesHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexWrap: 'wrap', gap: 10 },
   moduleList: { display: 'flex', flexDirection: 'column' },
   // Un module : sa ligne (nom, interrupteur), puis ses cases quand il est ouvert.
@@ -781,15 +781,15 @@ const ros = {
   rolesGrille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 96px), 1fr))', gap: 6, marginTop: 2 },
   // 44 px : la cible au doigt, pas plus, la fenêtre garde sa hauteur sur téléphone.
   roleTuile: { minHeight: 44, padding: '6px 8px', justifyContent: 'center' },
-  roleTuileChoisie: { borderColor: 'var(--accent)', background: 'var(--accent-light)' },
-  permBadge: { fontSize: 11, fontWeight: 700, padding: '3px 8px', borderRadius: 10, whiteSpace: 'nowrap', flexShrink: 0 },
-  userAvatar: { width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 13, flexShrink: 0 },
+  roleTuileChoisie: { borderColor: 'var(--onglet)', background: 'var(--selection)' },
+  permBadge: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '3px 8px', borderRadius: 'var(--r)', whiteSpace: 'nowrap', flexShrink: 0 },
+  userAvatar: { width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'var(--g3)', fontSize: 'var(--t2)', flexShrink: 0 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
-  modal: { background: 'var(--surface)', borderRadius: 14, width: 640, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
+  modal: { background: 'var(--surface)', borderRadius: 'var(--r)', width: 640, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
   modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' },
-  closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
-  fieldLabel: { display: 'block', fontSize: 11, fontWeight: 500, color: 'var(--text2)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.4 },
-  fieldInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+  closeBtn: { background: 'none', border: 'none', fontSize: 'var(--t3)', cursor: 'pointer', color: 'var(--text2)' },
+  fieldLabel: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', marginBottom: 6 },
+  fieldInput: { width: '100%', padding: '9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
 };
 
 export default Roles;

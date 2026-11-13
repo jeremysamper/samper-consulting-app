@@ -102,13 +102,13 @@ const EtabModulesPicker = ({ value, onChange, getLabel, sansTableauDeBord = fals
           <button type="button" style={ps.linkBtn} onClick={() => set([])}>Tout décocher</button>
         </div>
       </div>
-      <div style={{ fontSize:12, color:'var(--text2)', lineHeight:1.5 }}>
+      <div style={{ fontSize: 'var(--t1)', color:'var(--text2)', lineHeight:1.5 }}>
         L'équipe ne voit que les modules cochés, en plus des droits de son rôle.
         {sansTableauDeBord ? ' Vos outils consultant restent toujours affichés.' : ' Le tableau de bord et vos outils consultant restent toujours affichés.'}
       </div>
       {MODULE_GROUPS.map((group) => (
         <div key={group} style={{ marginTop:6 }}>
-          <div style={{ fontSize:11, color:'var(--text3)', marginBottom:6 }}>{group}</div>
+          <div style={{ fontSize: 'var(--t1)', color:'var(--text3)', marginBottom:6 }}>{group}</div>
           <div style={ps.moduleGrid}>
             {etabToggleableModules.filter((item) => item.group === group).map((item) => {
               const checked = selected.includes(item.permKey);
@@ -130,7 +130,7 @@ const EtabModulesPicker = ({ value, onChange, getLabel, sansTableauDeBord = fals
           </div>
         </div>
       ))}
-      <div style={{ fontSize:12, color:'var(--text2)', marginTop:4 }}>{moduleCountLabel(value)}</div>
+      <div style={{ fontSize: 'var(--t1)', color:'var(--text2)', marginTop:4 }}>{moduleCountLabel(value)}</div>
     </div>
   );
 };
@@ -185,7 +185,7 @@ const EtabForm = ({ etab, onSave, onCancel, modulesReady, getLabel }) => {
                   {COULEURS.map(c => (
                     <button key={c} type="button"
                       onClick={()=>setF({...f,couleur:c})}
-                      style={{ width:24, height:24, borderRadius:6, background:c, border: f.couleur===c?'2px solid var(--text)':'1px solid var(--border)', cursor:'pointer' }}/>
+                      style={{ width:24, height:24, borderRadius: 'var(--r)', background:c, border: f.couleur===c?'2px solid var(--text)':'1px solid var(--border)', cursor:'pointer' }}/>
                   ))}
                 </div>
               </div>
@@ -214,10 +214,10 @@ const EtabForm = ({ etab, onSave, onCancel, modulesReady, getLabel }) => {
               <div style={{...ps.toggle, background:f.actif?'var(--accent)':'var(--border)'}} onClick={()=>setF({...f,actif:!f.actif})}>
                 <div style={{...ps.toggleThumb, left:f.actif?'calc(100% - 20px)':'2px'}}/>
               </div>
-              <span style={{ fontSize:13, color:'var(--text)', fontWeight:500 }}>Établissement actif (visible dans l'application)</span>
+              <span style={{ fontSize: 'var(--t2)', color:'var(--text)', fontWeight: 'var(--g2)' }}>Établissement actif (visible dans l'application)</span>
             </div>
             {estTypeSpa(f.type) && (
-              <div style={{ fontSize:12, lineHeight:1.5, padding: '10px 0 10px 12px',   color:'var(--info-text)', borderLeft: '2px solid var(--info-bd)' }}>
+              <div style={{ fontSize: 'var(--t1)', lineHeight:1.5, padding: '10px 0 10px 12px',   color:'var(--info-text)', borderLeft: '2px solid var(--info-bd)' }}>
                 Spa : seuls « Spa & clients » et « Planning & Pointage » sont activés, et il n'y a pas de tableau de bord. L'équipe arrive directement sur le spa.
               </div>
             )}
@@ -229,7 +229,7 @@ const EtabForm = ({ etab, onSave, onCancel, modulesReady, getLabel }) => {
                 sansTableauDeBord={estTypeSpa(f.type)}
               />
             ) : (
-              <div style={{ fontSize:12, color:'var(--text2)', lineHeight:1.5 }}>
+              <div style={{ fontSize: 'var(--t1)', color:'var(--text2)', lineHeight:1.5 }}>
                 Choix des modules par établissement : disponible une fois la migration 20260927_etablissements_modules_actifs appliquée.
               </div>
             )}
@@ -445,7 +445,7 @@ const Parametres = ({ user, etablissement }) => {
   if (ecran === 'modules') {
     if (!modulesReady) {
       ecranModules = (
-        <div style={{ fontSize:13, color:'var(--text2)', lineHeight:1.5 }}>
+        <div style={{ fontSize: 'var(--t2)', color:'var(--text2)', lineHeight:1.5 }}>
           Choix des modules par établissement : disponible une fois la migration 20260927_etablissements_modules_actifs appliquée.
         </div>
       );
@@ -460,7 +460,7 @@ const Parametres = ({ user, etablissement }) => {
       const selected = Array.isArray(valeur) ? valeur : defaultEtabModuleKeys;
       ecranModules = (
         <div style={ps.listCard}>
-          <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', fontSize:13, color:'var(--text2)', lineHeight:1.5 }}>
+          <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', fontSize: 'var(--t2)', color:'var(--text2)', lineHeight:1.5 }}>
             L'équipe ne voit que les modules ouverts, en plus des droits de son rôle. Chaque interrupteur s'enregistre tout de suite.
             {estTypeSpa(etabModules.type) ? ' Vos outils consultant restent toujours affichés.' : ' Le tableau de bord et vos outils consultant restent toujours affichés.'}
           </div>
@@ -471,7 +471,7 @@ const Parametres = ({ user, etablissement }) => {
                 const label = getLabelForModule(item.id, item.label);
                 return (
                   <div key={item.id} style={ps.moduleLigne}>
-                    <span style={{ flex:1, minWidth:0, fontSize:14, color:'var(--text)' }}>
+                    <span style={{ flex:1, minWidth:0, fontSize: 'var(--t2)', color:'var(--text)' }}>
                       {label}
                       {optInModuleKeys.includes(item.permKey) && <span style={{ color:'var(--text3)' }}> (à activer)</span>}
                     </span>
@@ -486,7 +486,7 @@ const Parametres = ({ user, etablissement }) => {
               })}
             </div>
           ))}
-          <div style={{ padding:'12px 20px', fontSize:12, color:'var(--text2)' }}>{nbModules(valeur)}</div>
+          <div style={{ padding:'12px 20px', fontSize: 'var(--t1)', color:'var(--text2)' }}>{nbModules(valeur)}</div>
         </div>
       );
     }
@@ -511,12 +511,12 @@ const Parametres = ({ user, etablissement }) => {
       <div style={ps.listCard}>
         <div style={{ ...ps.listHeader, display:'flex', alignItems:'baseline', justifyContent:'space-between', gap:12, flexWrap:'wrap' }}>
           <div style={ps.listTitle}>Tous les établissements</div>
-          <div style={{ fontSize:12, color:'var(--text2)' }}>
+          <div style={{ fontSize: 'var(--t1)', color:'var(--text2)' }}>
             <span style={ps.compte}>{etablissements.length}</span> <span>au total</span>, <span style={{ ...ps.compte, color:'var(--success-text)' }}>{etablissements.filter(e=>e.actif!==false).length}</span> <span>actifs</span>
           </div>
         </div>
         {etablissements.length === 0 && (
-          <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize:13}}>Aucun établissement. Cliquez sur "Ajouter un établissement" pour commencer.</div>
+          <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize: 'var(--t2)'}}>Aucun établissement. Cliquez sur "Ajouter un établissement" pour commencer.</div>
         )}
         {(etablissements || []).map(etab => (
           <div key={etab.id} style={{...ps.etabRow, opacity: etab.actif===false?0.5:1}}>
@@ -584,7 +584,7 @@ const Parametres = ({ user, etablissement }) => {
               <div style={ps.readField}>{user.poste}</div>
             </div>
           </div>
-          <div style={{  borderLeft: '2px solid var(--warning-bd)',  padding: '10px 0 10px 12px', fontSize:12, color:'var(--warning-text)' }}>
+          <div style={{  borderLeft: '2px solid var(--warning-bd)',  padding: '10px 0 10px 12px', fontSize: 'var(--t1)', color:'var(--warning-text)' }}>
             Mot de passe et identifiants gérés par l'administrateur Samper Consulting.
           </div>
         </div>
@@ -605,7 +605,7 @@ const Parametres = ({ user, etablissement }) => {
           <div style={ps.listHeader}>
             <div>
               <div style={ps.listTitle}>Personnalisation des modules</div>
-              <div style={{ fontSize:12, color:'var(--text2)', marginTop:4, fontWeight:400, textTransform:'none', letterSpacing:0 }}>
+              <div style={{ fontSize: 'var(--t1)', color:'var(--text2)', marginTop:4, fontWeight: 'var(--g1)', textTransform:'none', letterSpacing:0 }}>
                 Renommez les modules dans la navigation : le changement s'applique à tous les établissements. Les clés techniques ne changent pas.
               </div>
             </div>
@@ -633,29 +633,29 @@ const Parametres = ({ user, etablissement }) => {
                         autoFocus
                         style={{ ...ps.fInput, maxWidth:240, padding:'6px 10px' }}
                       />
-                      <button style={{ ...ps.saveBtn, padding:'6px 14px', fontSize:12 }} onClick={saveLabelEdit} disabled={labelSaving}>
+                      <button style={{ ...ps.saveBtn, padding:'6px 14px', fontSize: 'var(--t1)' }} onClick={saveLabelEdit} disabled={labelSaving}>
                         {labelSaving ? '…' : 'Enregistrer'}
                       </button>
-                      <button style={{ ...ps.cancelBtn, padding:'6px 12px', fontSize:12 }} onClick={() => setEditingLabelKey(null)}>
+                      <button style={{ ...ps.cancelBtn, padding:'6px 12px', fontSize: 'var(--t1)' }} onClick={() => setEditingLabelKey(null)}>
                         Annuler
                       </button>
                     </div>
                   ) : (
                     <div style={{ display:'flex', alignItems:'center', gap:8, flexWrap:'wrap' }}>
-                      <span style={{ fontSize:13, fontWeight:500, color:'var(--text)' }}>{displayLabel}</span>
+                      <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color:'var(--text)' }}>{displayLabel}</span>
                       {isCustomised && (
-                        <span style={{ fontSize:11, fontWeight:500, color:'var(--info-text)' }}>
+                        <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color:'var(--info-text)' }}>
                           personnalisé
                         </span>
                       )}
                       {!isCustomised && (
-                        <span style={{ fontSize:11, color:'var(--text3)', fontStyle:'italic' }}>par défaut</span>
+                        <span style={{ fontSize: 'var(--t1)', color:'var(--text3)', fontStyle:'italic' }}>par défaut</span>
                       )}
                     </div>
                   )}
                   {!isEditing && (
-                    <div style={{ fontSize:11, color:'var(--text3)', marginTop:1 }}>
-                      clé : <code style={{ fontSize:11 }}>{item.id}</code>
+                    <div style={{ fontSize: 'var(--t1)', color:'var(--text3)', marginTop:1 }}>
+                      clé : <code style={{ fontSize: 'var(--t1)' }}>{item.id}</code>
                     </div>
                   )}
                 </div>
@@ -691,10 +691,10 @@ const Parametres = ({ user, etablissement }) => {
           <div style={ps.listTitle}>Maintenance des données</div>
         </div>
         <div style={{ padding:'16px 20px', display:'flex', flexDirection:'column', gap:12 }}>
-          <div style={{ fontSize:13, color:'var(--text2)', lineHeight:1.5 }}>
+          <div style={{ fontSize: 'var(--t2)', color:'var(--text2)', lineHeight:1.5 }}>
             Réinitialiser toutes les données de l'application aux valeurs de démonstration : planning, recettes, inventaires, pertes, utilisateurs, établissements, permissions, HACCP, fiches salle. Le logo personnalisé sera également supprimé.
           </div>
-          <div style={{  borderLeft: '2px solid var(--danger-bd)',  padding: '10px 0 10px 12px', fontSize:12, color:'var(--danger-text)' }}>
+          <div style={{  borderLeft: '2px solid var(--danger-bd)',  padding: '10px 0 10px 12px', fontSize: 'var(--t1)', color:'var(--danger-text)' }}>
             <strong>Action irréversible.</strong> Toutes les données saisies seront effacées. Exportez vos documents importants avant de continuer.
           </div>
           <div>
@@ -717,9 +717,9 @@ const Parametres = ({ user, etablissement }) => {
               <button type="button" className="ui-fermer" aria-label="Fermer" style={ps.closeBtn} onClick={()=>setShowConfirm(null)}>×</button>
             </div>
             <div style={ps.modalBody}>
-              <div style={{fontSize:14,color:'var(--text)',lineHeight:1.6,marginBottom:20}}>
+              <div style={{fontSize: 'var(--t2)',color:'var(--text)',lineHeight:1.6,marginBottom:20}}>
                 Voulez-vous vraiment supprimer <strong>{etablissements.find(e=>e.id===showConfirm)?.nom}</strong> ?<br/>
-                <span style={{color:'var(--danger-strong)',fontSize:13}}>Cette action est irréversible. Les données associées (planning, recettes, inventaires) seront dissociées.</span>
+                <span style={{color:'var(--danger-strong)',fontSize: 'var(--t2)'}}>Cette action est irréversible. Les données associées (planning, recettes, inventaires) seront dissociées.</span>
               </div>
               <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
                 <button style={ps.cancelBtn} onClick={()=>setShowConfirm(null)}>Annuler</button>
@@ -736,42 +736,42 @@ const Parametres = ({ user, etablissement }) => {
 const ps = {
   root: { display:'flex', flexDirection:'column', gap:16 },
   banner: { display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, padding:'4px 0', flexWrap:'wrap' },
-  bannerTitle: { fontSize:20, fontWeight:700, fontFamily:'var(--font-serif)', color:'var(--text)' },
-  bannerSub: { fontSize:13, color:'var(--text2)', marginTop:4 },
-  addBtn: { padding:'10px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' },
-  listCard: { background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)', overflow:'hidden' },
+  bannerTitle: { fontSize: 'var(--t4)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color:'var(--text)' },
+  bannerSub: { fontSize: 'var(--t2)', color:'var(--text2)', marginTop:4 },
+  addBtn: { padding:'10px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor:'pointer', fontFamily:'var(--font)' },
+  listCard: { background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius:'var(--r)', overflow:'hidden' },
   listHeader: { padding:'14px 20px', borderBottom:'1px solid var(--border)', background:'var(--bg)' },
-  compte: { fontFamily:'var(--font-num)', fontWeight:700, color:'var(--text)' },
-  listTitle: { fontSize:13, fontWeight:700, color:'var(--text)', textTransform:'uppercase', letterSpacing:0.4 },
+  compte: { fontFamily:'var(--font-num)', fontWeight: 'var(--g-chiffre)', color:'var(--text)' },
+  listTitle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color:'var(--text)' },
   etabRow: { display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:'1px solid var(--border)', flexWrap:'wrap' },
   etabColor: { width:6, height:38, borderRadius:3, flexShrink:0 },
   etabInfo: { flex:1, minWidth:200 },
-  etabNom: { fontSize:14, fontWeight:500, color:'var(--text)', display:'flex', alignItems:'center', gap:8 },
-  etabMeta: { fontSize:12, color:'var(--text2)', marginTop:2 },
-  inactifBadge: { fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:10, background:'var(--surface2)', color:'var(--text2)' },
-  ghostBtn: { padding:'7px 14px', background:'var(--surface)', border:'1px solid var(--border)', color:'var(--text2)', borderRadius:8, fontSize:12, cursor:'pointer', fontFamily:'var(--font)' },
+  etabNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color:'var(--text)', display:'flex', alignItems:'center', gap:8 },
+  etabMeta: { fontSize: 'var(--t1)', color:'var(--text2)', marginTop:2 },
+  inactifBadge: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding:'2px 8px', borderRadius: 'var(--r)', background:'var(--selection)', color:'var(--text2)' },
+  ghostBtn: { padding:'7px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor:'pointer', fontFamily:'var(--font)' },
   field: { display:'flex', flexDirection:'column', gap:4 },
-  fLabel: { fontSize:11, fontWeight:500, color:'var(--text2)', textTransform:'uppercase', letterSpacing:0.4 },
-  fInput: { padding:'9px 12px', border:'1px solid var(--border)', borderRadius:8, fontSize:13, color:'var(--text)', background:'var(--bg)', fontFamily:'var(--font)', boxSizing:'border-box', outline:'none', width:'100%' },
-  readField: { padding:'9px 12px', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:8, fontSize:13, color:'var(--text)' },
+  fLabel: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color:'var(--text2)' },
+  fInput: { padding:'9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color:'var(--text)', background: 'var(--surface)', fontFamily:'var(--font)', boxSizing:'border-box', outline:'none', width:'100%' },
+  readField: { padding:'9px 12px', background:'var(--bg)', border:'1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color:'var(--text)' },
   toggle: { width:40, height:22, borderRadius:11, position:'relative', cursor:'pointer', transition:'background .15s' },
   toggleThumb: { position:'absolute', top:2, width:18, height:18, background:'#fff', borderRadius:'50%', transition:'left .15s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' },
   overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:12 },
-  modal: { background:'var(--surface)', borderRadius:14, width:560, maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' },
+  modal: { background:'var(--surface)', borderRadius: 'var(--r)', width:560, maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' },
   modalHeader: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 22px', borderBottom:'1px solid var(--border)' },
-  modalTitle: { fontWeight:700, fontSize:16, fontFamily:'var(--font-serif)' },
-  closeBtn: { background:'none', border:'none', fontSize:18, cursor:'pointer', color:'var(--text2)' },
+  modalTitle: { fontWeight: 'var(--g3)', fontSize: 'var(--t3)', fontFamily: 'var(--font)' },
+  closeBtn: { background:'none', border:'none', fontSize: 'var(--t3)', cursor:'pointer', color:'var(--text2)' },
   modalBody: { padding:'22px' },
-  cancelBtn: { padding:'9px 16px', background:'var(--surface)', border:'1px solid var(--border)', color:'var(--text2)', borderRadius:8, fontSize:13, cursor:'pointer', fontFamily:'var(--font)' },
-  linkBtn: { padding:'6px 10px', background:'none', border:'none', color:'var(--accent)', fontSize:12, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' },
+  cancelBtn: { padding:'9px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', cursor:'pointer', fontFamily:'var(--font)' },
+  linkBtn: { padding:'6px 10px', background:'none', border:'none', color: 'var(--lien)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor:'pointer', fontFamily:'var(--font)' },
   moduleGrid: { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(190px, 1fr))', gap:8 },
   // Base en borderWidth/Style/Color : l'état coché ne surcharge que borderColor.
-  moduleChip: { display:'flex', alignItems:'center', gap:8, minHeight:44, padding:'8px 12px', borderWidth:1, borderStyle:'solid', borderColor:'var(--border)', borderRadius:8, background:'var(--bg)', fontSize:13, color:'var(--text2)', cursor:'pointer', boxSizing:'border-box', minWidth:0 },
+  moduleChip: { display:'flex', alignItems:'center', gap:8, minHeight:44, padding:'8px 12px', borderWidth:1, borderStyle:'solid', borderColor:'var(--border)', borderRadius: 'var(--r)', background:'var(--bg)', fontSize: 'var(--t2)', color:'var(--text2)', cursor:'pointer', boxSizing:'border-box', minWidth:0 },
   moduleChipOn: { borderColor:'var(--accent)', background:'var(--surface)', color:'var(--text)' },
   // Modules d'un établissement : un groupe, puis une ligne par module (nom, interrupteur).
-  groupeModules: { padding:'12px 20px 4px', fontSize:12, fontWeight:500, color:'var(--text2)' },
+  groupeModules: { padding:'12px 20px 4px', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color:'var(--text2)' },
   moduleLigne: { display:'flex', alignItems:'center', gap:12, padding:'2px 12px 2px 20px', borderBottom:'1px solid var(--border)', minHeight:48 },
-  saveBtn: { padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius:8, fontSize:13, fontWeight:500, cursor:'pointer', fontFamily:'var(--font)' },
+  saveBtn: { padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor:'pointer', fontFamily:'var(--font)' },
 };
 
 export default Parametres;

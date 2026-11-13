@@ -30,7 +30,7 @@ const st = {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     background: 'transparent', border: 'none',
   },
-  rail: { position: 'relative', display: 'block', width: 40, height: 24, borderRadius: 12, transition: 'background-color .15s' },
+  rail: { position: 'relative', display: 'block', width: 40, height: 24, borderRadius: 'var(--r)', transition: 'background-color .15s' },
   bouton: {
     position: 'absolute', top: 3, width: 18, height: 18, borderRadius: 9,
     background: 'var(--surface)', boxShadow: '0 1px 2px rgba(0,0,0,0.25)', transition: 'left .15s',
