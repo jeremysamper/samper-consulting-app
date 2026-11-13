@@ -127,3 +127,18 @@ test('la vue d\'ensemble part sur la période du module', async () => {
   assert.deepEqual(demandeRaccourci('comptabilite', null, { id: 'libre', debut: '2026-09-01', fin: '2026-09-30' }).periode, { id: 'libre', debut: '2026-09-01', fin: '2026-09-30' });
   assert.equal(demandeRaccourci('comptabilite').chiffres.length, 9);
 });
+
+test('tableau dense : une même ventilation, ou des valeurs d\'aujourd\'hui aux mêmes catégories', async () => {
+  const { nettoyerVue } = await import('./vueStatistiques.js');
+  const visibles = [
+    { id: 'q', unite: 'nombre', famille: 'p', nature: 'flux', ventilations: [{ id: 'plat' }] },
+    { id: 'c', unite: 'chf', famille: 'p', nature: 'flux', ventilations: [{ id: 'plat' }] },
+    { id: 'e1', unite: 'chf', famille: 'm', nature: 'etat', categories: 'plats' },
+    { id: 'e2', unite: 'pct', famille: 'm', nature: 'etat', categories: 'plats' },
+    { id: 'e3', unite: 'chf', famille: 'm', nature: 'etat', categories: 'fiches' },
+  ];
+  const base = { periode: { id: 'mois' }, pas: 'jour', comparaison: '', graphiques: [{ mesures: ['q'] }] };
+  assert.deepEqual(nettoyerVue({ ...base, tableau: { mesures: ['q', 'c', 'x'], ventilation: 'plat' } }, visibles, AUJ).tableau, { mesures: ['q', 'c'], ventilation: 'plat', choix: {} });
+  assert.deepEqual(nettoyerVue({ ...base, tableau: { mesures: ['e1', 'e2', 'e3'], choix: { carte: 'k' } } }, visibles, AUJ).tableau, { mesures: ['e1', 'e2'], ventilation: '', choix: { carte: 'k' } });
+  assert.equal(nettoyerVue({ ...base, tableau: { mesures: ['q'], ventilation: 'inconnue' } }, visibles, AUJ).tableau, null);
+});

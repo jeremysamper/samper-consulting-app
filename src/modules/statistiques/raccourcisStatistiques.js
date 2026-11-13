@@ -48,5 +48,5 @@ export function demandeRaccourci(id, vueId = null, periode = null) {
   const r = RACCOURCIS[id];
   if (!r) return null;
   const v = r.vues.find((x) => x.id === vueId) || r.vues[0];
-  return { famille: r.famille, raccourci: id, vue: v.id, periode: periode || v.periode, pas: v.pas, comparaison: v.comparaison || '', graphiques: v.graphiques, chiffres: v.chiffres || [] };
+  return { famille: r.famille, raccourci: id, vue: v.id, periode: periode || v.periode, pas: v.pas, comparaison: v.comparaison || '', graphiques: v.graphiques, chiffres: v.chiffres || [], tableau: v.tableau || null };
 }

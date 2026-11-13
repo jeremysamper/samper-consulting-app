@@ -7,7 +7,10 @@
 // mesure (composition.js), le total de la période et son écart compris.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { useState } from 'react';
 import { Panneau } from '../../components/ui/index.jsx';
+import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import { makeSearchMatcher } from '../../utils/searchText.js';
 import { Valeur } from './Graphique.jsx';
 import { nombreDe } from './echelles.js';
 
@@ -68,6 +71,84 @@ export default function ChiffresDenses({ lignes, colonnes = 1, libelleComparaiso
           {lignes.filter((l) => l.phrase).map((l) => <div key={l.id}><strong style={{ fontWeight: 'var(--g3)' }}>{l.libelle}</strong> : <span>{l.phrase}</span></div>)}
         </div>
       ) : null}
+    </Panneau>
+  );
+}
+
+// Tableau dense (S3) : une ligne par catégorie (plat, fiche), une colonne par
+// mesure, et la ligne d'ensemble ; toutes les catégories, lues telles quelles
+// dans la ventilation ou les valeurs d'aujourd'hui de la fonction d'origine.
+//   tableau : { rangs: [{ cle, libelle, brut }], colonnes: [{ id, libelle, unite, parCle, total }],
+//               libelleCategories, libelleTotal, choix: { cle, libelle, options, valeur } | null, etat }
+const tb = {
+  cadre: { overflowX: 'auto', maxWidth: '100%', minWidth: 0 },
+  table: { borderCollapse: 'collapse', width: '100%', fontSize: 'var(--t2)' },
+  th: { textAlign: 'right', padding: '8px 6px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', verticalAlign: 'bottom' },
+  td: { textAlign: 'right', padding: '8px 6px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap' },
+  nom: { textAlign: 'left', padding: '8px 6px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', minWidth: 120 },
+  champ: { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 8, maxWidth: 360 },
+  select: { minHeight: 44, padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)' },
+};
+
+// Au-delà de huit lignes, une loupe filtre les catégories par leur nom, comme
+// la recherche des écrans d'origine (makeSearchMatcher).
+const SEUIL_RECHERCHE = 8;
+
+export function TableauDense({ tableau, onChoix, onReessayer }) {
+  const [recherche, setRecherche] = useState('');
+  if (!tableau) return null;
+  if (tableau.etat === 'loading') return <Panneau style={{ padding: '8px 16px' }}><span style={st.etat}>Lecture en cours</span></Panneau>;
+  if (tableau.etat === 'error') {
+    return (
+      <Panneau style={{ padding: '8px 16px' }}>
+        <button type="button" onClick={onReessayer} style={{ ...st.etat, minHeight: 44, background: 'none', borderWidth: 0, cursor: 'pointer', color: 'var(--lien)' }}>Non lu, réessayer</button>
+      </Panneau>
+    );
+  }
+  const { colonnes, choix } = tableau;
+  const correspond = makeSearchMatcher(recherche);
+  const rangs = tableau.rangs.filter((r) => correspond(String(r.libelle || '')));
+  return (
+    <Panneau style={{ padding: '8px 16px' }}>
+      {choix && choix.options.length > 1 ? (
+        <label style={tb.champ}>
+          <span>{choix.libelle}</span>
+          <select style={tb.select} value={choix.valeur || ''} onChange={(e) => onChoix(choix.cle, e.target.value)} data-stat-tableau-choix="">
+            {choix.options.map((o) => <option key={o.cle} value={o.cle} data-no-translate>{o.libelle}</option>)}
+          </select>
+        </label>
+      ) : null}
+      {tableau.rangs.length > SEUIL_RECHERCHE ? (
+        <div style={{ marginBottom: 8 }}><SearchToggle value={recherche} onChange={setRecherche} placeholder="Rechercher…" /></div>
+      ) : null}
+      <div style={tb.cadre} data-defile="" data-stat-tableau="">
+        <table style={tb.table}>
+          <thead>
+            <tr>
+              <th style={{ ...tb.th, textAlign: 'left' }}>{tableau.libelleCategories}</th>
+              {colonnes.map((c) => <th key={c.id} style={tb.th}>{c.libelle}</th>)}
+            </tr>
+          </thead>
+          {/* La ligne d'ensemble en tête, sous les intitulés : elle se lit sans
+              faire défiler une longue liste. */}
+          {colonnes.some((c) => estNombre(c.total)) ? (
+            <tbody>
+              <tr data-stat-rang-total="">
+                <td style={{ ...tb.nom, fontWeight: 'var(--g3)' }}>{tableau.libelleTotal}</td>
+                {colonnes.map((c) => <td key={c.id} style={{ ...tb.td, fontWeight: 'var(--g3)' }}><Valeur v={c.total} unite={c.unite} /></td>)}
+              </tr>
+            </tbody>
+          ) : null}
+          <tbody>
+            {rangs.map((r) => (
+              <tr key={r.cle} data-stat-rang={r.cle}>
+                <td style={tb.nom} data-no-translate={r.brut ? true : undefined}>{r.libelle}</td>
+                {colonnes.map((c) => <td key={c.id} style={tb.td}><Valeur v={c.parCle.get(r.cle)} unite={c.unite} /></td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </Panneau>
   );
 }

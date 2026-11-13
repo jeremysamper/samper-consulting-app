@@ -25,7 +25,7 @@ import TableauValeurs from './TableauValeurs.jsx';
 import PanneauMesures from './PanneauMesures.jsx';
 import { telechargerTableaux } from './exportStatistiques.js';
 import VuesNommees from './VuesNommees.jsx';
-import ChiffresDenses from './ChiffresDenses.jsx';
+import ChiffresDenses, { TableauDense } from './ChiffresDenses.jsx';
 import { perimetreDe } from '../factures-achats/analysesAchats.js';
 import { RACCOURCIS, demandeRaccourci } from './raccourcisStatistiques.js';
 
@@ -277,7 +277,7 @@ export default function Statistiques({ user, etablissement }) {
   const tranchesComp = useMemo(() => (bornesComp ? tranchesDe(bornesComp.debut, bornesComp.fin, pas) : null), [bornesComp, pas]);
 
   // Familles à lire : celles des mesures cochées, parmi les familles visibles.
-  const signatureCochees = vue ? [...vue.graphiques.map((g) => g.mesures.join(',')), (vue.chiffres || []).join(',')].join(';') : '';
+  const signatureCochees = vue ? [...vue.graphiques.map((g) => g.mesures.join(',')), (vue.chiffres || []).join(','), (vue.tableau?.mesures || []).join(',')].join(';') : '';
   const famillesDemandees = useMemo(() => {
     const ouvertes = signatureFamilles ? signatureFamilles.split(',') : [];
     const ids = new Set();
@@ -417,6 +417,36 @@ export default function Statistiques({ user, etablissement }) {
     return { id: m.id, libelle: m.libelle, phrase: m.phrase, unite: m.unite, total: s?.total ?? null, totalComparaison: s?.totalComparaison ?? null, ecart: s?.ecartTotal ?? null };
   }), [vue, mesures, tranches, tranchesComp, sources]);
 
+  // Tableau dense : les catégories et valeurs telles que les rend la fonction
+  // d'origine (ventilation sur la période, ou valeurs d'aujourd'hui).
+  const tableauDense = useMemo(() => {
+    const t = vue?.tableau;
+    const ms = (t?.mesures || []).map((id) => mesures.find((m) => m.id === id)).filter(Boolean);
+    if (!ms.length) return null;
+    const premiere = ms[0];
+    const etatF = sources.etats[premiere.famille];
+    if (etatF === 'error') return { etat: 'error' };
+    const point = sources.totaux[premiere.famille];
+    if (etatF === 'loading' || !point) return { etat: 'loading' };
+    const cleChoix = premiere.choix ? (premiere.choix.cle || premiere.id) : null;
+    const options = cleChoix ? (premiere.choix.options(point) || []) : [];
+    const choixValeur = cleChoix ? ((options.find((o) => o.cle === t.choix?.[cleChoix]) || options[0])?.cle ?? null) : null;
+    const ventilationDe = (m) => (m.ventilations || []).find((v) => v.id === t.ventilation);
+    const lignesDe = (m) => (t.ventilation ? (ventilationDe(m)?.parts(sources.totaux[m.famille]) || []) : (m.lignes(sources.totaux[m.famille], choixValeur) || []));
+    const colonnes = ms.map((m) => ({
+      id: m.id, libelle: m.libelle, unite: m.unite,
+      parCle: new Map(lignesDe(m).map((l) => [l.cle, l.valeur])),
+      total: t.ventilation ? m.valeur(sources.totaux[m.famille]) : (m.total ? m.total(sources.totaux[m.famille], choixValeur) : null),
+    }));
+    return {
+      rangs: lignesDe(premiere).map((l) => ({ cle: l.cle, libelle: l.libelle, brut: !!(l.donnee || l.brut) })),
+      colonnes,
+      libelleCategories: t.ventilation ? (ventilationDe(premiere)?.libelle || '') : (premiere.libelleCategories || ''),
+      libelleTotal: t.ventilation ? 'Total' : (premiere.libelleTotal || 'Total'),
+      choix: cleChoix ? { cle: cleChoix, libelle: premiere.choix.libelle, options, valeur: choixValeur } : null,
+    };
+  }, [vue, mesures, sources]);
+
   const comparaisonChoisie = COMPARAISONS.find((c) => c.id === (vue?.comparaison || ''));
   const libelleComparaison = bornesComp ? comparaisonChoisie?.label || '' : '';
 
@@ -514,6 +544,7 @@ export default function Statistiques({ user, etablissement }) {
             </div>
           </div>
           <ChiffresDenses lignes={lignesChiffres} colonnes={largeur >= 720 ? 2 : 1} libelleComparaison={libelleComparaison} onReessayer={relancer} />
+          <TableauDense tableau={tableauDense} onReessayer={relancer} onChoix={(cle, valeur) => setVue({ ...vue, tableau: { ...vue.tableau, choix: { ...(vue.tableau?.choix || {}), [cle]: valeur } } })} />
           <div id="stat-export" style={{ display: 'grid', gridTemplateColumns: colonnes, gap: 16, minWidth: 0 }}>
             {vue.graphiques.map((g, i) => (
               <CarteGraphique

@@ -101,6 +101,23 @@ export function bornesDeComparaison(bornes, mode) {
 
 const graphiqueVide = () => ({ mesures: [], ventilation: '', type: '', choix: {} });
 
+// Tableau dense (S3) : une ligne par catégorie (plat, fiche) et une colonne
+// par mesure, toutes de la même ventilation, ou toutes d'aujourd'hui (état)
+// aux mêmes catégories. null sans mesure visible.
+function tableauNettoye(brut, parId) {
+  if (!brut || typeof brut !== 'object') return null;
+  const ms = (Array.isArray(brut.mesures) ? brut.mesures : []).map((id) => parId.get(id)).filter(Boolean);
+  if (!ms.length) return null;
+  const ventilation = typeof brut.ventilation === 'string' ? brut.ventilation : '';
+  const ok = ventilation
+    ? ms.filter((m) => (m.ventilations || []).some((v) => v.id === ventilation))
+    : ms.filter((m) => m.nature === 'etat' && m.categories === ms[0].categories);
+  if (!ok.length) return null;
+  const choix = {};
+  if (brut.choix && typeof brut.choix === 'object') Object.entries(brut.choix).forEach(([k, v]) => { if (typeof v === 'string') choix[k] = v; });
+  return { mesures: ok.map((m) => m.id), ventilation, choix };
+}
+
 // Première ouverture (D13) : la première mesure visible, sur 30 jours.
 export function vueParDefaut(mesuresVisibles = []) {
   const premiere = mesuresVisibles[0]?.id;
@@ -168,8 +185,9 @@ export function nettoyerVue(brute, mesuresVisibles, aujourdhui) {
   // Lignes de la présentation dense (S3) : des mesures visibles, sans doublon,
   // vingt-quatre au plus.
   const chiffres = (Array.isArray(brute.chiffres) ? brute.chiffres : []).filter((id, i, a) => parId.has(id) && a.indexOf(id) === i).slice(0, MAX_CHIFFRES);
-  if (!graphiques.length || graphiques.every((g) => !g.mesures.length)) return { ...defaut, periode, pas, comparaison, filtres, chiffres };
-  return { periode, pas, comparaison, graphiques, filtres, chiffres };
+  const tableau = tableauNettoye(brute.tableau, parId);
+  if (!graphiques.length || graphiques.every((g) => !g.mesures.length)) return { ...defaut, periode, pas, comparaison, filtres, chiffres, tableau };
+  return { periode, pas, comparaison, graphiques, filtres, chiffres, tableau };
 }
 
 // Types de graphique valides pour un graphique, le premier étant celui que la
@@ -200,7 +218,7 @@ export function vueDepuisLien(demande, mesuresVisibles, aujourdhui) {
   const visibles = mesuresVisibles || [];
   let ids = (Array.isArray(demande.mesures) ? demande.mesures : []).filter((id) => visibles.some((m) => m.id === id));
   const periode = typeof demande.periode === 'string' ? { id: demande.periode } : demande.periode;
-  const commun = { periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '', filtres: demande.filtres || {}, chiffres: demande.chiffres || [] };
+  const commun = { periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '', filtres: demande.filtres || {}, chiffres: demande.chiffres || [], tableau: demande.tableau || null };
   // Raccourci d'un écran d'analyse (S3) : plusieurs graphiques préréglés. Un
   // graphique dont aucune mesure n'est visible tombe ; rien de visible, rien
   // d'ouvert.
