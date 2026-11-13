@@ -12,11 +12,23 @@
 //
 // Identifiant temporaire (mécanisme REST de coturn, option use-auth-secret,
 // README.turnserver, section « TURN REST API ») :
-//   username   = "<expiration>:<id du compte>", expiration en secondes
+//   username   = "<expiration>:<pseudonyme>", expiration en secondes
 //                depuis 1970 ; coturn refuse l'identifiant une fois
 //                l'expiration passée ;
 //   credential = base64(HMAC-SHA1(secret partagé, username)).
 // Le secret ne quitte jamais cette fonction ni le serveur coturn.
+//
+// Pseudonyme (note nLPD du 13.11.2026, R3) : le journal de coturn garde le
+// nom d'utilisateur sept jours, il ne porte donc jamais l'identifiant du
+// compte en clair. pseudonyme = 24 premiers caractères hexadécimaux de
+// HMAC-SHA-256(K, id du compte), où K = HMAC-SHA-256(clé service_role du
+// projet, "appel-turn:pseudonyme:v1"). K n'existe que dans les Edge
+// Functions, jamais sur le serveur du relais : qui lit ce serveur ne peut pas
+// nommer la personne ; Samper Consulting peut recalculer le pseudonyme d'un
+// compte qui signale un appel raté. Stable d'un appel à l'autre pour un même
+// compte (le plafond d'allocations par compte de coturn s'applique). Change
+// si la clé service_role change.
+// La fonction ne journalise ni adresse IP, ni identifiant, ni pseudonyme.
 //
 // Qui reçoit des identifiants : une personne connectée (jeton d'un
 // utilisateur), au profil actif, qui n'est pas un compte de poste partagé
@@ -51,13 +63,26 @@ const NOM_HOTE = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9](
 
 type LireEnv = (cle: string) => string | undefined;
 
+const enc = new TextEncoder();
+
+async function hmac(hash: 'SHA-1' | 'SHA-256', cle: BufferSource, message: string): Promise<Uint8Array> {
+  const k = await crypto.subtle.importKey('raw', cle, { name: 'HMAC', hash }, false, ['sign']);
+  return new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(message)));
+}
+
 async function hmacSha1Base64(secret: string, message: string): Promise<string> {
-  const enc = new TextEncoder();
-  const cle = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
-  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', cle, enc.encode(message)));
+  const sig = await hmac('SHA-1', enc.encode(secret), message);
   let bin = '';
   for (const o of sig) bin += String.fromCharCode(o);
   return btoa(bin);
+}
+
+export const PSEUDO_ETIQUETTE = 'appel-turn:pseudonyme:v1';
+
+async function pseudonyme(cleService: string, uid: string): Promise<string> {
+  const k = await hmac('SHA-256', enc.encode(cleService), PSEUDO_ETIQUETTE);
+  const h = await hmac('SHA-256', k, uid);
+  return Array.from(h, (o) => o.toString(16).padStart(2, '0')).join('').slice(0, 24);
 }
 
 export async function traiter(
@@ -112,9 +137,9 @@ export async function traiter(
     return json({ error: 'Relais non configuré.' }, 503);
   }
 
-  // 4. Identifiant temporaire, signé par le secret partagé.
+  // 4. Identifiant temporaire, signé par le secret partagé, sous pseudonyme.
   const expiration = Math.floor(maintenant() / 1000) + TTL_S;
-  const username = `${expiration}:${uid}`;
+  const username = `${expiration}:${await pseudonyme(service, uid)}`;
   const credential = await hmacSha1Base64(secret, username);
   return json({
     iceServers: [

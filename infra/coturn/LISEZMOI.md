@@ -19,8 +19,11 @@ Un serveur virtuel (VPS) Infomaniak, centre de données en Suisse, le plus petit
 
 - 1 processeur virtuel, 1 Go de mémoire (2 Go si l'écart de prix est faible), 10 Go de disque ;
 - une adresse IPv4 publique fixe ;
-- le système Debian 12 ou Ubuntu 24.04 LTS ;
-- l'accès SSH par clé (Infomaniak propose de déposer ta clé publique à la création).
+- le système **Debian 12** (recommandé) ; Ubuntu 24.04 LTS marche aussi ;
+- l'accès SSH par clé (Infomaniak propose de déposer ta clé publique à la création) ;
+- **sans** sauvegarde ni instantané automatique du serveur, ou avec `/var/log` exclu : une copie garderait les journaux au-delà de sept jours. Rien sur ce serveur n'a besoin d'être sauvegardé : le kit le reconstruit en quelques minutes.
+
+Pourquoi Debian 12 : il ne garde pas de copies du journal du système dans `/var/log/syslog` et `/var/log/auth.log`. Ubuntu les garde plusieurs semaines (rsyslog) ; sur Ubuntu, le kit arrête rsyslog et efface ces fichiers pour tenir les sept jours, ce qui marche mais change un réglage d'origine du système (note nLPD, R4).
 
 Pourquoi c'est assez : un appel relayé consomme environ 104 kbit/s dans les deux sens (audit C5, section 6). Vingt appels relayés en même temps font environ 2 Mbit/s. Le pire mois chiffré par l'audit fait 10,5 Go de trafic. coturn tient en quelques dizaines de Mo de mémoire et le processeur ne fait que recopier des paquets. Un modèle plus gros ne servirait à rien à cette échelle. Le prix se lit dans le Manager au moment de commander.
 
@@ -30,7 +33,7 @@ Si le Manager Infomaniak propose un pare-feu pour ce serveur, y ouvrir les même
 
 ## 2. Le nom du relais (DNS)
 
-1. Choisir un nom, par exemple `relais.samperconsulting-app.com`.
+1. Choisir un nom neutre, sans nom de client (il devient public dans les registres de transparence des certificats), par exemple `relais.samperconsulting-app.com`.
 2. Chez le gestionnaire DNS du domaine, créer un enregistrement **A** : nom `relais`, valeur l'adresse IPv4 du serveur, durée 3600 (ou 300 le temps de l'installation).
 3. Vérifier depuis ton ordinateur, quelques minutes plus tard :
 
@@ -53,11 +56,12 @@ Puis, sur le serveur :
 
 ```bash
 cd coturn
-sudo bash installer.sh relais.samperconsulting-app.com ton-adresse@exemple.ch
+sudo bash installer.sh relais.samperconsulting-app.com
 ```
 
-- Remplacer `debian` par l'utilisateur noté à l'étape 1, et le nom et le courriel par les tiens.
-- Le courriel sert à Let's Encrypt (avis avant expiration du certificat). En lançant le script, tu acceptes leurs conditions d'utilisation.
+- Remplacer `debian` par l'utilisateur noté à l'étape 1, et le nom du relais par le tien.
+- Aucun courriel à donner (recommandé, note nLPD R5). Let's Encrypt n'envoie plus d'avis d'expiration depuis le 4 juin 2025, et une adresse donnée partirait dans sa liste de diffusion. Le certificat se renouvelle tout seul et `verifier.sh` contrôle sa validité. Si tu tiens à donner une adresse, une adresse de rôle en second argument, jamais une adresse personnelle.
+- En lançant le script, tu acceptes les conditions d'utilisation de Let's Encrypt.
 - Si bash répond `$'\r': command not found`, la copie a des fins de ligne Windows : sur le serveur, `sed -i 's/\r$//' *.sh turnserver.conf`, puis relancer. (Le dépôt les force en LF, `infra/coturn/.gitattributes`.)
 - Quelques minutes. Le script s'arrête au premier problème avec une ligne `ARRET :` qui dit quoi corriger ; on peut le relancer autant de fois que nécessaire.
 - À la fin, il affiche la vérification (étape 5) et la commande des secrets (étape 4).
@@ -105,10 +109,10 @@ Tout le reste est fermé par le pare-feu du serveur (ufw).
 
 ## Ce que le serveur garde (pour la note nLPD)
 
-- **Journal du relais** : `/var/log/relais-turn/turnserver.log`, un fichier par jour, sept jours gardés, puis effacés (rotation quotidienne). Pour chaque session de relais : l'heure, l'adresse IP et le port publics de l'appareil, le nom d'utilisateur temporaire (heure d'expiration et identifiant du compte dans l'app, donc le lien entre une adresse IP et une personne), le volume échangé et la raison de la fin. Les adresses du correspondant peuvent y figurer selon les messages de coturn : à confirmer sur le premier journal réel. Jamais le son, qui reste chiffré de bout en bout.
+- **Journal du relais** : `/var/log/relais-turn/turnserver.log`, un fichier par jour, sept jours gardés, puis effacés (rotation quotidienne). Pour chaque session de relais : l'heure, l'adresse IP et le port publics de l'appareil, le nom d'utilisateur temporaire (heure d'expiration et pseudonyme du compte), le volume échangé et la raison de la fin. Le pseudonyme est une empreinte du compte calculée avec une clé qui n'existe que dans les Edge Functions, jamais sur ce serveur : qui lit le journal ne peut pas nommer la personne ; Samper Consulting peut recalculer le pseudonyme d'un compte qui signale un appel raté. Les adresses du correspondant peuvent figurer selon les messages de coturn : à confirmer sur le premier journal réel. Jamais le son, qui reste chiffré de bout en bout.
 - **Journal du système** (démarrages du service, connexions SSH) : sept jours (réglage posé par le kit).
-- Sur Ubuntu, le système tient aussi `/var/log/auth.log` et `/var/log/syslog` selon sa rotation par défaut (plusieurs semaines), que le kit ne change pas ; Debian 12 n'a pas ces fichiers par défaut.
-- **Let's Encrypt** reçoit le nom du relais (public, inscrit dans les registres de transparence des certificats) et ton courriel. Aucune adresse IP de l'équipe.
+- **rsyslog** (Ubuntu ; souvent absent de Debian 12) : arrêté et masqué par le kit, ses fichiers (`syslog`, `auth.log`, `kern.log`, `mail.log`) effacés ; il garderait sinon des copies plusieurs semaines. `verifier.sh` le contrôle.
+- **Let's Encrypt** reçoit le nom du relais (public, inscrit dans les registres de transparence des certificats), et une adresse seulement si tu en donnes une. Aucune adresse IP de l'équipe.
 - **Infomaniak** héberge le serveur en Suisse, comme tout hébergeur voit passer le trafic réseau, sans pouvoir lire le son.
 - Aucune console d'administration : ni telnet, ni page web, ni métriques.
 
@@ -120,7 +124,7 @@ Tout le reste est fermé par le pare-feu du serveur (ufw).
 
 ```bash
 sudo rm /etc/relais-turn/auth-secret
-sudo bash installer.sh relais.samperconsulting-app.com ton-adresse@exemple.ch
+sudo bash installer.sh relais.samperconsulting-app.com
 ```
 
   puis reposer `COTURN_SECRET` dans Supabase (étape 4).

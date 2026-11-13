@@ -2,12 +2,18 @@
 # ================================================================
 # Installation du relais coturn de Samper Consulting (lot C2b, amendement
 # A10) sur un serveur virtuel Debian 12 ou Ubuntu 22.04 / 24.04 chez
-# Infomaniak. Tout vient des dépôts de la distribution ; aucun autre
-# fournisseur que Let's Encrypt (certificat du nom de domaine).
+# Infomaniak (Debian 12 recommandé : LISEZMOI.md). Tout vient des dépôts de
+# la distribution ; aucun autre fournisseur que Let's Encrypt (certificat du
+# nom de domaine).
 #
 # Usage, sur le serveur, dans le dossier du kit :
-#   sudo bash installer.sh <nom du relais> <courriel pour Let's Encrypt>
-#   exemple : sudo bash installer.sh relais.exemple.ch jeremy@exemple.ch
+#   sudo bash installer.sh <nom du relais> [adresse de rôle]
+#   exemple : sudo bash installer.sh relais.exemple.ch
+# Sans adresse (recommandé, note nLPD R5) : Let's Encrypt ne reçoit aucun
+# courriel. Il n'envoie plus d'avis d'expiration depuis le 04.06.2025 ; une
+# adresse donnée irait dans sa liste de diffusion. Le renouvellement est
+# automatique. Si une adresse est donnée, une adresse de rôle, jamais
+# personnelle.
 #
 # Ce que fait le script, dans l'ordre :
 #   1. vérifie que le nom du relais pointe sur ce serveur ;
@@ -17,7 +23,9 @@
 #   5. ferme le pare-feu sauf SSH et les ports du relais ;
 #   6. obtient le certificat Let's Encrypt (port 80 ouvert le temps du
 #      défi seulement, à la création comme à chaque renouvellement) ;
-#   7. limite les journaux à sept jours ;
+#   7. limite les journaux à sept jours (coturn et journal du système ;
+#      rsyslog, présent sur Ubuntu, est arrêté et ses fichiers effacés, car
+#      il garderait des copies plusieurs semaines) ;
 #   8. démarre le service au démarrage de la machine ;
 #   9. vérifie (verifier.sh) et affiche la commande `supabase secrets set`
 #      que Jérémy lance lui-même sur son ordinateur.
@@ -42,11 +50,16 @@ PROJET=ppmtoiqgajwcdkbnrcll
 arret() { echo "ARRET : $*" >&2; exit 1; }
 etape() { echo; echo "== $*"; }
 
-[ "$(id -u)" -eq 0 ] || arret "lancer avec sudo : sudo bash installer.sh <nom du relais> <courriel>"
-[ -n "$DOMAINE" ] && [ -n "$COURRIEL" ] || arret "usage : sudo bash installer.sh <nom du relais> <courriel>"
+[ "$(id -u)" -eq 0 ] || arret "lancer avec sudo : sudo bash installer.sh <nom du relais> [adresse de rôle]"
+[ -n "$DOMAINE" ] || arret "usage : sudo bash installer.sh <nom du relais> [adresse de rôle]"
 DOMAINE="$(printf '%s' "$DOMAINE" | tr 'A-Z' 'a-z')"
 printf '%s' "$DOMAINE" | grep -Eq '^([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$' || arret "nom de relais invalide : $DOMAINE"
-printf '%s' "$COURRIEL" | grep -Eq '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' || arret "courriel invalide : $COURRIEL"
+if [ -n "$COURRIEL" ]; then
+  printf '%s' "$COURRIEL" | grep -Eq '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' || arret "adresse invalide : $COURRIEL"
+  CERTBOT_CONTACT=(-m "$COURRIEL")
+else
+  CERTBOT_CONTACT=(--register-unsafely-without-email)
+fi
 [ -f "$ICI/turnserver.conf" ] || arret "turnserver.conf introuvable à côté du script ($ICI)"
 [ -f "$ICI/verifier.sh" ] || arret "verifier.sh introuvable à côté du script ($ICI)"
 # shellcheck disable=SC1091
@@ -188,7 +201,7 @@ fi
 FIN
 chmod 0755 /usr/local/sbin/relais-turn-certificat
 certbot certonly --standalone --preferred-challenges http \
-  -d "$DOMAINE" -m "$COURRIEL" --agree-tos --no-eff-email --non-interactive \
+  -d "$DOMAINE" "${CERTBOT_CONTACT[@]}" --agree-tos --no-eff-email --non-interactive \
   --pre-hook "ufw allow 80/tcp comment 'defi Lets Encrypt'" \
   --post-hook "ufw delete allow 80/tcp" \
   --deploy-hook /usr/local/sbin/relais-turn-certificat
@@ -222,6 +235,21 @@ cat > /etc/systemd/journald.conf.d/relais-turn.conf <<'FIN'
 MaxRetentionSec=7day
 FIN
 systemctl restart systemd-journald
+# rsyslog (installé d'office sur Ubuntu, souvent absent de Debian 12) recopie
+# le journal du système dans /var/log/syslog, auth.log, kern.log, mail.log,
+# gardés plusieurs semaines par sa rotation (note nLPD, R4). Le journal du
+# système (sept jours) suffit : rsyslog est arrêté, masqué, et ses fichiers
+# effacés. coturn n'écrit pas dans syslog (pas d'option syslog).
+if systemctl list-unit-files rsyslog.service >/dev/null 2>&1 && systemctl cat rsyslog.service >/dev/null 2>&1; then
+  systemctl disable --now rsyslog.service syslog.socket >/dev/null 2>&1 || true
+  systemctl mask rsyslog.service >/dev/null 2>&1 || true
+  rm -f /var/log/syslog /var/log/syslog.* /var/log/auth.log /var/log/auth.log.* \
+        /var/log/kern.log /var/log/kern.log.* /var/log/mail.log /var/log/mail.log.* \
+        /var/log/mail.err /var/log/mail.err.*
+  echo "  rsyslog arrêté et masqué, ses fichiers effacés"
+else
+  echo "  rsyslog absent : rien à faire"
+fi
 
 # ── 8. Service ─────────────────────────────────────────────────────
 etape "8. Démarrage du service, et à chaque démarrage de la machine"

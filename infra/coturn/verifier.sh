@@ -36,7 +36,11 @@ verdict "certificat TLS valide pour $D sur 5349" $?
 [ "$(stat -c '%a %U %G' "$S" 2>/dev/null)" = "600 root root" ]; verdict "secret réservé à root (0600 root:root)" $?
 ! grep -q '^static-auth-secret' /etc/relais-turn/turnserver.conf; verdict "aucun secret dans /etc/relais-turn/turnserver.conf" $?
 ufw status | grep -q '^Status: active'; verdict "pare-feu actif" $?
-[ -f /etc/logrotate.d/relais-turn ]; verdict "rotation des journaux posée (sept jours)" $?
+[ -f /etc/logrotate.d/relais-turn ]; verdict "rotation du journal de coturn posée (sept jours)" $?
+grep -qs '^MaxRetentionSec=7day' /etc/systemd/journald.conf.d/relais-turn.conf; verdict "journal du système limité à sept jours" $?
+! systemctl is-active --quiet rsyslog.service; verdict "rsyslog arrêté ou absent (pas de copie de plusieurs semaines)" $?
+[ ! -e /var/log/syslog ] && [ ! -e /var/log/auth.log ]; verdict "ni /var/log/syslog ni /var/log/auth.log" $?
+! grep -q '^syslog' /etc/relais-turn/turnserver.conf; verdict "coturn n'écrit pas dans syslog" $?
 
 echo
 echo "  $ok ok, $ko échec(s)"
