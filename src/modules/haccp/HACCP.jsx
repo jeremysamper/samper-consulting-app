@@ -37,6 +37,7 @@ import { ouvrirCompte } from '../../services/navigationService.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { peutConfigurerHaccp } from './gardesHaccp.js';
 import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
+import { chiffresReleves } from './serieHaccp.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -653,14 +654,15 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
         };
       }),
     }));
-    const nbAnomalies = rows.filter(r => !r.conforme).length;
+    // Chiffres du registre : calcul partagé avec les Statistiques (D3).
+    const chiffres = chiffresReleves(rows);
     const payload = {
       periodeLabel: period === 'jour' ? capitalize(fmtJour(dateFilter)) : capitalize(moisLabel),
       stats: {
-        total: rows.length,
-        conformes: rows.length - nbAnomalies,
-        anomalies: nbAnomalies,
-        taux: Math.round((rows.length - nbAnomalies) / rows.length * 100),
+        total: chiffres.releves,
+        conformes: chiffres.conformes,
+        anomalies: chiffres.anomalies,
+        taux: Math.round(chiffres.taux * 100),
       },
       days,
     };
