@@ -185,7 +185,7 @@ export function CarteCouverts({ couverts, aujourdhui, onOuvrir }) {
       </div>
       <div style={s.jauge}>
         <svg viewBox="0 0 180 100" width="100%" style={{ display: 'block', maxWidth: 240, margin: '0 auto' }} aria-hidden="true">
-          <path d={arc} fill="none" strokeWidth="12" strokeLinecap="round" style={{ stroke: 'var(--surface)' }} />
+          <path d={arc} fill="none" strokeWidth="12" style={{ stroke: 'var(--surface)' }} />
           {total > 0 && parts.map((x) => {
             const p = (c[x.id] / total) * 100;
             const trace = (
