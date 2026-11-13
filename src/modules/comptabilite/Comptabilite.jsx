@@ -146,6 +146,8 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
       ouvrirStatistiques(demandeRaccourci('comptabilite', null, enCours ? periode.type : { id: 'libre', debut: periode.debut, fin: periode.fin }));
       return;
     }
+    // Les Marges sont parties dans Statistiques (valeurs d'aujourd'hui).
+    if (e === 'marges') { ouvrirStatistiques(demandeRaccourci('marges')); return; }
     if (e) setEcran(e);
   };
   const ouvrirAchats = () => (typeof setPage === 'function' ? setPage('achats') : navigateToPage('achats'));

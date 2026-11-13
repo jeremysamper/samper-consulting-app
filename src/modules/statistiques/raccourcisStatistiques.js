@@ -27,6 +27,18 @@ export const RACCOURCIS = {
         graphiques: [{ mesures: ['comptabilite.ca_ht', 'comptabilite.resultat'] }] },
     ],
   },
+  // Comptabilité, « Marges » : par carte (la carte se choisit en tête du
+  // tableau) et par fiche, aux prix et coûts d'aujourd'hui (nature état), une
+  // ligne par plat ou par fiche et la ligne « un plat de chaque ».
+  marges: {
+    famille: 'marges',
+    vues: [
+      { id: 'cartes', libelle: 'Par carte', court: 'Cartes', periode: 'mois', pas: 'mois', graphiques: [{ mesures: ['marges.carte_marge'] }],
+        tableau: { mesures: ['marges.carte_cout', 'marges.carte_prix', 'marges.carte_marge', 'marges.carte_food_cost'] } },
+      { id: 'fiches', libelle: 'Par fiche', court: 'Fiches', periode: 'mois', pas: 'mois', graphiques: [{ mesures: ['marges.fiche_marge'] }],
+        tableau: { mesures: ['marges.fiche_cout', 'marges.fiche_prix', 'marges.fiche_marge', 'marges.fiche_food_cost'] } },
+    ],
+  },
   // Factures & achats, « Analyses des dépenses » : quatre vues pour ses blocs
   // de chiffres (les dates à vérifier sont restées dans le module), sur douze
   // mois comme l'écran d'origine ; le périmètre se choisit dans le module
