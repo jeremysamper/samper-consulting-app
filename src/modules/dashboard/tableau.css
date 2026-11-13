@@ -197,7 +197,6 @@
   }
   .tdb-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
   .tdb-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tdb-tuiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
   /* L'équipe en deux colonnes : Midi à gauche, Soir puis les absences à
      droite ; huit lignes par colonne avant « Voir toute l'équipe ». */
@@ -218,6 +217,13 @@
   .tdb-jour-semaine { grid-column: auto; }
   .tdb-jour-semaine .tdb-semaine { display: flex; flex-direction: column; align-items: stretch; }
   .tdb-chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+/* Les quatre tuiles de la carte sombre sur une ligne seulement quand chacune
+   garde son libellé sur une ligne (menu replié en rail à 1440 px) ; menu
+   déplié, elles restent en deux rangées. */
+@container tdb (min-width: 1240px) {
+  .tdb-tuiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* ── Onglets (téléphone) : des pilules, la choisie en aplat sombre ───────── */
