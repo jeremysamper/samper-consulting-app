@@ -36,7 +36,7 @@ export default function ColleListe({ onAjouter, onClose }) {
       {lignes.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {lignes.map((l, i) => (
-            <div key={i} style={{ display: 'flex', gap: 10, fontSize: 13, color: 'var(--text)', padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
+            <div key={i} style={{ display: 'flex', gap: 10, fontSize: 'var(--t2)', color: 'var(--text)', padding: '4px 0', borderBottom: '1px solid var(--border)' }}>
               <span style={{ flex: 1, minWidth: 0 }}>{l.nom}</span>
               <span style={{ color: 'var(--text2)', whiteSpace: 'nowrap' }}>
                 {l.quantite > 0 ? <><span data-no-translate>{fmtQte(l.quantite)}</span> {l.unite}</> : <>quantité à saisir</>}

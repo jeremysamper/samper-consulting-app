@@ -30,7 +30,7 @@ function ChoixTuiles({ nom, libelle, valeur, options, onChange }) {
             <button key={o} type="button" role="radio" aria-checked={choisi} data-cadre="" {...{ [`data-choix-${nom}`]: o }}
               onClick={() => onChange(o)}
               style={{ ...stFenetre.choix, ...pts.tuileChoix, ...(choisi ? pts.tuileChoisie : null) }}>
-              <span style={{ ...stFenetre.choixTitre, fontSize: 13, lineHeight: 1.25 }}>{o}</span>
+              <span style={{ ...stFenetre.choixTitre, fontSize: 'var(--t2)', lineHeight: 1.25 }}>{o}</span>
             </button>
           );
         })}
@@ -278,7 +278,7 @@ const Pertes = ({ user, etablissement }) => {
           <div key={k} style={pts.kpiCard}>
             <div style={pts.kpiLabel}>Première catégorie de perte</div>
             <div style={pts.kpiVal}>{k}</div>
-            <div style={{fontSize:12,color:'var(--danger-strong)',fontWeight:500,marginTop:2}}>CHF {v.toFixed(2)}</div>
+            <div style={{fontSize: 'var(--t1)',color:'var(--danger-strong)',fontWeight: 'var(--g2)',marginTop:2}}>CHF {v.toFixed(2)}</div>
           </div>
         ))}
       </div>
@@ -315,7 +315,7 @@ const Pertes = ({ user, etablissement }) => {
           {canManage && <span/>}
           {canManage && <span/>}
         </div>
-        {filtered.length === 0 && <div style={{padding:'20px 18px', color:'var(--text2)', fontSize:13}}>Aucune perte pour ces critères.</div>}
+        {filtered.length === 0 && <div style={{padding:'20px 18px', color:'var(--text2)', fontSize: 'var(--t2)'}}>Aucune perte pour ces critères.</div>}
         {(filtered || []).map(p => {
           const emp = userDisplay(p.declarePar);
           const role = emp.role ? demoData.roles[emp.role] : null;
@@ -340,16 +340,16 @@ const Pertes = ({ user, etablissement }) => {
               <span style={pts.cell}>{p.date}</span>
               <span style={{...pts.cellBold, flex:2}}>
                 {p.produit}
-                {p.commentaire && <div style={{fontSize:11,color:'var(--text2)',fontWeight:400,marginTop:1}} data-no-translate>{p.commentaire}</div>}
+                {p.commentaire && <div style={{fontSize: 'var(--t1)',color:'var(--text2)',fontWeight: 'var(--g1)',marginTop:1}} data-no-translate>{p.commentaire}</div>}
               </span>
               <span style={pts.cell}><span style={pts.motifTag}>{p.motif}</span></span>
               <span style={pts.cell}>{p.categorie}</span>
               <span style={{...pts.cell,textAlign:'right'}}>{p.quantite} {p.unite}</span>
-              <span style={{...pts.cell,textAlign:'right',color:'var(--danger-strong)',fontWeight:500}}>−CHF {valeur}</span>
+              <span style={{...pts.cell,textAlign:'right',color:'var(--danger-strong)',fontWeight: 'var(--g2)'}}>−CHF {valeur}</span>
               <span style={pts.cell}>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
                   <div style={{...pts.empDot, background:role?.couleur}} data-no-translate>{emp.avatar}</div>
-                  <span style={{fontSize:12}} data-no-translate>{emp.found ? emp.prenom : emp.name}</span>
+                  <span style={{fontSize: 'var(--t1)'}} data-no-translate>{emp.found ? emp.prenom : emp.name}</span>
                 </div>
               </span>
               <span style={pts.cell}>
@@ -399,7 +399,7 @@ const Pertes = ({ user, etablissement }) => {
         <div className="modal-full-overlay" style={pts.overlay} onClick={() => setShowForm(false)}>
           <div className="modal-full" style={pts.modal} onClick={e=>e.stopPropagation()}>
             <div style={pts.modalHeader}>
-              <div style={{fontWeight:700,fontSize:16,fontFamily:'var(--font-serif)'}}>Déclarer une perte</div>
+              <div style={{fontWeight: 'var(--g3)',fontSize: 'var(--t3)',fontFamily: 'var(--font)'}}>Déclarer une perte</div>
               <button type="button" className="ui-fermer" aria-label="Fermer" style={pts.closeBtn} onClick={()=>setShowForm(false)}>×</button>
             </div>
             <div style={pts.modalBody}>
@@ -411,7 +411,7 @@ const Pertes = ({ user, etablissement }) => {
                   <label style={pts.fieldLabel}>
                     Produit *
                     {catalogue.length > 0 && (
-                      <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--text2)', fontWeight: 400, fontStyle: 'italic' }}>
+                      <span style={{ marginLeft: 8, fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g1)', fontStyle: 'italic' }}>
                         ({catalogue.length} produits dans le catalogue - tapez pour rechercher)
                       </span>
                     )}
@@ -468,7 +468,7 @@ const Pertes = ({ user, etablissement }) => {
                       <div style={{
                         position: 'absolute', top: '100%', left: 0, right: 0,
                         background: 'var(--surface)', border: '1px solid var(--border)',
-                        borderRadius: 6, maxHeight: 280, overflowY: 'auto',
+                        borderRadius: 'var(--r)', maxHeight: 280, overflowY: 'auto',
                         boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 10,
                         marginTop: 2,
                       }}>
@@ -497,21 +497,21 @@ const Pertes = ({ user, etablissement }) => {
                             }}
                           >
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>{p.nom}</div>
-                              <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 1 }}>
+                              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' }}>{p.nom}</div>
+                              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 1 }}>
                                 {p.categorie || 'Autres'}
                                 {p.uniteRef && `, ${p.uniteRef}`}
                                 {p.fournisseurNom && `, ${p.fournisseurNom}`}
                               </div>
                             </div>
                             {p.prixUnitaire != null && p.prixUnitaire > 0 && (
-                              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', whiteSpace: 'nowrap' }}>
+                              <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--lien)', whiteSpace: 'nowrap' }}>
                                 {p.prixUnitaire.toFixed(p.prixUnitaire < 1 ? 4 : 2)} CHF/{p.uniteRef}
                               </div>
                             )}
                           </div>
                         ))}
-                        <div style={{ padding: '6px 12px', fontSize: 11, color: 'var(--text2)', borderTop: '1px solid var(--border)', background: 'var(--bg)', fontStyle: 'italic' }}>
+                        <div style={{ padding: '6px 12px', fontSize: 'var(--t1)', color: 'var(--text2)', borderTop: '1px solid var(--border)', background: 'var(--bg)', fontStyle: 'italic' }}>
                           ↑↓ pour naviguer, Entrée pour valider, Échap pour fermer
                         </div>
                       </div>
@@ -567,40 +567,40 @@ const pts = {
   headerLeft:{display:'flex',alignItems:'center',gap:8,minWidth:0,maxWidth:'100%'},
   headerRight:{display:'flex',gap:8},
   motifTabs:{display:'flex',gap:4,flexWrap:'wrap'},
-  motifBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius:20,background:'var(--surface)',color:'var(--text2)',fontSize:11,cursor:'pointer',fontFamily:'var(--font)'},
-  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
-  exportBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,cursor:'pointer',fontFamily:'var(--font)'},
+  motifBtn:{padding:'5px 12px',border:'1px solid var(--border)',borderRadius: 'var(--r)',background:'var(--surface)',color:'var(--text2)',fontSize: 'var(--t1)',cursor:'pointer',fontFamily:'var(--font)'},
+  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  exportBtn:{padding:'8px 16px',background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)',fontWeight:'var(--g2)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)'},
   kpiBar:{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:'12px 32px'},
   kpiCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'14px 16px'},
-  kpiLabel:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:6},
-  kpiVal:{fontSize:22,fontWeight:700,fontFamily:'var(--font-num)',color:'var(--text)'},
+  kpiLabel:{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color:'var(--text2)',marginBottom:6},
+  kpiVal:{fontSize: 'var(--t4)',fontWeight: 'var(--g3)',fontFamily:'var(--font-num)',color:'var(--text)'},
   tableWrap:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',overflow:'hidden'},
-  tableHead:{display:'grid',gridTemplateColumns:'90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',padding:'9px 18px',background:'var(--bg)',fontSize:11,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,borderBottom:'1px solid var(--border)',gap:10},
-  tableRow:{display:'grid',gridTemplateColumns:'90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',padding:'12px 18px',borderBottom:'1px solid var(--border)',gap:10,alignItems:'center'},
-  cell:{fontSize:13,color:'var(--text)'},
-  cellBold:{fontSize:13,fontWeight:500,color:'var(--text)'},
-  badge:{display:'inline-block',padding:'3px 9px',borderRadius:12,fontSize:11,fontWeight:500},
-  motifTag:{fontSize:11,background:'var(--surface2)',color:'var(--text2)',padding:'2px 8px',borderRadius:8,fontWeight:500},
-  empDot:{width:22,height:22,borderRadius:5,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight:700,fontSize:11,flexShrink:0},
-  valBtn:{background: 'var(--success-bg-soft)',border: '1px solid transparent',color:'var(--success-text)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{background: 'var(--danger-bg-soft)',border: '1px solid transparent',color:'var(--danger-strong)',borderRadius:6,padding:'4px 10px',fontSize:11,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
+  tableHead:{display:'grid',gridTemplateColumns:'90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',padding:'9px 18px',background:'var(--bg)',fontSize: 'var(--t1)',fontWeight: 'var(--g3)',color:'var(--text2)',borderBottom:'1px solid var(--rule-soft)',gap:10},
+  tableRow:{display:'grid',gridTemplateColumns:'90px 2fr 1.2fr 1fr 90px 100px 100px 90px 80px',padding:'12px 18px',borderBottom:'1px solid var(--rule-soft)',gap:10,alignItems:'center'},
+  cell:{fontSize: 'var(--t2)',color:'var(--text)'},
+  cellBold:{fontSize: 'var(--t2)',fontWeight: 'var(--g2)',color:'var(--text)'},
+  badge:{display:'inline-block',padding:'3px 9px',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)'},
+  motifTag:{fontSize: 'var(--t1)',background:'var(--selection)',color:'var(--text2)',padding:'2px 8px',borderRadius: 'var(--r)',fontWeight: 'var(--g2)'},
+  empDot:{width:22,height:22,borderRadius: 'var(--r)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight: 'var(--g3)',fontSize: 'var(--t1)',flexShrink:0},
+  valBtn:{background: 'var(--success-bg-soft)',border: '1px solid transparent',color:'var(--success-text)',borderRadius: 'var(--r)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  deleteBtn:{background: 'var(--danger-bg-soft)',border: '1px solid transparent',color:'var(--danger-strong)',borderRadius: 'var(--r)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   chartCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'18px 20px'},
-  chartTitle:{fontSize:12,fontWeight:700,color:'var(--text)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:14},
+  chartTitle:{fontSize: 'var(--t1)',fontWeight: 'var(--g3)',color:'var(--text)',marginBottom:14},
   chartBars:{display:'flex',flexDirection:'column',gap:10},
   barRow:{display:'grid',gridTemplateColumns:'130px 1fr 90px 40px',gap:12,alignItems:'center'},
-  barLabel:{fontSize:12,color:'var(--text)',fontWeight:500},
-  barTrack:{height:8,background:'var(--bg)',borderRadius:4,overflow:'hidden',border:'1px solid var(--border)'},
-  barFill:{height:'100%',background:'var(--accent)',borderRadius:4,transition:'width .4s'},
-  barVal:{fontSize:12,color:'var(--danger-strong)',fontWeight:500,textAlign:'right'},
-  barPct:{fontSize:11,color:'var(--text2)',textAlign:'right'},
+  barLabel:{fontSize: 'var(--t1)',color:'var(--text)',fontWeight: 'var(--g2)'},
+  barTrack:{height:8,background:'var(--bg)',borderRadius: 'var(--r)',overflow:'hidden',border:'1px solid var(--border)'},
+  barFill:{height:'100%',background:'var(--accent)',borderRadius: 'var(--r)',transition:'width .4s'},
+  barVal:{fontSize: 'var(--t1)',color:'var(--danger-strong)',fontWeight: 'var(--g2)',textAlign:'right'},
+  barPct:{fontSize: 'var(--t1)',color:'var(--text2)',textAlign:'right'},
   overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,0.4)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000},
   // Les champs défilent, la barre d'action reste au bas de la fenêtre (les
   // tuiles allongent le formulaire) ; sur téléphone, .modal-full la passe en
   // plein écran.
-  modal:{background:'var(--surface)',borderRadius:14,width:520,maxWidth:'90vw',maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,0.2)'},
+  modal:{background:'var(--surface)',borderRadius: 'var(--r)',width:520,maxWidth:'90vw',maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'var(--sh-lg)'},
   barreForm:{display:'flex',gap:10,justifyContent:'flex-end',padding:'12px 22px',borderTop:'1px solid var(--border)',flexShrink:0},
   modalHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)',flexShrink:0},
-  closeBtn:{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'},
+  closeBtn:{background:'none',border:'none',fontSize: 'var(--t3)',cursor:'pointer',color:'var(--text2)'},
   modalBody:{padding:'22px',flex:'1 1 auto',minHeight:0,overflowY:'auto'},
   // Plancher a 200px : un input[type=date] rendu par iOS occupe ~192px et
   // refuse de rétrécir sous cette taille. Avec deux colonnes cote a cote sur
@@ -609,13 +609,13 @@ const pts = {
   // en dessous elles s'empilent.
   formGrid:{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(200px, 1fr))',gap:14},
   field:{display:'flex',flexDirection:'column',gap:6},
-  fieldLabel:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
-  fieldInput:{padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',outline:'none'},
+  fieldLabel:{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color:'var(--text2)'},
+  fieldInput:{padding:'9px 12px',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',outline:'none'},
   // Tuiles du motif et de l'unité : celles du rôle dans Rôles & accès (44 px).
   tuilesChoix:{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 104px), 1fr))',gap:6},
   tuileChoix:{minHeight:44,padding:'6px 8px',justifyContent:'center'},
-  tuileChoisie:{borderColor:'var(--accent)',background:'var(--accent-light)'},
-  previewVal:{ borderLeft: '2px solid var(--danger-bd)', padding: '10px 0 10px 12px',fontSize:13,color:'var(--text)',marginTop:8},
+  tuileChoisie:{borderColor:'var(--onglet)',background:'var(--selection)'},
+  previewVal:{ borderLeft: '2px solid var(--danger-bd)', padding: '10px 0 10px 12px',fontSize: 'var(--t2)',color:'var(--text)',marginTop:8},
 };
 
 export default Pertes;

@@ -368,36 +368,36 @@ const s = {
   // Le détail anti-rétrécissement des onglets + masquage scrollbar est en CSS
   // (.carte-tab-bar--scroll dans app.css) car non exprimable en style inline.
   barScroll: { flexWrap: 'nowrap', overflowX: 'auto', maxWidth: '100%' },
-  tab: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text2)', fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  tab: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   tabBtnReset: { outline: 'none' },
   tabLabel: { whiteSpace: 'nowrap' },
   // Les onglets se suivent dans une rangée à part, sans rétrécir : la bande
   // parente défile si la rangée déborde.
   tablist: { display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 },
   // 32 px au moins : le crayon de 18 × 16 se ratait au doigt comme à la souris.
-  editBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, background: 'transparent', border: 'none', borderRadius: 6, color: 'var(--accent)', cursor: 'pointer', padding: 0, fontFamily: 'var(--font)' },
+  editBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, background: 'transparent', border: 'none', borderRadius: 'var(--r)', color: 'var(--lien)', cursor: 'pointer', padding: 0, fontFamily: 'var(--font)' },
   // Sans pointillés : des actions de la barre, pas des onglets à remplir.
-  addBtn: { color: 'var(--accent)', border: 'none', fontWeight: 700 },
-  ordreBtn: { color: 'var(--text2)', border: 'none', fontWeight: 500 },
-  archivesBtn: { color: 'var(--text2)', border: 'none', fontWeight: 500 },
+  addBtn: { color: 'var(--lien)', border: 'none', fontWeight: 'var(--g3)' },
+  ordreBtn: { color: 'var(--text2)', border: 'none', fontWeight: 'var(--g2)' },
+  archivesBtn: { color: 'var(--text2)', border: 'none', fontWeight: 'var(--g2)' },
   // flexShrink 0 : sans lui les lignes se superposent sur mobile (min-height
   // global 44px sur les contrôles vs hauteur calculée par flex).
-  ordreRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)', flexShrink: 0 },
-  ordreRang: { width: 22, flexShrink: 0, fontSize: 11, fontWeight: 700, color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' },
-  ordreNom: { flex: 1, minWidth: 0, fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  ordreRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px 6px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--bg)', flexShrink: 0 },
+  ordreRang: { width: 22, flexShrink: 0, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', fontVariantNumeric: 'tabular-nums' },
+  ordreNom: { flex: 1, minWidth: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   // 44px : cible tactile iPad. Une flèche nue de 16px se rate une fois sur deux
   // et passe pour un bug d'enregistrement.
-  ordreArrow: { width: 44, height: 44, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--accent)', fontSize: 16, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
-  archiveRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg)' },
-  archiveName: { fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  archiveMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
-  archiveEmpty: { padding: '18px 12px', textAlign: 'center', fontSize: 13, color: 'var(--text2)', fontStyle: 'italic' },
-  restoreBtn: { padding: '7px 12px', background: 'var(--accent-light)', border: '1px solid transparent', color: 'var(--accent)', borderRadius: 7, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap', flexShrink: 0 },
+  ordreArrow: { width: 44, height: 44, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', color: 'var(--btn-texte)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  archiveRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--bg)' },
+  archiveName: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  archiveMeta: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
+  archiveEmpty: { padding: '18px 12px', textAlign: 'center', fontSize: 'var(--t2)', color: 'var(--text2)', fontStyle: 'italic' },
+  restoreBtn: { padding: '7px 12px', background: 'var(--btn-fond)', border: '1px solid transparent', color: 'var(--btn-texte)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap', flexShrink: 0 },
   divider: { width: 1, height: 24, background: 'var(--border)', margin: '0 4px' },
   // Corps des fenêtres (Fenetre porte déjà le cadre, le titre et le rembourrage).
   fenetreCorps: { display: 'flex', flexDirection: 'column', gap: 12 },
-  label: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, display: 'block', marginBottom: 4 },
-  input: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
+  label: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', display: 'block', marginBottom: 4 },
+  input: { width: '100%', padding: '9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
   // minWidth:0 : les input[type=date] ont une largeur intrinsèque (~170px) qui
   // ferait déborder la rangée hors de la modale sur mobile (375px).
   dateRow: { display: 'flex', gap: 10, flexWrap: 'wrap' },
@@ -405,8 +405,8 @@ const s = {
   // Bordure en propriétés longues (pas le raccourci `border`) : « Supprimer » et
   // « Cacher » surchargent borderColor, et mélanger les deux fait warner React
   // à chaque bascule (cf. npm run lint:borders).
-  ghostBtn: { padding: '8px 14px', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  ghostBtn: { padding: '8px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   // Carte actuellement cachée : le bouton porte l'état, pas seulement l'action.
   hideBtnActive: { background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' },
-  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)' },
+  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)' },
 };
