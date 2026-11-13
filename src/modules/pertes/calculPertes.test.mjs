@@ -1,7 +1,7 @@
 // node --test : chiffres des pertes (calculPertes.js).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { seriePertes, totauxPertes, valeurPerte } from './calculPertes.js';
+import { septJoursPertes, seriePertes, totauxPertes, valeurPerte } from './calculPertes.js';
 import { chiffresGestion } from '../dashboard/tableauLogique.js';
 import { jeuPertes } from './jeuPertes.mjs';
 
@@ -45,4 +45,19 @@ test('le mois en cours égale la carte des chiffres de gestion du tableau de bor
   const [point] = seriePertes(pertes, [{ debut: '2026-12-01', fin: aujourdhui }]);
   const carte = chiffresGestion({ pertes, shifts: [], couverts: [], aujourdhui });
   assert.equal(point.valeur.toFixed(2), carte.valeurPertes.toFixed(2));
+});
+
+test('sept derniers jours : sept points jusqu\'à aujourd\'hui, leur somme est celle des pertes de la fenêtre', () => {
+  const pertes = jeuPertes();
+  const aujourdhui = '2026-03-03';
+  const points = septJoursPertes(pertes, aujourdhui);
+  assert.equal(points.length, 7);
+  assert.equal(points[0].date, '2026-02-25');
+  assert.equal(points[6].date, aujourdhui);
+  const fenetre = pertes.filter((p) => p.date >= '2026-02-25' && p.date <= aujourdhui);
+  assert.ok(fenetre.length > 0);
+  const somme = points.reduce((s, p) => s + p.valeur, 0);
+  assert.equal(somme.toFixed(2), totauxPertes(fenetre).valeur.toFixed(2));
+  assert.equal(points.reduce((s, p) => s + p.declarations, 0), fenetre.length);
+  assert.deepEqual(septJoursPertes(pertes, ''), []);
 });

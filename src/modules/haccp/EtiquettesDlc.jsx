@@ -110,7 +110,7 @@ const datesInitiales = (jour) => Object.fromEntries(
 
 const es = {
   banniere: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 0 11px 12px',  borderLeft: '2px solid var(--warning-bd)',  color: 'var(--warning-text)', fontSize: 'var(--t1)', lineHeight: 1.5 },
-  bloc: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 },
+  bloc: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 },
   champsDates: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 },
   ligne: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--rule-soft)', flexWrap: 'wrap' },
   ligneInfo: { flex: 1, minWidth: 140, maxWidth: '100%' },
@@ -126,10 +126,11 @@ const es = {
   stepper: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
   // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
   // et fait se superposer les boutons d'une rangée sur mobile.
-  stepBtn: { width: 34, height: 34, flexShrink: 0, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t3)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
+  stepBtn: { width: 34, height: 34, flexShrink: 0, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: '50%', fontSize: 'var(--t3)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
   qteInput: { width: 52, padding: '7px 6px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', textAlign: 'center', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
-  // Barre de résumé posée en bas de l'onglet (sticky, jamais flottante).
-  resume: { position: 'sticky', bottom: 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)', boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' },
+  // Barre de résumé collante en bas de l'onglet : une carte flottante (rayon
+  // des cartes, ombre de ce qui flotte), toujours dans le flux.
+  resume: { position: 'sticky', bottom: 8, zIndex: 3, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--surface)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh-lg)' },
   resumeTotal: { fontSize: 'var(--t2)', color: 'var(--text2)', flex: 1, minWidth: 160 },
   // Compteur porté par l'onglet de mode : c'est ce qui rend visible, sans
   // quitter l'écran courant, qu'un autre mode contient déjà des étiquettes.
@@ -156,9 +157,9 @@ const es = {
   blocLabel: { flex: 1, minWidth: 0, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)' },
   // flexShrink 0 comme les steppers : le min-height global de 44px sur les
   // <button> écrase le flex et fait se superposer les boutons sur mobile.
-  ajoutBtn: { flexShrink: 0, padding: '6px 12px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  actionBtn: { flexShrink: 0, padding: '5px 10px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  actionBtnDanger: { flexShrink: 0, padding: '5px 10px', background: 'var(--danger-bg-soft)', border: '1px solid transparent', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--danger-strong)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  ajoutBtn: { flexShrink: 0, padding: '6px 12px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  actionBtn: { flexShrink: 0, padding: '5px 10px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  actionBtnDanger: { flexShrink: 0, padding: '5px 10px', background: 'var(--danger-bg-soft)', border: '1px solid transparent', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--danger-strong)', cursor: 'pointer', fontFamily: 'var(--font)' },
   vide: { padding: '4px 14px 12px', fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 },
 };
 
@@ -796,7 +797,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
           Les totaux sont ceux du LOT ENTIER, tous modes confondus : c'est ce
           que le bouton va imprimer. Le détail du mode courant reste rappelé
           quand le lot en porte plusieurs. */}
-      <div style={es.resume}>
+      <div data-cadre="" style={es.resume}>
         <span style={es.resumeTotal}>
           <strong style={{ color: 'var(--text)' }}>{compteurs.nbLignes}</strong> préparation{compteurs.nbLignes > 1 ? 's' : ''}
           {', '}

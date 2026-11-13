@@ -6,6 +6,7 @@ import { Mesure } from './ActionsCorrectives.jsx';
 import ProgrammeDuJour from './ProgrammeDuJour.jsx';
 import ProblemesHaccp from './ProblemesHaccp.jsx';
 import { hcfg, hs } from './HACCP.styles.js';
+import { Panneau } from '../../components/ui/index.jsx';
 import { heureEnMinutes, trierCreneaux } from './HACCP.utils.js';
 import { etatTournees, verdictReleve } from './haccpJour.js';
 
@@ -53,11 +54,15 @@ export default function RegistreHaccp({
         </div>
       </div>
 
-      <ProgrammeDuJour
-        tournees={tournees}
-        aujourdhui={date === today}
-        titre={<>Le programme du <N>{jourLabel}</N></>}
-      />
+      {tournees.length > 0 && (
+        <Panneau>
+          <ProgrammeDuJour
+            tournees={tournees}
+            aujourdhui={date === today}
+            titre={<>Le programme du <N>{jourLabel}</N></>}
+          />
+        </Panneau>
+      )}
 
       <div id="haccp-releves-print" style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
@@ -136,14 +141,18 @@ export default function RegistreHaccp({
         </div>
       </div>
 
-      <ProblemesHaccp
-        titre="Problèmes du mois"
-        releves={horsPlageMois}
-        controles={problemesCtrlMois}
-        zones={zones}
-        tpls={tpls}
-        today={today}
-      />
+      {horsPlageMois.length + problemesCtrlMois.length > 0 && (
+        <Panneau>
+          <ProblemesHaccp
+            titre="Problèmes du mois"
+            releves={horsPlageMois}
+            controles={problemesCtrlMois}
+            zones={zones}
+            tpls={tpls}
+            today={today}
+          />
+        </Panneau>
+      )}
     </div>
   );
 }

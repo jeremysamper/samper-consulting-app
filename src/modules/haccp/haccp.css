@@ -1,13 +1,150 @@
 /* ─────────────────────────────────────────────────────────────────────────────
-   Accueil du module HACCP, scopé .haccp-accueil (AccueilHaccp.jsx).
-   Mise en page seulement : aucune couleur, aucune fonction de couleur (la
-   zone exportée par html2canvas n'en dépend pas, et ces règles n'y entrent
-   pas). Les tuiles d'une même grille ont toutes la hauteur de la plus haute ;
-   quatre tuiles se rangent en 2 + 2 sur iPad portrait au lieu de 3 + 1 (une
-   tuile seule sur sa rangée). Téléphone (2 colonnes) et ordinateur
-   (4 colonnes) gardent la grille partagée .accueil-grille.
+   Module HACCP : mise en page de l'accueil et des écrans (direction Galet).
+   Les couleurs passent par les jetons d'app.css, jamais par une fonction de
+   couleur. Tout ce qui habille une zone capturée en PDF (haccp-dashboard-print,
+   haccp-controls-print) est écrit ici, sur une classe exclue de
+   .pdf-render-root : la capture ne lit que les styles en ligne, inchangés, et
+   l'export sort identique au pixel. La fenêtre d'impression ne charge pas
+   cette feuille : elle rend la zone telle qu'avant.
    ───────────────────────────────────────────────────────────────────────────── */
+
+/* Tuiles de l'accueil (AccueilHaccp.jsx), sur la grille partagée
+   .accueil-grille : toutes à la hauteur de la plus haute ; quatre tuiles se
+   rangent en 2 + 2 sur iPad portrait au lieu de 3 + 1. */
 .haccp-accueil .accueil-grille { grid-auto-rows: 1fr; }
 @media (min-width: 768px) and (max-width: 1023.98px) {
   .haccp-accueil[data-tuiles="4"] .accueil-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ── Accueil ──────────────────────────────────────────────────────────────────
+   Par la largeur réellement disponible (rail ou menu déplié), pas par celle de
+   la fenêtre : requêtes de conteneur, paliers 560, 760 et 1080 px comme le
+   tableau de bord. Le conteneur ne porte aucune fenêtre du module : un
+   conteneur de requêtes peut ancrer un élément fixe à sa propre boîte.
+   Ordre au téléphone et à la tablette étroite : la carte « Maintenant » et les
+   tuiles d'abord (le bouton du relevé et la première tuile restent visibles
+   sans défiler), les repères ensuite. Dès 760 px, les repères remontent sous
+   l'en-tête. */
+.haccp-page {
+  container-type: inline-size;
+  container-name: haccp;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.haccp-entete {
+  order: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.haccp-haut {
+  order: 20;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+}
+.haccp-page > [data-haccp-aide] { order: 25; }
+.haccp-reperes {
+  order: 30;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+.haccp-jour { order: 50; min-width: 0; }
+.haccp-pied { order: 60; }
+
+/* La carte de repère est une primitive (CarteRepere) : seuls son retrait et
+   son picto suivent la largeur de l'écran (!important : le cercle pose son
+   display en style inline). */
+.haccp-page .ui-repere { padding: 12px; }
+.haccp-page .ui-repere-icone { display: none !important; }
+
+/* Carte « Maintenant » (carte nuit) : le texte et la flèche du registre en
+   tête, le bouton du relevé dessous, puis une tuile par heure de relevé. */
+.haccp-maintenant-tete {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px 16px;
+  min-width: 0;
+}
+.haccp-maintenant-action { min-width: 0; }
+.haccp-tournees {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+/* Sans heures de relevé : une seule tuile, sur toute la largeur. */
+.haccp-tournees.haccp-tournees--une { grid-template-columns: minmax(0, 1fr); }
+.haccp-page [data-carte-avant="nuit"] button:focus-visible {
+  outline: 2px solid var(--carte-nuit-texte);
+  outline-offset: 2px;
+}
+
+/* Cartes blanches posées dans une zone capturée : par classe, hors capture. */
+.haccp-carte:not(.pdf-render-root *) {
+  background: var(--zone);
+  border-radius: var(--r-lg);
+  box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
+  padding: 14px 14px 6px;
+  min-width: 0;
+}
+/* Le programme du jour reste dans l'export ; à l'écran, la carte
+   « Maintenant » le dit par ses tuiles. */
+.haccp-impression:not(.pdf-render-root *) { display: none !important; }
+
+@media (min-width: 600px) {
+  .haccp-page { gap: 24px; }
+}
+/* Téléphone : deux repères sur une ligne (!important : la carte pose son
+   display en style inline). */
+@container haccp (max-width: 559.98px) {
+  .haccp-reperes > [data-repere="hors-plage"],
+  .haccp-reperes > [data-repere="a-revoir"] { display: none !important; }
+}
+@container haccp (min-width: 560px) {
+  .haccp-page .ui-repere { padding: 14px 16px; }
+  .haccp-page .ui-repere-icone { display: inline-flex !important; }
+  .haccp-reperes { gap: 12px; }
+  .haccp-maintenant-action { max-width: 340px; }
+  .haccp-tournees { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .haccp-carte:not(.pdf-render-root *) { padding: 18px 20px 10px; }
+}
+@container haccp (min-width: 760px) {
+  .haccp-reperes { order: 15; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  /* La carte « Maintenant » à côté des tuiles, en deux colonnes, qui prennent
+     sa hauteur : la première tuile reste visible sans défiler à la tablette. */
+  .haccp-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .haccp-haut .haccp-accueil,
+  .haccp-haut .accueil-grille { height: 100%; }
+  .haccp-haut .accueil-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container haccp (min-width: 1080px) {
+  .haccp-haut { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px; }
+  /* Les frigos à gauche, « À surveiller » à droite (!important : la zone pose
+     son display en style inline, que l'export garde). */
+  .haccp-jour--deux:not(.pdf-render-root *) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 24px !important;
+  }
+}
+
+/* ── Écran des contrôles : chaque section en carte, hors capture ──────────── */
+.haccp-controles-section:not(.pdf-render-root *) {
+  background: var(--zone);
+  border-radius: var(--r-lg);
+  box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
+  padding: 10px 16px 2px;
 }

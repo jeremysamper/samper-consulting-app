@@ -1,9 +1,11 @@
 import React from 'react';
-import { ClipboardCheck, ListPlus } from 'lucide-react';
+import { ClipboardCheck, ClipboardList, ListChecks, ListPlus } from 'lucide-react';
 import { dbService } from '../../services/dbService.js';
 import { canManageModule } from '../../data/demoData.js';
 import { getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import { Anneau, CarteRepere, Panneau } from '../../components/ui/index.jsx';
+import './mep.css';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import { useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { zurichToday } from '../../utils/zurichTime.js';
@@ -27,6 +29,10 @@ function apresRetourEnCours(fn) {
 
 // La liste du service : celle d'aujourd'hui (Zurich), sinon la prochaine
 // datée. Les listes arrivent triées par date de service.
+// Nombres dans leurs propres nœuds : la phrase autour reste une entrée du
+// glossaire.
+const N = ({ children }) => <span data-no-translate="">{children}</span>;
+
 const listeDuService = (listes) => {
   const jour = zurichToday();
   return (listes || []).find(l => l.dateService && String(l.dateService).slice(0, 10) >= jour) || null;
@@ -42,6 +48,12 @@ const listeDuService = (listes) => {
 // sa carte) et « Nouvelle liste » (mêmes droits qu'avant). Le détail d'une
 // liste est un écran de tâche (Retour, geste retour, Échap) ; l'éditeur aussi,
 // sans Échap.
+// Direction Galet : le contexte et la loupe posés sur la page, deux repères
+// (préparations à faire sur toutes les listes, nombre de listes), les gros
+// boutons gardés, chaque liste en carte blanche avec son anneau d'avancement
+// (mep.css pour la grille). Aucun montant. Le nombre de préparations urgentes
+// n'est pas lu à l'accueil (les préparations ne se chargent qu'à l'ouverture
+// d'une liste) : il se lit dans la liste, par section.
 const MiseEnPlace = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
@@ -148,48 +160,62 @@ const MiseEnPlace = ({ user, etablissement }) => {
     { id: 'nouvelle', Icone: ListPlus, libelle: 'Nouvelle liste', etat: <>pour un service</>, visible: canEdit, onClick: openNew },
   ];
 
+  // Repères : sur toutes les listes de l'établissement, comme la grille dessous.
+  const totalPreparations = (listes || []).reduce((n, l) => n + (l.itemsCount || 0), 0);
+  const aFaire = (listes || []).reduce((n, l) => n + Math.max(0, (l.itemsCount || 0) - (l.itemsFaits || 0)), 0);
+
   return (
-    <div style={s.root}>
-      <div style={s.header}>
-        <div style={s.headerLeft}>
-          <div>
-            <div style={s.sub}>Grosse production congelable et préparations urgentes non congelables</div>
+    <div className="mep-page">
+      <div className="mep-grille">
+        <div className="mep-entete">
+          <div style={s.sub}>Grosse production congelable et préparations urgentes non congelables</div>
+          <div style={s.moduleActions} className="module-actions">
+            <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une liste…" />
           </div>
         </div>
-        <div style={s.moduleActions} className="module-actions">
-          <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une liste…" />
+
+        <div className="mep-haut">
+          {/* Les autres tâches, en gros boutons au-dessus des listes ; « Nouvelle
+              liste » remplace aussi l'appel de la liste vide (un seul bouton principal). */}
+          {tuiles.some(t => t.visible) && <div className="mep-tuiles"><AccueilModule tuiles={tuiles} /></div>}
+          {!loading && listes.length > 0 && (
+            <div className="mep-reperes" data-mep-reperes="">
+              <CarteRepere
+                Icone={ListChecks}
+                valeur={aFaire}
+                libelle={aFaire > 1 ? 'préparations à faire' : 'préparation à faire'}
+                detail={<>sur <N>{totalPreparations}</N></>}
+              />
+              <CarteRepere Icone={ClipboardList} valeur={listes.length} libelle={listes.length > 1 ? 'listes' : 'liste'} />
+            </div>
+          )}
         </div>
+
+        {loading ? (
+          <Panneau style={s.empty}>Chargement des listes…</Panneau>
+        ) : filtered.length === 0 ? (
+          <Panneau style={s.empty}>
+            {q ? 'Aucune liste pour cette recherche.' : 'Aucune liste de mise en place pour le moment.'}
+          </Panneau>
+        ) : (
+          <div style={s.cardsGrid}>
+            {filtered.map(l => {
+              const total = l.itemsCount || 0;
+              const faits = l.itemsFaits || 0;
+              return (
+                <button key={l.id} type="button" className="ui-card ui-card--clickable" data-cadre="" style={s.listeCard} onClick={() => openDetail(l.id)}>
+                  <span style={s.listeTexte}>
+                    <span style={s.listeNom}>{l.nom}</span>
+                    <span style={s.listeDate}>{formatDateService(l.dateService)}</span>
+                    <span style={s.progressLabel}>{faits} / {total} préparation{total > 1 ? 's' : ''} faite{faits > 1 ? 's' : ''}</span>
+                  </span>
+                  <Anneau part={total > 0 ? faits / total : 0} />
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      {/* Les autres tâches, en gros boutons au-dessus des listes ; « Nouvelle
-          liste » remplace aussi l'appel de la liste vide (un seul bouton principal). */}
-      {tuiles.some(t => t.visible) && <AccueilModule tuiles={tuiles} />}
-
-      {loading ? (
-        <div style={s.empty}>Chargement des listes…</div>
-      ) : filtered.length === 0 ? (
-        <div style={s.empty}>
-          {q ? 'Aucune liste pour cette recherche.' : 'Aucune liste de mise en place pour le moment.'}
-        </div>
-      ) : (
-        <div style={s.cardsGrid}>
-          {filtered.map(l => {
-            const total = l.itemsCount || 0;
-            const faits = l.itemsFaits || 0;
-            const pct = total > 0 ? Math.round(faits / total * 100) : 0;
-            return (
-              <button key={l.id} style={s.listeCard} onClick={() => openDetail(l.id)}>
-                <div style={s.listeNom}>{l.nom}</div>
-                <div style={s.listeDate}>{formatDateService(l.dateService)}</div>
-                <div>
-                  <div style={s.progressTrack}><div style={{ ...s.progressFill, width: `${pct}%` }} /></div>
-                  <div style={s.progressLabel}>{faits} / {total} préparation{total > 1 ? 's' : ''} faite{faits > 1 ? 's' : ''}</div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 };

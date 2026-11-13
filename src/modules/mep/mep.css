@@ -1,0 +1,49 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Module Mise en place : mise en page de l'accueil (direction Galet). Les
+   couleurs passent par les jetons d'app.css ; cette feuille ne règle que la
+   grille, par la largeur réellement disponible (requêtes de conteneur, paliers
+   560, 760 et 1080 px). .mep-page est le conteneur, la grille vit sur
+   .mep-grille.
+   Téléphone : les gros boutons d'abord (« Ma liste du service » reste visible
+   sans défiler), puis les repères, puis les listes. Dès 760 px, les repères
+   remontent ; dès 1080 px, ils partagent leur rangée avec les gros boutons.
+   ───────────────────────────────────────────────────────────────────────────── */
+.mep-page { container-type: inline-size; container-name: mep; min-width: 0; }
+.mep-grille { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.mep-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  min-width: 0;
+}
+.mep-haut { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.mep-reperes {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+/* La carte de repère est une primitive (CarteRepere) : seuls son retrait et
+   son picto suivent la largeur (!important : le cercle pose son display en
+   style inline). */
+.mep-page .ui-repere { padding: 12px; }
+.mep-page .ui-repere-icone { display: none !important; }
+
+@container mep (min-width: 560px) {
+  .mep-grille { gap: 24px; }
+  .mep-haut { gap: 24px; }
+  .mep-page .ui-repere { padding: 14px 16px; }
+  .mep-page .ui-repere-icone { display: inline-flex !important; }
+  .mep-reperes { gap: 12px; }
+}
+@container mep (min-width: 760px) {
+  .mep-reperes { order: -1; }
+}
+@container mep (min-width: 1080px) {
+  .mep-haut { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
+  .mep-haut > :only-child { grid-column: 1 / -1; }
+  .mep-tuiles .accueil-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); height: 100%; grid-auto-rows: 1fr; }
+}

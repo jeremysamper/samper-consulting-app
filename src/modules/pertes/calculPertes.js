@@ -37,3 +37,15 @@ export function seriePertes(pertes, tranches) {
     return { debut: t.debut, fin: t.fin, vide: dedans.length === 0, ...totauxPertes(dedans) };
   });
 }
+
+// Les sept derniers jours jusqu'à `aujourdhui` compris (YYYY-MM-DD) : un
+// point par jour, { date, valeur, declarations }, du plus ancien au plus
+// récent. Même calcul que seriePertes, une tranche d'un jour chacune. Sert à
+// la carte « Sept derniers jours » de l'écran Pertes (CartesPertes.jsx).
+export function septJoursPertes(pertes, aujourdhui) {
+  const [y, m, d] = String(aujourdhui || '').slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return [];
+  const jours = Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(y, m - 1, d - 6 + i)).toISOString().slice(0, 10));
+  return seriePertes(pertes, jours.map((j) => ({ debut: j, fin: j })))
+    .map((p) => ({ date: p.debut, valeur: p.valeur, declarations: p.declarations }));
+}

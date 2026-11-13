@@ -131,17 +131,17 @@ const st = {
   etat: { fontSize: 'var(--t2)', marginTop: 4, lineHeight: 1.35 },
   droite: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, flexShrink: 0 },
   relever: {
-    minHeight: 44, padding: '8px 18px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)',
+    minHeight: 44, padding: '8px 18px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)',
     cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
   },
   champ: {
-    flex: '1 1 50px', minWidth: 0, height: 44, boxSizing: 'border-box', padding: '0 10px', borderRadius: 'var(--r-sm)',
+    flex: '1 1 50px', minWidth: 0, height: 44, boxSizing: 'border-box', padding: '0 10px', borderRadius: 'var(--r)',
     borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--champ-bord)',
     fontSize: 'var(--t3)', fontWeight: 'var(--g-chiffre)', textAlign: 'center', fontFamily: 'var(--font-num)', background: 'var(--surface)', color: 'var(--text)',
   },
   champAlerte: { borderColor: 'var(--danger-strong)', color: 'var(--danger-text)' },
-  valider: { flexShrink: 0, width: 44, height: 44, background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 'var(--t3)', fontWeight: 'var(--g3)' },
-  annuler: { flexShrink: 0, width: 44, height: 44, background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-sm)', cursor: 'pointer', fontSize: 'var(--t3)' },
+  valider: { flexShrink: 0, width: 44, height: 44, background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: '50%', cursor: 'pointer', fontSize: 'var(--t3)', fontWeight: 'var(--g3)' },
+  annuler: { flexShrink: 0, width: 44, height: 44, background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: '50%', cursor: 'pointer', fontSize: 'var(--t3)' },
 };
 
 export default ZoneTile;

@@ -23,6 +23,9 @@ import { hcfg, hs } from './HACCP.styles.js';
 //
 // Crochets du banc : data-controle-fait sur chaque « C'est fait »,
 // data-controle-annuler sur chaque « Annuler ».
+// Chaque section est une carte blanche à l'écran, par la classe
+// haccp-controles-section (haccp.css) : la zone est capturée par l'export,
+// ses styles en ligne ne changent pas.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const N = ({ children }) => <span data-no-translate="">{children}</span>;
@@ -82,7 +85,7 @@ export default function ControlesDuJour({
   return (
     <div style={st.racine}>
       {aFaire.length > 0 && (
-        <section style={st.section}>
+        <section className="haccp-controles-section" style={st.section}>
           <div style={st.titre}>{aujourdhui ? <>À faire aujourd'hui</> : <>Pas fait</>}</div>
           {aFaire.map(({ tpl }) => (
             <div key={tpl.id} style={st.ligne}>
@@ -100,7 +103,7 @@ export default function ControlesDuJour({
       )}
 
       {faits.length > 0 && (
-        <section style={st.section}>
+        <section className="haccp-controles-section" style={st.section}>
           <div style={st.titre}>Déjà fait</div>
           {faits.map(({ tpl, dernier }) => (
             <div key={tpl.id} style={st.ligne}>
@@ -121,7 +124,7 @@ export default function ControlesDuJour({
       )}
 
       {occasionnels.length > 0 && (
-        <section style={st.section}>
+        <section className="haccp-controles-section" style={st.section}>
           <div style={st.titre}>Quand il y a lieu</div>
           {occasionnels.map(({ tpl, dernier }) => (
             <div key={tpl.id} style={st.ligne}>
@@ -243,16 +246,16 @@ const st = {
   // largeur ; iPad et ordinateur : à droite du libellé.
   boutons: { display: 'flex', gap: 8, flex: '1 1 300px', maxWidth: 360, minWidth: 0 },
   fait: {
-    flex: '1 1 140px', minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r)', border: 'none',
+    flex: '1 1 140px', minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r-full)', border: 'none',
     background: 'var(--success-fill)', color: 'var(--on-success)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer',
   },
   probleme: {
-    flex: '1 1 140px', minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r)',
+    flex: '1 1 140px', minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r-full)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
     background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },
   annuler: {
-    flex: '0 0 auto', minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r)',
+    flex: '0 0 auto', minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r-full)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
     background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },

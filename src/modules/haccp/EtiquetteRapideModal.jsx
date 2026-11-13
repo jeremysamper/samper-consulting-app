@@ -28,7 +28,7 @@ import { hs } from './HACCP.styles.js';
 
 const rs = {
   ligne: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  stepBtn: { width: 44, height: 44, flexShrink: 0, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t4)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
+  stepBtn: { width: 44, height: 44, flexShrink: 0, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: '50%', fontSize: 'var(--t4)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
   qteInput: { width: 64, padding: '10px 6px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', textAlign: 'center', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
   apercu: { background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)', padding: '12px 14px', fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.55 },
   info: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 },

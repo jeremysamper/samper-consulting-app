@@ -8,6 +8,9 @@ import React from 'react';
 //
 // tournees : etatTournees (haccpJour.js) ; aujourdhui : faux pour un autre
 // jour du registre, où une tournée incomplète se lit « Pas fait ».
+// className : sur l'accueil, la classe haccp-impression (haccp.css) le masque
+// à l'écran, où la carte « Maintenant » dit le programme par ses tuiles ; il
+// reste dans l'export du tableau de bord, inchangé.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const ETATS = {
@@ -18,10 +21,10 @@ const ETATS = {
   pas_fait: { mot: 'Pas fait', couleur: 'var(--danger-text)' },
 };
 
-export default function ProgrammeDuJour({ tournees = [], titre, aujourdhui = true }) {
+export default function ProgrammeDuJour({ tournees = [], titre, aujourdhui = true, className }) {
   if (!tournees.length) return null;
   return (
-    <section style={st.section}>
+    <section className={className} style={st.section}>
       <div style={st.titre}>{titre}</div>
       <div style={st.grille}>
         {tournees.map(t => {

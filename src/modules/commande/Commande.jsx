@@ -4,8 +4,10 @@ import { confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { computeBesoins, appendStaples, applyDedupeGroups } from './computeBesoins.js';
 import { dedupeCommande } from '../../services/aiService.js';
-import { ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, LayoutGrid, ListChecks, Pencil, Trash2 } from 'lucide-react';
 import { Fenetre } from '../../components/ui/Fenetres.jsx';
+import { Btn, CarteRepere, Panneau, ligneStyle } from '../../components/ui/index.jsx';
+import './commande.css';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import AccueilCommande from './AccueilCommande.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
@@ -24,9 +26,17 @@ const rayonDe = (item) => classerProduit(item?.nom, null, item?.categorie);
 // (AccueilCommande.jsx). Visible de tous : cocher + saisir une quantite
 // (optionnelle), ajouter un produit, envoyer la liste (PDF, imprimante).
 // Bouton de generation (agrege les produits de toutes les cartes) : consultant only.
+// Direction Galet : deux repères (produits cochés sur le total, rayons), les
+// gros boutons gardés, une carte blanche par rayon. A l'ordinateur, la liste
+// est à gauche, les repères et les boutons à droite (commande.css). Aucun
+// montant : l'écran n'en montre pas.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PRINT_ID = 'commande-print';
+
+// Nombres dans leurs propres nœuds : la phrase autour reste une entrée du
+// glossaire.
+const N = ({ children }) => <span data-no-translate="">{children}</span>;
 
 const Commande = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
@@ -236,6 +246,9 @@ const Commande = ({ user, etablissement }) => {
   const groups = groupByCategorie(filtered);
   const totalCount = items.length;
   const cocheCount = items.filter(i => i.coche).length;
+  // Repères : les rayons de toute la liste (pas du filtre), les ajouts à la main.
+  const rayonsCount = new Set(items.map(rayonDe)).size;
+  const manuelsCount = items.filter(i => i.source === 'manual').length;
 
   // Construit la charge utile pour l'export PDF natif (mise en page DA Samper).
   // On exporte la liste complète (indépendamment de la recherche / du filtre).
@@ -266,120 +279,140 @@ const Commande = ({ user, etablissement }) => {
     pdfUtils?.exportCommandePdf?.(buildPdfPayload(), { etablissement, autoPrint: true });
   };
 
-  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
+  if (loading) return <Panneau><div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)', fontSize: 'var(--t2)' }}>Chargement…</div></Panneau>;
 
   return (
-    <div style={s.root}>
+    <div className="commande-page">
       {/* Libellés lus par les lecteurs d'écran devant le nom de chaque produit
           (aria-labelledby de la case et de la quantité). */}
       <span id="commande-lbl-coche" hidden>Commandé :</span>
       <span id="commande-lbl-qte" hidden>Quantité</span>
-      {/* Gros boutons : ajouter, envoyer (liste non vide), gérer (consultant). */}
-      <AccueilCommande
-        listeVide={totalCount === 0}
-        isConsultant={isConsultant}
-        busy={busy}
-        onAjouter={() => setShowAdd(true)}
-        onPdf={exportPdf}
-        onImprimer={printList}
-        onGenerer={openGenModal}
-        onVider={viderAuto}
-      />
-
-      {/* Ligne d'état : la loupe, puis le compteur. */}
-      <div style={s.ligneEtat} className="no-print">
-        <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
-        {totalCount > 0 && (
-          <div style={{ ...s.progress, flex: 1, minWidth: 0 }}>
-            <div style={s.progressBar}><div style={{ ...s.progressFill, width: `${totalCount ? (cocheCount / totalCount) * 100 : 0}%` }} /></div>
-            <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>{cocheCount} / {totalCount} coché{cocheCount > 1 ? 's' : ''}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Liste */}
-      <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        {totalCount === 0 ? (
-          <div style={s.empty}>
-            <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', marginTop: 10, fontFamily: 'var(--font)' }}>Liste de commande vide</div>
-            <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 8, maxWidth: 420 }}>
-              {isConsultant
-                ? 'Ouvrez « Gérer » puis « Générer depuis les cartes » pour rassembler les produits de toutes les cartes, ou ajoutez un produit.'
-                : 'Aucun produit pour le moment. Vous pouvez ajouter un produit, ou demander au consultant de générer la liste depuis les cartes.'}
+      <div className="commande-grille">
+        <div className="commande-cote">
+          {/* Gros boutons : ajouter, envoyer (liste non vide), gérer (consultant). */}
+          <AccueilCommande
+            listeVide={totalCount === 0}
+            isConsultant={isConsultant}
+            busy={busy}
+            onAjouter={() => setShowAdd(true)}
+            onPdf={exportPdf}
+            onImprimer={printList}
+            onGenerer={openGenModal}
+            onVider={viderAuto}
+          />
+          {/* Repères : rien à compter sur une liste vide. */}
+          {totalCount > 0 && (
+            <div className="commande-reperes no-print" data-commande-reperes="">
+              <CarteRepere
+                Icone={ListChecks}
+                valeur={cocheCount}
+                libelle={<>{cocheCount > 1 ? 'cochés sur' : 'coché sur'} <N>{totalCount}</N> {totalCount > 1 ? 'produits' : 'produit'}</>}
+              />
+              <CarteRepere
+                Icone={LayoutGrid}
+                valeur={rayonsCount}
+                libelle={rayonsCount > 1 ? 'rayons' : 'rayon'}
+                detail={manuelsCount > 0 ? <><N>{manuelsCount}</N> {manuelsCount > 1 ? 'ajoutés à la main' : 'ajouté à la main'}</> : null}
+              />
             </div>
+          )}
+        </div>
+
+        <div className="commande-corps">
+          {/* La loupe, puis l'avancement : la barre est muette, le compte est
+              dit par le premier repère. */}
+          <div style={s.ligneEtat} className="no-print">
+            <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
+            {totalCount > 0 && (
+              <div aria-hidden="true" style={s.progressBar}><div style={{ ...s.progressFill, width: `${(cocheCount / totalCount) * 100}%` }} /></div>
+            )}
           </div>
-        ) : groups.length === 0 ? (
-          <div style={s.empty}><div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Aucun produit pour ce filtre.</div></div>
-        ) : (
-          groups.map(group => {
-            const isCollapsed = collapsed.has(group.categorie);
-            return (
-              <div key={group.categorie} data-cadre="" style={s.section}>
-                <button
-                  type="button"
-                  aria-expanded={!isCollapsed}
-                  style={s.sectionHead}
-                  onClick={() => setCollapsed(prev => { const n = new Set(prev); n.has(group.categorie) ? n.delete(group.categorie) : n.add(group.categorie); return n; })}
-                >
-                  <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }} className="no-print">{!isCollapsed ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
-                  <span style={s.sectionTitle}>{group.categorie}</span>
-                  <span style={s.sectionCount}>{group.items.length}</span>
-                </button>
-                {!isCollapsed && group.items.map(item => (
-                  <div key={item.id} style={{ ...s.row, ...(item.coche ? s.rowChecked : {}) }}>
-                    {/* Nom accessible « Commandé : <produit> », assemblé par
-                        aria-labelledby : un seul libellé à traduire, pas un
-                        par produit. */}
-                    <input
-                      type="checkbox"
-                      checked={item.coche}
-                      onChange={() => toggleCoche(item)}
-                      aria-labelledby={`commande-lbl-coche commande-nom-${item.id}`}
-                      style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--accent)', flexShrink: 0 }}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {editingId === item.id ? (
+
+          {/* Liste : une carte par rayon. */}
+          <div id={PRINT_ID} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {totalCount === 0 ? (
+              <Panneau style={s.empty}>
+                <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)' }}>Liste de commande vide</div>
+                <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 8, maxWidth: 420 }}>
+                  {isConsultant
+                    ? 'Ouvrez « Gérer » puis « Générer depuis les cartes » pour rassembler les produits de toutes les cartes, ou ajoutez un produit.'
+                    : 'Aucun produit pour le moment. Vous pouvez ajouter un produit, ou demander au consultant de générer la liste depuis les cartes.'}
+                </div>
+              </Panneau>
+            ) : groups.length === 0 ? (
+              <Panneau style={s.empty}><div style={{ fontSize: 'var(--t2)', color: 'var(--text3)' }}>Aucun produit pour ce filtre.</div></Panneau>
+            ) : (
+              groups.map(group => {
+                const isCollapsed = collapsed.has(group.categorie);
+                return (
+                  <Panneau key={group.categorie} style={s.section}>
+                    <button
+                      type="button"
+                      aria-expanded={!isCollapsed}
+                      style={{ ...s.sectionHead, ...(isCollapsed ? s.sectionHeadSeul : null) }}
+                      onClick={() => setCollapsed(prev => { const n = new Set(prev); n.has(group.categorie) ? n.delete(group.categorie) : n.add(group.categorie); return n; })}
+                    >
+                      <span style={{ display: 'inline-flex', color: 'var(--text3)' }} className="no-print">{!isCollapsed ? <ChevronDown size={16} aria-hidden="true" /> : <ChevronRight size={16} aria-hidden="true" />}</span>
+                      <span style={s.sectionTitle}>{group.categorie}</span>
+                      <span style={s.sectionCount}>{group.items.length}</span>
+                    </button>
+                    {!isCollapsed && group.items.map((item, i) => (
+                      <div key={item.id} style={{ ...ligneStyle({ derniere: i === group.items.length - 1 }), ...s.row, ...(item.coche ? s.rowChecked : {}) }}>
+                        {/* Nom accessible « Commandé : <produit> », assemblé par
+                            aria-labelledby : un seul libellé à traduire, pas un
+                            par produit. */}
                         <input
-                          autoFocus
-                          value={draftName}
-                          onChange={e => setDraftName(e.target.value)}
-                          onBlur={() => renameItem(item, draftName)}
-                          onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') setEditingId(null); }}
-                          style={s.nameInput}
+                          type="checkbox"
+                          checked={item.coche}
+                          onChange={() => toggleCoche(item)}
+                          aria-labelledby={`commande-lbl-coche commande-nom-${item.id}`}
+                          style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--accent)', flexShrink: 0 }}
                         />
-                      ) : (
-                        <div
-                          id={`commande-nom-${item.id}`}
-                          style={{ ...s.rowName, ...(item.coche ? { textDecoration: 'line-through', color: 'var(--text2)' } : {}) }}
-                          onDoubleClick={() => startRename(item)}
-                          title="Double-cliquer pour renommer"
-                        >
-                          {item.nom}
-                          {item.source === 'manual' && <span style={s.manualTag}>ajouté</span>}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          {editingId === item.id ? (
+                            <input
+                              autoFocus
+                              value={draftName}
+                              onChange={e => setDraftName(e.target.value)}
+                              onBlur={() => renameItem(item, draftName)}
+                              onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); else if (e.key === 'Escape') setEditingId(null); }}
+                              style={s.nameInput}
+                            />
+                          ) : (
+                            <div
+                              id={`commande-nom-${item.id}`}
+                              style={{ ...s.rowName, ...(item.coche ? { textDecoration: 'line-through', color: 'var(--text2)' } : {}) }}
+                              onDoubleClick={() => startRename(item)}
+                              title="Double-cliquer pour renommer"
+                            >
+                              {item.nom}
+                              {item.source === 'manual' && <span style={s.manualTag}>ajouté</span>}
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    <div style={s.qtyWrap}>
-                      <input
-                        type="number" min="0" step="any"
-                        value={draftQty[item.id] !== undefined ? draftQty[item.id] : (item.quantite ?? '')}
-                        placeholder="Qté"
-                        aria-labelledby={`commande-lbl-qte commande-nom-${item.id}`}
-                        onChange={e => setDraftQty(prev => ({ ...prev, [item.id]: e.target.value }))}
-                        onBlur={() => persistQuantite(item)}
-                        onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-                        style={s.qtyInput}
-                      />
-                      <span style={s.qtyUnit}>{item.unite}</span>
-                    </div>
-                    <button style={s.delBtn} className="no-print" onClick={() => startRename(item)} title="Renommer"><Pencil size={14} /></button>
-                    <button style={s.delBtn} className="no-print" onClick={() => removeItem(item)} title="Retirer"><Trash2 size={14} /></button>
-                  </div>
-                ))}
-              </div>
-            );
-          })
-        )}
+                        <div style={s.qtyWrap}>
+                          <input
+                            type="number" min="0" step="any"
+                            value={draftQty[item.id] !== undefined ? draftQty[item.id] : (item.quantite ?? '')}
+                            placeholder="Qté"
+                            aria-labelledby={`commande-lbl-qte commande-nom-${item.id}`}
+                            onChange={e => setDraftQty(prev => ({ ...prev, [item.id]: e.target.value }))}
+                            onBlur={() => persistQuantite(item)}
+                            onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
+                            style={s.qtyInput}
+                          />
+                          <span style={s.qtyUnit}>{item.unite}</span>
+                        </div>
+                        <button style={s.delBtn} className="no-print" onClick={() => startRename(item)} title="Renommer"><Pencil size={14} /></button>
+                        <button style={s.delBtn} className="no-print" onClick={() => removeItem(item)} title="Retirer"><Trash2 size={14} /></button>
+                      </div>
+                    ))}
+                  </Panneau>
+                );
+              })
+            )}
+          </div>
+        </div>
       </div>
 
       {showAdd && <AddProductModal onClose={() => setShowAdd(false)} onAdd={addManual} />}
@@ -434,14 +467,10 @@ const GenerateModal = ({ loading, busy, cartes, plats, onClose, onConfirm }) => 
       largeur={420}
       pied={(
         <>
-          <button style={s.ghostBtn} onClick={onClose}>Annuler</button>
-          <button
-            style={{ ...s.primaryBtn, opacity: (selected.size && !busy) ? 1 : 0.5 }}
-            disabled={!selected.size || busy}
-            onClick={() => onConfirm([...selected])}
-          >
+          <Btn variant="ghost" onClick={onClose}>Annuler</Btn>
+          <Btn variant="primary" disabled={!selected.size || busy} onClick={() => onConfirm([...selected])}>
             {busy ? 'Génération…' : `Générer${selected.size ? ` (${selected.size})` : ''}`}
-          </button>
+          </Btn>
         </>
       )}
     >
@@ -457,9 +486,9 @@ const GenerateModal = ({ loading, busy, cartes, plats, onClose, onConfirm }) => 
             </div>
           ) : (
             <>
-              <button style={s.selectAllBtn} onClick={toggleAll}>
+              <Btn variant="ghost" small onClick={toggleAll} style={{ alignSelf: 'flex-start' }}>
                 {allOn ? 'Tout décocher' : 'Tout cocher'}
-              </button>
+              </Btn>
               <div style={s.carteList}>
                 {cartes.map(c => {
                   const on = selected.has(c.id);
@@ -516,8 +545,8 @@ const AddProductModal = ({ onClose, onAdd }) => {
       largeur={420}
       pied={(
         <>
-          <button style={s.ghostBtn} onClick={onClose}>Annuler</button>
-          <button style={{ ...s.primaryBtn, opacity: nom.trim() ? 1 : 0.5 }} disabled={!nom.trim()} onClick={() => onAdd({ nom, categorie, unite })}>Ajouter</button>
+          <Btn variant="ghost" onClick={onClose}>Annuler</Btn>
+          <Btn variant="primary" disabled={!nom.trim()} onClick={() => onAdd({ nom, categorie, unite })}>Ajouter</Btn>
         </>
       )}
     >
@@ -565,43 +594,37 @@ function groupByCategorie(list) {
 }
 
 const s = {
-  root: { display: 'flex', flexDirection: 'column', gap: 14 },
-  toolbar: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
-  // Une seule ligne : la loupe à gauche, le compteur dans l'espace restant.
+  // Une seule ligne : la loupe à gauche, la barre d'avancement dans l'espace restant.
   ligneEtat: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
-  cats: { display: 'flex', gap: 4, flexWrap: 'wrap' },
-  catBtn: { padding: '5px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  actions: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
-  ghostBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  aiBtn: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 16px', background: 'var(--ai-bg-soft)', color: 'var(--ai-text)', border: '1px solid var(--ai-bd)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  progress: { display: 'flex', alignItems: 'center', gap: 10 },
-  progressBar: { flex: 1, height: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden' },
-  progressFill: { height: '100%', background: 'var(--accent)', transition: 'width 0.2s' },
-  printHeader: { marginBottom: 4 },
-  section: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r)', overflow: 'hidden' },
-  // En-tête de rayon repliable : un bouton (clavier, aria-expanded), même rendu
-  // que l'ancien div. Le filet bas passe par une ombre intérieure : avec une
-  // bordure, la règle « Plus de carrés » le prendrait pour une ligne de liste.
-  sectionHead: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', padding: '9px 14px', background: 'var(--bg)', border: 'none', boxShadow: 'inset 0 -1px 0 var(--rule-soft)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', color: 'inherit' },
-  sectionTitle: { flex: 1, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
-  sectionCount: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px' },
-  row: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--rule-soft)' },
+  // Barre d'avancement : une piste en pilule, la part cochée à l'accent.
+  progressBar: { flex: 1, minWidth: 0, height: 8, background: 'var(--piste)', borderRadius: 'var(--r-full)', overflow: 'hidden' },
+  progressFill: { height: '100%', background: 'var(--accent)', borderRadius: 'var(--r-full)', transition: 'width 0.2s' },
+  // Carte d'un rayon (Panneau) : sans retrait, l'en-tête et les lignes posent le leur.
+  section: { padding: 0, overflow: 'hidden' },
+  // En-tête de rayon repliable : un bouton (clavier, aria-expanded). Le filet
+  // bas passe par une ombre intérieure : avec une bordure, la règle « Plus de
+  // carrés » le prendrait pour une ligne de liste.
+  sectionHead: { display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 'var(--ligne-aeree)', padding: '8px 16px', background: 'transparent', border: 'none', boxShadow: 'inset 0 -1px 0 var(--rule-soft)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', color: 'inherit' },
+  sectionHeadSeul: { boxShadow: 'none' },
+  sectionTitle: { flex: 1, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  sectionCount: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', background: 'var(--piste)', borderRadius: 'var(--r-full)', padding: '2px 10px', fontFamily: 'var(--font-num)' },
+  // Ligne d'un produit : le style partagé d'une ligne de liste (ligneStyle),
+  // plus son retrait.
+  row: { padding: '6px 16px' },
   rowChecked: { background: 'var(--success-bg)' },
   rowName: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'text' },
   nameInput: { width: '100%', padding: '5px 8px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
-  manualTag: { marginLeft: 8, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', border: '1px solid var(--btn-bord)', borderRadius: 'var(--r)', padding: '1px 6px' },
+  manualTag: { marginLeft: 8, fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', background: 'var(--piste)', borderRadius: 'var(--r-full)', padding: '1px 8px' },
   qtyWrap: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
   qtyInput: { width: 70, padding: '6px 8px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', textAlign: 'right', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)' },
   qtyUnit: { fontSize: 'var(--t1)', color: 'var(--text2)', width: 26 },
-  delBtn: { background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4, display: 'flex', flexShrink: 0 },
-  empty: { padding: 40, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', display: 'flex', flexDirection: 'column', alignItems: 'center' },
+  delBtn: { background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  empty: { padding: 32, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' },
   label: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', display: 'block', marginBottom: 4 },
   input: { width: '100%', padding: '9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box', outline: 'none' },
-  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)' },
   // Modale de generation
   genBody: { display: 'flex', flexDirection: 'column', gap: 12 },
   genHint: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.45 },
-  selectAllBtn: { alignSelf: 'flex-start', padding: '5px 12px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   carteList: { display: 'flex', flexDirection: 'column', gap: 8, maxHeight: '46vh', overflowY: 'auto' },
   carteRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', cursor: 'pointer' },
   // Carte cochée : filet accent, sans fond de couleur.
