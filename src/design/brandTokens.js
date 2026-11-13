@@ -193,6 +193,10 @@ export const THEME_VAR_OVERRIDES = `
     --carte-nuit-texte: ${BRAND.color.white};
     --carte-nuit-doux: ${BRAND.color.white};
     --carte-nuit-tuile: ${BRAND.color.accent};
+    --carte-nuit-danger: ${BRAND.color.white};
+    --carte-nuit-alerte: ${BRAND.color.white};
+    --carte-nuit-succes: ${BRAND.color.white};
+    --carte-nuit-info: ${BRAND.color.white};
     --carte-soleil: ${BRAND.color.tint};
     --carte-soleil-texte: ${BRAND.color.ink};
     --carte-ciel: ${BRAND.color.tint};

@@ -64,7 +64,7 @@ export default function EtabSwitcher({ etabs = [], current, onSelect, title, var
 
   const body = (
     <>
-      <span style={{ ...s.title, ...(mobile ? s.titleMobile : null) }}>{title}</span>
+      <span style={{ ...s.title, ...(mobile ? s.titleMobile : s.titleDesktop) }}>{title}</span>
       {current && (
         <span data-cadre="" style={{ ...s.line, ...(mobile ? s.lineMobile : null) }}>
           {dot(current)}
@@ -158,6 +158,8 @@ const s = {
     color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.25,
   },
   titleMobile: { textAlign: 'center' },
+  // À l'ordinateur, le titre de page est en grand, en graisse moyenne.
+  titleDesktop: { fontSize: 'var(--t4)', fontWeight: 'var(--g2)' },
   line: {
     display: 'flex', alignItems: 'center', gap: 5, minWidth: 0,
     fontSize: 12, fontWeight: 500, color: 'var(--text2)', lineHeight: 1.35, whiteSpace: 'nowrap',

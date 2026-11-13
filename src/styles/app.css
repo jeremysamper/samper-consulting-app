@@ -135,7 +135,9 @@
      onglet     encre du marqueur du jour et des repères au trait
      carte-*    cartes de mise en avant : nuit (sombre), soleil (jaune pastel),
                 ciel (bleu pastel), avec leur encre ; au plus une nuit et deux
-                pastel par écran, jamais pour dire un état
+                pastel par écran, jamais pour dire un état. Sur la carte nuit,
+                un état posé dans la carte prend son encre claire
+                (carte-nuit-danger, -alerte, -succes, -info)
      lien       texte qui portait l'accent (l'accent reste à l'action principale)
      icone, coche, nav-marque : encres des pictos, des coches et de la marque
      toast-*    fond et texte d'un toast, encres de ses trois statuts
@@ -164,6 +166,10 @@
   --carte-nuit-texte: #ffffff;
   --carte-nuit-doux: #a9c0c9;
   --carte-nuit-tuile: #123a48;
+  --carte-nuit-danger: #fb8f8f;
+  --carte-nuit-alerte: #f5a524;
+  --carte-nuit-succes: #86d6a0;
+  --carte-nuit-info: #a9c8f7;
   --carte-soleil: #f5e4a8;
   --carte-soleil-texte: #2b2408;
   --carte-ciel: #d2deee;
@@ -198,7 +204,7 @@
   --danger-bg-soft: #fef2f2;
   --danger-text: #a11616;
   --danger-bd: #fca5a5;
-  --danger-strong: #d32f2f;
+  --danger-strong: #c62828;
 
   /* Aplats pleins de statut (bouton, pastille) et leur texte, qui suit le
      thème : blanc en clair, encre en sombre où l'aplat s'éclaircit (WCAG 2 :
@@ -228,7 +234,7 @@
   /* Services de réservation : midi orange, soir bleu (le brunch est le midi
      du dimanche). Les mêmes partout (planning de la semaine, vue jour, mode
      service). */
-  --svc-midi: #c2410c;
+  --svc-midi: #b93c0a;
   --svc-midi-bg: #fff7ed;
   --svc-midi-bd: #fdba74;
   --svc-soir: #1e40af;
@@ -348,6 +354,10 @@
     --carte-nuit-texte: #e9f1f4;
     --carte-nuit-doux: #95a9b1;
     --carte-nuit-tuile: #15303b;
+    --carte-nuit-danger: #fb8f8f;
+    --carte-nuit-alerte: #f5a524;
+    --carte-nuit-succes: #86d6a0;
+    --carte-nuit-info: #a9c8f7;
     --carte-soleil: #3a3216;
     --carte-soleil-texte: #f3e7b5;
     --carte-ciel: #1c3146;
@@ -466,6 +476,10 @@ html[data-theme="dark"] {
   --carte-nuit-texte: #e9f1f4;
   --carte-nuit-doux: #95a9b1;
   --carte-nuit-tuile: #15303b;
+  --carte-nuit-danger: #fb8f8f;
+  --carte-nuit-alerte: #f5a524;
+  --carte-nuit-succes: #86d6a0;
+  --carte-nuit-info: #a9c8f7;
   --carte-soleil: #3a3216;
   --carte-soleil-texte: #f3e7b5;
   --carte-ciel: #1c3146;
@@ -1704,6 +1718,45 @@ html[data-theme="dark"] button:not(:disabled):active {
   }
 }
 .app-bar-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* Recherche de la barre du haut (ordinateur) : une pilule à la couleur des
+   cartes, la loupe, « Aller à un module » et son raccourci. Sous 1180 px de
+   large, la pilule se replie en cercle, comme les autres boutons. Elle ouvre
+   la palette (Ctrl ou Cmd + K), rien d'autre. */
+.app-bar-recherche {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  margin: 2px 6px 2px 2px;
+  padding: 0 12px 0 14px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  color: var(--text3);
+  font-family: var(--font);
+  font-size: var(--t2);
+  font-weight: var(--g1);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.app-bar-recherche svg { color: var(--text2); flex-shrink: 0; }
+.app-bar-recherche:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+@media (hover: hover) {
+  .app-bar-recherche:hover { background: var(--selection); color: var(--text); }
+}
+@media (max-width: 1179.98px) {
+  .app-bar-recherche { width: 40px; margin-right: 2px; padding: 0; justify-content: center; }
+  .app-bar-recherche > span { display: none; }
+}
+/* Nom du compte dans la barre du haut : il cède sa place avant le titre. */
+@media (max-width: 1279.98px) {
+  .app-bar-compte-nom { display: none; }
+}
+/* Rail d'icônes du menu : pas de barre de défilement visible. */
+.sc-nav-rail { scrollbar-width: none; }
+.sc-nav-rail::-webkit-scrollbar { display: none; }
 
 .cmdk-overlay {
   position: fixed;
