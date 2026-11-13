@@ -1,0 +1,45 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Module Commande : mise en page (direction Galet). Les couleurs passent par
+   les jetons d'app.css ; cette feuille ne règle que la grille, par la largeur
+   réellement disponible (requêtes de conteneur, paliers 560 et 1080 px).
+   .commande-page est le conteneur ; une requête ne peut pas régler le conteneur
+   lui-même, la grille vit donc sur .commande-grille.
+   Téléphone et tablette : les gros boutons, les repères, puis la liste (le
+   premier bouton reste visible sans défiler, cocher reste à deux gestes).
+   Ordinateur : la liste à gauche sur huit colonnes, les repères et les gros
+   boutons à droite sur quatre, qui restent en vue quand la liste défile.
+   ───────────────────────────────────────────────────────────────────────────── */
+.commande-page { container-type: inline-size; container-name: commande; min-width: 0; }
+.commande-grille { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.commande-cote { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.commande-corps { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.commande-reperes {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+/* La carte de repère est une primitive (CarteRepere) : seuls son retrait et
+   son picto suivent la largeur (!important : le cercle pose son display en
+   style inline). */
+.commande-page .ui-repere { padding: 12px; }
+.commande-page .ui-repere-icone { display: none !important; }
+
+@container commande (min-width: 560px) {
+  .commande-grille { gap: 24px; }
+  .commande-page .ui-repere { padding: 14px 16px; }
+  .commande-page .ui-repere-icone { display: inline-flex !important; }
+  .commande-reperes { gap: 12px; }
+}
+@container commande (min-width: 1080px) {
+  .commande-grille {
+    display: grid;
+    grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+    align-items: start;
+  }
+  .commande-corps { grid-column: 1; grid-row: 1; }
+  .commande-cote { grid-column: 2; grid-row: 1; position: sticky; top: 0; }
+  /* Dans la colonne de droite, un gros bouton par ligne. */
+  .commande-cote .accueil-grille { grid-template-columns: minmax(0, 1fr); }
+}

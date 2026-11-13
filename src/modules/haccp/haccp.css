@@ -101,8 +101,10 @@
    « Maintenant » le dit par ses tuiles. */
 .haccp-impression:not(.pdf-render-root *) { display: none !important; }
 
-@container haccp (min-width: 560px) {
+@media (min-width: 600px) {
   .haccp-page { gap: 24px; }
+}
+@container haccp (min-width: 560px) {
   .haccp-page .ui-repere { padding: 14px 16px; }
   .haccp-page .ui-repere-icone { display: inline-flex !important; }
   .haccp-reperes { gap: 12px; }
