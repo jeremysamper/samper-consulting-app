@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  ECHEANCE_MAX_MS, ECHEANCE_MIN_MS, STUN_DIRECT, codeAppel, configIce, echeanceAppelant, estIos, lireJournal,
+  ECHEANCE_MAX_MS, ECHEANCE_MIN_MS, codeAppel, configIce, echeanceAppelant, estIos, lireJournal,
   messageAppel, messageMicro, peutAppeler, sonneEncore, sonnerieRestante, viaRelais,
 } from './appels.js';
 
@@ -54,17 +54,22 @@ test('iOS et iPadOS reconnus, Mac et Android non', () => {
   assert.equal(estIos({ userAgent: 'Mozilla/5.0 (Linux; Android 14)' }), false);
 });
 
-test('appel-turn : relais, connexion directe sur 503 ou panne, refus sur 401 et 403', () => {
-  const ice = [{ urls: ['turn:turn.cloudflare.com:3478'], username: 'u', credential: 'c' }];
+test('appel-turn : ses serveurs sur 200, aucun serveur sur 503 ou panne, refus sur 401 et 403', () => {
+  // Forme rendue par appel-turn devant coturn (A10) : STUN et TURN de la maison.
+  const ice = [{ urls: ['stun:relais.exemple.ch:3478', 'turn:relais.exemple.ch:3478?transport=udp', 'turns:relais.exemple.ch:5349?transport=tcp'], username: '1794570000:u', credential: 'c' }];
   assert.deepEqual(configIce(200, { iceServers: ice, ttl: 1800 }), { iceServers: ice, relais: true });
-  assert.deepEqual(configIce(503, { error: 'Relais non configuré.' }), { iceServers: STUN_DIRECT, relais: false });
-  assert.deepEqual(configIce(502, null), { iceServers: STUN_DIRECT, relais: false });
-  assert.deepEqual(configIce(0, null), { iceServers: STUN_DIRECT, relais: false });
-  assert.deepEqual(configIce(200, {}), { iceServers: STUN_DIRECT, relais: false });
+  // Sans relais : aucun serveur, la liaison ne passe que par les adresses de
+  // l'appareil ; aucun tiers n'est interrogé.
+  assert.deepEqual(configIce(503, { error: 'Relais non configuré.' }), { iceServers: [], relais: false });
+  assert.deepEqual(configIce(502, null), { iceServers: [], relais: false });
+  assert.deepEqual(configIce(0, null), { iceServers: [], relais: false });
+  assert.deepEqual(configIce(200, {}), { iceServers: [], relais: false });
+  assert.deepEqual(configIce(200, { iceServers: [] }), { iceServers: [], relais: false });
+  // Chaque réponse sans relais a sa propre liste (aucune liste partagée entre appels).
+  assert.notEqual(configIce(503, null).iceServers, configIce(503, null).iceServers);
   assert.match(configIce(403, { error: 'Poste partagé : appel indisponible.' }).refus, /iPad de poste/);
   assert.match(configIce(403, { error: 'Compte inactif.' }).refus, /désactivé/);
   assert.match(configIce(401, { error: 'Non authentifié.' }).refus, /Session expirée/);
-  assert.equal(STUN_DIRECT[0].urls, 'stun:stun.cloudflare.com:3478');
 });
 
 test('sonnerie : jamais pour une ligne échue (rejeu au réveil), marge de 2 s', () => {

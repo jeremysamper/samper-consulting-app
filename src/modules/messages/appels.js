@@ -18,11 +18,6 @@ export const CONNEXION_MAX_MS = 20000;
 // Message de fin d'appel affiché puis retiré seul.
 export const FIN_AFFICHEE_MS = 5000;
 
-// Relais absent (appel-turn en 503 tant que les secrets manquent, ou en
-// erreur) : connexion directe par le STUN du même fournisseur que le relais
-// (note nLPD, section 1), aucun autre tiers.
-export const STUN_DIRECT = [{ urls: 'stun:stun.cloudflare.com:3478' }];
-
 const TEXTES_BASE = {
   appel_session: 'Session expirée : reconnectez-vous, puis réessayez.',
   appel_compte_inactif: 'Votre compte est désactivé : appel impossible.',
@@ -76,7 +71,10 @@ export function messageMicro(err, ios = estIos()) {
 
 // Réponse d'appel-turn lue en configuration ICE. statut : code HTTP (0 pour
 // une erreur réseau), corps : JSON rendu.
-//   { iceServers, relais }  relais vrai quand Cloudflare a rendu ses serveurs
+//   { iceServers, relais }  relais vrai quand appel-turn a rendu ses serveurs
+//                           (le relais de la maison, A10) ; sinon aucun
+//                           serveur : connexion directe par les seules
+//                           adresses de l'appareil, aucun tiers interrogé
 //   { refus }               le compte ne peut pas appeler (403), phrase prête
 export function configIce(statut, corps) {
   if (statut === 200 && corps && Array.isArray(corps.iceServers) && corps.iceServers.length) {
@@ -87,7 +85,7 @@ export function configIce(statut, corps) {
     return { refus: poste ? TEXTES_BASE.appel_poste_partage : TEXTES_BASE.appel_compte_inactif };
   }
   if (statut === 401) return { refus: TEXTES_BASE.appel_session };
-  return { iceServers: STUN_DIRECT, relais: false };
+  return { iceServers: [], relais: false };
 }
 
 const ms = (iso) => {
