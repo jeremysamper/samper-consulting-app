@@ -108,7 +108,12 @@ async function clesVapid(sb: Admin): Promise<{ cles: CryptoKeyPair; contact: str
 
 type Abonnement = { id: string; user_id: string; endpoint: string; p256dh: string; auth: string };
 // vibration : motif lu par push-sw.js quand il est présent (plats prêts).
-type Message = { titre: string; corps: string; url: string; tag: string; vibration?: number[] };
+// groupe : push-sw.js ferme les notifications déjà affichées du même groupe
+// (les envois d'une rafale de plats prêts).
+type Message = { titre: string; corps: string; url: string; tag: string; vibration?: number[]; groupe?: string };
+
+// Tâches de fond du runtime Supabase : la fonction répond, la tâche continue.
+const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
 
 // Envoie le message à chaque abonnement ; supprime ceux que le service de push
 // déclare expirés. Ne lève jamais : renvoie le décompte.
@@ -396,9 +401,15 @@ async function traiter(req: Request): Promise<Response> {
       return json({ error: 'Ticket ou suite invalide.' }, 400);
     }
     try {
+      // Les rappels de la rafale partent en tâche de fond : la base, qui
+      // appelle par pg_net avec un délai de 20 s, a sa réponse après le
+      // premier envoi.
       const res = await traiterPlatsPrets({
         sb,
         envoyer: (appareils: Abonnement[], message: Message, dureeDeVie: number) => envoyer(sb, appareils, message, dureeDeVie),
+        enArrierePlan: runtime
+          ? (p: Promise<unknown>) => runtime.waitUntil(p.then((r) => console.log('[notifications] plats_prets rafale', ticketId, suite, JSON.stringify(r))))
+          : undefined,
       }, ticketId, suite, body.dryRun === true);
       if (!res.dryRun && res.pris) console.log('[notifications] plats_prets', ticketId, suite, JSON.stringify({ ...res, apercu: undefined }));
       return json({ ok: true, ...res });

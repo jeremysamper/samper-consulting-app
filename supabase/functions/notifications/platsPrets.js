@@ -16,8 +16,15 @@ export const FENETRE_MS = 6000;
 // l'est plus : un « c'est prêt » d'il y a une heure ne sert à personne.
 export const DUREE_DE_VIE_S = 15 * 60;
 // Motif de vibration porté par le message. Jamais de silence forcé : le son
-// reste réglé par le téléphone.
+// reste réglé par le téléphone. Lu par Chrome sur ordinateur seulement :
+// l'iPhone et Chrome sur Android (8 et plus) vibrent selon leurs propres
+// réglages, une fois et brièvement par notification.
 export const VIBRATION = [200, 100, 200];
+// D'où la rafale : chaque avis part RAFALE_ENVOIS fois, à RAFALE_ECART_MS
+// d'écart, pour que le téléphone vibre plusieurs fois. Le service worker
+// n'en laisse qu'une à l'écran (champ groupe).
+export const RAFALE_ENVOIS = 3;
+export const RAFALE_ECART_MS = 3000;
 // Les avis soldés sont gardés deux jours, pour comprendre un envoi manqué.
 export const PURGE_MS = 2 * 24 * 3600 * 1000;
 
@@ -27,10 +34,18 @@ export function sujetPush(tag) {
   return String(tag || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32);
 }
 
-// La suite vient en tête : « À suivre » ne remplace jamais « En direct », ni
-// à l'écran (tag) ni dans la file du service de push (sujet, 32 caractères).
-export function tagAvis(ticketId, suite) {
+// Groupe d'un avis : un ticket et une suite. Le service worker ferme les
+// notifications déjà affichées du même groupe quand une nouvelle arrive.
+export function groupeAvis(ticketId, suite) {
   return `pret-${suite}-${ticketId}`;
+}
+
+// Tag d'un envoi de la rafale. La suite vient en tête, puis le rang de l'envoi :
+// « À suivre » ne remplace jamais « En direct », et les envois d'une même
+// rafale ne se fusionnent ni à l'écran (tag) ni dans la file du service de
+// push (sujet, 32 caractères).
+export function tagAvis(ticketId, suite, envoi = 1) {
+  return `pret-${suite}-${envoi}-${ticketId}`;
 }
 
 // Nom d'une suite : celui de la maison s'il existe, sinon En direct, À suivre,
@@ -109,9 +124,26 @@ export function composerAvisPret({ ticketId, etabId, test, tableNom, suite, libe
     titre,
     corps,
     url: `/?page=caisse&etab=${encodeURIComponent(etabId)}`,
-    tag: tagAvis(ticketId, suite),
+    tag: tagAvis(ticketId, suite, 1),
+    groupe: groupeAvis(ticketId, suite),
     vibration: VIBRATION,
   };
+}
+
+// Un rappel de la rafale part-il encore ? Oui tant que la situation annoncée
+// tient : ticket ouvert, chaque plat de l'avis encore prêt et pas encore noté
+// servi, et aucun avis plus récent sur la même suite (c'est lui qui prend le
+// relais, avec sa propre rafale).
+export function rappelValable({ ticket, lignes, lignesAvis, avisConnus, avisSuite }) {
+  if (!ticket || ticket.statut !== 'ouvert') return false;
+  const parId = new Map((lignes || []).map((x) => [String(x.id), x]));
+  const toutesPretes = (lignesAvis || []).every((id) => {
+    const x = parId.get(String(id));
+    return Boolean(x && x.statut === 'envoye' && x.pret_at);
+  });
+  if (!toutesPretes) return false;
+  const connus = new Set((avisConnus || []).map(String));
+  return !(avisSuite || []).some((a) => a.etat !== 'annule' && !connus.has(String(a.id)));
 }
 
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -120,7 +152,11 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 //   deps.sb       : client de la base (rôle de service) ;
 //   deps.envoyer  : (appareils, message, dureeDeVieSecondes) => { envoyes,
 //                   echecs, expires } ; deps.attendre, deps.maintenant : pour
-//                   les essais.
+//                   les essais ;
+//   deps.enArrierePlan : (promesse) => void, facultatif. Les rappels de la
+//                   rafale y partent et la fonction répond après le premier
+//                   envoi (EdgeRuntime.waitUntil). Sans lui, ils sont attendus
+//                   avant de répondre.
 //
 // Un appel par ligne cochée (déclencheur de la base). Regroupement : chaque
 // appel note les avis en attente à son arrivée, attend la fenêtre, puis ne
@@ -134,6 +170,11 @@ const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 // décoché ou noté servi pendant la fenêtre. Chaque avis pris finit envoye ou
 // sans_envoi ; un avis pris et jamais soldé (exécution interrompue) reste
 // en_cours et ne repart pas, comme une alerte.
+// Rafale : après le premier envoi d'un message, RAFALE_ENVOIS - 1 rappels à
+// RAFALE_ECART_MS d'écart, chacun avec son tag et son sujet. Avant chaque
+// rappel, ticket et lignes sont relus (rappelValable) : un plat noté servi ou
+// décoché, un ticket fermé ou un avis plus récent sur la suite arrêtent la
+// rafale. Les rappels ne changent pas l'état des avis.
 // dryRun : pas d'attente, rien n'est pris, envoyé ni écrit ; rend l'aperçu.
 export async function traiterPlatsPrets(deps, ticketId, suite, dryRun) {
   const { sb, envoyer } = deps;
@@ -165,6 +206,15 @@ export async function traiterPlatsPrets(deps, ticketId, suite, dryRun) {
     if (!pris.length) return rendre();
   }
   bilan.pris = pris.length;
+
+  // Avis de la suite connus au moment de la prise : un avis apparu ensuite
+  // est plus récent et arrête la rafale de celui-ci.
+  const lireAvisSuite = async () => {
+    const { data, error } = await sb.from('caisse_prets_avis').select('id, etat')
+      .eq('ticket_id', ticketId).eq('suite', suite);
+    return error ? null : data || [];
+  };
+  const avisConnus = dryRun ? [] : ((await lireAvisSuite()) || pris).map((a) => a.id);
 
   const solder = async (ids, etat) => {
     if (!ids.length) return;
@@ -224,6 +274,7 @@ export async function traiterPlatsPrets(deps, ticketId, suite, dryRun) {
   }
   await solder(sansDestinataire, 'sans_envoi');
 
+  const rappels = [];
   for (const [qui, avis] of groupes) {
     const ids = avis.map((a) => a.id);
     // Seulement ses appareils abonnés à cet établissement.
@@ -237,7 +288,10 @@ export async function traiterPlatsPrets(deps, ticketId, suite, dryRun) {
     });
     if (dryRun) {
       apercu.push(message
-        ? { titre: message.titre, corps: message.corps, url: message.url, tag: message.tag, appareils: appareils.length, lignes: avis.length }
+        ? {
+          titre: message.titre, corps: message.corps, url: message.url, tag: message.tag, groupe: message.groupe,
+          envois: RAFALE_ENVOIS, appareils: appareils.length, lignes: avis.length,
+        }
         : { appareils: appareils.length, lignes: avis.length, motif: 'rien_a_dire' });
       continue;
     }
@@ -245,10 +299,45 @@ export async function traiterPlatsPrets(deps, ticketId, suite, dryRun) {
     const res = await envoyer(appareils, message, DUREE_DE_VIE_S);
     await solder(ids, res.envoyes > 0 ? 'envoye' : 'sans_envoi');
     bilan.appareils += res.envoyes; bilan.echecs += res.echecs; bilan.expires += res.expires;
+    if (res.envoyes > 0) rappels.push({ appareils, message, lignesAvis: avis.map((a) => a.ligne_id) });
   }
 
   if (!dryRun) {
     await sb.from('caisse_prets_avis').delete().lt('created_at', new Date(maintenant() - PURGE_MS).toISOString());
   }
-  return rendre();
+  if (dryRun || !rappels.length || RAFALE_ENVOIS < 2) return rendre();
+
+  const rafale = async () => {
+    const r = { rappels: 0, appareils: 0, arret: null };
+    try {
+      let restants = rappels;
+      for (let envoi = 2; envoi <= RAFALE_ENVOIS && restants.length; envoi++) {
+        await attendre(RAFALE_ECART_MS);
+        const [t2, l2, avisSuite] = await Promise.all([
+          sb.from('caisse_tickets').select('id, statut').eq('id', ticketId).maybeSingle(),
+          sb.from('caisse_lignes').select('id, statut, pret_at').eq('ticket_id', ticketId).eq('suite', suite),
+          lireAvisSuite(),
+        ]);
+        if (t2.error || l2.error || !avisSuite) { r.arret = 'lecture'; break; }
+        restants = restants.filter((x) => rappelValable({
+          ticket: t2.data, lignes: l2.data, lignesAvis: x.lignesAvis, avisConnus, avisSuite,
+        }));
+        if (!restants.length) { r.arret = 'situation_changee'; break; }
+        for (const x of restants) {
+          const res = await envoyer(x.appareils, { ...x.message, tag: tagAvis(ticketId, suite, envoi) }, DUREE_DE_VIE_S);
+          r.rappels += 1;
+          r.appareils += res.envoyes;
+        }
+      }
+    } catch (e) {
+      r.arret = `erreur : ${e instanceof Error ? e.message : String(e)}`;
+    }
+    return r;
+  };
+
+  if (deps.enArrierePlan) {
+    deps.enArrierePlan(rafale());
+    return rendre({ rafale: 'en_fond' });
+  }
+  return rendre({ rafale: await rafale() });
 }

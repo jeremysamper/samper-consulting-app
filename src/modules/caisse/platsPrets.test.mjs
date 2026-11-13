@@ -10,8 +10,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  composerAvisPret, destinataireDe, libelleSuite, sujetPush, tagAvis, traiterPlatsPrets,
-  DUREE_DE_VIE_S, FENETRE_MS, PURGE_MS, VIBRATION,
+  composerAvisPret, destinataireDe, groupeAvis, libelleSuite, rappelValable, sujetPush, tagAvis, traiterPlatsPrets,
+  DUREE_DE_VIE_S, FENETRE_MS, PURGE_MS, RAFALE_ECART_MS, RAFALE_ENVOIS, VIBRATION,
 } from '../../../supabase/functions/notifications/platsPrets.js';
 import { libelleMode } from './reglages.js';
 
@@ -137,7 +137,7 @@ test('ligne envoyée avant la colonne envoye_par : ses plats sont ceux de l\'ouv
 test('deux suites d\'un même ticket : tags différents dans leurs 32 premiers caractères', () => {
   const t1 = tagAvis(TICKET, 1);
   const t2 = tagAvis(TICKET, 2);
-  assert.equal(t1, `pret-1-${TICKET}`);
+  assert.equal(t1, `pret-1-1-${TICKET}`, 'sans rang, le premier envoi');
   assert.notEqual(t1.slice(0, 32), t2.slice(0, 32));
   assert.notEqual(sujetPush(t1), sujetPush(t2), '« À suivre » ne remplace pas « En direct » dans la file du service de push');
   assert.ok(sujetPush(t1).length <= 32);
@@ -145,10 +145,42 @@ test('deux suites d\'un même ticket : tags différents dans leurs 32 premiers c
   const m1 = composerAvisPret({ ...base, suite: 1, lignes: [prete('l1', 'Burger')], nouvelles: ['l1'] });
   const m2 = composerAvisPret({ ...base, suite: 2, lignes: [prete('l2', 'Tarte')], nouvelles: ['l2'] });
   assert.notEqual(m1.tag.slice(0, 32), m2.tag.slice(0, 32));
+  assert.notEqual(m1.groupe, m2.groupe);
 });
 
-test('un plat coché plus tard dans la même suite : même tag, l\'avis remplace le précédent', () => {
-  assert.equal(tagAvis(TICKET, 1), tagAvis(TICKET, 1));
+test('rafale : chaque envoi a son tag et son sujet, la suite reste dans les 32 premiers caractères', () => {
+  const tags = [1, 2, 3].map((k) => tagAvis(TICKET, 1, k));
+  assert.deepEqual(tags, [`pret-1-1-${TICKET}`, `pret-1-2-${TICKET}`, `pret-1-3-${TICKET}`]);
+  assert.equal(new Set(tags.map(sujetPush)).size, 3, 'trois sujets distincts : le service de push ne les fusionne pas');
+  for (const t of tags) assert.ok(sujetPush(t).startsWith('pret-1-'), t);
+  const autreSuite = [1, 2, 3].map((k) => sujetPush(tagAvis(TICKET, 2, k)));
+  for (const s of autreSuite) assert.equal(tags.map(sujetPush).includes(s), false, s);
+});
+
+test('un plat coché plus tard dans la même suite : même groupe, l\'avis remplace le précédent à l\'écran', () => {
+  assert.equal(groupeAvis(TICKET, 1), `pret-1-${TICKET}`);
+  const m = composerAvisPret({ ...base, lignes: [prete('l1', 'Burger')], nouvelles: ['l1'] });
+  assert.equal(m.groupe, groupeAvis(TICKET, 1));
+  assert.equal(m.tag, tagAvis(TICKET, 1, 1));
+});
+
+test('réglages de la rafale : trois envois à trois secondes d\'écart', () => {
+  assert.equal(RAFALE_ENVOIS, 3);
+  assert.equal(RAFALE_ECART_MS, 3000);
+});
+
+test('rappel valable : ticket ouvert, plats de l\'avis encore prêts et non servis, aucun avis plus récent', () => {
+  const ticket = { statut: 'ouvert' };
+  const lignes = [{ id: 'l1', statut: 'envoye', pret_at: 'x' }, { id: 'l2', statut: 'envoye', pret_at: 'x' }];
+  const ok = { ticket, lignes, lignesAvis: ['l1', 'l2'], avisConnus: ['a1'], avisSuite: [{ id: 'a1', etat: 'envoye' }] };
+  assert.equal(rappelValable(ok), true);
+  assert.equal(rappelValable({ ...ok, ticket: { statut: 'encaisse' } }), false, 'ticket fermé');
+  assert.equal(rappelValable({ ...ok, ticket: null }), false, 'ticket illisible');
+  assert.equal(rappelValable({ ...ok, lignes: [lignes[0], { ...lignes[1], statut: 'servi' }] }), false, 'un plat noté servi');
+  assert.equal(rappelValable({ ...ok, lignes: [lignes[0], { ...lignes[1], pret_at: null }] }), false, 'un plat décoché');
+  assert.equal(rappelValable({ ...ok, lignes: [lignes[0]] }), false, 'une ligne disparue');
+  assert.equal(rappelValable({ ...ok, avisSuite: [...ok.avisSuite, { id: 'a9', etat: 'a_envoyer' }] }), false, 'avis plus récent');
+  assert.equal(rappelValable({ ...ok, avisSuite: [...ok.avisSuite, { id: 'a9', etat: 'annule' }] }), true, 'un avis annulé ne prend pas le relais');
 });
 
 test('sujet des messages existants inchangé (réservation, alerte, essai)', () => {
@@ -266,20 +298,35 @@ function monde(plus = {}) {
   };
 }
 
-// L'envoi et l'attente, tenus par l'essai.
-function outils(base) {
+// L'envoi et l'attente, tenus par l'essai. envois : les premiers envois de
+// chaque message ; rappels : les envois suivants de la rafale ; tous : dans
+// l'ordre. entreEnvois(n) : appelé à chaque attente de la rafale (n = 1 pour
+// la première), pour changer le monde entre deux envois.
+const premier = (tag) => /^pret-\d+-1-/.test(String(tag));
+function outils(base, entreEnvois) {
   const envois = [];
+  const rappels = [];
+  const tous = [];
   const attentes = [];
+  let n = 0;
   return {
     envois,
+    rappels,
+    tous,
     attentes,
     deps: {
       sb: base,
       envoyer: async (appareils, message, dureeDeVie) => {
-        envois.push({ appareils: appareils.map((a) => a.id), message, dureeDeVie });
+        const e = { appareils: appareils.map((a) => a.id), message, dureeDeVie };
+        tous.push(e);
+        (premier(message.tag) ? envois : rappels).push(e);
         return { envoyes: appareils.length, echecs: 0, expires: 0 };
       },
-      attendre: (ms) => { attentes.push(ms); return Promise.resolve(); },
+      attendre: (ms) => {
+        attentes.push(ms);
+        if (ms === RAFALE_ECART_MS && entreEnvois) entreEnvois(++n);
+        return Promise.resolve();
+      },
       maintenant: () => MAINTENANT,
     },
   };
@@ -290,7 +337,7 @@ test('déroulé : un plat coché, un avis envoyé aux appareils de l\'envoyeur a
   const base = fausseBase(monde());
   const o = outils(base);
   const res = await traiterPlatsPrets(o.deps, TICKET, 1, false);
-  assert.deepEqual(o.attentes, [FENETRE_MS], 'la fenêtre de regroupement est attendue une fois');
+  assert.deepEqual(o.attentes, [FENETRE_MS, RAFALE_ECART_MS, RAFALE_ECART_MS], 'la fenêtre, puis l\'écart avant chaque rappel');
   assert.equal(o.envois.length, 1);
   assert.deepEqual(o.envois[0].appareils, ['d1', 'd2'], 'ni l\'appareil abonné à une autre maison, ni ceux des autres comptes');
   assert.equal(o.envois[0].dureeDeVie, DUREE_DE_VIE_S);
@@ -308,8 +355,12 @@ test('déroulé : les plats cochés dans la fenêtre font un seul avis, un plat 
   const portes = [];
   const deps = {
     sb: base,
-    envoyer: async (appareils, message) => { envois.push(message); return { envoyes: appareils.length, echecs: 0, expires: 0 }; },
-    attendre: () => new Promise((ouvrir) => { portes.push(ouvrir); }),
+    // Seuls les premiers envois comptent ici ; les rappels sont essayés à part.
+    envoyer: async (appareils, message) => {
+      if (premier(message.tag)) envois.push(message);
+      return { envoyes: appareils.length, echecs: 0, expires: 0 };
+    },
+    attendre: (ms) => (ms === FENETRE_MS ? new Promise((ouvrir) => { portes.push(ouvrir); }) : Promise.resolve()),
     maintenant: () => MAINTENANT,
   };
   const tic = () => new Promise((r) => setImmediate(r));
@@ -337,8 +388,8 @@ test('déroulé : les plats cochés dans la fenêtre font un seul avis, un plat 
   assert.equal(envois.length, 1);
   assert.deepEqual(etats(base), { a1: 'envoye', a2: 'envoye' });
 
-  // Plat 3 coché plus tard : nouvel avis, même tag (il remplace le précédent
-  // à l'écran et fait vibrer de nouveau).
+  // Plat 3 coché plus tard : nouvel avis, même groupe et même tag de premier
+  // envoi (il remplace le précédent à l'écran et fait vibrer de nouveau).
   tables.caisse_lignes[2].pret_at = '2026-11-12T18:03:00Z';
   tables.caisse_prets_avis.push(avis('a3', 'l3'));
   const appel3 = traiterPlatsPrets(deps, TICKET, 1, false);
@@ -348,6 +399,7 @@ test('déroulé : les plats cochés dans la fenêtre font un seul avis, un plat 
   assert.equal(envois.length, 2);
   assert.equal(envois[1].corps, 'Tout est prêt (3 plats)');
   assert.equal(envois[1].tag, envois[0].tag);
+  assert.equal(envois[1].groupe, envois[0].groupe);
 });
 
 test('déroulé : deux exécutions qui se réveillent ensemble ne prennent pas deux fois le même avis', async () => {
@@ -447,7 +499,7 @@ test('déroulé : essai à blanc (dryRun), rien n\'est attendu, pris, envoyé ni
   assert.equal(res.dryRun, true);
   assert.deepEqual(res.apercu, [{
     titre: 'Table 12 : En direct', corps: 'Tout est prêt (2 plats)', url: '/?page=caisse&etab=maison-a',
-    tag: `pret-1-${TICKET}`, appareils: 2, lignes: 1,
+    tag: `pret-1-1-${TICKET}`, groupe: `pret-1-${TICKET}`, envois: RAFALE_ENVOIS, appareils: 2, lignes: 1,
   }]);
 });
 
@@ -490,4 +542,119 @@ test('déroulé : la file illisible lève (la fonction répond 500), le ticket i
   assert.equal(o.envois.length, 0);
   assert.equal(res.motif, 'lecture');
   assert.deepEqual(etats(ticketEnPanne), { a1: 'sans_envoi' });
+});
+
+// ── La rafale : trois envois, relecture entre deux ──────────────────────────
+
+test('rafale : trois envois du même message, chacun son tag, même groupe, même titre et même corps', async () => {
+  const base = fausseBase(monde());
+  const o = outils(base);
+  const res = await traiterPlatsPrets(o.deps, TICKET, 1, false);
+  assert.equal(o.tous.length, RAFALE_ENVOIS);
+  assert.deepEqual(o.tous.map((e) => e.message.tag), [1, 2, 3].map((k) => tagAvis(TICKET, 1, k)));
+  assert.equal(new Set(o.tous.map((e) => e.message.groupe)).size, 1);
+  assert.equal(new Set(o.tous.map((e) => `${e.message.titre}|${e.message.corps}`)).size, 1);
+  for (const e of o.tous) {
+    assert.deepEqual(e.appareils, ['d1', 'd2'], 'toujours les seuls appareils de l\'envoyeur');
+    assert.equal(e.dureeDeVie, DUREE_DE_VIE_S);
+  }
+  assert.deepEqual(res.rafale, { rappels: 2, appareils: 4, arret: null });
+  assert.deepEqual(etats(base), { a1: 'envoye' }, 'les rappels ne changent pas l\'état de l\'avis');
+});
+
+test('rafale : un plat noté servi entre deux envois l\'arrête', async () => {
+  const base = fausseBase(monde());
+  const o = outils(base, (n) => { if (n === 1) base.tables.caisse_lignes[0].statut = 'servi'; });
+  const res = await traiterPlatsPrets(o.deps, TICKET, 1, false);
+  assert.equal(o.tous.length, 1);
+  assert.equal(res.rafale.arret, 'situation_changee');
+});
+
+test('rafale : un plat décoché entre deux envois l\'arrête après les envois déjà partis', async () => {
+  const base = fausseBase(monde());
+  const o = outils(base, (n) => { if (n === 2) base.tables.caisse_lignes[0].pret_at = null; });
+  const res = await traiterPlatsPrets(o.deps, TICKET, 1, false);
+  assert.equal(o.tous.length, 2, 'le premier rappel est parti, le second non');
+  assert.equal(res.rafale.arret, 'situation_changee');
+});
+
+test('rafale : un ticket qui n\'est plus ouvert l\'arrête', async () => {
+  const base = fausseBase(monde());
+  const o = outils(base, () => { base.tables.caisse_tickets[0].statut = 'encaisse'; });
+  await traiterPlatsPrets(o.deps, TICKET, 1, false);
+  assert.equal(o.tous.length, 1);
+});
+
+test('rafale : un avis plus récent sur la même suite prend le relais, l\'ancienne rafale s\'arrête', async () => {
+  const base = fausseBase(monde({ caisse_lignes: [ligneBase('l1', 'Burger'), ligneBase('l2', 'Frites', { pret_at: null })] }));
+  const o = outils(base, (n) => {
+    if (n === 1) {
+      base.tables.caisse_lignes[1].pret_at = '2026-11-12T18:00:04Z';
+      base.tables.caisse_prets_avis.push(avis('a2', 'l2'));
+    }
+  });
+  const res = await traiterPlatsPrets(o.deps, TICKET, 1, false);
+  assert.equal(o.tous.length, 1);
+  assert.equal(res.rafale.arret, 'situation_changee');
+});
+
+test('rafale : un avis d\'une autre suite ne l\'arrête pas', async () => {
+  const base = fausseBase(monde({ caisse_lignes: [ligneBase('l1', 'Burger'), ligneBase('l4', 'Tarte', { suite: 2, pret_at: null })] }));
+  const o = outils(base, (n) => { if (n === 1) base.tables.caisse_prets_avis.push(avis('a4', 'l4', { suite: 2 })); });
+  await traiterPlatsPrets(o.deps, TICKET, 1, false);
+  assert.equal(o.tous.length, RAFALE_ENVOIS);
+});
+
+test('rafale : relecture en échec, elle s\'arrête sans lever', async () => {
+  let pannes = false;
+  const base = fausseBase(monde(), { panne: (q) => pannes && q.nom === 'caisse_lignes' });
+  const o = outils(base, () => { pannes = true; });
+  const res = await traiterPlatsPrets(o.deps, TICKET, 1, false);
+  assert.equal(o.tous.length, 1);
+  assert.equal(res.rafale.arret, 'lecture');
+});
+
+test('rafale : deux envoyeurs, chacun ses trois envois sur ses seuls appareils', async () => {
+  const tables = monde({
+    caisse_lignes: [ligneBase('l1', 'Burger', { envoye_par: A }), ligneBase('l2', 'Risotto', { envoye_par: B })],
+    caisse_prets_avis: [avis('a1', 'l1'), avis('a2', 'l2', { destinataire: B })],
+  });
+  const o = outils(fausseBase(tables));
+  await traiterPlatsPrets(o.deps, TICKET, 1, false);
+  const parAppareils = {};
+  for (const e of o.tous) parAppareils[e.appareils.join('+')] = (parAppareils[e.appareils.join('+')] || 0) + 1;
+  assert.deepEqual(parAppareils, { 'd1+d2': RAFALE_ENVOIS, d4: RAFALE_ENVOIS });
+});
+
+test('rafale : aucun appareil joint au premier envoi, pas de rappel', async () => {
+  const base = fausseBase(monde());
+  const o = outils(base);
+  o.deps.envoyer = async (appareils, message) => { o.tous.push({ message }); return { envoyes: 0, echecs: appareils.length, expires: 0 }; };
+  const res = await traiterPlatsPrets(o.deps, TICKET, 1, false);
+  assert.equal(o.tous.length, 1);
+  assert.equal(res.rafale, undefined);
+});
+
+test('rafale en tâche de fond : la fonction répond après le premier envoi, les rappels suivent', async () => {
+  const base = fausseBase(monde());
+  const o = outils(base);
+  let fond = null;
+  o.deps.enArrierePlan = (p) => { fond = p; };
+  const res = await traiterPlatsPrets(o.deps, TICKET, 1, false);
+  assert.equal(res.rafale, 'en_fond');
+  assert.equal(res.envoyes, 1);
+  assert.ok(fond, 'la rafale est confiée au runtime');
+  const r = await fond;
+  assert.deepEqual(r, { rappels: 2, appareils: 4, arret: null });
+  assert.equal(o.tous.length, RAFALE_ENVOIS);
+});
+
+test('rafale : jamais en essai à blanc', async () => {
+  const base = fausseBase(monde());
+  const o = outils(base);
+  let fond = null;
+  o.deps.enArrierePlan = (p) => { fond = p; };
+  await traiterPlatsPrets(o.deps, TICKET, 1, true);
+  assert.equal(fond, null);
+  assert.equal(o.tous.length, 0);
 });
