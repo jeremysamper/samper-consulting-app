@@ -17,3 +17,19 @@ test("plus de mille exécutions : les mois font l'année, le taux d'étapes se r
   assert.equal(an.tauxEtapes, (8 + 6 + 3 + 2) / 32);
   assert.equal(serieSop(executions, [{ debut: '2025-01-01', fin: '2025-01-31' }])[0].tauxEtapes, null);
 });
+
+test('compteSop : le compte de l\'en-tête de SOP.jsx, dates ou non', async () => {
+  const { compteSop, serieSop } = await import('./serieSop.js');
+  const executions = [
+    { statut: 'terminee', dateExecution: '2026-11-02', totalEtapes: 4, etapesCochees: 4 },
+    { statut: 'abandonnee', dateExecution: '2026-11-03', totalEtapes: 4, etapesCochees: 1 },
+    { statut: 'terminee', dateExecution: null, totalEtapes: 2, etapesCochees: 2 },
+    { statut: 'en_cours', dateExecution: '2026-11-04', totalEtapes: 3, etapesCochees: 0 },
+  ];
+  const c = compteSop(executions);
+  assert.equal(c.terminees, executions.filter((e) => e.statut === 'terminee').length);
+  assert.equal(c.lancees, 4);
+  const [p] = serieSop(executions, [{ debut: '2026-11-01', fin: '2026-11-30' }]);
+  assert.equal(p.terminees, 1);
+  assert.equal(p.cochees, 5);
+});
