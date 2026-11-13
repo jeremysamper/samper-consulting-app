@@ -219,7 +219,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
           </div>
           <button type="button" style={s.addBtn} onClick={addFromCarte} disabled={!carteId}>Ajouter les recettes de la carte</button>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 }}>
           Ajoute toutes les recettes des plats de la carte, sans doublon. Vous pouvez ensuite compléter à la main.
         </div>
       </div>
@@ -228,7 +228,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
       <div style={s.editorCard}>
         <div style={s.fieldLabel}>Préparations de la liste ({items.length})</div>
         {items.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--text2)' }}>Sélectionnez des recettes ci-dessous ou ajoutez une préparation manuelle.</div>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Sélectionnez des recettes ci-dessous ou ajoutez une préparation manuelle.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {items.map(it => (
@@ -272,9 +272,9 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
           <input id="mep-recherche" style={s.input} value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une recette…" />
         </div>
         {loading ? (
-          <div style={{ fontSize: 13, color: 'var(--text2)' }}>Chargement des recettes…</div>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Chargement des recettes…</div>
         ) : recettesFiltered.length === 0 ? (
-          <div style={{ fontSize: 13, color: 'var(--text2)' }}>Aucune recette pour cette recherche.</div>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Aucune recette pour cette recherche.</div>
         ) : (
           <div style={s.pickList}>
             {recettesFiltered.map(r => {
