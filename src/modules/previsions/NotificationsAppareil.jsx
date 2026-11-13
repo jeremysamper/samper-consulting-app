@@ -5,9 +5,11 @@ import { useReglageModifie } from '../../services/reglagesSignal.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // « Notifications » : prévenir CET appareil (téléphone, tablette du pass) à
-// chaque nouvelle réservation en ligne de l'établissement affiché. Chaque
+// chaque nouvelle réservation en ligne de l'établissement affiché, et, pour
+// qui ouvre la Caisse, quand la cuisine a préparé les plats envoyés. Chaque
 // appareil s'active une fois ; l'envoi part du serveur (Edge Function
-// « notifications »), même app fermée.
+// « notifications »), même app fermée. Un seul abonnement pour tout : ce que
+// l'appareil reçoit dépend des droits de la personne, relus à chaque envoi.
 //
 // Le panneau est une fenêtre centrée, rendue dans <body> (portail) : sur
 // téléphone la barre d'actions défile (overflow) et coupait un panneau
@@ -23,8 +25,34 @@ const MESSAGES = {
   'non-supporte': 'Ce navigateur ne permet pas les notifications. Utilisez Chrome, Edge, Firefox ou Safari récent.',
   refuse: "Les notifications sont bloquées pour l'app sur cet appareil. Autorisez-les dans les réglages du navigateur (ou de l'app), puis revenez ici.",
 };
+// Le mode d'emploi de l'iPhone, repris tel quel par l'invitation de la Caisse.
+export const MESSAGE_IOS = MESSAGES['ios-a-installer'];
 
-export function useNotificationsAppareil(etablissementId, user) {
+// Ce que l'appareil reçoit, phrase entière par cas (la traduction du DOM
+// travaille sur des chaînes fixes) : réservations seules, plats prêts seuls,
+// les deux.
+const TEXTES = {
+  reservations: {
+    titre: 'Nouvelles réservations en ligne',
+    inactif: 'Recevez une notification sur cet appareil (téléphone, tablette) à chaque réservation faite sur votre site, même app fermée.',
+    actif: 'Cet appareil est prévenu à chaque nouvelle réservation en ligne de cet établissement.',
+  },
+  platsPrets: {
+    titre: 'Plats prêts en cuisine',
+    inactif: 'Recevez une notification sur cet appareil (téléphone, tablette) quand la cuisine a préparé les plats que vous avez envoyés, même app fermée.',
+    actif: 'Cet appareil est prévenu quand la cuisine a préparé les plats que vous avez envoyés.',
+  },
+  lesDeux: {
+    titre: 'Réservations en ligne et plats prêts',
+    inactif: 'Recevez une notification sur cet appareil (téléphone, tablette) à chaque réservation faite sur votre site, et quand la cuisine a préparé les plats que vous avez envoyés, même app fermée.',
+    actif: 'Cet appareil est prévenu à chaque nouvelle réservation en ligne de cet établissement, et quand la cuisine a préparé les plats que vous avez envoyés.',
+  },
+};
+
+// options.pageEssai : où mène le tap de la notification d'essai ('caisse' pour
+// qui n'a pas Réservations ; sans valeur, Réservations).
+export function useNotificationsAppareil(etablissementId, user, options = {}) {
+  const pageEssai = options.pageEssai;
   const [etat, setEtat] = useState(null); // null = lecture en cours
   const [enCours, setEnCours] = useState(false);
 
@@ -46,7 +74,7 @@ export function useNotificationsAppareil(etablissementId, user) {
       const { error } = await activerPush(etablissementId, user?.id);
       if (error) { notify(error, 'error'); setEtat(await etatPush(etablissementId)); return; }
       setEtat('actif');
-      const t = await testerPush();
+      const t = await testerPush(pageEssai);
       notify(t.error ? 'Notifications activées sur cet appareil.' : 'Notifications activées : une notification d\'essai arrive.', 'success');
     } finally {
       setEnCours(false);
@@ -56,7 +84,7 @@ export function useNotificationsAppareil(etablissementId, user) {
   async function tester() {
     setEnCours(true);
     try {
-      const { data, error } = await testerPush();
+      const { data, error } = await testerPush(pageEssai);
       if (error) notify(error, 'error');
       else notify(data?.envoyes ? 'Notification d\'essai envoyée.' : 'Aucun appareil n\'a pu être joint.', data?.envoyes ? 'success' : 'warning');
     } finally {
@@ -82,19 +110,22 @@ export function useNotificationsAppareil(etablissementId, user) {
 // useNotificationsAppareil.
 // Depuis le 12.11.2026 : une section de la page des réglages
 // (SectionNotificationsAppareil.jsx), le même contenu sans fenêtre ni voile.
-export function PanneauNotifications({ notifs }) {
+// recoit : { reservations, platsPrets } (caisse/avisPret.js, ceQueRecoit) ;
+// sans lui, le panneau parle des réservations, comme avant.
+export function PanneauNotifications({ notifs, recoit }) {
   const { etat, actif, enCours, activer, tester, desactiver } = notifs;
+  const platsPrets = recoit?.platsPrets === true;
+  const reservations = recoit ? recoit.reservations === true : true;
+  const t = platsPrets && reservations ? TEXTES.lesDeux : platsPrets ? TEXTES.platsPrets : TEXTES.reservations;
 
   return (
     <div style={s.section} role="region" aria-label="Notifications sur cet appareil">
-      <div style={s.titre}>Nouvelles réservations en ligne</div>
+      <div style={s.titre}>{t.titre}</div>
       {etat === null && <div style={s.texte}>Vérification…</div>}
       {MESSAGES[etat] && <div style={s.texte}>{MESSAGES[etat]}</div>}
       {etat === 'inactif' && (
         <>
-          <div style={s.texte}>
-            Recevez une notification sur cet appareil (téléphone, tablette) à chaque réservation faite sur votre site, même app fermée.
-          </div>
+          <div style={s.texte}>{t.inactif}</div>
           <button type="button" onClick={activer} disabled={enCours} style={s.principal}>
             {enCours ? 'Activation…' : 'Activer sur cet appareil'}
           </button>
@@ -102,12 +133,20 @@ export function PanneauNotifications({ notifs }) {
       )}
       {actif && (
         <>
-          <div style={s.texte}>Cet appareil est prévenu à chaque nouvelle réservation en ligne de cet établissement.</div>
+          <div style={s.texte}>{t.actif}</div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <button type="button" onClick={tester} disabled={enCours} style={s.secondaire}>Envoyer un essai</button>
             <button type="button" onClick={desactiver} disabled={enCours} style={s.discret}>Désactiver</button>
           </div>
         </>
+      )}
+      {/* Le son et la vibration appartiennent au téléphone : l'app envoie un
+          motif de vibration avec l'avis, elle ne coupe jamais le son. */}
+      {platsPrets && (etat === 'inactif' || actif) && (
+        <div style={s.texte} data-aide-vibreur="">
+          <span>Pour vibrer sans sonner, mettez ce téléphone en mode vibreur.</span>{' '}
+          <span>Le son et la vibration suivent les réglages de notification du téléphone.</span>
+        </div>
       )}
     </div>
   );
