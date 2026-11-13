@@ -88,7 +88,19 @@ export function useEnregistreur() {
     x.rec = rec;
     x.morceaux = [];
     rec.ondataavailable = (e) => { if (e.data && e.data.size) x.morceaux.push(e.data); };
-    rec.onerror = () => { if (jeton === x.jeton) { abandonner(); setEtat('erreur'); } };
+    // Erreur en plein enregistrement : le micro est rendu et l'enregistrement
+    // jeté, mais `pour` reste, pour que la zone d'erreur parte avec son fil.
+    rec.onerror = () => {
+      if (jeton !== x.jeton) return;
+      rec.ondataavailable = null;
+      rec.onstop = null;
+      rec.onerror = null;
+      if (rec.state !== 'inactive') { try { rec.stop(); } catch { /* déjà arrêté */ } }
+      x.rec = null;
+      x.morceaux = [];
+      libererMicro();
+      setEtat('erreur');
+    };
     rec.onstop = () => {
       if (jeton !== x.jeton) return;
       const duree = (performance.now() - x.debut) / 1000;
