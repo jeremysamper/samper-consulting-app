@@ -5,6 +5,7 @@ import { userDisplay } from '../../utils/userDisplay.js';
 import { metaMotif } from '../../utils/absences.js';
 import { metaStatut } from '../groupes/typesGroupe.js';
 import { Avatar } from './tableauUi.jsx';
+import { pictoCercleStyle } from '../../components/ui/index.jsx';
 import { duree } from './tableauLogique.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,10 +28,13 @@ import { duree } from './tableauLogique.js';
 // se voient d'un coup d'œil (tableau.css, .tdb-panneau). Sans panneau, seul
 // le titre la porte : « Ce qui vous attend », dont chaque colonne est un
 // panneau.
-export function Section({ id, titre, sousTitre, action, panneau = true, children, style }) {
+// `ton` : la section est une carte de mise en avant (nuit, ciel, soleil ;
+// tableau.css), au plus une sombre et deux pastel sur l'écran.
+export function Section({ id, titre, sousTitre, action, panneau = true, ton, children, style }) {
   const h2 = <h2 id={`${id}-titre`} className="tdb-titre" style={b.titre}>{titre}</h2>;
+  const classe = panneau ? `tdb-panneau${ton ? ` tdb-${ton}` : ''}` : undefined;
   return (
-    <section id={id} aria-labelledby={`${id}-titre`} className={panneau ? 'tdb-panneau' : undefined} style={{ ...b.section, ...style }}>
+    <section id={id} aria-labelledby={`${id}-titre`} className={classe} style={{ ...b.section, ...style }}>
       {sousTitre ? (
         <div className="tdb-tete" style={b.tete}>
           {h2}
@@ -113,7 +117,8 @@ export function Duree({ minutes, style }) {
   return <span data-no-translate style={style}>{duree(minutes)}</span>;
 }
 
-// Repère de l'en-tête : un chiffre en grand, sa phrase, son détail. Mène au
+// Repère de l'en-tête : une petite carte blanche, le picto dans un cercle,
+// un chiffre en grand, sa phrase, son détail. Mène au
 // module quand le rôle peut l'ouvrir. Vide ou en échec, la phrase prend la
 // place du chiffre (jamais un gros zéro). Pas d'aria-label : il remplacerait,
 // pour un lecteur d'écran, le texte visible (« 110 couverts aujourd'hui, 42 à
@@ -122,7 +127,7 @@ export function Repere({ repere, icone: Icone, onClick }) {
   const { id, valeur, libelle, detail, vide, echec, texte } = repere;
   const contenu = (
     <>
-      {Icone && <Icone className="tdb-repere-icone" size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--lien)' }} />}
+      {Icone && <span className="tdb-repere-icone" style={pictoCercleStyle(36)} aria-hidden="true"><Icone size={18} strokeWidth={1.8} /></span>}
       {vide || echec ? (
         <span style={b.repereTexte}>{texte}</span>
       ) : (
@@ -134,9 +139,9 @@ export function Repere({ repere, icone: Icone, onClick }) {
       )}
     </>
   );
-  if (!onClick) return <div data-repere={id} style={b.repere}>{contenu}</div>;
+  if (!onClick) return <div data-repere={id} className="tdb-repere-carte" style={b.repere}>{contenu}</div>;
   return (
-    <button type="button" data-repere={id} className="tdb-lien tdb-repere" onClick={onClick} style={{ ...b.repere, ...b.bouton }}>
+    <button type="button" data-repere={id} className="tdb-lien tdb-repere tdb-repere-carte" onClick={onClick} style={{ ...b.repere, ...b.bouton }}>
       {contenu}
     </button>
   );
@@ -148,7 +153,7 @@ export function Repere({ repere, icone: Icone, onClick }) {
 export function LigneAction({ icone: Icone, couleur = 'var(--lien)', titre, titreBrut, detail, droite, onClick }) {
   const contenu = (
     <>
-      {Icone && <Icone size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: couleur, flexShrink: 0, marginTop: 1 }} />}
+      {Icone && <span style={{ ...pictoCercleStyle(36), color: couleur }} aria-hidden="true"><Icone size={18} strokeWidth={1.8} /></span>}
       <span style={{ flex: '1 1 auto', minWidth: 0 }}>
         <span style={b.ligneTitre} data-no-translate={titreBrut ? '' : undefined}>{titre}</span>
         {detail && <span style={b.ligneDetail}>{detail}</span>}
@@ -245,12 +250,16 @@ export function StatutGroupe({ statut }) {
   );
 }
 
-// Chiffre de gestion : libellé, valeur en grand, détail. Une phrase remplace
-// la valeur quand il n'y a rien à compter ou que la lecture a échoué.
-export function Chiffre({ id, label, valeur, texte, detail, couleurDetail = 'var(--text2)', onClick }) {
+// Chiffre de gestion : une petite carte blanche, le picto dans un cercle à
+// côté du libellé, la valeur en grand, le détail. Une phrase remplace la
+// valeur quand il n'y a rien à compter ou que la lecture a échoué.
+export function Chiffre({ id, label, valeur, texte, detail, couleurDetail = 'var(--text2)', icone: Icone, onClick }) {
   const contenu = (
     <>
-      <span style={b.chiffreLabel}>{label}</span>
+      <span style={b.chiffreTete}>
+        {Icone && <span style={pictoCercleStyle(36)} aria-hidden="true"><Icone size={18} strokeWidth={1.8} /></span>}
+        <span style={b.chiffreLabel}>{label}</span>
+      </span>
       {texte
         ? <span style={b.chiffreTexte}>{texte}</span>
         : <span className="tdb-chiffre-valeur" data-valeur="" style={b.chiffreValeur}>{valeur}</span>}
@@ -291,13 +300,14 @@ export const b = {
   bouton: {
     cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', color: 'var(--text)', width: '100%',
   },
+  // Carte blanche : le retrait suit la largeur (.tdb-repere-carte, tableau.css).
   repere: {
-    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, minWidth: 0, boxSizing: 'border-box',
-    padding: '4px 8px 4px 0', borderRadius: 'var(--r-sm)',
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4, minWidth: 0, boxSizing: 'border-box',
+    borderRadius: 'var(--r-lg)', background: 'var(--zone)', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)',
   },
-  repereValeur: { fontFamily: 'var(--font-num)', lineHeight: 1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 2 },
-  repereLibelle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.3, color: 'var(--text)', overflowWrap: 'anywhere' },
-  repereDetail: { fontSize: 'var(--t2)', lineHeight: 1.4, color: 'var(--text2)', overflowWrap: 'anywhere' },
+  repereValeur: { fontFamily: 'var(--font-num)', lineHeight: 1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginTop: 6 },
+  repereLibelle: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.3, color: 'var(--text)', overflowWrap: 'anywhere' },
+  repereDetail: { fontSize: 'var(--t1)', lineHeight: 1.4, color: 'var(--text3)', overflowWrap: 'anywhere' },
   repereTexte: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.35, color: 'var(--text2)', overflowWrap: 'anywhere', marginTop: 4 },
   ligne: {
     display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, minHeight: 56, boxSizing: 'border-box', padding: '8px 2px',
@@ -319,10 +329,11 @@ export const b = {
   tel: { display: 'inline-flex', alignItems: 'center', minHeight: 28, fontSize: 'var(--t2)' },
   etat: { display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, whiteSpace: 'nowrap', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.3 },
   chiffre: {
-    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 6, minWidth: 0, boxSizing: 'border-box',
-    padding: '14px 8px 10px 0', borderRadius: 0,
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, minWidth: 0, boxSizing: 'border-box',
+    padding: '14px 16px', borderRadius: 'var(--r-lg)',
   },
-  chiffreLabel: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.3, color: 'var(--text2)' },
+  chiffreTete: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
+  chiffreLabel: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.3, color: 'var(--text2)' },
   chiffreValeur: { fontFamily: 'var(--font-num)', lineHeight: 1.05, color: 'var(--text)', fontVariantNumeric: 'tabular-nums', overflowWrap: 'anywhere' },
   chiffreTexte: { fontSize: 'var(--t3)', fontWeight: 'var(--g2)', lineHeight: 1.35, color: 'var(--text2)' },
   chiffreDetail: { fontSize: 'var(--t2)', lineHeight: 1.45 },

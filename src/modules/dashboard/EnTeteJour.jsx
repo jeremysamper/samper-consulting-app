@@ -5,10 +5,11 @@ import { heureParlee } from './tableauLogique.js';
 import { Duree, Mots, Parties, Repere } from './tableauBriques.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// En-tête du jour : le seul aplat de la page (pétrole pâle, data-cadre).
+// En-tête du jour : posé sur la page, sans carte (direction Galet).
 //   la date, « Bonjour Karim. », la ligne d'état du service (« Service du
-//   midi dans 1 h 10. 42 couverts réservés. »), puis trois repères :
-//   couverts, groupes, équipe du jour, chacun menant à son module.
+//   midi dans 1 h 10. 42 couverts réservés. »), puis trois repères en petites
+//   cartes blanches : couverts, groupes, équipe du jour, chacun menant à son
+//   module.
 // Pendant le chargement, seuls la date et le bonjour s'affichent : aucun
 // zéro qui clignote avant les données.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,7 +19,7 @@ const ICONES = { couverts: getModuleIcon('previsions'), groupes: getModuleIcon('
 export function EnTete({ date, salutation, prenom, pret, service, reperes, peutOuvrir, ouvrir, onAssistant }) {
   const avecReperes = pret && reperes && reperes.length > 0;
   return (
-    <header className="tdb-hero" data-cadre="" style={s.hero}>
+    <header className="tdb-hero" style={s.hero}>
       <div style={{ minWidth: 0 }}>
         <div style={s.ligneHaut}>
           <p style={s.date}><Mots texte={date} /></p>
@@ -110,16 +111,15 @@ export function LigneService({ service }) {
 const s = {
   // Grille, espacements et retraits dans tableau.css (suivent la largeur).
   hero: {
-    minWidth: 0, boxSizing: 'border-box',
-    background: 'var(--selection)', borderRadius: 'var(--r-lg)', color: 'var(--text)',
+    minWidth: 0, boxSizing: 'border-box', color: 'var(--text)',
   },
   ligneHaut: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minWidth: 0 },
   date: { margin: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.4, color: 'var(--text2)' },
-  salut: { margin: '4px 0 0', fontFamily: 'var(--font)', fontWeight: 'var(--g3)', lineHeight: 1.15, color: 'var(--text)', overflowWrap: 'anywhere' },
+  salut: { margin: '4px 0 0', fontFamily: 'var(--font)', fontWeight: 'var(--g2)', lineHeight: 1.15, color: 'var(--text)', overflowWrap: 'anywhere' },
   service: { display: 'flex', alignItems: 'flex-start', gap: 10, margin: '8px 0 0', fontSize: 'var(--t3)', lineHeight: 1.45, color: 'var(--text)', maxWidth: 640 },
   assistant: {
     display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: '0 16px', flexShrink: 0, cursor: 'pointer',
-    borderRadius: 'var(--r-sm)', border: 'none', background: 'var(--surface)', color: 'var(--lien)',
+    borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
     fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)',
   },
 };

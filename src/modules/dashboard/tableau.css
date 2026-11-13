@@ -16,22 +16,27 @@
   .tdb { gap: 32px; }
 }
 
-/* ── En-tête du jour : le seul aplat de la page ───────────────────────────── */
+/* ── En-tête du jour (direction Galet) ───────────────────────────────────────
+   Le bonjour et l'état du service sont posés sur la page, en grand ; les
+   repères du jour (couverts, groupes, équipe) sont une rangée de petites
+   cartes blanches : picto dans un cercle, chiffre en grand, libellé. */
 .tdb-hero {
   display: grid;
-  gap: 14px;
+  gap: 16px;
   grid-template-columns: minmax(0, 1fr);
-  padding: 18px 16px;
+  padding: 0;
 }
 .tdb-hero-salut { font-size: var(--t6); }
 .tdb-reperes {
   display: grid;
-  gap: 8px;
+  gap: 10px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: start;
+  align-items: stretch;
 }
+.tdb-repere-carte { padding: 12px 10px; }
 .tdb-repere-valeur { font-size: var(--t6); }
-.tdb-repere-icone { display: none; }
+/* !important : le cercle pose son display en style inline. */
+.tdb .tdb-repere-icone { display: none !important; }
 
 /* ── Sections ─────────────────────────────────────────────────────────────── */
 .tdb-titre { font-size: var(--t4); }
@@ -75,7 +80,7 @@
 }
 .tdb-chiffres {
   display: grid;
-  gap: 4px 20px;
+  gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -87,12 +92,13 @@
    les limites sans revenir aux encadrés épais ; le titre se sépare du contenu
    par un filet. Classes seulement : la règle globale « Plus de carrés »
    (app.css) ne lit que les styles inline et ne les aplatit pas.
-   Direction Office : le panneau est une zone (--zone), cernée d'un filet
-   doux, sans ombre portée. */
+   Direction Galet : le panneau est une carte blanche (--zone), au rayon des
+   cartes, avec l'ombre douce --sh et un filet fin qui la porte en thème
+   sombre. */
 .tdb-panneau {
   background: var(--zone);
-  border-radius: var(--r-xl);
-  box-shadow: 0 0 0 1px var(--rule-soft);
+  border-radius: var(--r-lg);
+  box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
   padding: 14px 14px 10px;
   min-width: 0;
 }
@@ -100,13 +106,67 @@
   padding-bottom: 10px;
   border-bottom: 1px solid var(--rule-soft);
 }
+
+/* ── Cartes de mise en avant ─────────────────────────────────────────────────
+   Une carte nuit (« À faire maintenant »), une carte ciel (« Qui travaille
+   aujourd'hui ») et une carte soleil (« Cette semaine ») : au plus une sombre
+   et deux pastel sur l'écran. Chaque carte redéclare les jetons neutres que
+   ses enfants lisent : encres, filets et fonds doux suivent sans qu'aucun
+   style ne soit réécrit. Sur la carte nuit, un état garde sa famille et
+   prend son encre claire. Toutes les valeurs viennent d'app.css. */
+.tdb-panneau.tdb-nuit,
+.tdb-panneau.tdb-ciel,
+.tdb-panneau.tdb-soleil {
+  border-radius: var(--r-xl);
+  box-shadow: none;
+}
+.tdb-panneau.tdb-nuit {
+  background: var(--carte-nuit);
+  color: var(--carte-nuit-texte);
+  --text: var(--carte-nuit-texte);
+  --text2: var(--carte-nuit-doux);
+  --text3: var(--carte-nuit-doux);
+  --lien: var(--carte-nuit-texte);
+  --icone: var(--carte-nuit-texte);
+  --rule-soft: var(--carte-nuit-tuile);
+  --selection: var(--carte-nuit-tuile);
+  --piste: var(--carte-nuit-tuile);
+  --danger-text: var(--carte-nuit-danger);
+  --danger-strong: var(--carte-nuit-danger);
+  --warning-text: var(--carte-nuit-alerte);
+  --warning-strong: var(--carte-nuit-alerte);
+  --success-text: var(--carte-nuit-succes);
+  --success-strong: var(--carte-nuit-succes);
+  --info-text: var(--carte-nuit-info);
+}
+.tdb-panneau.tdb-ciel {
+  background: var(--carte-ciel);
+  color: var(--carte-ciel-texte);
+  --text: var(--carte-ciel-texte);
+  --lien: var(--carte-ciel-texte);
+  --rule-soft: var(--surface);
+  --selection: var(--surface);
+  --piste: var(--surface);
+}
+.tdb-panneau.tdb-soleil {
+  background: var(--carte-soleil);
+  color: var(--carte-soleil-texte);
+  --text: var(--carte-soleil-texte);
+  --lien: var(--carte-soleil-texte);
+  --onglet: var(--carte-soleil-texte);
+  --rule-soft: var(--surface);
+  --selection: var(--surface);
+  --piste: var(--surface);
+  /* Barres de la semaine : à l'encre de la carte ; celle du jour reste en accent. */
+  --accent-bd: var(--carte-soleil-texte);
+}
 .tdb-jour.tdb-panneau > .tdb-tete { margin-bottom: 14px; }
 /* La colonne du jour : un liseré en haut, à l'encre de l'onglet actif
    (--onglet). C'est un marqueur d'état : il change de couleur avec la
    direction Office, il ne s'éteint pas. Plus spécifique que .tdb-panneau,
    il garde son ombre quand le panneau pose la sienne. */
 .tdb .tdb-jour--actuel {
-  box-shadow: inset 0 3px 0 var(--onglet), 0 0 0 1px var(--rule-soft);
+  box-shadow: inset 0 3px 0 var(--onglet), 0 0 0 1px var(--rule-soft), var(--sh);
 }
 /* Sous-titres (Midi, Soir, Réservations, Groupes...) sur un bandeau teinté. */
 .tdb-sous-tete {
@@ -117,8 +177,6 @@
 }
 .tdb-equipe-services { row-gap: 16px; }
 
-/* Les chiffres : le filet du titre suffit au-dessus de la première rangée. */
-.tdb-panneau .tdb-chiffres > .tdb-chiffre:nth-child(-n+2) { border-top: 0; }
 
 /* Lignes de liste : un filet entre deux lignes, pas de boîte. Les boutons
    perdent leur bordure et leur fond d'agent utilisateur par la classe, pas
@@ -126,13 +184,20 @@
 .tdb button.tdb-lien { border: 0; background: transparent; }
 .tdb .tdb-filet { border-radius: 0; }
 .tdb .tdb-filet + .tdb-filet { border-top: 1px solid var(--rule-soft); }
-.tdb .tdb-chiffres > .tdb-chiffre { border-top: 1px solid var(--rule-soft); }
+/* Chiffres de gestion : une rangée de petites cartes blanches, comme les
+   repères du jour. */
+.tdb .tdb-chiffres > .tdb-chiffre {
+  background: var(--zone);
+  border-radius: var(--r-lg);
+  box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
+}
 
 @container tdb (min-width: 560px) {
   .tdb-panneau { padding: 18px 20px 14px; }
-  .tdb-hero { padding: 22px 26px; gap: 18px; }
-  .tdb-repere-icone { display: block; margin-bottom: 4px; }
-  .tdb-reperes { gap: 16px; }
+  .tdb-hero { gap: 18px; }
+  .tdb .tdb-repere-icone { display: inline-flex !important; }
+  .tdb-repere-carte { padding: 14px 16px; }
+  .tdb-reperes { gap: 12px; }
   .tdb-citation { font-size: var(--t4); }
 }
 @container tdb (min-width: 760px) {
@@ -154,7 +219,7 @@
 @container tdb (min-width: 1080px) {
   .tdb-hero {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-    align-items: end;
+    align-items: center;
     column-gap: 32px;
   }
   .tdb-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; }
@@ -175,19 +240,18 @@
     border-left: 1px solid var(--rule-soft);
   }
   .tdb-jours { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
-  .tdb-panneau .tdb-chiffres > .tdb-chiffre:nth-child(-n+4) { border-top: 0; }
   .tdb-jour-semaine { grid-column: auto; }
   .tdb-jour-semaine .tdb-semaine { display: flex; flex-direction: column; align-items: stretch; }
   .tdb-chiffres { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
-/* ── Onglets (téléphone) : soulignés, pas de pilule ──────────────────────── */
+/* ── Onglets (téléphone) : des pilules, la choisie en aplat sombre ───────── */
 .tdb-onglets {
   display: flex;
   gap: 4px;
   min-width: 0;
   overflow-x: auto;
-  border-bottom: 1px solid var(--rule-soft);
+  padding-bottom: 1px;
   scrollbar-width: none;
 }
 .tdb-onglets::-webkit-scrollbar { display: none; }
@@ -196,7 +260,7 @@
   min-height: 44px;
   padding: 0 10px;
   border: 0;
-  border-radius: 0;
+  border-radius: var(--r-full);
   background: transparent;
   color: var(--text2);
   font-family: var(--font);
@@ -206,9 +270,9 @@
   cursor: pointer;
 }
 .tdb .tdb-onglet.is-actif {
-  color: var(--text);
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: var(--g3);
-  box-shadow: inset 0 -2px 0 var(--onglet);
 }
 
 /* ── Interactions ─────────────────────────────────────────────────────────── */
@@ -220,13 +284,16 @@
    tap). Plus spécifique que le fond transparent de .tdb button.tdb-lien. */
 @media (hover: hover) and (pointer: fine) {
   .tdb button.tdb-lien:not(:disabled):hover { background: var(--selection); }
-  .tdb .tdb-hero button.tdb-lien:not(:disabled):hover { background: var(--surface); }
+  .tdb .tdb-hero button.tdb-lien:not(:disabled):hover { background: var(--selection); }
 }
 .tdb-lien:focus-visible,
 .tdb button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
+/* Sur la carte nuit, l'anneau prend l'encre claire de la carte. */
+.tdb-nuit .tdb-lien:focus-visible,
+.tdb-nuit button:focus-visible { outline-color: var(--carte-nuit-texte); }
 
 /* Point « en poste » : fixe, sans halo animé. */
 .tdb-live {
