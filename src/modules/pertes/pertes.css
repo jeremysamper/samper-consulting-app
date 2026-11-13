@@ -1,0 +1,67 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Module Pertes : mise en page (direction Galet). Les couleurs passent par les
+   jetons d'app.css ; cette feuille ne règle que la grille, par la largeur
+   réellement disponible (requêtes de conteneur, paliers 560, 760 et 1080 px).
+   .pertes-page est le conteneur (il ne porte pas la fenêtre de déclaration :
+   un conteneur de requêtes peut ancrer un élément fixe à sa propre boîte) ; la
+   grille vit sur .pertes-grille.
+   Téléphone : les gros boutons d'abord (« Je jette » reste visible sans
+   défiler), puis les repères deux par ligne, le registre, et une seule carte
+   de mise en avant (la répartition ; la carte des sept jours n'y est pas
+   rendue). Dès 760 px, les repères remontent en tête, quatre de front ; dès
+   1080 px, ils partagent leur rangée avec les gros boutons.
+   ───────────────────────────────────────────────────────────────────────────── */
+.pertes-page { container-type: inline-size; container-name: pertes; min-width: 0; }
+.pertes-grille { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.pertes-haut { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.pertes-reperes {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+/* La carte de repère est une primitive (CarteRepere) : seuls son retrait et
+   son picto suivent la largeur (!important : le cercle pose son display en
+   style inline). */
+.pertes-page .ui-repere { padding: 12px; }
+.pertes-page .ui-repere-icone { display: none !important; }
+
+.pertes-cartes {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+}
+.pertes-cartes > :only-child { grid-column: 1 / -1; }
+/* !important : la carte pose son display en style inline. */
+.pertes-page .pertes-soleil { display: none !important; }
+.pertes-repartition {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+}
+
+@container pertes (min-width: 560px) {
+  .pertes-grille { gap: 24px; }
+  .pertes-haut { gap: 24px; }
+  .pertes-page .ui-repere { padding: 14px 16px; }
+  .pertes-page .ui-repere-icone { display: inline-flex !important; }
+  .pertes-reperes { gap: 12px; }
+  .pertes-cartes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .pertes-page .pertes-soleil { display: flex !important; }
+}
+@container pertes (min-width: 760px) {
+  .pertes-reperes { order: -1; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@container pertes (min-width: 1080px) {
+  /* Une seule rangée : les repères à gauche, les gros boutons à droite, l'un
+     sous l'autre, qui prennent la hauteur des repères. */
+  .pertes-haut { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); align-items: stretch; }
+  .pertes-tuiles .accueil-grille { grid-template-columns: minmax(0, 1fr); height: 100%; grid-auto-rows: 1fr; }
+  /* L'arc à gauche, sa légende à droite. */
+  .pertes-repartition { grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 24px; }
+}

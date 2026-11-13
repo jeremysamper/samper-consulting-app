@@ -2263,6 +2263,8 @@ export const UI_GLOSSARY_ES = {
   'Déclarer une perte': 'Declarar una pérdida',
   'Export impossible.': 'No se pudo exportar.',
   'Première catégorie de perte': 'Primera categoría de pérdida',
+  'Sept derniers jours': 'Últimos siete días',
+  'Valeur des pertes, en CHF': 'Valor de las mermas, en CHF',
   'Répartition par catégorie': 'Distribución por categoría',
   'Choisissez un équipier.': 'Elija a un miembro del equipo.',
   'Indiquez les dates.': 'Indique las fechas.',

@@ -2283,6 +2283,8 @@ export const UI_GLOSSARY = {
   'Export impossible.': 'Export failed.',
   'Première catégorie de perte': 'Top loss category',
   'Répartition par catégorie': 'Breakdown by category',
+  'Sept derniers jours': 'Last seven days',
+  'Valeur des pertes, en CHF': 'Value of waste, in CHF',
   'Choisissez un équipier.': 'Choose a team member.',
   'Indiquez les dates.': 'Enter the dates.',
   'Choisissez au moins un jour.': 'Choose at least one day.',
