@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { estEnPause, isPageActiveForEtab, normalizePage, pageAccueil, peutOuvrirPage } from './moduleConfig.js';
+import { peutOuvrirStatistiques } from './statistiques/gardesStatistiques.js';
 import SafeModule from '../legacy/SafeModule.jsx';
 import { PageActive } from '../components/parcours/pageActive.js';
 import { getPermissionsForRole } from '../data/demoData.js';
@@ -231,7 +232,9 @@ export default function LegacyModuleHost({
       // Une clé absente ne vaut jamais « ouvert » (comme la Comptabilité).
       // Dans le module, chaque famille de chiffres garde la garde de son
       // écran d'origine : personne n'y voit un chiffre qu'il ne voit pas ailleurs.
-      return peutOuvrirPage('statistiques', user, permissions)
+      // S3 : qui voyait un écran d'analyse devenu raccourci, sans la clé,
+      // garde l'accès par ce raccourci (gardesStatistiques.js).
+      return peutOuvrirStatistiques(user, permissions, etablissement)
         ? wrap('Statistiques', <Statistiques user={user} etablissement={etablissement} />)
         : accessDenied;
     }

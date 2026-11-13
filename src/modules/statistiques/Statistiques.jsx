@@ -76,14 +76,17 @@ function useLargeur(ref) {
 
 // Période, pas et comparaison : dans la page à l'ordinateur, dans une feuille
 // au téléphone (D16).
+// La vue sur une autre période ; le pas suit s'il n'est plus possible.
+function vueAvecPeriode(vue, id, bornes, aujourdhui) {
+  const periode = id === 'libre' ? { id, debut: bornes.debut, fin: bornes.fin } : { id };
+  const b = bornesDe(periode, aujourdhui);
+  const p = pasPossibles(b.debut, b.fin);
+  return { ...vue, periode, pas: p.includes(vue.pas) ? vue.pas : p[0] };
+}
+
 function Filtres({ vue, bornes, bornesComp, aujourdhui, onVue }) {
   const possibles = pasPossibles(bornes.debut, bornes.fin);
-  const changerPeriode = (id) => {
-    const periode = id === 'libre' ? { id, debut: bornes.debut, fin: bornes.fin } : { id };
-    const b = bornesDe(periode, aujourdhui);
-    const p = pasPossibles(b.debut, b.fin);
-    onVue({ ...vue, periode, pas: p.includes(vue.pas) ? vue.pas : p[0] });
-  };
+  const changerPeriode = (id) => onVue(vueAvecPeriode(vue, id, bornes, aujourdhui));
   const changerDate = (champ, valeur) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(valeur)) return;
     const periode = { id: 'libre', debut: bornes.debut, fin: bornes.fin, [champ]: valeur };
@@ -428,7 +431,15 @@ export default function Statistiques({ user, etablissement }) {
         <>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', minWidth: 0 }}>
             {etroit ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0, flex: '1 1 auto' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', minWidth: 0, flex: '1 1 auto' }}>
+                {/* S3 : la période reste à portée au téléphone (un écran
+                    d'analyse devenu raccourci la changeait en un geste). */}
+                <label style={st.champ}>
+                  <span>Période</span>
+                  <select style={st.select} value={vue.periode.id} onChange={(e) => setVue(vueAvecPeriode(vue, e.target.value, bornes, aujourdhui))} data-stat-periode-telephone="">
+                    {PERIODES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
+                  </select>
+                </label>
                 <Btn variant="ghost" onClick={() => setFiltresOuverts(true)} style={st.bouton}>Période et filtres</Btn>
                 <span style={st.resume}><span>{periodeChoisie?.label}</span>, <span data-no-translate>{bornesTranche(bornes)}</span></span>
               </div>

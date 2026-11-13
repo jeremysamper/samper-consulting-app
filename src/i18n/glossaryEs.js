@@ -4224,6 +4224,7 @@ export const UI_GLOSSARY_ES = {
   'Stats': 'Estadísticas',
   'Pas': 'Paso',
   '7 jours': '7 días',
+  '14 jours': '14 días',
   '30 jours': '30 días',
   'Ce trimestre': 'Este trimestre',
   'Sans comparaison': 'Sin comparación',

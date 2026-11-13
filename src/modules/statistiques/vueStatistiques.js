@@ -13,7 +13,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { ajouterJours, periodeAnnee, periodeMois, periodeTrimestre } from '../comptabilite/periodesCompta.js';
-import { bornesComparaison } from '../previsions/rapport/periodesRapport.js';
+import { ajouterMois, bornesComparaison, bornesPeriode, debutMois, finMois } from '../previsions/rapport/periodesRapport.js';
 import { pasPossibles } from './agregation.js';
 
 export const CLE_VUE = 'statistiques_vue';
@@ -24,12 +24,22 @@ export const MAX_GRAPHIQUES = 4;
 export const MAX_SERIES = 6;
 export const MAX_UNITES = 2;
 
+// S3 : les périodes des écrans d'analyse devenus des raccourcis s'ajoutent à
+// celles de D10 (14 jours des meilleures ventes, semaines, mois dernier et
+// trois derniers mois du rapport des réservations, douze derniers mois des
+// analyses des dépenses), pour qu'aucune tâche ne coûte un geste de plus.
 export const PERIODES = [
   { id: 'jour', label: 'Aujourd\'hui' },
   { id: '7j', label: '7 jours' },
+  { id: '14j', label: '14 jours' },
   { id: '30j', label: '30 jours' },
+  { id: 'semaine', label: 'Cette semaine' },
+  { id: 'semaine_prec', label: 'Semaine dernière' },
   { id: 'mois', label: 'Ce mois' },
+  { id: 'mois_prec', label: 'Mois dernier' },
+  { id: 'trois_mois', label: '3 derniers mois' },
   { id: 'trimestre', label: 'Ce trimestre' },
+  { id: 'douze_mois', label: '12 derniers mois' },
   { id: 'annee', label: 'Cette année' },
   { id: 'libre', label: 'Dates choisies' },
 ];
@@ -49,6 +59,12 @@ export function bornesDe(periode, aujourdhui) {
   const id = periode?.id || '30j';
   if (id === 'jour') return { debut: aujourdhui, fin: aujourdhui };
   if (id === '7j') return { debut: ajouterJours(aujourdhui, -6), fin: aujourdhui };
+  if (id === '14j') return { debut: ajouterJours(aujourdhui, -13), fin: aujourdhui };
+  // Semaines ISO, mois dernier, trois derniers mois : les bornes mêmes du
+  // rapport des réservations.
+  if (id === 'semaine' || id === 'semaine_prec' || id === 'mois_prec' || id === 'trois_mois') return bornesPeriode(id, aujourdhui);
+  // Douze mois civils, le mois en cours compris (douzeMois des achats).
+  if (id === 'douze_mois') return { debut: ajouterMois(debutMois(aujourdhui), -11), fin: finMois(aujourdhui) };
   if (id === 'mois') { const p = periodeMois(aujourdhui); return { debut: p.debut, fin: p.fin }; }
   if (id === 'trimestre') { const p = periodeTrimestre(aujourdhui); return { debut: p.debut, fin: p.fin }; }
   if (id === 'annee') { const p = periodeAnnee(aujourdhui); return { debut: p.debut, fin: p.fin }; }
@@ -161,10 +177,21 @@ export function vueDepuisLien(demande, mesuresVisibles, aujourdhui) {
   if (!demande) return null;
   const visibles = mesuresVisibles || [];
   let ids = (Array.isArray(demande.mesures) ? demande.mesures : []).filter((id) => visibles.some((m) => m.id === id));
+  const periode = typeof demande.periode === 'string' ? { id: demande.periode } : demande.periode;
+  const commun = { periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '' };
+  // Raccourci d'un écran d'analyse (S3) : plusieurs graphiques préréglés. Un
+  // graphique dont aucune mesure n'est visible tombe ; rien de visible, rien
+  // d'ouvert.
+  if (Array.isArray(demande.graphiques)) {
+    const graphiques = demande.graphiques
+      .map((g) => ({ mesures: (g.mesures || []).filter((id) => visibles.some((m) => m.id === id)), ventilation: g.ventilation || '', type: g.type || '', choix: g.choix || {} }))
+      .filter((g) => g.mesures.length)
+      .slice(0, MAX_GRAPHIQUES);
+    return graphiques.length ? nettoyerVue({ ...commun, graphiques }, visibles, aujourdhui) : null;
+  }
   if (!ids.length && demande.famille) ids = visibles.filter((m) => m.famille === demande.famille).slice(0, 1).map((m) => m.id);
   if (!ids.length) return null;
-  const periode = typeof demande.periode === 'string' ? { id: demande.periode } : demande.periode;
-  return nettoyerVue({ periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '', graphiques: [{ mesures: ids, ventilation: demande.ventilation || '', type: '', choix: demande.choix || {} }] }, visibles, aujourdhui);
+  return nettoyerVue({ ...commun, graphiques: [{ mesures: ids, ventilation: demande.ventilation || '', type: '', choix: demande.choix || {} }] }, visibles, aujourdhui);
 }
 
 export const ajouterGraphique = (vue) => (vue.graphiques.length >= MAX_GRAPHIQUES ? vue : { ...vue, graphiques: [...vue.graphiques, graphiqueVide()] });

@@ -4243,6 +4243,7 @@ export const UI_GLOSSARY = {
   'Stats': 'Stats',
   'Pas': 'Step',
   '7 jours': '7 days',
+  '14 jours': '14 days',
   '30 jours': '30 days',
   'Ce trimestre': 'This quarter',
   'Sans comparaison': 'No comparison',

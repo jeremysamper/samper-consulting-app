@@ -73,9 +73,15 @@ export function ouvrirGroupe(id, date) {
 // 'annee', ou { id: 'libre', debut, fin }). Clé ponctuelle lue au montage,
 // événement pour un module déjà monté, puis la page. Ce que la personne ne
 // voit pas dans le module n'est pas ouvert par le lien.
-export function ouvrirStatistiques({ famille = null, mesures = [], periode = null } = {}) {
-  if (famille || (mesures && mesures.length)) {
+// S3 : un raccourci d'écran d'analyse peut aussi nommer le pas, la
+// comparaison et plusieurs graphiques préréglés (`graphiques`, voir
+// statistiques/raccourcisStatistiques.js).
+export function ouvrirStatistiques({ famille = null, mesures = [], periode = null, pas = null, comparaison = null, graphiques = null } = {}) {
+  if (famille || (mesures && mesures.length) || (graphiques && graphiques.length)) {
     const demande = { famille, mesures: mesures || [], periode };
+    if (pas) demande.pas = pas;
+    if (comparaison) demande.comparaison = comparaison;
+    if (graphiques && graphiques.length) demande.graphiques = graphiques;
     writeJson(UI_STORAGE_KEYS.statistiquesOuvrir, demande);
     const browserWindow = getBrowserWindow();
     browserWindow?.dispatchEvent(new browserWindow.CustomEvent('sc:statistiques-ouvrir', { detail: demande }));
