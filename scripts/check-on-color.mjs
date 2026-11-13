@@ -48,7 +48,7 @@ const EXCLUS = [
 // worktree sera repris ou abandonné. Planning.styles.js en est sorti au lot 4
 // de l'intégration Office (Q7) : ses sites sont corrigés.
 const EN_ATTENTE = [
-  'modules/factures/Factures.jsx',
+  // Vide depuis le lot 9 : les trois sites de Factures.jsx sont corrigés (Q7).
 ];
 
 const FONDS = /var\(--(accent|danger-strong|danger-text|success-strong|success-text|nav)\)/;
