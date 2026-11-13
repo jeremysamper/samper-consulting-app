@@ -18,16 +18,16 @@ import { sm } from './messagerie.styles.js';
 //   onRemove  la page seule propose de supprimer ses propres messages
 //   onRetour  « Retour » en toutes lettres (téléphone, panneau)
 //   cible     hauteur d'une cible d'action (cibleDe)
-//   enregistreur, onVocal, onEnvoyerVocal  messages vocaux (lot C3) : le
-//             micro de la ligne de saisie lance onVocal ; hors repos, la zone
-//             vocale prend la place de la ligne de saisie
+//   enregistreur, onVocal  messages vocaux (lot C3) : le micro de la ligne
+//             de saisie lance onVocal ; hors repos, la zone vocale prend la
+//             place de la ligne de saisie
 //
 // Un message vocal se lit dans sa bulle (BulleVocale) ; son texte (« Message
 // vocal ») reste pour les sessions ouvertes sur l'ancien front.
 export default function FilConversation({
   userId, selected, thread, filRef, composerRef, draft, onDraft, onSend, sending,
   onRemove, onRetour, rows = 2, aide = false, cible = 44, variante = 'page',
-  enregistreur, onVocal, onEnvoyerVocal,
+  enregistreur, onVocal,
 }) {
   const panneau = variante === 'panneau';
   const role = roleConfig[selected?.role] || { label: selected?.role || '' };
@@ -95,7 +95,7 @@ export default function FilConversation({
       </div>
 
       {vocalEnCours ? (
-        <ZoneVocale enregistreur={enregistreur} destinataire={selected} onEnvoyer={onEnvoyerVocal} cible={cible} />
+        <ZoneVocale enregistreur={enregistreur} destinataire={selected} cible={cible} />
       ) : (
       <div style={sm.saisie}>
         <div style={sm.saisieLigne}>

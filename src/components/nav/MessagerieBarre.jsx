@@ -13,7 +13,7 @@ import {
 } from '../../modules/messages/conversations.js';
 import LignePersonne from '../../modules/messages/LignePersonne.jsx';
 import FilConversation from '../../modules/messages/FilConversation.jsx';
-import { deposerVocal, useEnregistreur } from '../../modules/messages/useEnregistreur.js';
+import { useEnregistreur } from '../../modules/messages/useEnregistreur.js';
 import { cibleDe, sm } from '../../modules/messages/messagerie.styles.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -59,11 +59,11 @@ export default function MessagerieBarre({ user, open, onOpenChange, unread = 0, 
 
   // Vocal : abandonné, sans rien laisser, quand son fil n'est plus affiché
   // (autre conversation, retour à la liste, panneau refermé).
-  const enregistreur = useEnregistreur();
-  const { pour: vocalPour, abandonner: abandonnerVocal } = enregistreur;
-  React.useEffect(() => {
-    if (vocalPour != null && (!open || filId !== vocalPour)) abandonnerVocal();
-  }, [open, filId, vocalPour, abandonnerVocal]);
+  const enregistreur = useEnregistreur({
+    filAffiche: open ? filId : null,
+    expediteur: user.id,
+    onEnvoye: (sent) => setMessages((prev) => [sent, ...prev.filter((m) => m.id !== sent.id)]),
+  });
 
   React.useEffect(() => {
     if (!open || !legacySB) return undefined;
@@ -153,15 +153,6 @@ export default function MessagerieBarre({ user, open, onOpenChange, unread = 0, 
     } finally { setSending(false); }
   };
 
-  const envoyerVocal = () => {
-    const destinataire = enregistreur.pour;
-    if (!destinataire) return;
-    enregistreur.envoyer(async ({ blob, duree }) => {
-      const sent = await deposerVocal(legacySB, { destinataire, expediteur: user.id, blob, duree });
-      setMessages((prev) => [sent, ...prev.filter((m) => m.id !== sent.id)]);
-    }).catch((err) => notifyLegacy('Message vocal non envoyé. ' + messageErreur(err, 'messages'), 'error'));
-  };
-
   const liste = (
     <div style={{ ...sm.liste, padding: 6 }}>
       {!charge && <div style={sm.vide}>Chargement…</div>}
@@ -197,7 +188,6 @@ export default function MessagerieBarre({ user, open, onOpenChange, unread = 0, 
       variante="panneau"
       enregistreur={enregistreur}
       onVocal={() => enregistreur.demarrer(filId)}
-      onEnvoyerVocal={envoyerVocal}
     />
   );
 
