@@ -30,6 +30,7 @@ import { MAX_LENGTH, buildAnnuaire, buildContacts, formatListDate, groupConversa
 import LignePersonne from './LignePersonne.jsx';
 import FilConversation from './FilConversation.jsx';
 import FicheContact from './FicheContact.jsx';
+import { deposerVocal, useEnregistreur } from './useEnregistreur.js';
 import { cibleDe, sm } from './messagerie.styles.js';
 
 const VUES = [
@@ -74,9 +75,19 @@ const Messages = ({ user, isActive = true }) => {
   const cadreRef = React.useRef(null);
   const titreRef = React.useRef(null);
   const rechercheOuverte = useRechercheOuverte(titreRef);
+  const enregistreur = useEnregistreur();
 
   const filOuvert = vue === 'discussions' && Boolean(selectedId);
   const ficheOuverte = vue === 'contacts' && Boolean(ficheId);
+
+  // Un vocal en cours appartient au fil où il a commencé : il est abandonné,
+  // sans rien laisser, dès que ce fil n'est plus affiché (autre personne,
+  // autre vue, page masquée).
+  const { pour: vocalPour, abandonner: abandonnerVocal } = enregistreur;
+  React.useEffect(() => {
+    if (vocalPour == null) return;
+    if (!isActive || !filOuvert || selectedId !== vocalPour) abandonnerVocal();
+  }, [isActive, filOuvert, selectedId, vocalPour, abandonnerVocal]);
 
   // Téléphone : le fil et la fiche sont des calques, « retour » ramène à la
   // liste. Une seule entrée à la fois : « Écrire » depuis la fiche referme la
@@ -187,10 +198,27 @@ const Messages = ({ user, isActive = true }) => {
     } finally { setSending(false); }
   };
 
+  // Vocal : depuis le micro du fil, ou depuis « Vocal » de la fiche (le fil
+  // s'ouvre et l'enregistrement part dans le même geste).
+  const vocal = (id) => {
+    if (vue !== 'discussions' || selectedId !== id) ecrire(id);
+    enregistreur.demarrer(id);
+  };
+
+  const envoyerVocal = () => {
+    const destinataire = enregistreur.pour;
+    if (!destinataire) return;
+    enregistreur.envoyer(async ({ blob, duree }) => {
+      const sent = await deposerVocal(legacySB, { destinataire, expediteur: user.id, blob, duree });
+      setMessages((prev) => [sent, ...prev.filter((m) => m.id !== sent.id)]);
+    }).catch((err) => notifyLegacy('Message vocal non envoyé. ' + messageErreur(err, 'messages'), 'error'));
+  };
+
   const remove = async (msg) => {
     if (!confirmLegacy('Supprimer ce message ? Il disparaîtra aussi chez votre interlocuteur.')) return;
     try {
-      await legacySB.db.deletePrivateMessage(msg.id);
+      // Vocal : le message d'abord, puis son fichier (legacySupabase).
+      await legacySB.db.deletePrivateMessage(msg.id, msg.audioPath);
       setMessages((prev) => prev.filter((m) => m.id !== msg.id));
     } catch (err) { notifyLegacy('Suppression impossible. ' + messageErreur(err, 'messages'), 'error'); }
   };
@@ -248,6 +276,9 @@ const Messages = ({ user, isActive = true }) => {
         rows={isMobile ? 2 : 3}
         aide={!isMobile}
         cible={cible}
+        enregistreur={enregistreur}
+        onVocal={() => vocal(selectedId)}
+        onEnvoyerVocal={envoyerVocal}
       />
     </div>
   );
@@ -258,6 +289,7 @@ const Messages = ({ user, isActive = true }) => {
         profile={fiche}
         tel={telephones[fiche.id]}
         onEcrire={() => ecrire(fiche.id)}
+        onVocal={enregistreur.disponible ? () => vocal(fiche.id) : undefined}
         onRetour={isMobile ? closeFiche : undefined}
         empile={isMobile}
         cible={cible}
