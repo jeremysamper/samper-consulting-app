@@ -7,12 +7,13 @@ import { sm } from './messagerie.styles.js';
 
 // Fiche d'une personne (vue Contacts) : nom, rôle, numéro seulement si la base
 // le rend (useTeamPhones : consultant et patron), puis les gestes vers elle.
-// Écrire seulement pour l'instant ; Vocal (lot C3) et Appeler (lot C4) se
-// rangeront à sa suite, empilés au téléphone, en rangée au-delà.
+// Écrire, puis Vocal (lot C3 : ouvre le fil et lance l'enregistrement dans le
+// même geste, seulement si l'appareil sait enregistrer) ; Appeler (lot C4) se
+// rangera à leur suite. Empilés au téléphone, en rangée au-delà.
 // Au téléphone, la fiche est un calque : « Retour » la referme, comme le geste
 // retour (useBackLayer dans Messages.jsx). À la tablette et à l'ordinateur,
 // elle prend la colonne de droite.
-export default function FicheContact({ profile, tel, onEcrire, onRetour, empile = false, cible = 44 }) {
+export default function FicheContact({ profile, tel, onEcrire, onVocal, onRetour, empile = false, cible = 44 }) {
   const role = roleConfig[profile?.role] || { label: profile?.role || '' };
   return (
     <section role="region" aria-label="Fiche de contact" style={sf.racine}>
@@ -36,6 +37,9 @@ export default function FicheContact({ profile, tel, onEcrire, onRetour, empile 
         ) : null}
         <div style={empile ? sf.actionsEmpilees : sf.actions}>
           <Btn variant="primary" onClick={onEcrire} style={{ minHeight: cible, ...(empile ? { width: '100%' } : null) }}>Écrire</Btn>
+          {onVocal && (
+            <Btn variant="ghost" onClick={onVocal} style={{ minHeight: cible, ...(empile ? { width: '100%' } : null) }}>Vocal</Btn>
+          )}
         </div>
       </div>
     </section>
