@@ -457,9 +457,13 @@ export function installLegacySupabase() {
     // ─── SHIFTS (planning) ───
     // strict : cf. _readFailed - remonte l'erreur au lieu de renvoyer [].
     async listShifts(etabId, { strict = false } = {}) {
-      let q = client.from('shifts').select('*').order('date').order('debut');
-      if (etabId) q = q.eq('etablissement_id', etabId);
-      const { data, error } = await q;
+      // Par pages : le serveur ne rend jamais plus de 1000 lignes, et les plus
+      // récentes tombaient au-delà (tri par date croissante).
+      const { data, error } = await toutesLesPages((de, a) => {
+        let q = client.from('shifts').select('*');
+        if (etabId) q = q.eq('etablissement_id', etabId);
+        return q.order('date').order('debut').order('id').range(de, a);
+      });
       if (error) return _readFailed('[listShifts]', error, strict);
       return data || [];
     },
