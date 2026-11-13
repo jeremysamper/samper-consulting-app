@@ -47,7 +47,7 @@ const overlay = {
   display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
 };
 const panel = {
-  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)',
   width: 'min(860px, 96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column',
   boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
 };
@@ -258,10 +258,10 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
 
   const headerBar = (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-      <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+      <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
         Import multiple de recettes
       </div>
-      <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
+      <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)' }}>×</button>
     </div>
   );
 
@@ -274,7 +274,7 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           {/* ── Choix du format ── */}
           {step === 'choose' && (
             <div>
-              <p style={{ fontSize: 13, color: 'var(--text2)', marginTop: 0 }}>
+              <p style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 0 }}>
                 Glissez une ou plusieurs fiches recettes : le type de chaque fichier
                 est détecté automatiquement. Les recettes sont créées en brouillon
                 sur l'établissement courant.
@@ -297,17 +297,17 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
                   style={{ display: 'none' }}
                   onChange={onInputChange}
                 />
-                <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+                <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
                   Glissez vos fiches ici, ou cliquez pour parcourir
                 </div>
-                <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
                   Excel, CSV, PDF ou photos, plusieurs fichiers à la fois
                 </div>
               </div>
               <div style={{ marginTop: 14 }}>
                 <Btn variant="ghost" small onClick={downloadTemplate}>Télécharger le template Excel</Btn>
               </div>
-              {parsing && <div style={{ marginTop: 12, fontSize: 13, color: 'var(--accent)' }}>⟳ {parsingMsg}</div>}
+              {parsing && <div style={{ marginTop: 12, fontSize: 'var(--t2)', color: 'var(--lien)' }}>⟳ {parsingMsg}</div>}
               {parseError && <div style={errBox}>{parseError}</div>}
               {scannedPdf && (
                 <div style={{ ...errBox, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' }}>
@@ -322,20 +322,20 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           {/* ── Assistant de mapping de colonnes ── */}
           {step === 'mapping' && mappingData && (
             <div>
-              <p style={{ fontSize: 13, color: 'var(--text2)', marginTop: 0 }}>
+              <p style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 0 }}>
                 Les colonnes n'ont pas pu être reconnues automatiquement. Associez
                 chaque champ cible à une colonne du fichier.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 {Object.entries(FIELD_LABELS).map(([field, label]) => (
-                  <label key={field} style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12 }}>
-                    <span style={{ fontWeight: 700, color: 'var(--text2)' }}>
+                  <label key={field} style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 'var(--t1)' }}>
+                    <span style={{ fontWeight: 'var(--g3)', color: 'var(--text2)' }}>
                       {label}{field === 'titre' ? ' *' : ''}
                     </span>
                     <select
                       value={mapping[field] == null ? '' : mapping[field]}
                       onChange={e => setMapping(m => ({ ...m, [field]: e.target.value === '' ? null : Number(e.target.value) }))}
-                      style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', color: 'var(--text)', fontSize: 12 }}
+                      style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--bg)', color: 'var(--text)', fontSize: 'var(--t1)' }}
                     >
                       <option value="">ignorer</option>
                       {mappingData.headers.map(h => <option key={h.index} value={h.index}>{h.label}</option>)}
@@ -395,10 +395,10 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           {/* ── Import en cours ── */}
           {step === 'importing' && (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
                 Import en cours… {progress.done} / {progress.total}
               </div>
-              <div style={{ height: 10, background: 'var(--bg)', borderRadius: 6, margin: '14px 0', overflow: 'hidden', border: '1px solid var(--border)' }}>
+              <div style={{ height: 10, background: 'var(--bg)', borderRadius: 'var(--r)', margin: '14px 0', overflow: 'hidden', border: '1px solid var(--border)' }}>
                 <div style={{ height: '100%', width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
               </div>
               <Btn variant="danger" onClick={() => { cancelRef.current = true; }}>Annuler</Btn>
@@ -408,10 +408,10 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
           {/* ── Terminé ── */}
           {step === 'done' && (
             <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', margin: '8px 0' }}>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', margin: '8px 0' }}>
                 Import terminé
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+              <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>
                 {progress.imported} recette(s) importée(s)
                 {progress.failed > 0 ? `, ${progress.failed} échec(s)` : ''}
                 {cancelRef.current ? ', interrompu' : ''}
@@ -429,18 +429,18 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
 }
 
 const statsBanner = {
-  marginBottom: 10, padding: '8px 12px', borderRadius: 7, fontSize: 12,
+  marginBottom: 10, padding: '8px 12px', borderRadius: 'var(--r)', fontSize: 'var(--t1)',
   background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', lineHeight: 1.6,
 };
 const dropZone = {
   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
   cursor: 'pointer', textAlign: 'center', padding: '34px 18px',
-  borderWidth: 2, borderStyle: 'dashed', borderColor: 'var(--border)', borderRadius: 12, background: 'var(--bg)',
+  borderWidth: 2, borderStyle: 'dashed', borderColor: 'var(--border)', borderRadius: 'var(--r)', background: 'var(--bg)',
   transition: 'border-color 0.15s, background 0.15s',
 };
 const dropZoneActive = {
-  borderColor: 'var(--accent)', background: 'var(--surface)',
+  borderColor: 'var(--onglet)', background: 'var(--selection)',
 };
 const errBox = {
-  marginTop: 12, padding: '8px 0 8px 12px',  fontSize: 12,  borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)',
+  marginTop: 12, padding: '8px 0 8px 12px',  fontSize: 'var(--t1)',  borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)',
 };

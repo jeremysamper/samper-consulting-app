@@ -56,6 +56,6 @@ export default function SectionCarteAccueil({ user, etablissement }) {
 
 const st = {
   bloc: { display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 640 },
-  texte: { margin: 0, fontSize: 14, color: 'var(--text)', lineHeight: 1.5 },
-  note: { margin: 0, fontSize: 13, color: 'var(--text2)' },
+  texte: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.5 },
+  note: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)' },
 };

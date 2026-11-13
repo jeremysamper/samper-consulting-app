@@ -180,7 +180,7 @@ export default function PlatPicker({
                     }}
                     title={replie ? 'Développer' : 'Réduire'}
                   >
-                    <span style={{ fontSize: 11, color: 'var(--text2)' }}>{!replie ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
+                    <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{!replie ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
                     <span style={ps.carteNom}>{dossier.icone} {dossier.nom}</span>
                     <span style={ps.carteCount}>{dossier.plats.length}</span>
                   </div>
@@ -210,7 +210,7 @@ export default function PlatPicker({
                               key={dossier.id + '-' + p.id}
                               style={{
                                 ...ps.platRow,
-                                background: coche ? 'var(--accent-light)' : 'transparent',
+                                background: coche ? 'var(--selection)' : 'transparent',
                                 cursor: busy || verrouille ? 'default' : 'pointer',
                                 opacity: busy ? 0.6 : 1,
                               }}
@@ -266,28 +266,28 @@ export default function PlatPicker({
 const ps = {
   // Repris des styles des Outils consultant (overlay, modal, ghostBtn, newBtn).
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 },
-  modal: { background: 'var(--surface)', borderRadius: 14, width: 420, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
-  ghostBtn: { padding: '7px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font)' },
-  newBtn: { padding: '9px 14px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  modal: { background: 'var(--surface)', borderRadius: 'var(--r)', width: 420, maxWidth: '90vw', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
+  ghostBtn: { padding: '7px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  newBtn: { padding: '9px 14px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   header: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
-  title: { fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  subtitle: { fontSize: 11, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
-  closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', flexShrink: 0, lineHeight: 1 },
+  title: { fontWeight: 'var(--g3)', fontSize: 'var(--t3)', fontFamily: 'var(--font)', color: 'var(--text)' },
+  subtitle: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
+  closeBtn: { background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)', flexShrink: 0, lineHeight: 1 },
   searchRow: { display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px', borderBottom: '1px solid var(--border)' },
-  searchInput: { flex: 1, minWidth: 0, padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', outline: 'none', boxSizing: 'border-box' },
-  clearBtn: { background: 'none', border: 'none', fontSize: 13, cursor: 'pointer', color: 'var(--text2)', padding: '4px 6px', flexShrink: 0 },
+  searchInput: { flex: 1, minWidth: 0, padding: '8px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', outline: 'none', boxSizing: 'border-box' },
+  clearBtn: { background: 'none', border: 'none', fontSize: 'var(--t2)', cursor: 'pointer', color: 'var(--text2)', padding: '4px 6px', flexShrink: 0 },
   body: { flex: 1, overflowY: 'auto', minHeight: 120 },
-  empty: { padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 13 },
+  empty: { padding: 30, textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)' },
   carteHeader: { display: 'flex', alignItems: 'center', gap: 6, padding: '9px 20px', background: 'var(--bg)', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
-  carteNom: { flex: 1, minWidth: 0, fontSize: 11, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  carteCount: { fontSize: 11, fontWeight: 700, color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px', flexShrink: 0 },
+  carteNom: { flex: 1, minWidth: 0, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  carteCount: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px', flexShrink: 0 },
   catHeader: { display: 'flex', alignItems: 'center', gap: 8, padding: '7px 20px 3px 34px' },
-  catNom: { flex: 1, minWidth: 0, fontSize: 11, fontWeight: 700, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: 0.6 },
-  catAllBtn: { background: 'none', border: 'none', color: 'var(--accent)', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 4px', flexShrink: 0 },
+  catNom: { flex: 1, minWidth: 0, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)' },
+  catAllBtn: { background: 'none', border: 'none', color: 'var(--lien)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '2px 4px', flexShrink: 0 },
   // flexShrink 0 : sans lui, les lignes se superposent sur mobile (min-height
   // global 44px sur les contrôles vs hauteur calculée par flex).
   platRow: { display: 'flex', alignItems: 'center', gap: 10, padding: '9px 20px 9px 34px', borderBottom: '1px solid var(--border)', flexShrink: 0 },
-  platNom: { fontSize: 13, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  platMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 1 },
+  platNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  platMeta: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 1 },
   footer: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
 };

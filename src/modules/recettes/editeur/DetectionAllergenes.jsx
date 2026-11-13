@@ -58,12 +58,12 @@ export default function DetectionAllergenes({ recettes = [], style, onFini }) {
       </button>
       {progression && (
         <div className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(20,16,12,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, width: 'min(420px,94vw)', padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 }}>Détection des allergènes</div>
-            <div style={{ fontSize: 13, color: 'var(--text2)' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', width: 'min(420px,94vw)', padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>
+            <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)', marginBottom: 4 }}>Détection des allergènes</div>
+            <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>
               <span data-no-translate>{progression.fait} / {progression.total}</span> fiche(s), <span data-no-translate>{progression.ajoutes}</span> allergène(s) ajouté(s)
             </div>
-            <div style={{ height: 10, background: 'var(--bg)', borderRadius: 6, margin: '12px 0', overflow: 'hidden', border: '1px solid var(--border)' }}>
+            <div style={{ height: 10, background: 'var(--bg)', borderRadius: 'var(--r)', margin: '12px 0', overflow: 'hidden', border: '1px solid var(--border)' }}>
               <div style={{ height: '100%', width: `${progression.total ? (progression.fait / progression.total) * 100 : 0}%`, background: 'var(--accent)' }} />
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end' }}>

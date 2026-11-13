@@ -16,12 +16,12 @@ const overlay = {
   display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
 };
 const panel = {
-  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12,
+  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)',
   width: 'min(820px, 96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column',
   boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
 };
 const chip = (conf) => ({
-  fontSize: 11, fontWeight: 700, padding: '1px 6px', borderRadius: 10,
+  fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '1px 6px', borderRadius: 'var(--r)',
   background: conf >= 85 ? 'var(--success-bg)' : conf >= 60 ? 'var(--warning-bg)' : 'var(--surface2)',
   color: conf >= 85 ? 'var(--success-text)' : conf >= 60 ? 'var(--warning-text)' : 'var(--text2)',
 });
@@ -121,17 +121,17 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
     <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div style={panel}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-          <div style={{ fontSize: 15, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+          <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
             Correspondances catalogue à valider ({items.length})
           </div>
-          <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' }}>×</button>
+          <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)' }}>×</button>
         </div>
 
         <div style={{ display: 'flex', gap: 8, padding: '10px 18px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' }}>
           <select
             value={filterRecette}
             onChange={e => setFilterRecette(e.target.value)}
-            style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg)', color: 'var(--text)', fontSize: 12 }}
+            style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--bg)', color: 'var(--text)', fontSize: 'var(--t1)' }}
           >
             <option value="all">Toutes les recettes ({items.length})</option>
             {recetteOptions.map(o => <option key={o.id} value={o.id}>{o.nom}</option>)}
@@ -144,21 +144,21 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
 
         <div style={{ padding: 14, overflowY: 'auto' }}>
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text2)', fontSize: 13 }}>
+            <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--text2)', fontSize: 'var(--t2)' }}>
               Aucune correspondance en attente.
             </div>
           )}
           {filtered.map((it) => {
             const suggestions = it.ing.matchSuggestions || [];
             return (
-              <div key={`${it.recetteId}:${it.ing.id}`} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', marginBottom: 8, background: 'var(--bg)' }}>
+              <div key={`${it.recetteId}:${it.ing.id}`} style={{ border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '10px 12px', marginBottom: 8, background: 'var(--bg)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{it.ing.nom || '(sans nom)'}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text2)' }}>{it.recetteNom}</div>
+                  <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>{it.ing.nom || '(sans nom)'}</div>
+                  <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{it.recetteNom}</div>
                 </div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                   {suggestions.length === 0 && (
-                    <span style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>Aucune suggestion automatique.</span>
+                    <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontStyle: 'italic' }}>Aucune suggestion automatique.</span>
                   )}
                   {suggestions.map((s) => {
                     const product = catalogueById.get(s.produitId);
@@ -170,7 +170,7 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
                         title={product ? 'Lier ce produit' : 'Produit introuvable au catalogue'}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 6, cursor: busy ? 'wait' : 'pointer',
-                          padding: '5px 10px', borderRadius: 7, fontSize: 12, fontFamily: 'var(--font)',
+                          padding: '5px 10px', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontFamily: 'var(--font)',
                           background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)',
                         }}
                       >
@@ -184,16 +184,16 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
                     onClick={() => suggererIA(it)}
                     title="Choisir automatiquement le produit le plus pertinent"
                     style={{
-                      padding: '5px 10px', borderRadius: 7, fontSize: 12, fontFamily: 'var(--font)',
+                      padding: '5px 10px', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontFamily: 'var(--font)',
                       cursor: (busy || aiBusy) ? 'wait' : 'pointer',
-                      background: 'var(--ai-bg-soft)', border: '1px solid var(--ai-bd)', color: 'var(--ai-text)', fontWeight: 700,
+                      background: 'var(--ai-bg-soft)', border: '1px solid var(--ai-bd)', color: 'var(--ai-text)', fontWeight: 'var(--g3)',
                     }}
                   >Auto</button>
                   <button
                     disabled={busy}
                     onClick={() => resolveOne(it, null)}
                     style={{
-                      padding: '5px 10px', borderRadius: 7, fontSize: 12, fontFamily: 'var(--font)', cursor: 'pointer',
+                      padding: '5px 10px', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontFamily: 'var(--font)', cursor: 'pointer',
                       background: 'var(--surface)', border: '1px dashed var(--border)', color: 'var(--text2)',
                     }}
                   >Ignorer (aucun)</button>
