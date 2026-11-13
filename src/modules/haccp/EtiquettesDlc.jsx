@@ -109,14 +109,14 @@ const datesInitiales = (jour) => Object.fromEntries(
 );
 
 const es = {
-  banniere: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 0 11px 12px',  borderLeft: '2px solid var(--warning-bd)',  color: 'var(--warning-text)', fontSize: 12, lineHeight: 1.5 },
-  bloc: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 },
+  banniere: { display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 0 11px 12px',  borderLeft: '2px solid var(--warning-bd)',  color: 'var(--warning-text)', fontSize: 'var(--t1)', lineHeight: 1.5 },
+  bloc: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r)', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 },
   champsDates: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 },
-  ligne: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap' },
+  ligne: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--rule-soft)', flexWrap: 'wrap' },
   ligneInfo: { flex: 1, minWidth: 140, maxWidth: '100%' },
-  nom: { fontSize: 14, fontWeight: 500, color: 'var(--text)', lineHeight: 1.3 },
-  meta: { fontSize: 11, color: 'var(--text2)', marginTop: 3 },
-  dlc: { fontSize: 12, fontWeight: 700, color: 'var(--accent)' },
+  nom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', lineHeight: 1.3 },
+  meta: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 3 },
+  dlc: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--lien)' },
   // Cible tactile de la case à cocher : 44 px, la case dessinée n'en faisant
   // que 20. Une case de 18 px se rate une fois sur trois sur un iPad tenu d'une
   // main en service, et un tap raté ressemble exactement à un bug. Les marges
@@ -126,40 +126,40 @@ const es = {
   stepper: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
   // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
   // et fait se superposer les boutons d'une rangée sur mobile.
-  stepBtn: { width: 34, height: 34, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 16, fontWeight: 700, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
-  qteInput: { width: 52, padding: '7px 6px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 14, fontWeight: 700, textAlign: 'center', color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none' },
+  stepBtn: { width: 34, height: 34, flexShrink: 0, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t3)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
+  qteInput: { width: 52, padding: '7px 6px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', textAlign: 'center', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
   // Barre de résumé posée en bas de l'onglet (sticky, jamais flottante).
-  resume: { position: 'sticky', bottom: 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--surface)', borderTop: '1px solid var(--border)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' },
-  resumeTotal: { fontSize: 13, color: 'var(--text2)', flex: 1, minWidth: 160 },
+  resume: { position: 'sticky', bottom: 0, zIndex: 3, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '12px 16px', background: 'var(--surface)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)', boxShadow: '0 -2px 10px rgba(0,0,0,0.05)' },
+  resumeTotal: { fontSize: 'var(--t2)', color: 'var(--text2)', flex: 1, minWidth: 160 },
   // Compteur porté par l'onglet de mode : c'est ce qui rend visible, sans
   // quitter l'écran courant, qu'un autre mode contient déjà des étiquettes.
-  tabBadge: { display: 'inline-block', minWidth: 16, padding: '1px 6px', marginLeft: 5, borderRadius: 999, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 11, fontWeight: 700, verticalAlign: 'middle' },
+  tabBadge: { display: 'inline-block', minWidth: 16, padding: '1px 6px', marginLeft: 5, borderRadius: 'var(--r-full)', background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', verticalAlign: 'middle' },
   // Récapitulatif du lot multi-mode : affiché uniquement quand le lot porte
   // plusieurs modes, seul cas où l'onglet courant ne dit pas tout.
-  recap: { background: 'var(--surface)', border: '1px solid var(--accent)', borderRadius: 10, overflow: 'hidden' },
-  recapTitre: { padding: '10px 14px 6px', fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
-  recapLigne: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' },
-  recapInfo: { flex: 1, minWidth: 160, fontSize: 12, color: 'var(--text2)' },
+  recap: { background: 'var(--surface)', border: '1px solid var(--btn-bord)', borderRadius: 'var(--r)', overflow: 'hidden' },
+  recapTitre: { padding: '10px 14px 6px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)' },
+  recapLigne: { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', borderTop: '1px solid var(--rule-soft)', flexWrap: 'wrap' },
+  recapInfo: { flex: 1, minWidth: 160, fontSize: 'var(--t1)', color: 'var(--text2)' },
   rechercheWrap: { display: 'flex', alignItems: 'center', gap: 8 },
   // Bloc épinglé des cases Divers : jamais filtré par la recherche, il reste
   // visible quel que soit le filtre saisi.
-  diversTitre: { padding: '10px 14px 5px', fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
+  diversTitre: { padding: '10px 14px 5px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)' },
   // 16 px : en dessous, Safari iOS zoome la page au focus du champ.
   // Contour accent permanent (comme « + Ajouter une étiquette ») et loupe à
   // gauche : le champ se repère d'un coup d'œil, plus seulement au focus.
   rechercheChamp: { position: 'relative', flex: 1, minWidth: 0, display: 'flex' },
-  rechercheLoupe: { position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)', pointerEvents: 'none', display: 'flex' },
-  rechercheInput: { flex: 1, minWidth: 0, padding: '11px 14px 11px 40px', borderWidth: 1.5, borderStyle: 'solid', borderColor: 'var(--accent)', borderRadius: 10, fontSize: 16, boxShadow: 'var(--sh-xs)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
+  rechercheLoupe: { position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--lien)', pointerEvents: 'none', display: 'flex' },
+  rechercheInput: { flex: 1, minWidth: 0, padding: '11px 14px 11px 40px', borderWidth: 1.5, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t3)', boxShadow: 'var(--sh-xs)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
   // En-tête du bloc « Étiquettes maison » : titre + bouton d'ajout, toujours
   // présent même quand la liste est vide (c'est par là qu'on crée la première).
   blocTitre: { display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px 5px', flexWrap: 'wrap' },
-  blocLabel: { flex: 1, minWidth: 0, fontSize: 11, fontWeight: 700, letterSpacing: 0.4, textTransform: 'uppercase', color: 'var(--text3)' },
+  blocLabel: { flex: 1, minWidth: 0, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)' },
   // flexShrink 0 comme les steppers : le min-height global de 44px sur les
   // <button> écrase le flex et fait se superposer les boutons sur mobile.
-  ajoutBtn: { flexShrink: 0, padding: '6px 12px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
-  actionBtn: { flexShrink: 0, padding: '5px 10px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, fontWeight: 500, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  actionBtnDanger: { flexShrink: 0, padding: '5px 10px', background: 'var(--danger-bg-soft)', border: '1px solid transparent', borderRadius: 7, fontSize: 12, fontWeight: 500, color: 'var(--danger-strong)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  vide: { padding: '4px 14px 12px', fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
+  ajoutBtn: { flexShrink: 0, padding: '6px 12px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  actionBtn: { flexShrink: 0, padding: '5px 10px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  actionBtnDanger: { flexShrink: 0, padding: '5px 10px', background: 'var(--danger-bg-soft)', border: '1px solid transparent', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--danger-strong)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  vide: { padding: '4px 14px 12px', fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 },
 };
 
 // Traduction des seules erreurs Postgres qui veulent dire quelque chose au
@@ -572,7 +572,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
     const dlc = eligible ? calculerDlc(r, modeId, dates) : null;
     const duree = dureeVieMode(r, modeId);
     return (
-      <div key={r.id} style={{ ...es.ligne, opacity: eligible ? 1 : 0.55, background: selected ? 'var(--bg)' : 'transparent' }}>
+      <div key={r.id} style={{ ...es.ligne, opacity: eligible ? 1 : 0.55, background: selected ? 'var(--selection)' : 'transparent' }}>
         {/* Le <label> porte la cible tactile : taper à côté de la case coche
             quand même. Un input de 20 px seul se rate en service. */}
         <label style={{ ...es.caseCible, cursor: eligible ? 'pointer' : 'not-allowed' }}>
@@ -679,7 +679,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
       )}
 
       {/* ── Dates du lot (globales au mode, jamais par ligne) ── */}
-      <div style={es.bloc}>
+      <div data-cadre="" style={es.bloc}>
         <div style={es.champsDates}>
           {modeCourant.dates.map(champ => (
             <div key={champ.id} style={hs.field}>
@@ -696,7 +696,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
             </div>
           ))}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 }}>
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 }}>
           {lotMultiMode && (
             <div style={{ marginBottom: 4 }}>
               Ces dates ne valent que pour le mode <strong>{modeCourant.label}</strong> : chaque mode du lot porte les siennes.
@@ -806,7 +806,7 @@ const EtiquettesDlc = ({ etabId, legacySB, user }) => {
               {', '}dont {nbEtiquettesMode} en {modeCourant.label.toLowerCase()}
             </span>
           )}
-          {progress && <span style={{ marginLeft: 8, color: 'var(--accent)' }}>(génération {progress.done}/{progress.total})</span>}
+          {progress && <span style={{ marginLeft: 8, color: 'var(--lien)' }}>(génération {progress.done}/{progress.total})</span>}
         </span>
         {compteurs.nbLignes > 0 && (
           <button type="button" style={hs.cancelBtn} disabled={busy} onClick={viderLot}>

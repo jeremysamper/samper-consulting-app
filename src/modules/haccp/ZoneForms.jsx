@@ -44,8 +44,8 @@ export const ZoneForm = ({ zone, onSave, onCancel }) => {
             </div>
 
             {/* Températures */}
-            <div style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:10,padding:'14px'}}>
-              <div style={{fontSize:12,fontWeight:700,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4,marginBottom:12}}>Plage de conformité</div>
+            <div data-cadre="" style={{background:'var(--zone)',border:'1px solid var(--rule-soft)',borderRadius: 'var(--r)',padding:'14px'}}>
+              <div style={{fontSize: 'var(--t1)',fontWeight: 'var(--g3)',color:'var(--text2)',marginBottom:12}}>Plage de conformité</div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 80px',gap:10}}>
                 <div style={hs.field}>
                   <label style={hs.fLabel}>Cible *</label>
@@ -71,8 +71,8 @@ export const ZoneForm = ({ zone, onSave, onCancel }) => {
               </div>
               {/* Aperçu plage */}
               {f.cible !== '' && (
-                <div style={{marginTop:10,padding:'8px 12px',background:'var(--surface)',borderRadius:8,fontSize:12,color:'var(--text2)',display:'flex',gap:16}}>
-                  <span>Cible : <strong style={{color:'var(--accent)'}}>{f.cible}{f.unite}</strong></span>
+                <div style={{marginTop:10,padding:'8px 12px',background:'var(--surface)',borderRadius: 'var(--r)',fontSize: 'var(--t1)',color:'var(--text2)',display:'flex',gap:16}}>
+                  <span>Cible : <strong style={{color: 'var(--lien)'}}>{f.cible}{f.unite}</strong></span>
                   <span>Plage : <strong>[{f.min!==''?f.min:'-'} ; {f.max!==''?f.max:'+∞'}]{f.unite}</strong></span>
                 </div>
               )}
@@ -83,7 +83,7 @@ export const ZoneForm = ({ zone, onSave, onCancel }) => {
               <div style={{...hcfg.toggle,background:f.actif?'var(--accent)':'var(--border)'}} onClick={()=>setF({...f,actif:!f.actif})}>
                 <div style={{...hcfg.toggleThumb,left:f.actif?'calc(100% - 20px)':'2px'}}/>
               </div>
-              <span style={{fontSize:13,color:'var(--text)',fontWeight:500}}>Zone active (visible dans les relevés)</span>
+              <span style={{fontSize: 'var(--t2)',color:'var(--text)',fontWeight: 'var(--g2)'}}>Zone active (visible dans les relevés)</span>
             </div>
           </div>
 
@@ -144,7 +144,7 @@ export const CtrlForm = ({ ctrl, onSave, onCancel }) => {
               <div style={{...hcfg.toggle,background:f.actif?'var(--accent)':'var(--border)'}} onClick={()=>setF({...f,actif:!f.actif})}>
                 <div style={{...hcfg.toggleThumb,left:f.actif?'calc(100% - 20px)':'2px'}}/>
               </div>
-              <span style={{fontSize:13,color:'var(--text)',fontWeight:500}}>Contrôle actif</span>
+              <span style={{fontSize: 'var(--t2)',color:'var(--text)',fontWeight: 'var(--g2)'}}>Contrôle actif</span>
             </div>
           </div>
           <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:20}}>
@@ -189,10 +189,10 @@ export const CreneauForm = ({ creneau, creneaux = [], onSave, onCancel }) => {
                 {CRENEAU_LABELS.map(l => (
                   <button key={l} onClick={() => setF({ ...f, label: l })}
                     style={{
-                      padding: '5px 10px', fontSize: 11, borderRadius: 20, cursor: 'pointer', fontFamily: 'var(--font)',
-                      border: '1px solid transparent',
-                      background: f.label === l ? 'var(--accent-light)' : 'var(--surface)',
-                      color: f.label === l ? 'var(--accent)' : 'var(--text2)',
+                      padding: '5px 10px', fontSize: 'var(--t1)', borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)',
+                      borderWidth: 1, borderStyle: 'solid', borderColor: f.label === l ? 'var(--onglet)' : 'var(--btn-bord)',
+                      background: f.label === l ? 'var(--selection)' : 'var(--btn-fond)',
+                      color: f.label === l ? 'var(--text)' : 'var(--btn-texte)',
                     }}>{l}</button>
                 ))}
               </div>
@@ -200,9 +200,9 @@ export const CreneauForm = ({ creneau, creneaux = [], onSave, onCancel }) => {
 
             <div style={hs.field}>
               <label style={hs.fLabel}>Heure prévue *</label>
-              <input type="time" style={{ ...hs.fInput, fontSize: 18, fontWeight: 700, textAlign: 'center', color: 'var(--accent)' }}
+              <input type="time" style={{ ...hs.fInput, fontSize: 'var(--t3)', fontWeight: 'var(--g3)', textAlign: 'center', color: 'var(--lien)' }}
                 value={f.heure} onChange={e => setF({ ...f, heure: e.target.value })} />
-              <div style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.4 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 }}>
                 Heure locale de l'établissement. Elle sert à pré-remplir la saisie et
                 à lister ce qui reste à relever : un relevé hors créneau reste possible.
               </div>
@@ -212,7 +212,7 @@ export const CreneauForm = ({ creneau, creneaux = [], onSave, onCancel }) => {
               <div style={{ ...hcfg.toggle, background: f.actif ? 'var(--accent)' : 'var(--border)' }} onClick={() => setF({ ...f, actif: !f.actif })}>
                 <div style={{ ...hcfg.toggleThumb, left: f.actif ? 'calc(100% - 20px)' : '2px' }} />
               </div>
-              <span style={{ fontSize: 13, color: 'var(--text)', fontWeight: 500 }}>Créneau actif (proposé à la saisie)</span>
+              <span style={{ fontSize: 'var(--t2)', color: 'var(--text)', fontWeight: 'var(--g2)' }}>Créneau actif (proposé à la saisie)</span>
             </div>
           </div>
 

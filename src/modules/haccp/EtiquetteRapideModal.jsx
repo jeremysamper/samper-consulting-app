@@ -28,11 +28,11 @@ import { hs } from './HACCP.styles.js';
 
 const rs = {
   ligne: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  stepBtn: { width: 44, height: 44, flexShrink: 0, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, fontSize: 20, fontWeight: 700, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
-  qteInput: { width: 64, padding: '10px 6px', border: '1px solid var(--border)', borderRadius: 10, fontSize: 16, fontWeight: 700, textAlign: 'center', color: 'var(--text)', background: 'var(--bg)', fontFamily: 'var(--font)', outline: 'none' },
-  apercu: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, color: 'var(--text)', lineHeight: 1.55 },
-  info: { fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 },
-  avert: { padding: '10px 0 10px 12px',  borderLeft: '2px solid var(--warning-bd)',  fontSize: 12, color: 'var(--warning-text)', lineHeight: 1.45 },
+  stepBtn: { width: 44, height: 44, flexShrink: 0, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t4)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 },
+  qteInput: { width: 64, padding: '10px 6px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', textAlign: 'center', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
+  apercu: { background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)', padding: '12px 14px', fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.55 },
+  info: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 },
+  avert: { padding: '10px 0 10px 12px',  borderLeft: '2px solid var(--warning-bd)',  fontSize: 'var(--t1)', color: 'var(--warning-text)', lineHeight: 1.45 },
 };
 
 const EtiquetteRapideModal = ({ recette, etabId, user, onClose }) => {
@@ -102,7 +102,7 @@ const EtiquetteRapideModal = ({ recette, etabId, user, onClose }) => {
         <div style={hs.modalHeader}>
           <div style={{ minWidth: 0 }}>
             <div style={hs.modalTitle}>Étiquette DLC</div>
-            <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 2 }}>{recette.nom}</div>
+            <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 2 }}>{recette.nom}</div>
           </div>
           <button type="button" className="ui-fermer" style={hs.closeBtn} onClick={onClose} aria-label="Fermer">×</button>
         </div>
@@ -127,7 +127,7 @@ const EtiquetteRapideModal = ({ recette, etabId, user, onClose }) => {
                   <label style={hs.fLabel}>{champ.label}</label>
                   <input
                     type="date"
-                    style={{ ...hs.fInput, fontSize: 16 }}
+                    style={{ ...hs.fInput, fontSize: 'var(--t3)' }}
                     value={dates[champ.id] || ''}
                     onChange={e => setDatesParMode(prev => ({
                       ...prev,
@@ -157,10 +157,10 @@ const EtiquetteRapideModal = ({ recette, etabId, user, onClose }) => {
 
               <div style={rs.apercu}>
                 <div>{duree} jour{duree > 1 ? 's' : ''} en {mode.label.toLowerCase()}, {mode.temperature}</div>
-                <div style={{ fontWeight: 700, color: 'var(--accent)' }}>
+                <div style={{ fontWeight: 'var(--g3)', color: 'var(--lien)' }}>
                   À consommer jusqu'au {formatDateFr(dlc)}
                 </div>
-                {mode.avertissement && <div style={{ fontWeight: 700 }}>{mode.avertissement}</div>}
+                {mode.avertissement && <div style={{ fontWeight: 'var(--g3)' }}>{mode.avertissement}</div>}
               </div>
             </>
           )}

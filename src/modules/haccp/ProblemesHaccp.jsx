@@ -67,10 +67,10 @@ export default function ProblemesHaccp({ titre, releves = [], controles = [], zo
 const st = {
   // Encadré de statut (filet gauche au ton) : celui des anomalies d'avant.
   cadre: { ...encadreStyle('erreur') },
-  titre: { padding: '2px 0 8px', fontSize: 14, ...encadreTitreStyle('erreur'), borderBottom: '1px solid var(--border)' },
-  ligne: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' },
-  nom: { fontSize: 14, fontWeight: 500, color: 'var(--text)' },
-  detail: { fontSize: 13, color: 'var(--text)', marginTop: 2, lineHeight: 1.4 },
-  mot: { color: 'var(--danger-strong)', fontWeight: 600 },
-  valeur: { fontSize: 20, fontWeight: 700, color: 'var(--danger-strong)', fontFamily: 'var(--font-num)', flexShrink: 0 },
+  titre: { padding: '2px 0 8px', fontSize: 'var(--t2)', ...encadreTitreStyle('erreur'), borderBottom: '1px solid var(--rule-soft)' },
+  ligne: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--rule-soft)' },
+  nom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' },
+  detail: { fontSize: 'var(--t2)', color: 'var(--text)', marginTop: 2, lineHeight: 1.4 },
+  mot: { color: 'var(--danger-strong)', fontWeight: 'var(--g3)' },
+  valeur: { fontSize: 'var(--t4)', fontWeight: 'var(--g-chiffre)', color: 'var(--danger-strong)', fontFamily: 'var(--font-num)', flexShrink: 0 },
 };

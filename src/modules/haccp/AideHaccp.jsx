@@ -49,16 +49,16 @@ const st = {
     padding: '10px 12px 12px 16px', borderRadius: 'var(--r-lg)', background: 'var(--info-bg-soft)', color: 'var(--text)',
   },
   tete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  titre: { fontSize: 15, fontWeight: 600, color: 'var(--text)' },
+  titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
   fermer: {
     width: 44, height: 44, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     border: 'none', borderRadius: 22, background: 'transparent', color: 'var(--text2)', cursor: 'pointer',
   },
-  texte: { margin: 0, fontSize: 13, lineHeight: 1.4 },
-  liste: { margin: 0, paddingLeft: 20, fontSize: 13, lineHeight: 1.4, display: 'flex', flexDirection: 'column', gap: 3 },
+  texte: { margin: 0, fontSize: 'var(--t2)', lineHeight: 1.4 },
+  liste: { margin: 0, paddingLeft: 20, fontSize: 'var(--t2)', lineHeight: 1.4, display: 'flex', flexDirection: 'column', gap: 3 },
   pied: { display: 'flex', justifyContent: 'flex-end' },
   compris: {
-    minHeight: 44, padding: '8px 18px', borderRadius: 'var(--r)', border: 'none',
-    background: 'var(--accent)', color: 'var(--on-accent)', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+    minHeight: 44, padding: '8px 18px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },
 };
