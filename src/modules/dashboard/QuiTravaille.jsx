@@ -123,7 +123,7 @@ export default function QuiTravaille({
     return <SousSection titre="Qui travaille aujourd'hui" bandeau={false}>{corps}</SousSection>;
   }
   return (
-    <Section id="tdb-equipe" titre="Qui travaille aujourd'hui" action={lien} ton="ciel">
+    <Section id="tdb-equipe" titre="Qui travaille aujourd'hui" action={lien}>
       {corps}
     </Section>
   );

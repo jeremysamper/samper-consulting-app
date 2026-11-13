@@ -98,8 +98,7 @@ export default function CeQuiVousAttend(props) {
 // Colonne titrée (tablette et ordinateur) : « Demain », samedi 31 octobre, en
 // panneau ; la colonne du jour porte un liseré d'accent (tableau.css).
 function Colonne({ titre, date, sousTitre, semaine = false, actuel = false, children }) {
-  // La colonne de la semaine est la carte soleil (tableau.css).
-  const classes = ['tdb-jour', 'tdb-panneau', semaine && 'tdb-jour-semaine tdb-soleil', actuel && 'tdb-jour--actuel'].filter(Boolean).join(' ');
+  const classes = ['tdb-jour', 'tdb-panneau', semaine && 'tdb-jour-semaine', actuel && 'tdb-jour--actuel'].filter(Boolean).join(' ');
   return (
     <div className={classes} style={{ minWidth: 0 }}>
       <div className="tdb-tete">

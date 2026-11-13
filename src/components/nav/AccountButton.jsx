@@ -11,7 +11,7 @@ import { ChevronRight } from 'lucide-react';
 // haut de l'ordinateur : le cercle des initiales puis le nom, qui cède sa
 // place sous 1280 px). `style` : ajustement de l'appelant (pleine largeur
 // sur téléphone).
-export default function AccountButton({ user, onOpen, variant = 'desktop', style }) {
+export default function AccountButton({ user, onOpen, variant = 'desktop', role = '', style }) {
   const mobile = variant === 'mobile';
   const accueil = variant === 'accueil';
   const barre = variant === 'barre';
@@ -30,7 +30,14 @@ export default function AccountButton({ user, onOpen, variant = 'desktop', style
       title="Mon compte"
     >
       <span style={{ ...s.avatar, ...(mobile ? s.avatarMobile : null), ...(accueil ? s.avatarAccueil : null), ...(barre ? s.avatarBarre : null) }} aria-hidden="true" data-no-translate="">{initials}</span>
-      <span className={barre ? 'app-bar-compte-nom' : undefined} style={{ ...s.name, ...(mobile ? s.nameMobile : null), ...(barre ? s.nameBarre : null) }} data-no-translate="">{fullName}</span>
+      {barre ? (
+        <span className="app-bar-compte-nom" style={s.blocBarre}>
+          <span style={{ ...s.name, ...s.nameBarre }} data-no-translate="">{fullName}</span>
+          {role ? <span style={s.roleBarre}>{role}</span> : null}
+        </span>
+      ) : (
+        <span style={{ ...s.name, ...(mobile ? s.nameMobile : null) }} data-no-translate="">{fullName}</span>
+      )}
       {barre ? null : <ChevronRight size={15} aria-hidden="true" style={{ ...s.chevron, ...(accueil ? s.chevronAccueil : null) }} />}
     </button>
   );
@@ -56,7 +63,9 @@ const s = {
   avatarMobile: { width: 32, height: 32, fontSize: 12 },
   triggerBarre: { width: 'auto', minHeight: 44, padding: '2px 12px 2px 2px', gap: 8, marginLeft: 6, flexShrink: 0 },
   avatarBarre: { width: 40, height: 40, fontSize: 13, border: 'none' },
-  nameBarre: { flex: '0 1 auto', maxWidth: 170, fontSize: 'var(--t2)' },
+  blocBarre: { display: 'flex', flexDirection: 'column', minWidth: 0, maxWidth: 180 },
+  nameBarre: { flex: '0 1 auto', fontSize: 'var(--t2)', lineHeight: 1.25 },
+  roleBarre: { fontSize: 'var(--t1)', lineHeight: 1.3, color: 'var(--text3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   avatarAccueil: { width: 32, height: 32, fontSize: 12, background: 'var(--surface)', border: 'none', color: 'var(--text2)' },
   name: { flex: 1, minWidth: 0, fontSize: 13, fontWeight: 'var(--g2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   nameMobile: { fontSize: 14 },

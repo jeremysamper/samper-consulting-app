@@ -331,6 +331,7 @@ export default function AppLayout({
             style={{ ...itemStyle, ...(active ? activeStyle : {}) }}
             aria-current={active ? 'page' : undefined}
             title={rail ? libelle : undefined}
+            aria-label={rail ? libelle : undefined}
             onClick={() => handleSetPage(item.id)}
           >
             {Icone ? <Icone size={20} strokeWidth={1.75} aria-hidden="true" /> : null}
@@ -351,10 +352,14 @@ export default function AppLayout({
   // « Mon compte » est une section de la page des réglages : le clic sur son
   // nom ouvre la page dessus.
   const ouvrirMonCompte = React.useCallback(() => ouvrirSection('mon_compte'), []);
+  // Rôle affiché sous le nom, dans la barre du haut : le libellé du rôle
+  // tel que l'app le connaît (données de démarrage, complétées de moduleConfig).
+  const roleDuCompte = getDemoData()?.roles?.[user.role]?.label || '';
   const renderAccountButton = (variant, style) => (
     <AccountButton
       user={accountUser}
       variant={variant}
+      role={variant === 'barre' ? roleDuCompte : ''}
       onOpen={ouvrirMonCompte}
       style={style}
     />
@@ -932,7 +937,8 @@ const ls = {
   // le bouton, hors de vue (navLabelCache), et en info-bulle.
   navRail: { flex: 1, display: 'flex', flexDirection: 'column', padding: '8px 0 12px', overflowY: 'auto', overflowX: 'hidden' },
   railItem: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0, margin: '0 auto 6px', padding: 0, borderRadius: '50%', border: 'none', background: 'var(--surface)', color: 'var(--nav-text)', cursor: 'pointer', position: 'relative', transition: 'background .15s,color .15s' },
-  railDivider: { height: 1, background: 'var(--nav-border)', margin: '4px 20px 10px' },
+  // Les rubriques du rail se séparent par un espace, sans filet.
+  railDivider: { height: 14 },
   railBadge: { position: 'absolute', top: -4, right: -6, padding: '1px 5px' },
   navLabelCache: { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 },
   // Filet entre deux rubriques, à la place de leur intitulé.

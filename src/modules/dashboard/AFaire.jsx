@@ -35,7 +35,7 @@ export default function AFaire({ items, peutOuvrir, ouvrir }) {
   ) : <span>Rien en attente</span>;
 
   return (
-    <Section id="tdb-afaire" titre="À faire maintenant" sousTitre={sousTitre} ton="nuit">
+    <Section id="tdb-afaire" titre="À faire maintenant" sousTitre={sousTitre}>
       {!items.length && (
         <p style={s.vide}>
           <CircleCheck size={20} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--success-strong)', flexShrink: 0 }} />

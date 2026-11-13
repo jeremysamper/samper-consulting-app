@@ -107,58 +107,28 @@
   border-bottom: 1px solid var(--rule-soft);
 }
 
-/* ── Cartes de mise en avant ─────────────────────────────────────────────────
-   Une carte nuit (« À faire maintenant »), une carte ciel (« Qui travaille
-   aujourd'hui ») et une carte soleil (« Cette semaine ») : au plus une sombre
-   et deux pastel sur l'écran. Chaque carte redéclare les jetons neutres que
-   ses enfants lisent : encres, filets et fonds doux suivent sans qu'aucun
-   style ne soit réécrit. Sur la carte nuit, un état garde sa famille et
-   prend son encre claire. Toutes les valeurs viennent d'app.css. */
-.tdb-panneau.tdb-nuit,
-.tdb-panneau.tdb-ciel,
-.tdb-panneau.tdb-soleil {
-  border-radius: var(--r-xl);
-  box-shadow: none;
+/* ── Cartes de mise en avant (CartesModele.jsx) ──────────────────────────────
+   Une carte sombre à tuiles (l'équipe du jour par état) et deux cartes pastel
+   à graphique (les couverts de la semaine, les couverts du jour par service) :
+   au plus une sombre et deux pastel sur l'écran. Les cartes écrivent leurs
+   couleurs elles-mêmes (primitive CarteAvant) ; cette feuille ne règle que
+   leur mise en page par largeur. */
+.tdb-modele {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
 }
-.tdb-panneau.tdb-nuit {
-  background: var(--carte-nuit);
-  color: var(--carte-nuit-texte);
-  --text: var(--carte-nuit-texte);
-  --text2: var(--carte-nuit-doux);
-  --text3: var(--carte-nuit-doux);
-  --lien: var(--carte-nuit-texte);
-  --icone: var(--carte-nuit-texte);
-  --rule-soft: var(--carte-nuit-tuile);
-  --selection: var(--carte-nuit-tuile);
-  --piste: var(--carte-nuit-tuile);
-  --danger-text: var(--carte-nuit-danger);
-  --danger-strong: var(--carte-nuit-danger);
-  --warning-text: var(--carte-nuit-alerte);
-  --warning-strong: var(--carte-nuit-alerte);
-  --success-text: var(--carte-nuit-succes);
-  --success-strong: var(--carte-nuit-succes);
-  --info-text: var(--carte-nuit-info);
+.tdb-tuiles {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
-.tdb-panneau.tdb-ciel {
-  background: var(--carte-ciel);
-  color: var(--carte-ciel-texte);
-  --text: var(--carte-ciel-texte);
-  --lien: var(--carte-ciel-texte);
-  --rule-soft: var(--surface);
-  --selection: var(--surface);
-  --piste: var(--surface);
-}
-.tdb-panneau.tdb-soleil {
-  background: var(--carte-soleil);
-  color: var(--carte-soleil-texte);
-  --text: var(--carte-soleil-texte);
-  --lien: var(--carte-soleil-texte);
-  --onglet: var(--carte-soleil-texte);
-  --rule-soft: var(--surface);
-  --selection: var(--surface);
-  --piste: var(--surface);
-  /* Barres de la semaine : à l'encre de la carte ; celle du jour reste en accent. */
-  --accent-bd: var(--carte-soleil-texte);
+.tdb-duo {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
 }
 .tdb-jour.tdb-panneau > .tdb-tete { margin-bottom: 14px; }
 /* La colonne du jour : un liseré en haut, à l'encre de l'onglet actif
@@ -195,6 +165,7 @@
 @container tdb (min-width: 560px) {
   .tdb-panneau { padding: 18px 20px 14px; }
   .tdb-hero { gap: 18px; }
+  .tdb-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tdb .tdb-repere-icone { display: inline-flex !important; }
   .tdb-repere-carte { padding: 14px 16px; }
   .tdb-reperes { gap: 12px; }
@@ -202,6 +173,8 @@
 }
 @container tdb (min-width: 760px) {
   .tdb-haut { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px; }
+  /* La colonne des cartes est étroite à cette largeur : les deux pastel s'empilent. */
+  .tdb-duo { grid-template-columns: minmax(0, 1fr); }
   .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
   .tdb-jours { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
   .tdb-jour-semaine { grid-column: 1 / -1; }
@@ -222,7 +195,9 @@
     align-items: center;
     column-gap: 32px;
   }
-  .tdb-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 40px; }
+  .tdb-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+  .tdb-duo { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tdb-tuiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .tdb-haut--seul { grid-template-columns: minmax(0, 1fr); }
   /* L'équipe en deux colonnes : Midi à gauche, Soir puis les absences à
      droite ; huit lignes par colonne avant « Voir toute l'équipe ». */
@@ -291,9 +266,8 @@
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
-/* Sur la carte nuit, l'anneau prend l'encre claire de la carte. */
-.tdb-nuit .tdb-lien:focus-visible,
-.tdb-nuit button:focus-visible { outline-color: var(--carte-nuit-texte); }
+/* Sur la carte sombre, l'anneau du bouton à flèche prend l'encre claire. */
+.tdb [data-carte-avant="nuit"] button:focus-visible { outline-color: var(--carte-nuit-texte); }
 
 /* Point « en poste » : fixe, sans halo animé. */
 .tdb-live {

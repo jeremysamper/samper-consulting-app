@@ -28,13 +28,10 @@ import { duree } from './tableauLogique.js';
 // se voient d'un coup d'œil (tableau.css, .tdb-panneau). Sans panneau, seul
 // le titre la porte : « Ce qui vous attend », dont chaque colonne est un
 // panneau.
-// `ton` : la section est une carte de mise en avant (nuit, ciel, soleil ;
-// tableau.css), au plus une sombre et deux pastel sur l'écran.
-export function Section({ id, titre, sousTitre, action, panneau = true, ton, children, style }) {
+export function Section({ id, titre, sousTitre, action, panneau = true, children, style }) {
   const h2 = <h2 id={`${id}-titre`} className="tdb-titre" style={b.titre}>{titre}</h2>;
-  const classe = panneau ? `tdb-panneau${ton ? ` tdb-${ton}` : ''}` : undefined;
   return (
-    <section id={id} aria-labelledby={`${id}-titre`} className={classe} style={{ ...b.section, ...style }}>
+    <section id={id} aria-labelledby={`${id}-titre`} className={panneau ? 'tdb-panneau' : undefined} style={{ ...b.section, ...style }}>
       {sousTitre ? (
         <div className="tdb-tete" style={b.tete}>
           {h2}
