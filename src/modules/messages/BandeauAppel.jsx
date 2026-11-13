@@ -3,7 +3,7 @@ import { Btn } from '../../components/ui/index.jsx';
 import { dbService } from '../../services/dbService.js';
 import { fullName } from './conversations.js';
 import { formatDuree } from './vocal.js';
-import { basculerMicro, fermer, nommer, raccrocher, refuser, repondre, useMoteurAppel } from './moteurAppel.js';
+import { basculerMicro, fermer, raccrocher, refuser, repondre, useMoteurAppel } from './moteurAppel.js';
 import { cibleDe } from './messagerie.styles.js';
 
 // Bandeau d'appel de la coque (lot C4) : appel entrant, appel qui sonne chez
@@ -14,8 +14,7 @@ import { cibleDe } from './messagerie.styles.js';
 // Bandeau sombre de la direction Office (--toast-fond, --toast-texte).
 
 // Nom de l'autre personne : lu dans les profils que la personne voit déjà
-// (lecture partagée et dédoublonnée du bridge), puis donné au moteur pour
-// ses messages.
+// (lecture partagée et dédoublonnée du bridge).
 function useNom(id) {
   const [nom, setNom] = React.useState('');
   React.useEffect(() => {
@@ -26,9 +25,7 @@ function useNom(id) {
     Promise.resolve(db?.listProfiles ? db.listProfiles() : []).then((rows) => {
       if (!vivant) return;
       const p = (rows || []).find((r) => r.id === id);
-      const n = p ? fullName(p) : '';
-      setNom(n);
-      nommer(n);
+      setNom(p ? fullName(p) : '');
     }, () => {});
     return () => { vivant = false; };
   }, [id]);

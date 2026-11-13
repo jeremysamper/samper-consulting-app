@@ -2,9 +2,18 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  STUN_DIRECT, codeAppel, configIce, estIos, lireJournal, messageAppel, messageMicro, peutAppeler,
-  sonneEncore, sonnerieRestante, viaRelais,
+  ECHEANCE_MAX_MS, ECHEANCE_MIN_MS, STUN_DIRECT, codeAppel, configIce, echeanceAppelant, estIos, lireJournal,
+  messageAppel, messageMicro, peutAppeler, sonneEncore, sonnerieRestante, viaRelais,
 } from './appels.js';
+
+test('échéance de l\'appelant : celle de la base, bornée à 5 et 32 s', () => {
+  const t0 = Date.parse('2026-11-13T10:00:00Z');
+  assert.equal(echeanceAppelant({ expire_a: '2026-11-13T10:00:30Z' }, t0), 30000);
+  assert.equal(echeanceAppelant({ expire_a: '2026-11-13T10:00:30Z' }, t0 + 28000), ECHEANCE_MIN_MS);
+  assert.equal(echeanceAppelant({ expire_a: '2026-11-13T10:05:00Z' }, t0), ECHEANCE_MAX_MS);
+  assert.equal(echeanceAppelant({ expire_a: null }, t0), ECHEANCE_MAX_MS);
+  assert.equal(echeanceAppelant(null, t0), ECHEANCE_MAX_MS);
+});
 
 test('code stable lu dans le message de la base', () => {
   assert.equal(codeAppel({ message: 'appel_occupe' }), 'appel_occupe');

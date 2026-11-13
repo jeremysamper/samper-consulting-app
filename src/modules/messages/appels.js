@@ -109,6 +109,26 @@ export function sonnerieRestante(ligne, maintenant = Date.now()) {
   return Math.max(0, fin + MARGE_ECHEANCE_MS - maintenant);
 }
 
+// Délai avant que l'appelant clôe en « manqué » : l'échéance de la base, lue
+// sur l'horloge de l'appareil, bornée (5 s au moins, 32 s au plus) contre une
+// horloge d'appareil fausse ou une échéance illisible.
+export const ECHEANCE_MIN_MS = 5000;
+export const ECHEANCE_MAX_MS = 32000;
+export function echeanceAppelant(ligne, maintenant = Date.now()) {
+  const reste = ms(ligne?.expire_a) - maintenant;
+  if (!Number.isFinite(reste)) return ECHEANCE_MAX_MS;
+  return Math.min(ECHEANCE_MAX_MS, Math.max(ECHEANCE_MIN_MS, reste));
+}
+
+// Issues du journal ; « manqué » se dit selon le sens (lireJournal).
+const ISSUES = {
+  termine: 'Terminé',
+  refuse: 'Refusé',
+  echec: 'Échec de connexion',
+  sonne: 'Sonne',
+  en_cours: 'En cours',
+};
+
 // Ligne du journal vue par un compte : sens et issue, dits simplement. La
 // durée est rendue à part : un texte qui mêle chiffres et mots partirait à
 // la traduction une fois par valeur (observation 0104).
@@ -116,19 +136,13 @@ export function sonnerieRestante(ligne, maintenant = Date.now()) {
 export function lireJournal(ligne, moi) {
   const emis = ligne.appelant_id === moi;
   const autreId = emis ? ligne.appele_id : ligne.appelant_id;
-  const ISSUES = {
-    termine: 'Terminé',
-    manque: emis ? 'Sans réponse' : 'Manqué',
-    refuse: 'Refusé',
-    echec: 'Échec de connexion',
-    sonne: 'Sonne',
-    en_cours: 'En cours',
-  };
   const termine = ligne.etat === 'termine' && ligne.duree_s != null;
+  let issue = ISSUES[ligne.etat] || '';
+  if (ligne.etat === 'manque') issue = emis ? 'Sans réponse' : 'Manqué';
   return {
     sens: emis ? 'emis' : 'recu',
     autreId,
-    issue: ISSUES[ligne.etat] || '',
+    issue,
     duree: termine ? formatDuree(ligne.duree_s) : null,
     environ: termine && Boolean(ligne.duree_approx),
     manque: !emis && ligne.etat === 'manque',

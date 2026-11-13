@@ -29,7 +29,7 @@ import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import { useHauteurRestante } from '../caisse/mesures.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { MAX_LENGTH, buildAnnuaire, buildContacts, formatListDate, fullName, groupConversations } from './conversations.js';
+import { MAX_LENGTH, buildAnnuaire, buildContacts, formatListDate, groupConversations } from './conversations.js';
 import LignePersonne from './LignePersonne.jsx';
 import FilConversation from './FilConversation.jsx';
 import FicheContact from './FicheContact.jsx';
@@ -44,6 +44,9 @@ const VUES = [
   { id: 'contacts', label: 'Contacts' },
   { id: 'appels', label: 'Appels' },
 ];
+
+// L'appareil sait-il appeler ? Constant pour la session (WebRTC et micro).
+const APPEL_POSSIBLE = peutAppeler();
 
 const libelleRole = (profile) => (roleConfig[profile?.role] || { label: profile?.role || '' }).label;
 
@@ -85,8 +88,7 @@ const Messages = ({ user, isActive = true }) => {
 
   const filOuvert = vue === 'discussions' && Boolean(selectedId);
   const ficheOuverte = (vue === 'contacts' || vue === 'appels') && Boolean(ficheId);
-  const appel = useMoteurAppel();
-  const appelPossible = React.useMemo(() => peutAppeler(), []);
+  const occupe = estOccupe(useMoteurAppel());
 
   // Un vocal en cours appartient au fil où il a commencé : il est abandonné,
   // sans rien laisser, dès que ce fil n'est plus affiché (autre personne,
@@ -215,7 +217,7 @@ const Messages = ({ user, isActive = true }) => {
   };
 
   // Appel dans l'app : le moteur de la coque le prend, le bandeau le montre.
-  const appeler = (id) => { lancer(id, fullName(profileById.get(id) || null)); };
+  const appeler = (id) => { lancer(id); };
 
   const remove = async (msg) => {
     if (!confirmLegacy('Supprimer ce message ? Il disparaîtra aussi chez votre interlocuteur.')) return;
@@ -268,8 +270,8 @@ const Messages = ({ user, isActive = true }) => {
             actifId={ficheId}
             onOuvrir={setFicheId}
             onAppeler={appeler}
-            peutAppeler={appelPossible}
-            occupe={estOccupe(appel)}
+            peutAppeler={APPEL_POSSIBLE}
+            occupe={occupe}
             cible={cible}
           />
         )}
@@ -307,8 +309,8 @@ const Messages = ({ user, isActive = true }) => {
         tel={telephones[fiche.id]}
         onEcrire={() => ecrire(fiche.id)}
         onVocal={enregistreur.disponible ? () => vocal(fiche.id) : undefined}
-        onAppeler={appelPossible && fiche.actif !== false ? () => appeler(fiche.id) : undefined}
-        occupe={estOccupe(appel)}
+        onAppeler={APPEL_POSSIBLE && fiche.actif !== false ? () => appeler(fiche.id) : undefined}
+        occupe={occupe}
         onRetour={isMobile ? closeFiche : undefined}
         empile={isMobile}
         cible={cible}

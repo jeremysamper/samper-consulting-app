@@ -36,15 +36,12 @@ export default function VueAppels({ userId, profileById, actifId, onOuvrir, onAp
     return () => { vivant = false; off(); };
   }, [userId]);
 
-  if (lignes === null) {
-    return <div style={sm.vide}>{echec ? 'Journal des appels indisponible.' : 'Chargement…'}</div>;
-  }
-  if (lignes.length === 0) {
-    return <div style={sm.vide}>Aucun appel pour le moment.</div>;
-  }
+  const indisponible = <div style={sm.vide}>Journal des appels indisponible.</div>;
+  if (lignes === null) return echec ? indisponible : <div style={sm.vide}>Chargement…</div>;
+  if (lignes.length === 0) return <div style={sm.vide}>Aucun appel pour le moment.</div>;
   return (
     <>
-      {echec ? <div style={sm.vide}>Journal des appels indisponible.</div> : null}
+      {echec ? indisponible : null}
       {lignes.map((l) => {
         const j = lireJournal(l, userId);
         const profil = profileById.get(j.autreId) || null;

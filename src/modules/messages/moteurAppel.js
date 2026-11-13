@@ -17,7 +17,7 @@ import React from 'react';
 import { dbService } from '../../services/dbService.js';
 import {
   BATTEMENT_MS, COLLECTE_MAX_MS, CONNEXION_MAX_MS, FIN_AFFICHEE_MS,
-  configIce, messageAppel, messageMicro, sonneEncore, sonnerieRestante, viaRelais,
+  configIce, echeanceAppelant, messageAppel, messageMicro, sonneEncore, sonnerieRestante, viaRelais,
 } from './appels.js';
 import { formatDuree } from './vocal.js';
 
@@ -27,7 +27,7 @@ let etat = REPOS;
 const abonnes = new Set();
 const x = {
   moi: null, jeton: 0, ligne: null, pc: null, flux: null, audio: null,
-  minuteurs: {}, battement: null, verrou: null, vus: new Set(), nom: '',
+  minuteurs: {}, battement: null, verrou: null, vus: new Set(),
 };
 
 function poser(partiel) {
@@ -36,6 +36,15 @@ function poser(partiel) {
 }
 
 function client() { return dbService.getClient(); }
+
+// Appel à une fonction de la base dont la réponse ne change rien ici : son
+// échec est avalé (la tâche de balayage clôt ce qui resterait ouvert).
+function signaler(fonction, args) {
+  client()?.rpc(fonction, args).then(() => {}, () => {});
+}
+function clore(id, issue = null, via = null) {
+  signaler('appel_terminer', { p_id: id, p_issue: issue, p_via_relais: via });
+}
 
 // ── Sonnerie (Web Audio : aucun fichier, aucun blob:) ──────────────────
 // Le navigateur ne laisse jouer un son qu'après un geste de la personne :
@@ -238,7 +247,7 @@ async function echec() {
   const relais = etat.relais;
   const via = await relaisUtilise();
   if (jeton !== x.jeton) return;
-  if (id) client().rpc('appel_terminer', { p_id: id, p_issue: 'echec', p_via_relais: via }).then(() => {}, () => {});
+  if (id) clore(id, 'echec', via);
   finir(texteEchec(relais), true);
 }
 
@@ -266,55 +275,64 @@ function finDistante(ligne) {
   finir('Appel terminé.', false, ligne.duree_s != null ? formatDuree(ligne.duree_s) : null);
 }
 
-// ── Actions ────────────────────────────────────────────────────────────
-
-// Appeler une personne. nom : son nom affiché, pour les messages.
-export async function lancer(autreId, nom = '') {
-  if (!x.moi || !autreId || !['repos', 'fin'].includes(etat.phase)) return;
-  debloquerSon();
-  liberer();
-  const jeton = ++x.jeton;
-  x.nom = nom;
-  poser({ ...REPOS, phase: 'preparation', autreId, sens: 'emis' });
+// Micro et identifiants du relais, demandés ensemble dans le geste, puis la
+// connexion. Rend la connexion prête, ou null quand l'appel s'est fini en
+// route (annulé, micro refusé, compte refusé par appel-turn). surRefus(quoi),
+// quoi valant 'micro' ou 'compte' : ce que la base doit apprendre alors
+// (rien pour l'appelant, dont l'appel n'est pas encore lancé).
+async function preparer(jeton, surRefus) {
   let flux;
   let ice;
   try {
     [flux, ice] = await Promise.all([demanderMicro(), identifiantsRelais()]);
   } catch (err) {
-    if (jeton === x.jeton) finir(messageMicro(err), true);
-    return;
+    if (jeton === x.jeton) { surRefus('micro'); finir(messageMicro(err), true); }
+    return null;
   }
-  if (jeton !== x.jeton) { flux.getTracks().forEach((t) => t.stop()); return; }
+  if (jeton !== x.jeton) { flux.getTracks().forEach((t) => t.stop()); return null; }
   x.flux = flux;
-  if (ice.refus) { finir(ice.refus, true); return; }
+  if (ice.refus) { surRefus('compte'); finir(ice.refus, true); return null; }
   poser({ relais: ice.relais });
+  x.pc = creerConnexion(ice.iceServers);
+  return x.pc;
+}
+
+const PREPARATION_RATEE = "L'appel n'a pas pu se préparer. Réessayez.";
+
+// ── Actions ────────────────────────────────────────────────────────────
+
+export async function lancer(autreId) {
+  if (!x.moi || !autreId || !['repos', 'fin'].includes(etat.phase)) return;
+  debloquerSon();
+  liberer();
+  const jeton = ++x.jeton;
+  poser({ ...REPOS, phase: 'preparation', autreId, sens: 'emis' });
   try {
-    const pc = creerConnexion(ice.iceServers);
-    x.pc = pc;
-    flux.getTracks().forEach((t) => pc.addTrack(t, flux));
+    const pc = await preparer(jeton, () => {});
+    if (!pc) return;
+    x.flux.getTracks().forEach((t) => pc.addTrack(t, x.flux));
     await pc.setLocalDescription(await pc.createOffer());
     await attendreCollecte(pc);
     if (jeton !== x.jeton) return;
     const { data, error } = await client().rpc('appel_lancer', { p_appele: autreId, p_offre: JSON.stringify(pc.localDescription) });
     if (jeton !== x.jeton) {
       // Annulé pendant l'envoi : l'appel lancé est clos aussitôt.
-      if (data?.id) client().rpc('appel_terminer', { p_id: data.id }).then(() => {}, () => {});
+      if (data?.id) clore(data.id);
       return;
     }
     if (error || !data?.id) { finir(messageAppel(error), true); return; }
     x.ligne = data;
     poser({ phase: 'sortant', appelId: data.id });
     // Sans réponse à l'échéance de la base : l'appelant clôt en « manqué ».
-    const reste = Math.min(32000, Math.max(5000, Date.parse(data.expire_a) - Date.now()));
     x.minuteurs.echeance = setTimeout(async () => {
       if (jeton !== x.jeton || etat.phase !== 'sortant') return;
       const r = await client().rpc('appel_terminer', { p_id: data.id, p_issue: 'manque' });
       if (jeton !== x.jeton || etat.phase !== 'sortant') return;
       if (r.data && r.data.etat === 'en_cours') { recevoir([r.data]); return; }
       finir('Pas de réponse.');
-    }, reste);
+    }, echeanceAppelant(data));
   } catch {
-    if (jeton === x.jeton) finir("L'appel n'a pas pu se préparer. Réessayez.", true);
+    if (jeton === x.jeton) finir(PREPARATION_RATEE, true);
   }
 }
 
@@ -325,29 +343,11 @@ export async function repondre() {
   const ligne = x.ligne;
   const jeton = ++x.jeton;
   poser({ phase: 'connexion', appelId: ligne.id });
-  let flux;
-  let ice;
   try {
-    [flux, ice] = await Promise.all([demanderMicro(), identifiantsRelais()]);
-  } catch (err) {
-    if (jeton !== x.jeton) return;
-    client().rpc('appel_terminer', { p_id: ligne.id, p_issue: 'echec' }).then(() => {}, () => {});
-    finir(messageMicro(err), true);
-    return;
-  }
-  if (jeton !== x.jeton) { flux.getTracks().forEach((t) => t.stop()); return; }
-  x.flux = flux;
-  if (ice.refus) {
-    client().rpc('appel_refuser', { p_id: ligne.id }).then(() => {}, () => {});
-    finir(ice.refus, true);
-    return;
-  }
-  poser({ relais: ice.relais });
-  try {
-    const pc = creerConnexion(ice.iceServers);
-    x.pc = pc;
+    const pc = await preparer(jeton, (quoi) => (quoi === 'micro' ? clore(ligne.id, 'echec') : signaler('appel_refuser', { p_id: ligne.id })));
+    if (!pc) return;
     await pc.setRemoteDescription(JSON.parse(ligne.offre));
-    flux.getTracks().forEach((t) => pc.addTrack(t, flux));
+    x.flux.getTracks().forEach((t) => pc.addTrack(t, x.flux));
     await pc.setLocalDescription(await pc.createAnswer());
     await attendreCollecte(pc);
     if (jeton !== x.jeton) return;
@@ -359,15 +359,14 @@ export async function repondre() {
     attendreConnexion();
   } catch {
     if (jeton !== x.jeton) return;
-    client().rpc('appel_terminer', { p_id: ligne.id, p_issue: 'echec' }).then(() => {}, () => {});
-    finir("L'appel n'a pas pu se préparer. Réessayez.", true);
+    clore(ligne.id, 'echec');
+    finir(PREPARATION_RATEE, true);
   }
 }
 
 export function refuser() {
   if (etat.phase !== 'entrant' || !x.ligne) return;
-  const id = x.ligne.id;
-  client().rpc('appel_refuser', { p_id: id }).then(() => {}, () => {});
+  signaler('appel_refuser', { p_id: x.ligne.id });
   finir(null);
 }
 
@@ -378,7 +377,7 @@ export async function raccrocher() {
   const id = x.ligne?.id;
   if (!id) { finir(null); return; }
   if (phase === 'sortant') {
-    client().rpc('appel_terminer', { p_id: id }).then(() => {}, () => {});
+    clore(id);
     finir('Appel annulé.');
     return;
   }
@@ -428,8 +427,8 @@ export function recevoir(lignes = []) {
     }
     if (phase === 'entrant') {
       if (suivi.etat === 'sonne') return;
-      // Pris sur un autre appareil du même compte : cet appareil se tait.
-      if (suivi.etat === 'en_cours') { finir(null); return; }
+      // Pris sur un autre appareil du même compte (en cours) : cet appareil
+      // se tait ; annulé ou échu : « Appel manqué. ».
       finir(suivi.etat === 'manque' ? 'Appel manqué.' : null);
       return;
     }
@@ -449,7 +448,6 @@ export function recevoir(lignes = []) {
   liberer();
   const jeton = ++x.jeton;
   x.ligne = entrante;
-  x.nom = '';
   poser({ ...REPOS, phase: 'entrant', appelId: entrante.id, autreId: entrante.appelant_id, sens: 'recu' });
   sonner();
   x.minuteurs.echeance = setTimeout(() => {
@@ -457,16 +455,13 @@ export function recevoir(lignes = []) {
   }, sonnerieRestante(entrante, maintenant));
 }
 
-// Nom de l'autre personne, posé par le bandeau qui le connaît (messages).
-export function nommer(nom) { x.nom = nom || ''; }
-
 // Compte de la session : un autre compte (ou la déconnexion) coupe tout.
 export function attacher(moi) {
   if (x.moi === moi) return;
   if (x.ligne?.id && x.moi) {
     const id = x.ligne.id;
-    if (etat.phase === 'entrant') client()?.rpc('appel_refuser', { p_id: id }).then(() => {}, () => {});
-    else client()?.rpc('appel_terminer', { p_id: id }).then(() => {}, () => {});
+    if (etat.phase === 'entrant') signaler('appel_refuser', { p_id: id });
+    else clore(id);
   }
   finir(null);
   x.vus.clear();
@@ -475,6 +470,8 @@ export function attacher(moi) {
 }
 
 // ── Lecture de l'état ──────────────────────────────────────────────────
+// abonner et lire restent des fonctions du module : useSyncExternalStore
+// réabonne à chaque rendu si on lui passe une fonction neuve.
 function abonner(fn) { abonnes.add(fn); return () => abonnes.delete(fn); }
 function lire() { return etat; }
 
@@ -483,6 +480,6 @@ export function useMoteurAppel() {
 }
 
 // Un appel occupe-t-il cet appareil ? (« Appeler » attend la fin.)
-export function estOccupe(e = etat) {
+export function estOccupe(e) {
   return !['repos', 'fin'].includes(e.phase);
 }
