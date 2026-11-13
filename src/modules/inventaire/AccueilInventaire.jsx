@@ -7,7 +7,7 @@ import { zurichToday } from '../../utils/zurichTime.js';
 import { dateCH, estCompte } from './inventaireLignes.js';
 import { estACompleter } from './achatsLogic.js';
 import { estFacture, totauxFactures } from './facturesLogic.js';
-import { depensesParMois, echeancier, trierDocuments } from '../factures-achats/analysesAchats.js';
+import { datesAVerifier, depensesParMois, echeancier, trierDocuments } from '../factures-achats/analysesAchats.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Accueil du module Inventaire : une tuile par tâche, dans l'ordre où la
@@ -36,7 +36,7 @@ const plusRecent = (docs) => docs.slice().sort((a, b) => String(b.dateDocument |
 export default function AccueilInventaire({
   vue = 'inventaire', perimetreActif, perimetres, pilesParPerimetre, inv, docs,
   canManage, canRegler, canImportXlsx,
-  onJeCompte, onImport, onCompleter, onReglement, onEcheances, onAnalyses, onEcarts, onChoisirPerimetre, onNouveauPerimetre, gerer,
+  onJeCompte, onImport, onCompleter, onReglement, onEcheances, onAnalyses, onVerifierDates, onEcarts, onChoisirPerimetre, onNouveauPerimetre, gerer,
 }) {
   const [fenetre, setFenetre] = React.useState(null); // 'perimetre' | 'gerer' | null
   const fermer = React.useCallback(() => setFenetre(null), []);
@@ -56,6 +56,9 @@ export default function AccueilInventaire({
   // Tuiles de Factures & achats : dépenses des 12 mois (tous périmètres) et
   // échéances (droit « Régler les factures »).
   const depenses = achatsVue ? depensesParMois(trierDocuments(docs).factures, aujourdhui).total : null;
+  // Dates à vérifier : contrôle de saisie, resté dans le module quand les
+  // analyses des dépenses sont parties dans Statistiques (S3).
+  const aVerifier = achatsVue && onVerifierDates ? datesAVerifier(trierDocuments(docs).factures) : [];
   const echeances = achatsVue && canRegler ? echeancier(docs, aujourdhui) : null;
   const enRetard = echeances?.tranches.find(t => t.id === 'retard')?.factures.length || 0;
   const prochaine = echeances?.tranches.filter(t => t.id !== 'retard' && t.id !== 'sans')
@@ -133,6 +136,15 @@ export default function AccueilInventaire({
             <span>{aCompleter}</span> {aCompleter > 1 ? 'documents à compléter' : 'document à compléter'} : la lecture n’a pas tout trouvé (fournisseur, date ou montant TTC).
           </span>
           <Btn small variant="ghost" onClick={() => (onCompleter ? onCompleter() : onImport(facturesACompleter ? 'facture' : 'bon_livraison'))}>Compléter</Btn>
+        </div>
+      )}
+
+      {aVerifier.length > 0 && (
+        <div style={st.bandeau} data-bandeau-dates="">
+          <span style={{ flex: '1 1 240px', minWidth: 0 }}>
+            <span>{aVerifier.length}</span> <span>{aVerifier.length > 1 ? 'dates à vérifier' : 'date à vérifier'}</span>. <span>Date de facture antérieure de plus d'un an à son enregistrement : l'année a peut-être été mal lue. Rien n'est corrigé d'office.</span>
+          </span>
+          <Btn small variant="ghost" onClick={() => onVerifierDates(aVerifier.map(d => d.id))}>Vérifier ces dates</Btn>
         </div>
       )}
 

@@ -48,3 +48,31 @@ test('accès : la clé, ou un écran d\'analyse devenu raccourci, jamais un autr
   // Sans la clé et sans écran d'analyse parti : refusé.
   assert.equal(peutOuvrirStatistiques({ role: 'serveur' }, defaultPermissions.serveur, etab), false);
 });
+
+test('le raccourci des achats ouvre sa première vue, chaque vue a ses mesures du catalogue', async () => {
+  const { RACCOURCIS, demandeRaccourci } = await import('./raccourcisStatistiques.js');
+  const { MESURES } = await import('./catalogueMesures.js');
+  const d = demandeRaccourci('achats');
+  assert.equal(d.raccourci, 'achats');
+  assert.equal(d.vue, 'depenses');
+  assert.equal(d.periode, 'douze_mois');
+  for (const v of RACCOURCIS.achats.vues) {
+    for (const g of v.graphiques) for (const id of g.mesures) assert.ok(MESURES.some((m) => m.id === id), `${v.id} : ${id}`);
+  }
+  assert.equal(demandeRaccourci('achats', 'prix').vue, 'prix');
+  assert.equal(demandeRaccourci('inconnu'), null);
+});
+
+test('le filtre de périmètre des achats calcule comme les Analyses des dépenses', async () => {
+  const { familleAchats } = await import('./familles/achats.js');
+  const { depensesParMois, trierDocuments } = await import('../factures-achats/analysesAchats.js');
+  const docs = Array.from({ length: 30 }, (_, i) => ({
+    id: `d${i}`, type: 'facture', dateDocument: `2026-${String(1 + (i % 10)).padStart(2, '0')}-15`, montantHt: 100 + i, perimetre: i % 3 === 0 ? 'Bar' : '',
+  }));
+  const tranche = [{ debut: '2025-12-01', fin: '2026-11-30', complet: true }];
+  for (const perimetre of ['', 'Bar', 'Général']) {
+    const p = familleAchats.calculer({ docs, catalogue: [] }, tranche, { filtres: { perimetre } })[0];
+    const attendu = depensesParMois(trierDocuments(docs, perimetre).factures, '2026-11-13').total.montant;
+    assert.equal(Math.round(p.valeur * 100), Math.round(attendu * 100), perimetre || 'tous');
+  }
+});

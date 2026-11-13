@@ -25,6 +25,8 @@ import TableauValeurs from './TableauValeurs.jsx';
 import PanneauMesures from './PanneauMesures.jsx';
 import { telechargerTableaux } from './exportStatistiques.js';
 import VuesNommees from './VuesNommees.jsx';
+import { perimetreDe } from '../factures-achats/analysesAchats.js';
+import { RACCOURCIS, demandeRaccourci } from './raccourcisStatistiques.js';
 
 // ═════════════════════════════════════════════════════════════════════
 // Statistiques : tous les chiffres que la personne voit ailleurs dans l'app,
@@ -86,7 +88,22 @@ function vueAvecPeriode(vue, id, bornes, aujourdhui) {
   return { ...vue, periode, pas: p.includes(vue.pas) ? vue.pas : p[0] };
 }
 
-function Filtres({ vue, bornes, bornesComp, aujourdhui, onVue }) {
+// Sélecteur du périmètre des achats (S3) ; rien s'il n'y en a qu'un.
+function ChoixPerimetre({ vue, perimetres, onVue }) {
+  if (!perimetres || perimetres.length < 2) return null;
+  const valeur = perimetres.includes(vue.filtres?.perimetre) ? vue.filtres.perimetre : '';
+  return (
+    <label style={st.champ}>
+      <span>Périmètre</span>
+      <select style={st.select} value={valeur} onChange={(e) => onVue({ ...vue, filtres: { ...(vue.filtres || {}), perimetre: e.target.value } })} data-stat-perimetre="">
+        <option value="">Tous les périmètres</option>
+        {perimetres.map((p) => <option key={p} value={p} data-no-translate>{p}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function Filtres({ vue, bornes, bornesComp, aujourdhui, perimetres, onVue }) {
   const possibles = pasPossibles(bornes.debut, bornes.fin);
   const changerPeriode = (id) => onVue(vueAvecPeriode(vue, id, bornes, aujourdhui));
   const changerDate = (champ, valeur) => {
@@ -116,6 +133,7 @@ function Filtres({ vue, bornes, bornesComp, aujourdhui, onVue }) {
           </label>
         </>
       ) : null}
+      <ChoixPerimetre vue={vue} perimetres={perimetres} onVue={onVue} />
       <div style={st.champ}>
         <span>Pas</span>
         <SegmentedTabs tabs={PAS.filter((p) => possibles.includes(p.id))} active={vue.pas} onChange={(pas) => onVue({ ...vue, pas })} />
@@ -198,7 +216,7 @@ function CarteGraphique({
           {composition.enAttente.length ? <div style={st.etat} data-stat-attente="">Lecture en cours</div> : null}
           {composition.series.length ? (
             <>
-              <Graphique composition={composition} tranches={axe} hauteur={etroit ? 220 : 280} libelleComparaison={etat ? '' : libelleComparaison} />
+              <Graphique composition={composition} tranches={axe} hauteur={large ? 280 : etroit ? 200 : 220} libelleComparaison={etat ? '' : libelleComparaison} />
               <div style={st.note} data-stat-phrases="">
                 {composition.phrases.map((p) => (
                   <div key={p.id}><strong style={{ fontWeight: 'var(--g3)' }}>{p.libelle}</strong> : <span>{p.phrase}</span></div>
@@ -244,6 +262,9 @@ export default function Statistiques({ user, etablissement }) {
   const signatureFamilles = idsFamilles.join(',');
 
   const [vue, setVue] = useState(null);
+  // Raccourci d'un écran d'analyse parti (S3) : ses vues en puces, la
+  // vue choisie. Rien d'enregistré : il dure le temps de la visite.
+  const [raccourci, setRaccourci] = useState(null);
   const [filtresOuverts, setFiltresOuverts] = useState(false);
   const [vuesOuvertes, setVuesOuvertes] = useState(false);
   const [pdfEnCours, setPdfEnCours] = useState(false);
@@ -273,6 +294,13 @@ export default function Statistiques({ user, etablissement }) {
   ]), [famillesDemandees, bornes, bornesComp]);
 
   const { sondes, lectureDe, reessayer } = useLectureStatistiques({ etabId, aujourdhui, visibles: idsFamilles, demandes });
+
+  // Filtres de famille (S3) : le périmètre des achats, comme les Analyses des
+  // dépenses ; proposé dès que les pièces lues en portent plus d'un.
+  const filtresCle = JSON.stringify(vue?.filtres || {});
+  const filtres = useMemo(() => JSON.parse(filtresCle), [filtresCle]);
+  const docsAchats = famillesDemandees.includes('achats') ? lectureDe('achats', bornes.debut, bornes.fin)?.data?.docs : null;
+  const perimetres = useMemo(() => [...new Set((docsAchats || []).map(perimetreDe))].sort((a, b) => a.localeCompare(b, 'fr')), [docsAchats]);
   const niveauCaisse = sondes.caisse?.status === 'ready' ? sondes.caisse.niveau : null;
   const mesures = useMemo(
     () => mesuresVisibles({ familles: signatureFamilles ? signatureFamilles.split(',') : [], niveauCaisse, direction, droits: { factures_achat: regleFactures } }),
@@ -296,7 +324,9 @@ export default function Statistiques({ user, etablissement }) {
   }, []);
   useEffect(() => {
     if (vue || !etabId || reglages.loading || !sondesPretes) return;
-    const depuisLien = vueDepuisLien(prendreLien(), mesures, aujourdhui);
+    const demande = prendreLien();
+    const depuisLien = vueDepuisLien(demande, mesures, aujourdhui);
+    setRaccourci(depuisLien && demande?.raccourci ? { id: demande.raccourci, vue: demande.vue } : null);
     setVue(depuisLien || nettoyerVue(reglages.settings[CLE_VUE], mesures, aujourdhui));
   }, [vue, etabId, reglages.loading, reglages.settings, sondesPretes, mesures, aujourdhui, prendreLien]);
   // Module déjà monté (gardé en arrière-plan) : le lien prévient par un événement.
@@ -304,8 +334,9 @@ export default function Statistiques({ user, etablissement }) {
     const w = getBrowserWindow();
     if (!w) return undefined;
     const surLien = () => {
-      const v = vueDepuisLien(prendreLien(), mesures, aujourdhui);
-      if (v) setVue(v);
+      const demande = prendreLien();
+      const v = vueDepuisLien(demande, mesures, aujourdhui);
+      if (v) { setVue(v); setRaccourci(demande?.raccourci ? { id: demande.raccourci, vue: demande.vue } : null); }
     };
     w.addEventListener(EVENEMENT_LIEN, surLien);
     return () => w.removeEventListener(EVENEMENT_LIEN, surLien);
@@ -338,7 +369,7 @@ export default function Statistiques({ user, etablissement }) {
     const entiereAvant = bornesComp ? [trancheEntiere(bornesComp.debut, bornesComp.fin)] : null;
     const calculer = (id, donnees, donneesAvant) => {
       const f = familleDe(id);
-      const ctx = { aujourdhui, role };
+      const ctx = { aujourdhui, role, filtres };
       try {
         out.points[id] = f.calculer(donnees, tranches, ctx);
         out.totaux[id] = f.calculer(donnees, entiere, ctx)[0];
@@ -366,7 +397,7 @@ export default function Statistiques({ user, etablissement }) {
       if (out.etats[id] === 'ready') calculer(id, lu.data, luAvant?.data || null);
     });
     return out;
-  }, [famillesDemandees, lectureDe, etatCompta, syntheseDe, bornes, bornesComp, tranches, tranchesComp, aujourdhui, role]);
+  }, [famillesDemandees, lectureDe, etatCompta, syntheseDe, bornes, bornesComp, tranches, tranchesComp, aujourdhui, role, filtres]);
 
   const compositions = useMemo(() => (vue ? vue.graphiques.map((g) => {
     const cochees = g.mesures.map((id) => mesures.find((m) => m.id === id)).filter(Boolean);
@@ -426,13 +457,27 @@ export default function Statistiques({ user, etablissement }) {
 
   const colonnes = vue && vue.graphiques.length > 1 && largeur >= 900 ? 'repeat(2, minmax(0, 1fr))' : 'minmax(0, 1fr)';
   const peutAjouter = !!vue && vue.graphiques.length < MAX_GRAPHIQUES;
-  const filtres = vue ? <Filtres vue={vue} bornes={bornes} bornesComp={bornesComp} aujourdhui={aujourdhui} onVue={setVue} /> : null;
+  // Puces du raccourci : chaque vue reprend un bloc de l'écran d'origine ; le
+  // filtre de périmètre choisi reste.
+  const vuesRaccourci = raccourci && RACCOURCIS[raccourci.id] ? RACCOURCIS[raccourci.id].vues : null;
+  const choisirVueRaccourci = (id) => {
+    const v = vueDepuisLien(demandeRaccourci(raccourci.id, id), mesures, aujourdhui);
+    if (!v) return;
+    setVue({ ...v, filtres: vue?.filtres || {} });
+    setRaccourci({ id: raccourci.id, vue: id });
+  };
+  const barreFiltres = vue ? <Filtres vue={vue} bornes={bornes} bornesComp={bornesComp} aujourdhui={aujourdhui} perimetres={perimetres} onVue={setVue} /> : null;
   const periodeChoisie = PERIODES.find((p) => p.id === vue?.periode.id);
 
   return (
     <section ref={racine} className="statistiques" style={st.page} data-statistiques={vue ? 'pret' : 'attente'} data-stat-familles={signatureFamilles}>
       {!vue ? <div style={st.etat} data-stat-attente="">Lecture en cours</div> : (
         <>
+          {vuesRaccourci ? (
+            <div data-stat-vues="" style={{ minWidth: 0 }}>
+              <SegmentedTabs tabs={vuesRaccourci.map((v) => ({ id: v.id, label: etroit && v.court ? v.court : v.libelle }))} active={raccourci.vue} onChange={choisirVueRaccourci} retourLigne />
+            </div>
+          ) : null}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', minWidth: 0 }}>
             {etroit ? (
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap', minWidth: 0, flex: '1 1 auto' }}>
@@ -444,10 +489,11 @@ export default function Statistiques({ user, etablissement }) {
                     {PERIODES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
                   </select>
                 </label>
+                <ChoixPerimetre vue={vue} perimetres={perimetres} onVue={setVue} />
                 <Btn variant="ghost" onClick={() => setFiltresOuverts(true)} style={st.bouton}>Période et filtres</Btn>
                 <span style={st.resume}><span>{periodeChoisie?.label}</span>, <span data-no-translate>{bornesTranche(bornes)}</span></span>
               </div>
-            ) : <div style={{ flex: '1 1 auto', minWidth: 0 }}>{filtres}</div>}
+            ) : <div style={{ flex: '1 1 auto', minWidth: 0 }}>{barreFiltres}</div>}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               {peutAjouter ? <Btn variant="ghost" onClick={() => setVue(ajouterGraphique(vue))} style={st.bouton}>Ajouter un graphique</Btn> : null}
               <Btn variant="ghost" onClick={() => setVuesOuvertes(true)} style={st.bouton}>Vues enregistrées</Btn>
@@ -489,7 +535,7 @@ export default function Statistiques({ user, etablissement }) {
           ) : null}
           {filtresOuverts && etroit ? (
             <Fenetre id="stat-filtres" titre="Période et filtres" onClose={() => setFiltresOuverts(false)} largeur={460}>
-              {filtres}
+              {barreFiltres}
             </Fenetre>
           ) : null}
         </>

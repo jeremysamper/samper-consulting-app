@@ -146,8 +146,10 @@ export function nettoyerVue(brute, mesuresVisibles, aujourdhui) {
     gardees.filter((m) => m.choix).forEach((m) => { const cle = m.choix.cle || m.id; if (typeof g?.choix?.[cle] === 'string') choix[cle] = g.choix[cle]; });
     return { mesures: gardees.map((m) => m.id), ventilation, type, choix };
   });
-  if (!graphiques.length || graphiques.every((g) => !g.mesures.length)) return { ...defaut, periode, pas, comparaison };
-  return { periode, pas, comparaison, graphiques };
+  // Filtre de famille (S3) : le périmètre des achats, un texte.
+  const filtres = typeof brute.filtres?.perimetre === 'string' && brute.filtres.perimetre ? { perimetre: brute.filtres.perimetre } : {};
+  if (!graphiques.length || graphiques.every((g) => !g.mesures.length)) return { ...defaut, periode, pas, comparaison, filtres };
+  return { periode, pas, comparaison, graphiques, filtres };
 }
 
 // Types de graphique valides pour un graphique, le premier étant celui que la
@@ -178,7 +180,7 @@ export function vueDepuisLien(demande, mesuresVisibles, aujourdhui) {
   const visibles = mesuresVisibles || [];
   let ids = (Array.isArray(demande.mesures) ? demande.mesures : []).filter((id) => visibles.some((m) => m.id === id));
   const periode = typeof demande.periode === 'string' ? { id: demande.periode } : demande.periode;
-  const commun = { periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '' };
+  const commun = { periode: periode || { id: '30j' }, pas: demande.pas || 'jour', comparaison: demande.comparaison || '', filtres: demande.filtres || {} };
   // Raccourci d'un écran d'analyse (S3) : plusieurs graphiques préréglés. Un
   // graphique dont aucune mesure n'est visible tombe ; rien de visible, rien
   // d'ouvert.

@@ -25,7 +25,7 @@ const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juil
 
 const nombre = (v) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
 const arrondi = (v) => Math.round(v * 100) / 100;
-const perimetreDe = (d) => (d.perimetre || '').trim() || 'Général';
+export const perimetreDe = (d) => (d.perimetre || '').trim() || 'Général';
 
 // Montant retenu d'une facture et sa source : 'ht' | 'ttc' | 'lignes' | null.
 export function montantFacture(d) {

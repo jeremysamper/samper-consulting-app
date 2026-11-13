@@ -80,6 +80,9 @@ export function Legende({ series, comparaison, libelleComparaison }) {
           <Marqueur rang={s.rang} />
           <NomSerie s={s} />
           {libelleUnite(s.unite) ? <span data-no-translate>({libelleUnite(s.unite)})</span> : null}
+          {/* S3 : la valeur de la série sur la période (total d'un flux, taux
+              recalculé, dernier relevé), en tête comme sur l'écran d'origine. */}
+          {estNombre(s.total) ? <span data-stat-total="">: <Valeur v={s.total} unite={s.unite} /></span> : null}
         </span>
       ))}
       {comparaison ? (
@@ -139,7 +142,7 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
   return (
     <div style={{ minWidth: 0 }} data-stat-graphique={type}>
       <Legende series={series} comparaison={comparaison && type === 'courbe'} libelleComparaison={libelleComparaison} />
-      <div style={{ position: 'relative', height: hauteur, marginTop: 14, marginRight: type === 'courbe' ? 26 : 0 }}>
+      <div style={{ position: 'relative', height: hauteur, marginTop: 14, marginRight: type === 'courbe' ? 26 : 0 }} data-stat-trace="">
         {echelles.g.graduations.map((g) => {
           const frac = positionSur(echelles.g, g);
           const droite = echelles.d ? echelles.d.min + frac * (echelles.d.max - echelles.d.min) : null;

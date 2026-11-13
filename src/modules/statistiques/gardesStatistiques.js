@@ -42,7 +42,7 @@ export const GARDES_ECRANS = {
 };
 
 // Familles dont l'écran d'analyse est devenu un raccourci (S3).
-export const FAMILLES_A_RACCOURCI = [];
+export const FAMILLES_A_RACCOURCI = ['achats'];
 
 // La page Statistiques : la clé, ou un écran d'analyse parti vers elle.
 export function peutOuvrirStatistiques(user, permissions, etablissement) {

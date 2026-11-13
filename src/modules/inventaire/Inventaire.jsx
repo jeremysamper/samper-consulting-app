@@ -3,6 +3,8 @@ import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
+import { ouvrirStatistiques } from '../../services/navigationService.js';
+import { demandeRaccourci } from '../statistiques/raccourcisStatistiques.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { removeStorageKeys } from '../../utils/storage.js';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
@@ -52,8 +54,8 @@ import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 const AchatsPanel = React.lazy(() => import('./AchatsPanel.jsx'));
 // Même principe pour « Je règle les factures ».
 const FacturesPanel = React.lazy(() => import('./FacturesPanel.jsx'));
-// Factures & achats : analyses des dépenses et échéances, à la demande.
-const AnalysesAchats = React.lazy(() => import('../factures-achats/AnalysesAchats.jsx'));
+// Factures & achats : échéances, à la demande. Les analyses des dépenses
+// sont parties dans Statistiques (S3) : la tuile ouvre le module préréglé.
 const Echeancier = React.lazy(() => import('../factures-achats/Echeancier.jsx'));
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
@@ -65,14 +67,14 @@ const parDateDesc = (a, b) => String(b.date || '').localeCompare(String(a.date |
 // Écrans du module : l'accueil (une tuile par tâche), puis un écran par tâche.
 // Inventaire : 'perimetre', 'comptage', 'ecarts', et 'verification' ouverte
 // depuis la liste des documents d'Écarts et documents. Factures & achats :
-// 'import', 'verification', 'reglement', 'echeances', 'analyses'.
+// 'import', 'verification', 'reglement', 'echeances'.
 // Mémorisé sous sc_inventaire_ecran ; seuls les écrans qui se suffisent à
 // eux-mêmes sont repris à l'ouverture suivante, un import ou un choix de
 // périmètre repart de l'accueil.
 const ECRANS_REPRIS = ['comptage', 'ecarts'];
 // Vue « achats » (module Factures & achats, src/modules/factures-achats) :
 // même composant, son accueil et sa mémoire d'écran (sc_achats_ecran).
-const ECRANS_REPRIS_ACHATS = ['reglement', 'echeances', 'analyses'];
+const ECRANS_REPRIS_ACHATS = ['reglement', 'echeances'];
 // Écrans soumis au droit « Régler les factures » (factures_achat).
 const ECRANS_REGLEMENT = ['reglement', 'echeances'];
 // Clé des anciens onglets de vues : effacée à l'ouverture du module.
@@ -1739,7 +1741,8 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
           onCompleter={ouvrirCompletion}
           onReglement={() => setEcran('reglement')}
           onEcheances={() => setEcran('echeances')}
-          onAnalyses={() => setEcran('analyses')}
+          onAnalyses={() => ouvrirStatistiques(demandeRaccourci('achats'))}
+          onVerifierDates={(ids) => ouvrirVerification(ids, ECRAN_ACCUEIL)}
           onEcarts={() => setEcran('ecarts')}
           onChoisirPerimetre={setPerimetre}
           onNouveauPerimetre={() => openNewInventory('')}
@@ -1957,21 +1960,6 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
         <EcranTache titre="Échéances" onRetour={retourAccueil}>
           <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement…</div>}>
             <Echeancier docs={achats.tousLesDocs} aujourdhui={zurichToday()} onRegler={() => setEcran('reglement')} />
-          </React.Suspense>
-        </EcranTache>
-      )}
-
-      {ecran === 'analyses' && (
-        <EcranTache titre="Analyses des dépenses" onRetour={retourAccueil}>
-          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement…</div>}>
-            <AnalysesAchats
-              docs={achats.tousLesDocs}
-              perimetres={perimetres}
-              catalogue={catalogue}
-              aujourdhui={zurichToday()}
-              loadError={achats.loadError}
-              onVerifier={(ids) => ouvrirVerification(ids, 'analyses')}
-            />
           </React.Suspense>
         </EcranTache>
       )}

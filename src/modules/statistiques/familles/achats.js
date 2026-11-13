@@ -5,7 +5,7 @@
 //
 // Une tranche sans facture chiffrée vaut « n/a », jamais 0.
 
-import { depensesParTranche, parFournisseur, parRayon, prixParProduit, trierDocuments } from '../../factures-achats/analysesAchats.js';
+import { depensesParTranche, parFournisseur, parRayon, perimetreDe, prixParProduit, trierDocuments } from '../../factures-achats/analysesAchats.js';
 import { reglementsParTranche } from '../../inventaire/facturesLogic.js';
 
 const NON_REPARTI = 'Factures sans ligne lue';
@@ -21,9 +21,13 @@ export const familleAchats = {
   id: 'achats',
   libelle: 'Achats',
   journee: 'la date de la facture',
-  calculer(donnees, tranches) {
-    const { factures } = trierDocuments(donnees.docs);
-    const reglements = reglementsParTranche(donnees.docs, tranches);
+  // Filtre de périmètre de la vue (S3, celui des Analyses des dépenses) :
+  // vide, tous les périmètres ; sinon les pièces de ce périmètre seulement.
+  calculer(donnees, tranches, ctx) {
+    const perimetre = ctx?.filtres?.perimetre || '';
+    const docs = perimetre ? (donnees.docs || []).filter((d) => perimetreDe(d) === perimetre) : donnees.docs;
+    const { factures } = trierDocuments(docs, perimetre);
+    const reglements = reglementsParTranche(docs, tranches);
     return depensesParTranche(factures, tranches).map((p, i) => ({ ...p, catalogue: donnees.catalogue || [], reglements: reglements[i] }));
   },
   mesures: [

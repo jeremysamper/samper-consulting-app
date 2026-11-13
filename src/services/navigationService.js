@@ -76,12 +76,13 @@ export function ouvrirGroupe(id, date) {
 // S3 : un raccourci d'écran d'analyse peut aussi nommer le pas, la
 // comparaison et plusieurs graphiques préréglés (`graphiques`, voir
 // statistiques/raccourcisStatistiques.js).
-export function ouvrirStatistiques({ famille = null, mesures = [], periode = null, pas = null, comparaison = null, graphiques = null } = {}) {
+export function ouvrirStatistiques({ famille = null, mesures = [], periode = null, pas = null, comparaison = null, graphiques = null, raccourci = null, vue = null } = {}) {
   if (famille || (mesures && mesures.length) || (graphiques && graphiques.length)) {
     const demande = { famille, mesures: mesures || [], periode };
     if (pas) demande.pas = pas;
     if (comparaison) demande.comparaison = comparaison;
     if (graphiques && graphiques.length) demande.graphiques = graphiques;
+    if (raccourci) { demande.raccourci = raccourci; demande.vue = vue; }
     writeJson(UI_STORAGE_KEYS.statistiquesOuvrir, demande);
     const browserWindow = getBrowserWindow();
     browserWindow?.dispatchEvent(new browserWindow.CustomEvent('sc:statistiques-ouvrir', { detail: demande }));
