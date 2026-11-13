@@ -1,0 +1,4 @@
+# Le kit tourne sous Linux : fins de ligne LF, même dans une copie de travail
+# Windows (core.autocrlf). Un script en CRLF ne s'exécute pas sous bash.
+*.sh text eol=lf
+*.conf text eol=lf
