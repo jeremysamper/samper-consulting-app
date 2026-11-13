@@ -53,6 +53,15 @@ Le tableau de bord (`src/modules/dashboard/`) est l'écran de référence ; un �
 - La mise en page suit la largeur du conteneur de l'écran (requêtes de conteneur), jamais celle de la fenêtre : le rail et le menu déplié ne donnent pas la même place. Paliers du tableau de bord : 560, 760, 1080 et 1240 px. Entre 760 et 1079 px, la carte nuit reste à côté de la liste et les deux pastel passent côte à côte dessous.
 - Au téléphone, les trois cartes s'empilent et allongent la page d'un écran environ : à peser écran par écran avant de les reprendre.
 
+### Écran d'un module
+Six règles tirées du lot 2 (HACCP, commande, pertes, mise en place), dont les écrans servent d'exemple (`haccp.css`, `commande.css`, `pertes.css`, `mep.css`).
+- Ordre d'un accueil : à l'ordinateur, repères puis carte nuit et tuiles côte à côte ; au téléphone et à la tablette étroite, l'entrée de la tâche principale et les tuiles d'abord, les repères ensuite.
+- Au téléphone, les repères qui répètent la carte nuit ne sont pas rendus ; il en reste deux au plus, sur une ligne.
+- Sur une carte nuit, l'action principale s'écrit à l'encre inversée : fond `--carte-nuit-texte`, texte `--carte-nuit`. Un bouton secondaire y est une pilule au contour `--carte-nuit-doux`.
+- Une barre d'avancement devient un `Anneau` quand elle dit une part faite ; son compte reste écrit à côté.
+- Un écran recomposé pose sa grille sur un enfant de son conteneur de requêtes (`.x-page` porte `container-type`, `.x-grille` porte la grille) : une requête de conteneur ne règle pas le conteneur lui-même. Le conteneur ne contient aucune fenêtre du module en position fixe.
+- Dans une zone capturée en PDF, rien ne change en style en ligne. Une carte s'y écrit par une classe de la feuille du module, exclue de la capture (`:not(.pdf-render-root *)`). Aucun `div` n'est ajouté comme enfant direct de la zone (la feuille d'export lui donne une marge) : une enveloppe s'écrit en `section`, ou hors de la zone. L'export se prouve joué avant et après, par empreinte de bande.
+
 ## Primitives
 Elles portent la direction à la source : passer par `src/components/ui/` plutôt que redessiner un bouton, un champ, une carte ou une ligne.
 - `Card`, exportée aussi sous le nom `Panneau` : la carte blanche, limite visible d'un groupe (`data-cadre`). Aucun module ne redessine la sienne.
