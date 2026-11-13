@@ -3,15 +3,17 @@ import SegmentedTabs from './SegmentedTabs.jsx';
 
 export { SegmentedTabs };
 
-// Primitives de la direction Office (.claude/rules/direction-office.md). Elles
+// Primitives de la direction Galet (.claude/rules/direction-galet.md). Elles
 // disent elles-mêmes leur fond, leur contour, leur rayon et leur graisse, par
 // les jetons de src/styles/app.css : un écran qui passe par elles naît dans la
 // direction, sans attendre qu'une règle globale le rattrape.
 
-// Panneau : la limite visible d'un groupe (une section parmi plusieurs, une
-// colonne parmi plusieurs). Fond --zone, filet doux, rayon de la direction.
-// data-cadre le soustrait à la règle « Plus de carrés » d'app.css, qui aplatit
-// les blocs encadrés posés en style inline. Exporté aussi sous le nom Panneau.
+// Carte (Panneau) : la limite visible d'un groupe (une section parmi
+// plusieurs, une colonne parmi plusieurs). Fond --zone, rayon --r-lg, ombre
+// douce --sh, filet --rule-soft d'un pixel : c'est lui qui porte la carte en
+// thème sombre, où l'ombre ne se voit pas. data-cadre la soustrait à la règle
+// « Plus de carrés » d'app.css, qui aplatit les blocs encadrés posés en style
+// inline. Exportée aussi sous le nom Panneau.
 export function Card({ children, style = {}, onClick }) {
   return (
     <div
@@ -25,7 +27,8 @@ export function Card({ children, style = {}, onClick }) {
         borderWidth: 1,
         borderStyle: 'solid',
         borderColor: 'var(--rule-soft)',
-        borderRadius: 'var(--r)',
+        borderRadius: 'var(--r-lg)',
+        boxShadow: 'var(--sh)',
         padding: '16px 18px',
         cursor: onClick ? 'pointer' : 'default',
         ...style
@@ -73,8 +76,8 @@ export function Btn({
      par le raccourci border : un appelant peut changer la seule couleur sans
      que React avertisse (npm run lint:borders). */
   const variants = {
-    /* Action principale : le seul aplat d'accent (pétrole en clair, aqua en
-       sombre), sans dégradé ni ombre, en graisse --g3. */
+    /* Action principale : l'aplat sombre (pétrole en clair, aqua en sombre),
+       sans dégradé ni ombre, en graisse --g3. */
     primary: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)', fontWeight: 'var(--g3)' },
     /* Secondaire : fond, texte et contour par les jetons --btn-*. */
     ghost: { background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderColor: 'var(--btn-bord)' },
@@ -82,9 +85,9 @@ export function Btn({
        garder la hauteur des autres variantes). */
     danger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', borderColor: 'transparent' },
     success: { background: 'var(--success-bg-soft)', color: 'var(--success-text)', borderColor: 'transparent' },
-    /* Onglet : un trait bas, à l'encre --onglet quand il est actif. */
-    tab: { background: 'transparent', color: 'var(--text2)', borderWidth: '0 0 2px', borderColor: 'transparent', borderRadius: 0 },
-    tabActive: { background: 'transparent', color: 'var(--onglet)', borderWidth: '0 0 2px', borderColor: 'var(--onglet)', borderRadius: 0 }
+    /* Onglet : une pilule en texte, en aplat sombre quand il est choisi. */
+    tab: { background: 'transparent', color: 'var(--text2)', borderColor: 'transparent' },
+    tabActive: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' }
   };
 
   return (
@@ -110,7 +113,8 @@ export function Btn({
         padding: small ? '5px 10px' : '8px 14px',
         borderWidth: 1,
         borderStyle: 'solid',
-        borderRadius: 'var(--r-sm)',
+        /* Tous les boutons sont des pilules ; les hauteurs ne changent pas. */
+        borderRadius: 'var(--r-full)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'var(--font)',
         fontSize: small ? 12 : 13,
@@ -126,7 +130,7 @@ export function Btn({
   );
 }
 
-// Champ : contour --champ-bord, fond --surface, rayon de la direction. La
+// Champ : contour --champ-bord, fond --surface, rayon --r. La
 // hauteur n'est pas posée ici : elle vient de la règle des contrôles d'app.css
 // (--controle, et 44 px au doigt), qu'un min-height en ligne empêcherait de
 // relever sur tablette et téléphone.
@@ -144,7 +148,7 @@ export function Input({ value, onChange, placeholder, type = 'text', style = {},
         borderWidth: 1,
         borderStyle: 'solid',
         borderColor: 'var(--champ-bord)',
-        borderRadius: 'var(--r-sm)',
+        borderRadius: 'var(--r)',
         background: 'var(--surface)',
         color: 'var(--text)',
         fontFamily: 'var(--font)',
@@ -202,16 +206,29 @@ export function SectionHeader({ title, sub, action, style = {} }) {
   );
 }
 
-export function KpiCard({ label, value, sub, delta, color, chart, glow = false, style = {} }) {
-  /* glow : liseré accent qui met la carte en avant, sans halo. Le panneau
-     écrit son contour en borderColor : seule la couleur change. */
-  const glowStyle = glow
-    ? { borderColor: 'var(--accent-bd)', boxShadow: 'var(--glow-accent)' }
-    : {};
+// Cercle d'un picto : fond --piste, encre --icone. 36 px par défaut (carte de
+// chiffre), 44 px pour une tuile.
+export function pictoCercleStyle(taille = 36) {
+  return {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    width: taille, height: taille, borderRadius: '50%', background: 'var(--piste)', color: 'var(--icone)',
+  };
+}
+
+// Carte de chiffre : une carte blanche, le picto dans son cercle, le libellé
+// en petit et en --text3, puis le chiffre en grand, en graisse normale.
+//   Icone : composant de picto au trait (lucide), facultatif
+//   glow  : la carte se distingue par son filet, sans halo
+export function KpiCard({ label, value, sub, delta, color, chart, Icone, glow = false, style = {} }) {
+  /* Le panneau écrit son contour en borderColor : seule la couleur change. */
+  const glowStyle = glow ? { borderColor: 'var(--accent-bd)' } : {};
   return (
-    <Card style={{ display: 'flex', flexDirection: 'column', gap: 9, ...glowStyle, ...style }}>
-      <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' }}>
-        {label}
+    <Card style={{ display: 'flex', flexDirection: 'column', gap: 10, ...glowStyle, ...style }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+        {Icone ? <span style={pictoCercleStyle()}><Icone size={18} strokeWidth={1.75} aria-hidden="true" /></span> : null}
+        <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text3)', minWidth: 0 }}>
+          {label}
+        </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
         <div style={{ fontSize: 'var(--t6)', fontWeight: 'var(--g-chiffre)', color: color || 'var(--text)', fontFamily: 'var(--font-num)', lineHeight: 1 }}>
@@ -223,8 +240,49 @@ export function KpiCard({ label, value, sub, delta, color, chart, glow = false, 
           </div>
         ) : null}
       </div>
-      {sub ? <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{sub}</div> : null}
+      {sub ? <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>{sub}</div> : null}
       {chart}
     </Card>
+  );
+}
+
+// Carte de mise en avant : un résumé ou des chiffres, jamais un état (un état
+// garde ses jetons de statut). Trois tons : nuit (sombre), soleil (jaune
+// pastel), ciel (bleu pastel). Par écran : au plus une carte nuit et deux
+// cartes pastel. Rayon --r-xl, pas d'ombre, pas de filet. Elle ne porte pas
+// data-cadre (la règle des blocs lui donnerait le rayon des cartes) et son
+// fond n'est pas de ceux que « Plus de carrés » aplatit.
+//   carteAvantStyles(ton) rend les styles de ses pièces : carte, titre,
+//   libelle (petit texte doux), chiffre (grand, graisse normale), tuile
+//   (tuile intérieure : fond --carte-nuit-tuile sur la carte nuit).
+const TONS_AVANT = {
+  nuit: { fond: 'var(--carte-nuit)', texte: 'var(--carte-nuit-texte)', doux: 'var(--carte-nuit-doux)', tuile: 'var(--carte-nuit-tuile)' },
+  soleil: { fond: 'var(--carte-soleil)', texte: 'var(--carte-soleil-texte)', doux: 'var(--carte-soleil-texte)', tuile: 'transparent' },
+  ciel: { fond: 'var(--carte-ciel)', texte: 'var(--carte-ciel-texte)', doux: 'var(--carte-ciel-texte)', tuile: 'transparent' },
+};
+
+export function carteAvantStyles(ton = 'nuit') {
+  const t = TONS_AVANT[ton] || TONS_AVANT.nuit;
+  return {
+    carte: { display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0, padding: '18px 20px', borderRadius: 'var(--r-xl)', background: t.fond, color: t.texte },
+    titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: t.texte, fontFamily: 'var(--font)' },
+    libelle: { fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: t.doux },
+    chiffre: { fontFamily: 'var(--font-num)', fontSize: 'var(--t6)', fontWeight: 'var(--g-chiffre)', lineHeight: 1, color: t.texte },
+    tuile: { minWidth: 0, padding: '12px 14px', borderRadius: 'var(--r)', background: t.tuile, color: t.texte },
+  };
+}
+
+export function CarteAvant({ ton = 'nuit', titre, action, children, style = {}, ...props }) {
+  const st = carteAvantStyles(ton);
+  return (
+    <div data-carte-avant={TONS_AVANT[ton] ? ton : 'nuit'} style={{ ...st.carte, ...style }} {...props}>
+      {titre || action ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, minWidth: 0 }}>
+          {titre ? <div style={st.titre}>{titre}</div> : <span />}
+          {action}
+        </div>
+      ) : null}
+      {children}
+    </div>
   );
 }

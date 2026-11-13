@@ -6,12 +6,12 @@ import React from 'react';
 // pilules en flex-wrap qui empilaient les onglets sur plusieurs lignes en
 // mobile (et mangeaient toute la hauteur).
 //
-// Direction Office : pas de piste ni de pilule, l'onglet actif est souligné
-// d'un trait à l'encre --onglet, qui porte aussi son texte. Seule la barre de
-// modes de la caisse (.caisse-modes) garde un aplat d'accent pour son mode
-// actif. Aucune couleur en dur - tokens CSS uniquement. Le style, le
-// défilement et le masquage de la scrollbar sont en CSS (.segmented-tabs dans
-// app.css).
+// Direction Galet : une rangée de pilules. L'onglet choisi est un aplat
+// sombre (--accent, texte --on-accent), les autres sont en texte --text2,
+// sans contour. La barre de modes de la caisse (.caisse-modes) a ses propres
+// règles. Aucune couleur en dur - tokens CSS uniquement. Le style, le
+// défilement, le focus et le masquage de la scrollbar sont en CSS
+// (.segmented-tabs dans app.css).
 //
 // Props :
 //   tabs     : [{ id, label|l, icon? }]  - icon = noeud React optionnel

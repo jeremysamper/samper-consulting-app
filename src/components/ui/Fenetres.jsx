@@ -131,17 +131,17 @@ export function Options({ nom, valeur, onChange, options }) {
 }
 
 // Styles partagés des fenêtres et de leurs formulaires, écrits par les jetons
-// de la direction Office (.claude/rules/direction-office.md) : rayon --r pour
-// la fenêtre comme pour ses contrôles, titre sans serif en --g3, champ à
-// contour --champ-bord sur fond --surface, bouton secondaire par les jetons
-// --btn-*, un seul aplat d'accent pour l'action principale. Un contour s'écrit
-// en borderWidth, borderStyle et borderColor : un appelant peut en changer la
-// seule couleur (npm run lint:borders).
+// de la direction Galet (.claude/rules/direction-galet.md) : fenêtre à rayon
+// --r-xl et ombre --sh-lg, titre sans serif en --g3, champ à rayon --r et à
+// contour --champ-bord sur fond --surface, boutons en pilule, le secondaire
+// par les jetons --btn-*, l'aplat sombre pour l'action principale. Un contour
+// s'écrit en borderWidth, borderStyle et borderColor : un appelant peut en
+// changer la seule couleur (npm run lint:borders).
 export const st = {
   voile: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
   enSection: { display: 'flex', flexDirection: 'column', gap: 12, width: '100%', minWidth: 0, boxSizing: 'border-box' },
   // Une fenêtre flotte : c'est elle, avec les menus, qui porte une ombre.
-  fenetre: { position: 'relative', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-lg)', padding: '20px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12, boxSizing: 'border-box' },
+  fenetre: { position: 'relative', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--sh-lg)', padding: '20px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12, boxSizing: 'border-box' },
   fermer: { position: 'absolute', top: 6, right: 8, width: 40, height: 40, border: 'none', background: 'transparent', color: 'var(--text2)', fontSize: 24, cursor: 'pointer', lineHeight: 1 },
   titre: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', paddingRight: 32, color: 'var(--text)', fontFamily: 'var(--font)' },
   sousTitre: { fontSize: 13, color: 'var(--text2)', marginTop: -6 },
@@ -162,11 +162,11 @@ export const st = {
   optionTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' },
   optionDetail: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 },
   label: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
-  champ: { width: '100%', padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r-sm)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', boxSizing: 'border-box', minHeight: 44 },
-  primaire: { padding: '11px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-sm)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  champ: { width: '100%', padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', boxSizing: 'border-box', minHeight: 44 },
+  primaire: { padding: '11px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   // L'état éteint du bouton secondaire (texte et contour effacés) vit dans
   // app.css, accroché au contour --btn-bord écrit ici.
-  secondaire: { padding: '11px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r-sm)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  secondaire: { padding: '11px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   apercu: { fontSize: 13, color: 'var(--text)', lineHeight: 1.5 },
   remarque: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 },
 };
