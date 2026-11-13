@@ -12,8 +12,10 @@ const cache = new Map();
 const enVol = new Map();
 
 const valide = (e) => Boolean(e && e.expire > Date.now());
-export const urlVocale = (chemin) => (valide(cache.get(chemin)) ? cache.get(chemin).url : null);
+const urlVocale = (chemin) => (valide(cache.get(chemin)) ? cache.get(chemin).url : null);
 
+// Rend la promesse des URL encore attendues, ou null quand toutes sont déjà
+// en cache : rien à attendre, rien à redessiner.
 function demander(chemins) {
   const bridge = dbService.getBridge();
   const manquants = chemins.filter((c) => !valide(cache.get(c)) && !enVol.has(c));
@@ -24,20 +26,21 @@ function demander(chemins) {
     }).finally(() => { manquants.forEach((c) => enVol.delete(c)); });
     manquants.forEach((c) => enVol.set(c, p));
   }
-  return Promise.all(chemins.map((c) => enVol.get(c)).filter(Boolean));
+  const attentes = chemins.map((c) => enVol.get(c)).filter(Boolean);
+  return attentes.length ? Promise.all(attentes) : null;
 }
 
 export function useUrlsVocales(thread) {
   const [, rafraichir] = React.useReducer((n) => n + 1, 0);
   const chemins = React.useMemo(() => thread.filter(estVocal).map((m) => m.audioPath), [thread]);
-  const cle = chemins.join('|');
 
   React.useEffect(() => {
-    if (!chemins.length) return undefined;
+    const attente = demander(chemins);
+    if (!attente) return undefined;
     let actif = true;
-    demander(chemins).then(() => { if (actif) rafraichir(); }).catch(() => { /* un toucher sur Écouter redemandera */ });
+    attente.then(() => { if (actif) rafraichir(); }).catch(() => { /* un toucher sur Écouter redemandera */ });
     return () => { actif = false; };
-  }, [cle]);
+  }, [chemins]);
 
   // Repli quand l'URL manque encore (réseau lent, URL expirée) : demandée au
   // toucher, puis rendue.

@@ -9,8 +9,8 @@ import { sm } from './messagerie.styles.js';
 // enregistrement, réécoute avant l'envoi, envoi, refus du micro. Le texte
 // d'état puis les boutons ; les boutons passent à la ligne quand la largeur
 // manque (téléphone de 360 px).
-export default function ZoneVocale({ enregistreur, destinataire, onEnvoyer, cible = 44 }) {
-  const { etat, ecoule, enreg, arreter, abandonner } = enregistreur;
+export default function ZoneVocale({ enregistreur, destinataire, cible }) {
+  const { etat, ecoule, enreg, arreter, abandonner, envoyerVocal } = enregistreur;
   const prenom = destinataire?.prenom || fullName(destinataire);
   const bouton = { minHeight: cible, flexShrink: 0 };
 
@@ -45,7 +45,7 @@ export default function ZoneVocale({ enregistreur, destinataire, onEnvoyer, cibl
     actions = (
       <>
         <Btn variant="ghost" onClick={abandonner} disabled={etat === 'envoi'} style={bouton}>Abandonner</Btn>
-        <Btn variant="primary" onClick={onEnvoyer} disabled={etat === 'envoi'} style={bouton}>
+        <Btn variant="primary" onClick={envoyerVocal} disabled={etat === 'envoi'} style={bouton}>
           {etat === 'envoi' ? 'Envoi…' : 'Envoyer'}
         </Btn>
       </>

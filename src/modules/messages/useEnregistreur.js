@@ -1,4 +1,7 @@
 import React from 'react';
+import { dbService } from '../../services/dbService.js';
+import { notifyLegacy } from '../../legacy/legacyApi.js';
+import { messageErreur } from '../../utils/messageErreur.js';
 import {
   DEBIT_AUDIO, DUREE_MAX_S, TEXTE_VOCAL, cheminVocal, dureeBornee, nouvelUuid, peutEnregistrer,
   typeDepose, typeEnregistrement,
@@ -14,20 +17,33 @@ import {
 //   refus      le micro est refusé (réglage du navigateur ou de l'appareil)
 //   erreur     l'appareil n'a pas pu enregistrer
 // Rien ne quitte l'appareil avant « Envoyer » : abandonner ne laisse ni
-// fichier ni ligne (K8). Le micro est rendu dès l'arrêt. `pour` garde l'id du
-// destinataire : le parent abandonne quand le fil affiché n'est plus le sien.
-export function useEnregistreur() {
+// fichier ni ligne (K8). Le micro est rendu dès l'arrêt.
+//
+//   filAffiche  id de la personne dont le fil est affiché, ou null : un vocal
+//               en cours (quel que soit son état) est abandonné dès que son
+//               fil n'est plus affiché (autre personne, autre vue, page
+//               masquée, panneau refermé)
+//   expediteur  id du compte qui envoie
+//   onEnvoye    reçoit le message créé, pour l'ajouter à la liste
+export function useEnregistreur({ filAffiche = null, expediteur, onEnvoye } = {}) {
   const disponible = React.useMemo(() => peutEnregistrer(), []);
   const [etat, setEtat] = React.useState('repos');
   const [ecoule, setEcoule] = React.useState(0);
   const [enreg, setEnreg] = React.useState(null);
   const [pour, setPour] = React.useState(null);
-  const r = React.useRef({ flux: null, rec: null, morceaux: [], debut: 0, minuteur: null, jeton: 0, enreg: null });
+  const r = React.useRef({ flux: null, rec: null, morceaux: [], debut: 0, minuteur: null, jeton: 0, enreg: null, pour: null });
+  const rappels = React.useRef({ expediteur, onEnvoye });
+  rappels.current = { expediteur, onEnvoye };
 
   const libererMicro = React.useCallback(() => {
     const x = r.current;
     if (x.minuteur) { clearInterval(x.minuteur); x.minuteur = null; }
     if (x.flux) { x.flux.getTracks().forEach((t) => { try { t.stop(); } catch { /* déjà arrêtée */ } }); x.flux = null; }
+  }, []);
+
+  const poserPour = React.useCallback((valeur) => {
+    r.current.pour = valeur;
+    setPour(valeur);
   }, []);
 
   const poserEnreg = React.useCallback((valeur) => {
@@ -51,9 +67,9 @@ export function useEnregistreur() {
     libererMicro();
     poserEnreg(null);
     setEcoule(0);
-    setPour(null);
+    poserPour(null);
     setEtat('repos');
-  }, [libererMicro, poserEnreg]);
+  }, [libererMicro, poserEnreg, poserPour]);
 
   // Appelé dans le geste même (toucher de Vocal ou du micro) : l'invite du
   // micro et le démarrage restent liés à l'action de la personne.
@@ -63,7 +79,7 @@ export function useEnregistreur() {
     const jeton = ++x.jeton;
     poserEnreg(null);
     setEcoule(0);
-    setPour(destinataire ?? null);
+    poserPour(destinataire ?? null);
     setEtat('demande');
     let flux;
     try {
@@ -124,7 +140,7 @@ export function useEnregistreur() {
         x.rec.stop();
       }
     }, 250);
-  }, [disponible, abandonner, libererMicro, poserEnreg]);
+  }, [disponible, libererMicro, poserEnreg, poserPour]);
 
   const arreter = React.useCallback(() => {
     const x = r.current;
@@ -134,39 +150,46 @@ export function useEnregistreur() {
     x.rec.stop();
   }, []);
 
-  // envoyer(fn) : fn reçoit l'enregistrement et fait le dépôt ; en cas
-  // d'échec, la réécoute revient pour un nouvel essai, et l'erreur remonte.
-  const envoyer = React.useCallback(async (fn) => {
+  // Envoi : dépôt du fichier puis message (deposerVocal) ; en cas d'échec,
+  // la réécoute revient pour un nouvel essai et l'erreur est dite.
+  const envoyerVocal = React.useCallback(async () => {
     const x = r.current;
     const e = x.enreg;
-    if (!e) return false;
+    const destinataire = x.pour;
+    if (!e || !destinataire) return;
     const jeton = x.jeton;
     setEtat('envoi');
     try {
-      await fn(e);
+      const sent = await deposerVocal(dbService.getBridge(), { destinataire, expediteur: rappels.current.expediteur, blob: e.blob, duree: e.duree });
+      rappels.current.onEnvoye?.(sent);
     } catch (err) {
       if (jeton === x.jeton) setEtat('reecoute');
-      throw err;
+      notifyLegacy('Message vocal non envoyé. ' + messageErreur(err, 'messages'), 'error');
+      return;
     }
     if (jeton === x.jeton) {
       poserEnreg(null);
-      setPour(null);
+      poserPour(null);
       setEcoule(0);
       setEtat('repos');
     }
-    return true;
-  }, [poserEnreg]);
+  }, [poserEnreg, poserPour]);
+
+  // Le vocal appartient au fil où il a commencé.
+  React.useEffect(() => {
+    if (pour != null && filAffiche !== pour) abandonner();
+  }, [filAffiche, pour, abandonner]);
 
   // Démontage : le micro est rendu, la réécoute révoquée.
   React.useEffect(() => () => abandonner(), [abandonner]);
 
-  return { disponible, etat, ecoule, enreg, pour, demarrer, arreter, abandonner, envoyer };
+  return { disponible, etat, ecoule, enreg, demarrer, arreter, abandonner, envoyerVocal };
 }
 
 // Dépôt d'un vocal : fichier au chemin <expéditeur>/<uuid>.<ext>, type sans
 // paramètre, durée bornée, puis le message qui le cite (legacySupabase retire
 // le fichier si l'insertion échoue).
-export function deposerVocal(bridge, { destinataire, expediteur, blob, duree }) {
+function deposerVocal(bridge, { destinataire, expediteur, blob, duree }) {
   const contentType = typeDepose(blob.type);
   return bridge.db.sendPrivateVoiceMessage({
     recipientId: destinataire,

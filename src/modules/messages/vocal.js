@@ -8,7 +8,6 @@
 // permise, type audio/mp4 ou audio/webm sans paramètre, 3 Mio au plus.
 
 export const DUREE_MAX_S = 120;
-export const COMPARTIMENT = 'messages-vocaux';
 // Texte gardé dans la colonne message : les sessions encore ouvertes sur
 // l'ancien front affichent une ligne lisible (K8).
 export const TEXTE_VOCAL = 'Message vocal';
