@@ -12,7 +12,7 @@ import { formatDuree } from './vocal.js';
 //   cible    hauteur d'une cible d'action (cibleDe)
 let enCours = null;
 
-export default function BulleVocale({ src, duree, onCharger, cible = 44 }) {
+export default function BulleVocale({ src, duree, onCharger, cible }) {
   const audioRef = React.useRef(null);
   const [lecture, setLecture] = React.useState(false);
   const [position, setPosition] = React.useState(0);

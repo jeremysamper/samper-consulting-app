@@ -642,12 +642,12 @@ const FichesSalle = ({ user, etablissement }) => {
       {/* Progression de la génération IA des fiches salle */}
       {bulkProgress && (
         <div className="no-print" style={{position:'fixed',inset:0,zIndex:9000,background:'rgba(20,16,12,0.55)',display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
-          <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:12,width:'min(420px,94vw)',padding:20,boxShadow:'0 24px 60px rgba(0,0,0,0.35)'}}>
-            <div style={{fontSize:15,fontWeight:700,fontFamily:'var(--font-serif)',color:'var(--text)',marginBottom:4}}>Génération des fiches salle</div>
-            <div style={{fontSize:13,color:'var(--text2)'}}>
+          <div style={{background:'var(--surface)',border:'1px solid var(--border)',borderRadius: 'var(--r)',width:'min(420px,94vw)',padding:20,boxShadow:'0 24px 60px rgba(0,0,0,0.35)'}}>
+            <div style={{fontSize: 'var(--t2)',fontWeight: 'var(--g3)',fontFamily: 'var(--font)',color:'var(--text)',marginBottom:4}}>Génération des fiches salle</div>
+            <div style={{fontSize: 'var(--t2)',color:'var(--text2)'}}>
               {bulkProgress.done} / {bulkProgress.total} plat(s), {bulkProgress.created} fiche(s) créée(s)
             </div>
-            <div style={{height:10,background:'var(--bg)',borderRadius:6,margin:'12px 0',overflow:'hidden',border:'1px solid var(--border)'}}>
+            <div style={{height:10,background:'var(--bg)',borderRadius: 'var(--r)',margin:'12px 0',overflow:'hidden',border:'1px solid var(--border)'}}>
               <div style={{height:'100%',width:`${bulkProgress.total?(bulkProgress.done/bulkProgress.total)*100:0}%`,background:'var(--accent)',transition:'width 0.2s'}}/>
             </div>
             <div style={{display:'flex',justifyContent:'flex-end'}}>
@@ -829,7 +829,7 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
           <div className="fv-col fv-col-b">
             <AllergenesFiche ids={fiche.allergenes} variante="bandeau" />
             {fiche.infosService && (
-              <div style={{...encadreStyle('alerte'),fontSize:13,lineHeight:1.5}}>
+              <div style={{...encadreStyle('alerte'),fontSize: 'var(--t2)',lineHeight:1.5}}>
                 <strong style={encadreTitreStyle('alerte')}>Info service :</strong> {fiche.infosService}
               </div>
             )}
@@ -951,13 +951,13 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
               <label style={fss.fLabel}>
                 Attribution aux cartes
                 {(fiche?.carteIds || []).length === 0 && (
-                  <span style={{ marginLeft: 8, color: 'var(--warning-text)', fontWeight: 700, textTransform: 'none', letterSpacing: 0 }}>
+                  <span style={{ marginLeft: 8, color: 'var(--warning-text)', fontWeight: 'var(--g3)', textTransform: 'none', letterSpacing: 0 }}>
                     aucune carte, la fiche ne sortira que dans « Toutes »
                   </span>
                 )}
               </label>
               {cartes.length === 0 ? (
-                <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontStyle: 'italic' }}>
                   Aucune carte. Créez-en dans « Cartes &amp; Recettes » pour pouvoir y rattacher cette fiche.
                 </div>
               ) : (
@@ -971,8 +971,8 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', minHeight: 36,
                           border: '1.5px solid transparent', borderRadius: 20,
-                          background: checked ? 'var(--accent-light)' : 'var(--surface)',
-                          color: checked ? 'var(--accent)' : 'var(--text2)', fontSize: 12, cursor: 'pointer', fontWeight: checked ? 700 : 400,
+                          background: checked ? 'var(--selection)' : 'var(--surface)',
+                          color: checked ? 'var(--accent)' : 'var(--text2)', fontSize: 'var(--t1)', cursor: 'pointer', fontWeight: checked ? 700 : 400,
                         }}>
                         <input
                           type="checkbox"
@@ -1012,7 +1012,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                   {recettes.filter(r => r.statut !== 'archivée' || r.id === fiche?.recetteId).map(r => <option key={r.id} value={r.id}>{r.nom}</option>)}
                 </select>
                 {fiche?.recetteId && (
-                  <div style={{ fontSize: 11, color: 'var(--success-text)', marginTop: 4, fontWeight: 500 }}>
+                  <div style={{ fontSize: 'var(--t1)', color: 'var(--success-text)', marginTop: 4, fontWeight: 'var(--g2)' }}>
                     Allergènes importés depuis la recette
                   </div>
                 )}
@@ -1024,7 +1024,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
               <label style={fss.fLabel}>
                 Allergènes
                 {fiche?.allergenes?.length > 0 && (
-                  <span style={{ marginLeft: 8, color: 'var(--warning-text)', fontWeight: 700 }}>
+                  <span style={{ marginLeft: 8, color: 'var(--warning-text)', fontWeight: 'var(--g3)' }}>
                     {fiche.allergenes.length} actif{fiche.allergenes.length > 1 ? 's' : ''}
                   </span>
                 )}
@@ -1034,28 +1034,28 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                   const sel = (fiche?.allergenes || []).includes(a);
                   // Langage allergènes de l'app : jetons warning, lisibles
                   // dans les deux thèmes.
-                  return <button key={a} onClick={()=>toggleAllerg(a)} style={{padding:'4px 10px',border:`1.5px solid ${sel?'var(--warning-bd)':'var(--border)'}`,borderRadius:20,background:sel?'var(--warning-bg)':'var(--surface)',color:sel?'var(--warning-text)':'var(--text2)',fontSize:11,fontWeight:sel?700:400,cursor:'pointer',fontFamily:'var(--font)'}}>
+                  return <button key={a} onClick={()=>toggleAllerg(a)} style={{padding:'4px 10px',border:`1.5px solid ${sel?'var(--warning-bd)':'var(--border)'}`,borderRadius:20,background:sel?'var(--warning-bg)':'var(--surface)',color:sel?'var(--warning-text)':'var(--text2)',fontSize: 'var(--t1)',fontWeight:sel?700:400,cursor:'pointer',fontFamily:'var(--font)'}}>
                     {ALLERGENES_LABELS[a]}
                   </button>;
                 })}
               </div>
               {inconnus.length > 0 && (
                 <div style={{marginTop:10,...encadreStyle('alerte')}}>
-                  <div style={{fontSize:11,...encadreTitreStyle('alerte'),marginBottom:6}}>
+                  <div style={{fontSize: 'var(--t1)',...encadreTitreStyle('alerte'),marginBottom:6}}>
                     {inconnus.length} valeur{inconnus.length>1?'s':''} hors liste (import ancien), à convertir ou à retirer
                   </div>
                   <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
                     {inconnus.map(v=>{
                       const { ids } = normalizeAllergenes([v]);
                       return (
-                        <span key={v} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 6px 4px 10px',border:'1.5px dashed var(--warning-bd)',borderRadius:20,background:'var(--surface)',fontSize:11,color:'var(--warning-text)'}}>
+                        <span key={v} style={{display:'inline-flex',alignItems:'center',gap:6,padding:'4px 6px 4px 10px',border:'1.5px dashed var(--warning-bd)',borderRadius:20,background:'var(--surface)',fontSize: 'var(--t1)',color:'var(--warning-text)'}}>
                           {v}
                           {ids.length > 0 && (
                             <button
                               className="touch-target"
                               onClick={()=>corrigerInconnu(v)}
                               title={`Remplacer par ${ids.map(labelAllergene).join(' + ')}`}
-                              style={{border:'none',background:'none',color:'var(--warning-text)',fontSize:11,fontWeight:700,cursor:'pointer',fontFamily:'var(--font)',padding:'0 4px'}}
+                              style={{border:'none',background:'none',color:'var(--warning-text)',fontSize: 'var(--t1)',fontWeight: 'var(--g3)',cursor:'pointer',fontFamily:'var(--font)',padding:'0 4px'}}
                             >Remplacer par {ids.map(labelAllergene).join(', ')}</button>
                           )}
                           <button
@@ -1063,7 +1063,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                             onClick={()=>retirerInconnu(v)}
                             title="Retirer cette valeur"
                             aria-label={`Retirer ${v}`}
-                            style={{border:'none',background:'none',color:'var(--text2)',fontSize:13,cursor:'pointer',fontFamily:'var(--font)',padding:'0 4px'}}
+                            style={{border:'none',background:'none',color:'var(--text2)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)',padding:'0 4px'}}
                           >×</button>
                         </span>
                       );
@@ -1086,12 +1086,12 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                 </div>
               </div>
               {(fiche?.accords||[]).map((a,i)=>(
-                <div key={i} style={{border:'1px solid var(--border)',borderRadius:8,padding:8,marginBottom:8}}>
+                <div key={i} style={{border:'1px solid var(--border)',borderRadius: 'var(--r)',padding:8,marginBottom:8}}>
                   <div style={{display:'grid',gridTemplateColumns:'auto 1fr 110px 28px',gap:8,alignItems:'center'}}>
-                    <span style={{fontSize:12,color:'var(--text2)'}}>{accordLabel(a.type)}</span>
+                    <span style={{fontSize: 'var(--t1)',color:'var(--text2)'}}>{accordLabel(a.type)}</span>
                     <input style={fss.fInput} placeholder="Nom (référence précise)" value={a.nom} onChange={e=>updateAccord(i,'nom',e.target.value)}/>
                     <input style={fss.fInput} placeholder="Région" value={a.region} onChange={e=>updateAccord(i,'region',e.target.value)}/>
-                    <button style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize:14}} onClick={()=>removeAccord(i)} aria-label="Retirer l'accord">×</button>
+                    <button style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize: 'var(--t2)'}} onClick={()=>removeAccord(i)} aria-label="Retirer l'accord">×</button>
                   </div>
                   <div style={{display:'grid',gridTemplateColumns:'130px 1fr 1fr',gap:8,marginTop:6}}>
                     {/* Changer de famille sans devoir supprimer puis recréer. */}
@@ -1114,7 +1114,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                 value={(fiche?.accordsGeneraux||[]).join('\n')}
                 onChange={e=>setFiche(f=>({...f,accordsGeneraux:e.target.value.split('\n')}))}
               />
-              <div style={{fontSize:11,color:'var(--text2)'}}>
+              <div style={{fontSize: 'var(--t1)',color:'var(--text2)'}}>
                 Repli simple pour le service quand la référence précise n'est pas disponible.
               </div>
             </div>
@@ -1158,9 +1158,9 @@ const BulkCartesModal = ({ cartes, count, busy, onApply, onClose }) => {
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 12px', minHeight: 36,
                       border: '1.5px solid transparent', borderRadius: 20,
-                      background: checked ? 'var(--accent-light)' : 'var(--surface)',
+                      background: checked ? 'var(--selection)' : 'var(--surface)',
                       color: checked ? 'var(--accent)' : 'var(--text2)',
-                      fontSize: 12, cursor: 'pointer', fontWeight: checked ? 700 : 400,
+                      fontSize: 'var(--t1)', cursor: 'pointer', fontWeight: checked ? 700 : 400,
                     }}>
                     <input type="checkbox" checked={checked} onChange={() => toggle(c.id)} />
                     {c.nom}
@@ -1177,11 +1177,11 @@ const BulkCartesModal = ({ cartes, count, busy, onApply, onClose }) => {
                 { id: 'add', titre: 'Ajouter', aide: 'Les cartes déjà rattachées sont conservées.' },
                 { id: 'replace', titre: 'Remplacer', aide: 'Les cartes actuelles des fiches sont écrasées.' },
               ].map(o => (
-                <label key={o.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 13, color: 'var(--text)' }}>
+                <label key={o.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer', fontSize: 'var(--t2)', color: 'var(--text)' }}>
                   <input type="radio" name="bulk-cartes-mode" checked={mode === o.id} onChange={() => setMode(o.id)} style={{ marginTop: 2 }} />
                   <span>
                     {o.titre}
-                    <span style={{ display: 'block', fontSize: 11, color: 'var(--text2)', lineHeight: 1.3 }}>{o.aide}</span>
+                    <span style={{ display: 'block', fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.3 }}>{o.aide}</span>
                   </span>
                 </label>
               ))}
@@ -1189,7 +1189,7 @@ const BulkCartesModal = ({ cartes, count, busy, onApply, onClose }) => {
           </div>
 
           {mode === 'replace' && ids.length === 0 && (
-            <div style={{ marginTop: 12, ...encadreStyle('alerte'), fontSize: 12 }}>
+            <div style={{ marginTop: 12, ...encadreStyle('alerte'), fontSize: 'var(--t1)' }}>
               Aucune carte cochée : les fiches seront retirées de toutes leurs cartes et ne resteront visibles que dans « Toutes ».
             </div>
           )}
@@ -1214,9 +1214,9 @@ const fss = {
   toolbar:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:10,flexWrap:'wrap'},
   // Une seule ligne : loupe + onglets de catégories qui coulissent.
   left:{display:'flex',alignItems:'center',gap:8,minWidth:0,maxWidth:'100%'},
-  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
-  aiBtn:{padding:'8px 16px',background:'var(--ai-bg-soft)',color:'var(--ai-text)',border:'1px solid var(--ai-bd)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
-  selectBtn:{padding:'8px 16px',background:'var(--surface)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  addBtn:{padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  aiBtn:{padding:'8px 16px',background:'var(--ai-bg-soft)',color:'var(--ai-text)',border:'1px solid var(--ai-bd)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  selectBtn:{padding:'8px 16px',background: 'var(--btn-fond)',color: 'var(--btn-texte)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   // Liste et fiche en vitrine : vignettes, héros, sections et accords vivent
   // dans src/components/fiches/fiches.css (classes .fv), hors de portée de la
   // règle « Plus de carrés » qui aplatit les blocs posés en style inline.
@@ -1226,21 +1226,21 @@ const fss = {
   detailBarre:{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
   // 44 px au toucher comme à la souris, comme le Retour des écrans de tâche.
   retourBtn:{minHeight:44,flexShrink:0},
-  editBtn:{padding:'6px 14px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,fontSize:12,fontWeight:500,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{padding:'6px 14px',background: 'var(--danger-bg-soft)',border: '1px solid transparent',borderRadius:7,fontSize:12,fontWeight:500,color:'var(--danger-strong)',cursor:'pointer',fontFamily:'var(--font)'},
+  editBtn:{padding:'6px 14px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color: 'var(--btn-texte)',cursor:'pointer',fontFamily:'var(--font)'},
+  deleteBtn:{padding:'6px 14px',background: 'var(--danger-bg-soft)',border: '1px solid transparent',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color:'var(--danger-strong)',cursor:'pointer',fontFamily:'var(--font)'},
   // Form modal
   overlay:{position:'fixed',inset:0,background:'rgba(0,0,0,0.45)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:1000,padding:16},
-  modal:{background:'var(--surface)',borderRadius:14,maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'},
+  modal:{background:'var(--surface)',borderRadius: 'var(--r)',maxWidth:'100%',boxShadow:'0 20px 60px rgba(0,0,0,0.2)',maxHeight:'90vh',overflowY:'auto'},
   modalHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--surface)',zIndex:2},
-  modalTitle:{fontWeight:700,fontSize:16,fontFamily:'var(--font-serif)',color:'var(--text)'},
-  closeBtn:{background:'none',border:'none',fontSize:18,cursor:'pointer',color:'var(--text2)'},
+  modalTitle:{fontWeight: 'var(--g3)',fontSize: 'var(--t3)',fontFamily: 'var(--font)',color:'var(--text)'},
+  closeBtn:{background:'none',border:'none',fontSize: 'var(--t3)',cursor:'pointer',color:'var(--text2)'},
   modalBody:{padding:'20px 22px'},
   field:{display:'flex',flexDirection:'column',gap:6},
-  fLabel:{fontSize:11,fontWeight:500,color:'var(--text2)',textTransform:'uppercase',letterSpacing:0.4},
-  fInput:{padding:'9px 12px',border:'1px solid var(--border)',borderRadius:8,fontSize:13,color:'var(--text)',background:'var(--bg)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'},
-  smallBtn:{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:6,fontSize:11,fontWeight:500,color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)'},
-  cancelBtn:{padding:'8px 16px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text2)',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
-  saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius:8,fontSize:13,fontWeight:500,cursor:'pointer',fontFamily:'var(--font)'},
+  fLabel:{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color:'var(--text2)'},
+  fInput:{padding:'9px 12px',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',color:'var(--text)',background: 'var(--surface)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'},
+  smallBtn:{padding:'4px 10px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color: 'var(--btn-texte)',cursor:'pointer',fontFamily:'var(--font)'},
+  cancelBtn:{padding:'8px 16px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
 };
 
 export default FichesSalle;

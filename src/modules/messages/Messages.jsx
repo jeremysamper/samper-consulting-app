@@ -30,7 +30,7 @@ import { MAX_LENGTH, buildAnnuaire, buildContacts, formatListDate, groupConversa
 import LignePersonne from './LignePersonne.jsx';
 import FilConversation from './FilConversation.jsx';
 import FicheContact from './FicheContact.jsx';
-import { deposerVocal, useEnregistreur } from './useEnregistreur.js';
+import { useEnregistreur } from './useEnregistreur.js';
 import { cibleDe, sm } from './messagerie.styles.js';
 
 const VUES = [
@@ -75,7 +75,6 @@ const Messages = ({ user, isActive = true }) => {
   const cadreRef = React.useRef(null);
   const titreRef = React.useRef(null);
   const rechercheOuverte = useRechercheOuverte(titreRef);
-  const enregistreur = useEnregistreur();
 
   const filOuvert = vue === 'discussions' && Boolean(selectedId);
   const ficheOuverte = vue === 'contacts' && Boolean(ficheId);
@@ -83,11 +82,11 @@ const Messages = ({ user, isActive = true }) => {
   // Un vocal en cours appartient au fil où il a commencé : il est abandonné,
   // sans rien laisser, dès que ce fil n'est plus affiché (autre personne,
   // autre vue, page masquée).
-  const { pour: vocalPour, abandonner: abandonnerVocal } = enregistreur;
-  React.useEffect(() => {
-    if (vocalPour == null) return;
-    if (!isActive || !filOuvert || selectedId !== vocalPour) abandonnerVocal();
-  }, [isActive, filOuvert, selectedId, vocalPour, abandonnerVocal]);
+  const enregistreur = useEnregistreur({
+    filAffiche: isActive && filOuvert ? selectedId : null,
+    expediteur: user.id,
+    onEnvoye: (sent) => setMessages((prev) => [sent, ...prev.filter((m) => m.id !== sent.id)]),
+  });
 
   // Téléphone : le fil et la fiche sont des calques, « retour » ramène à la
   // liste. Une seule entrée à la fois : « Écrire » depuis la fiche referme la
@@ -205,15 +204,6 @@ const Messages = ({ user, isActive = true }) => {
     enregistreur.demarrer(id);
   };
 
-  const envoyerVocal = () => {
-    const destinataire = enregistreur.pour;
-    if (!destinataire) return;
-    enregistreur.envoyer(async ({ blob, duree }) => {
-      const sent = await deposerVocal(legacySB, { destinataire, expediteur: user.id, blob, duree });
-      setMessages((prev) => [sent, ...prev.filter((m) => m.id !== sent.id)]);
-    }).catch((err) => notifyLegacy('Message vocal non envoyé. ' + messageErreur(err, 'messages'), 'error'));
-  };
-
   const remove = async (msg) => {
     if (!confirmLegacy('Supprimer ce message ? Il disparaîtra aussi chez votre interlocuteur.')) return;
     try {
@@ -278,7 +268,6 @@ const Messages = ({ user, isActive = true }) => {
         cible={cible}
         enregistreur={enregistreur}
         onVocal={() => vocal(selectedId)}
-        onEnvoyerVocal={envoyerVocal}
       />
     </div>
   );

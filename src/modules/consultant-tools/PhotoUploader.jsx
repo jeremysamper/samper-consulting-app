@@ -108,7 +108,7 @@ export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 40, padding: '8px 14px', background: 'var(--surface2)', border: 'none', borderRadius: 8, color: 'var(--accent)', fontSize: 13, fontWeight: 500, cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 40, padding: '8px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}
         >
           <Camera size={15} aria-hidden="true" />
           {busy ? (busyLabel || 'Envoi…') : 'Ajouter une photo'}
@@ -120,11 +120,11 @@ export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100
 
   return (
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      <img src={photoUrl} alt="" style={{ width: size, height: size, objectFit: 'cover', borderRadius: 8 }}/>
+      <img src={photoUrl} alt="" style={{ width: size, height: size, objectFit: 'cover', borderRadius: 'var(--r)' }}/>
       <div style={{ position: 'absolute', bottom: 4, right: 4, display: 'flex', gap: 4 }}>
         <button
           type="button"
-          style={{ minWidth: 26, height: 26, padding: busy ? '0 6px' : 0, borderRadius: 6, background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: busy ? 'wait' : 'pointer', fontSize: 11, whiteSpace: 'nowrap' }}
+          style={{ minWidth: 26, height: 26, padding: busy ? '0 6px' : 0, borderRadius: 'var(--r)', background: 'rgba(0,0,0,0.6)', color: '#fff', border: 'none', cursor: busy ? 'wait' : 'pointer', fontSize: 'var(--t1)', whiteSpace: 'nowrap' }}
           title={photoUrl ? 'Changer la photo' : 'Ajouter une photo'}
           onClick={() => fileRef.current?.click()}
           disabled={busy}
@@ -132,7 +132,7 @@ export default function PhotoUploader({ photoUrl, onUpload, onRemove, size = 100
         {photoUrl && !busy && (
           <button
             type="button"
-            style={{ width: 26, height: 26, borderRadius: 6, background: 'rgba(220,38,38,0.85)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 12 }}
+            style={{ width: 26, height: 26, borderRadius: 'var(--r)', background: 'rgba(220,38,38,0.85)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 'var(--t1)' }}
             title="Retirer la photo"
             aria-label="Retirer la photo"
             onClick={onRemove}

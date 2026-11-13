@@ -23,20 +23,20 @@
   grid-template-columns: minmax(0, 1fr);
   padding: 18px 16px;
 }
-.tdb-hero-salut { font-size: 28px; }
+.tdb-hero-salut { font-size: var(--t6); }
 .tdb-reperes {
   display: grid;
   gap: 8px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-items: start;
 }
-.tdb-repere-valeur { font-size: 30px; }
+.tdb-repere-valeur { font-size: var(--t6); }
 .tdb-repere-icone { display: none; }
 
 /* ── Sections ─────────────────────────────────────────────────────────────── */
-.tdb-titre { font-size: 20px; }
-.tdb-citation { font-size: 17px; }
-.tdb-chiffre-valeur { font-size: 28px; }
+.tdb-titre { font-size: var(--t4); }
+.tdb-citation { font-size: var(--t3); }
+.tdb-chiffre-valeur { font-size: var(--t6); }
 
 /* Rangée « maintenant » : votre service et à faire | qui travaille. */
 .tdb-haut {
@@ -110,7 +110,7 @@
 }
 /* Sous-titres (Midi, Soir, Réservations, Groupes...) sur un bandeau teinté. */
 .tdb-sous-tete {
-  background: var(--accent-light);
+  background: var(--selection);
   border-radius: var(--r-sm);
   padding: 0 4px 0 10px;
   margin-bottom: 6px;
@@ -131,13 +131,9 @@
 @container tdb (min-width: 560px) {
   .tdb-panneau { padding: 18px 20px 14px; }
   .tdb-hero { padding: 22px 26px; gap: 18px; }
-  .tdb-hero-salut { font-size: 34px; }
-  .tdb-repere-valeur { font-size: 40px; }
   .tdb-repere-icone { display: block; margin-bottom: 4px; }
   .tdb-reperes { gap: 16px; }
-  .tdb-titre { font-size: 22px; }
-  .tdb-citation { font-size: 19px; }
-  .tdb-chiffre-valeur { font-size: 34px; }
+  .tdb-citation { font-size: var(--t4); }
 }
 @container tdb (min-width: 760px) {
   .tdb-haut { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 32px; }
@@ -204,15 +200,15 @@
   background: transparent;
   color: var(--text2);
   font-family: var(--font);
-  font-size: 15px;
-  font-weight: 500;
+  font-size: var(--t2);
+  font-weight: var(--g2);
   white-space: nowrap;
   cursor: pointer;
 }
 .tdb .tdb-onglet.is-actif {
-  color: var(--accent);
-  font-weight: 600;
-  box-shadow: inset 0 -2px 0 var(--accent);
+  color: var(--text);
+  font-weight: var(--g3);
+  box-shadow: inset 0 -2px 0 var(--onglet);
 }
 
 /* ── Interactions ─────────────────────────────────────────────────────────── */

@@ -133,6 +133,6 @@ const s = {
   plus: {
     justifySelf: 'start', alignSelf: 'start', minHeight: 44, padding: '0 6px', marginTop: -6, cursor: 'pointer',
     borderRadius: 'var(--r-sm)',
-    fontFamily: 'var(--font)', fontSize: 14, fontWeight: 600, color: 'var(--accent)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--lien)',
   },
 };

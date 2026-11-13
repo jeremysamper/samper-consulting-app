@@ -2,21 +2,36 @@
 // Edge Function « notifications » : notifications push (Web Push) sur les
 // téléphones et tablettes de l'équipe.
 //
-// Deux événements :
+// Trois événements :
 // - une nouvelle réservation de table en ligne. La base appelle cette fonction
 //   elle-même (déclencheur push_nouvelle_resa sur reservations, migration
 //   20261002_push_notifications) : peu importe le chemin qui a créé la
 //   réservation, la notification part ;
 // - une nouvelle alerte (alert_instances), à la fin de chaque passage de
-//   alerts-evaluator (migration 20261027_alertes_notification_push).
+//   alerts-evaluator (migration 20261027_alertes_notification_push) ;
+// - des plats de la caisse cochés au KDS. La base appelle cette fonction à
+//   chaque ligne qui passe à prêt (déclencheur trg_caisse_ligne_pret_avis,
+//   migration 20261112_caisse_prets_avis) ; les règles sont dans platsPrets.js.
 //
 // Actions (POST JSON { action, ... }) :
 //   cle            session  → { cle } : clé publique VAPID, pour abonner un
 //                             appareil (pushManager.subscribe). Les clés sont
 //                             créées au premier appel et ne quittent jamais
 //                             la base (push_config, sans politique RLS).
-//   test           session  → notification d'essai sur les appareils abonnés
-//                             de l'utilisateur appelant
+//   test           session  → { page? } : notification d'essai sur les
+//                             appareils abonnés de l'utilisateur appelant.
+//                             page : où mène le tap, dans la liste fermée
+//                             previsions (défaut), caisse.
+//   plats_prets    interne  → { ticketId, suite, secret, dryRun? } : prévient
+//                             la personne qui a envoyé les plats d'un ticket
+//                             et d'une suite que la cuisine vient de cocher.
+//                             Attend la fenêtre de regroupement, prend les
+//                             avis a_envoyer du ticket et de la suite (une
+//                             seule exécution les obtient), relit lignes et
+//                             ticket, envoie aux appareils du destinataire
+//                             abonnés à l'établissement, solde les avis.
+//                             dryRun : rien n'est pris, envoyé ni écrit ; rend
+//                             l'aperçu des avis en attente.
 //   nouvelle_resa  interne  → { reservationId, secret, dryRun? } : notifie les
 //                             appareils abonnés à l'établissement DE LA
 //                             RÉSERVATION dont la personne voit Réservations
@@ -41,11 +56,13 @@
 // push déclare expiré (404 / 410) est supprimé.
 //
 // Sécurité : verify_jwt=false (l'appel de la base n'a pas de session) ; cle et
-// test vérifient eux-mêmes le JWT, nouvelle_resa et alertes le secret interne.
+// test vérifient eux-mêmes le JWT, nouvelle_resa, alertes et plats_prets le
+// secret interne.
 // ================================================================
 import { createClient, type SupabaseClient } from 'jsr:@supabase/supabase-js@2';
 import * as webpush from 'jsr:@negrel/webpush@0.5.0';
 import { appliquerCors } from '../_shared/cors.ts';
+import { sujetPush, traiterPlatsPrets, VIBRATION } from './platsPrets.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -90,11 +107,19 @@ async function clesVapid(sb: Admin): Promise<{ cles: CryptoKeyPair; contact: str
 }
 
 type Abonnement = { id: string; user_id: string; endpoint: string; p256dh: string; auth: string };
-type Message = { titre: string; corps: string; url: string; tag: string };
+// vibration : motif lu par push-sw.js quand il est présent (plats prêts).
+// groupe : push-sw.js ferme les notifications déjà affichées du même groupe
+// (les envois d'une rafale de plats prêts).
+type Message = { titre: string; corps: string; url: string; tag: string; vibration?: number[]; groupe?: string };
+
+// Tâches de fond du runtime Supabase : la fonction répond, la tâche continue.
+const runtime = (globalThis as unknown as { EdgeRuntime?: { waitUntil(p: Promise<unknown>): void } }).EdgeRuntime;
 
 // Envoie le message à chaque abonnement ; supprime ceux que le service de push
 // déclare expirés. Ne lève jamais : renvoie le décompte.
-async function envoyer(sb: Admin, abonnements: Abonnement[], message: Message) {
+// dureeDeVie (secondes) : au-delà, le service de push ne remet plus le message
+// à un téléphone resté injoignable. 24 h par défaut.
+async function envoyer(sb: Admin, abonnements: Abonnement[], message: Message, dureeDeVie = 24 * 3600) {
   if (!abonnements.length) return { envoyes: 0, echecs: 0, expires: 0 };
   const vapid = await clesVapid(sb);
   if (!vapid) return { envoyes: 0, echecs: abonnements.length, expires: 0 };
@@ -104,7 +129,7 @@ async function envoyer(sb: Admin, abonnements: Abonnement[], message: Message) {
   await Promise.all(abonnements.map(async (a) => {
     try {
       await serveur.subscribe({ endpoint: a.endpoint, keys: { p256dh: a.p256dh, auth: a.auth } })
-        .pushTextMessage(charge, { urgency: webpush.Urgency.High, ttl: 24 * 3600, topic: message.tag.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 32) });
+        .pushTextMessage(charge, { urgency: webpush.Urgency.High, ttl: dureeDeVie, topic: sujetPush(message.tag) });
       envoyes++;
       await sb.from('push_abonnements').update({ dernier_envoi_at: new Date().toISOString() }).eq('id', a.id);
     } catch (e) {
@@ -303,6 +328,15 @@ async function envoyerAlertes(sb: Admin, dryRun: boolean, instanceIds: string[] 
   return { ...bilan, dryRun, apercu };
 }
 
+// ── Plats prêts (caisse) ──────────────────────────────────────────
+// Le déroulé (regroupement, prise, relecture, envoi, solde) est dans
+// platsPrets.js, sans dépendance à Deno : il s'essaie sous Node sur une base
+// en mémoire. Ici seulement le branchement sur la base et sur l'envoi.
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Où mène le tap de la notification d'essai : liste fermée.
+const PAGES_ESSAI = ['previsions', 'caisse'];
+
 Deno.serve(async (req: Request) => appliquerCors(req, await traiter(req)));
 
 async function traiter(req: Request): Promise<Response> {
@@ -357,6 +391,34 @@ async function traiter(req: Request): Promise<Response> {
     }
   }
 
+  // ── Appel de la base : des plats de la caisse cochés au KDS ──
+  if (action === 'plats_prets') {
+    const cfg = await lireConfig(sb);
+    if (!cfg || !body.secret || String(body.secret) !== cfg.secret_interne) return json({ error: 'Non autorisé.' }, 401);
+    const ticketId = String(body.ticketId || '');
+    const suite = Number(body.suite);
+    if (!UUID.test(ticketId) || !Number.isInteger(suite) || suite < 1 || suite > 9) {
+      return json({ error: 'Ticket ou suite invalide.' }, 400);
+    }
+    try {
+      // Les rappels de la rafale partent en tâche de fond : la base, qui
+      // appelle par pg_net avec un délai de 20 s, a sa réponse après le
+      // premier envoi.
+      const res = await traiterPlatsPrets({
+        sb,
+        envoyer: (appareils: Abonnement[], message: Message, dureeDeVie: number) => envoyer(sb, appareils, message, dureeDeVie),
+        enArrierePlan: runtime
+          ? (p: Promise<unknown>) => runtime.waitUntil(p.then((r) => console.log('[notifications] plats_prets rafale', ticketId, suite, JSON.stringify(r))))
+          : undefined,
+      }, ticketId, suite, body.dryRun === true);
+      if (!res.dryRun && res.pris) console.log('[notifications] plats_prets', ticketId, suite, JSON.stringify({ ...res, apercu: undefined }));
+      return json({ ok: true, ...res });
+    } catch (e) {
+      console.error('[notifications] plats_prets', e instanceof Error ? e.message : String(e));
+      return json({ error: 'Lecture des avis impossible.' }, 500);
+    }
+  }
+
   // ── Actions de l'équipe : session obligatoire ──
   const qui = await appelant(req, sb);
   if (!qui) return json({ error: 'Session invalide.' }, 401);
@@ -372,12 +434,23 @@ async function traiter(req: Request): Promise<Response> {
       .select('id, user_id, endpoint, p256dh, auth').eq('user_id', qui.uid);
     const liste = (abos || []) as Abonnement[];
     if (!liste.length) return json({ error: 'Aucun appareil abonné pour ce compte.' }, 400);
-    const res = await envoyer(sb, liste, {
-      titre: 'Notifications activées',
-      corps: 'Vous serez prévenu ici des réservations en ligne et des alertes qui vous sont destinées.',
-      url: '/?page=previsions',
-      tag: 'test',
-    });
+    // L'essai lancé depuis la caisse (personne sans Réservations) y ramène et
+    // porte le motif de vibration des plats prêts. Défaut inchangé.
+    const page = PAGES_ESSAI.includes(String(body.page)) ? String(body.page) : 'previsions';
+    const res = await envoyer(sb, liste, page === 'caisse'
+      ? {
+        titre: 'Notifications activées',
+        corps: 'Vous serez prévenu ici quand vos plats sont prêts, et des alertes qui vous sont destinées.',
+        url: '/?page=caisse',
+        tag: 'test',
+        vibration: VIBRATION,
+      }
+      : {
+        titre: 'Notifications activées',
+        corps: 'Vous serez prévenu ici des réservations en ligne et des alertes qui vous sont destinées.',
+        url: '/?page=previsions',
+        tag: 'test',
+      });
     return json({ ok: true, ...res });
   }
 

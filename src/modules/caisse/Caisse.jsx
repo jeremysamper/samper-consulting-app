@@ -16,6 +16,7 @@ import PlanTables, { etatTicket } from './PlanTables.jsx';
 import TicketEcran from './TicketEcran.jsx';
 import QuiEstLa from './QuiEstLa.jsx';
 import BandeauTest from './BandeauTest.jsx';
+import InvitationAvisPret from './InvitationAvisPret.jsx';
 import Historique from './Historique.jsx';
 import Cloture from './Cloture.jsx';
 import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
@@ -586,6 +587,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             </span>
           </div>
         )}
+        {/* Hors mode test : un poste en essai ne s'abonne à rien. */}
+        {!modeTest && <InvitationAvisPret user={user} etablissement={etablissement} />}
         <AccueilModule tuiles={tuiles} />
         {(peutHabiller || (peutActiverTest && !modeTest)) && (
           <div style={st.reglagesAccueil}>

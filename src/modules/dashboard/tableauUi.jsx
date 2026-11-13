@@ -13,7 +13,7 @@ export const TONS = {
   warning: { fond: 'var(--warning-bg-soft)', texte: 'var(--warning-text)', barre: 'var(--warning-strong)', bord: 'var(--warning-bd)' },
   info:    { fond: 'var(--info-bg-soft)',    texte: 'var(--info-text)',    barre: 'var(--info-strong)',    bord: 'var(--info-bd)' },
   success: { fond: 'var(--success-bg-soft)', texte: 'var(--success-text)', barre: 'var(--success-strong)', bord: 'var(--success-bd)' },
-  neutre:  { fond: 'var(--surface2)',        texte: 'var(--text2)',        barre: 'var(--border2)',        bord: 'var(--border)' },
+  neutre:  { fond: 'var(--selection)',        texte: 'var(--text2)',        barre: 'var(--border2)',        bord: 'var(--border)' },
 };
 
 // Carte de section : titre et sous-titre, sans pastille d'icône (la pastille
@@ -30,7 +30,7 @@ export function Carte({ titre, sousTitre, action, children, style, corpsStyle, t
         <header style={t.carteTete}>
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
             {titre && <Titre style={niveau === 3 ? t.carteTitreSecondaire : t.carteTitre}>{titre}</Titre>}
-            {sousTitre && <div style={{ ...t.carteSousTitre, ...(alerte ? { color: TONS[ton].texte, fontWeight: 500 } : null) }}>{sousTitre}</div>}
+            {sousTitre && <div style={{ ...t.carteSousTitre, ...(alerte ? { color: TONS[ton].texte, fontWeight: 'var(--g2)' } : null) }}>{sousTitre}</div>}
           </div>
           {action}
         </header>
@@ -55,7 +55,7 @@ export function Avatar({ userId, taille = 30 }) {
       style={{
         width: taille, height: taille, borderRadius: taille / 2, flexShrink: 0,
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        background: 'var(--surface2)', color: 'var(--text2)', fontSize: Math.round(taille * 0.38), fontWeight: 700, letterSpacing: 0.2,
+        background: 'var(--selection)', color: 'var(--text2)', fontSize: Math.round(taille * 0.38), fontWeight: 'var(--g3)', letterSpacing: 0.2,
       }}
       data-no-translate
     >
@@ -79,7 +79,7 @@ export function SousTitre({ children, droite }) {
   return (
     <div style={t.sousTitre}>
       <span>{children}</span>
-      {droite && <span style={{ fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{droite}</span>}
+      {droite && <span style={{ fontWeight: 'var(--g2)', fontVariantNumeric: 'tabular-nums' }}>{droite}</span>}
     </div>
   );
 }
@@ -91,25 +91,25 @@ export const t = {
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
   },
   carteTete: { display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
-  carteTitre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 19, lineHeight: 1.2, color: 'var(--text)' },
-  carteTitreSecondaire: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 16, lineHeight: 1.25, color: 'var(--text)' },
-  carteSousTitre: { fontSize: 12, color: 'var(--text2)', marginTop: 2 },
+  carteTitre: { margin: 0, fontFamily: 'var(--font)', fontWeight: 'var(--g3)', fontSize: 'var(--t4)', lineHeight: 1.2, color: 'var(--text)' },
+  carteTitreSecondaire: { margin: 0, fontFamily: 'var(--font)', fontWeight: 'var(--g3)', fontSize: 'var(--t3)', lineHeight: 1.25, color: 'var(--text)' },
+  carteSousTitre: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
   puce: {
     display: 'inline-flex', alignItems: 'center', gap: 4, flexShrink: 0, whiteSpace: 'nowrap',
-    fontSize: 12, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '2px 7px', borderRadius: 'var(--r)',
   },
   ligne: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minWidth: 0, boxSizing: 'border-box',
     padding: '8px 10px', minHeight: 48, borderRadius: 'var(--r-sm)', textAlign: 'left',
-    background: 'transparent', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14,
+    background: 'transparent', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)',
   },
   ligneBouton: { cursor: 'pointer', border: 'none' },
   sousTitre: {
     display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline',
-    fontSize: 13, fontWeight: 500, color: 'var(--text2)',
+    fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text2)',
     margin: '16px 0 6px',
   },
-  texte2: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.45 },
-  nom: { display: 'block', fontSize: 14, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  vide: { fontSize: 13, color: 'var(--text2)', padding: '6px 2px' },
+  texte2: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.45 },
+  nom: { display: 'block', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  vide: { fontSize: 'var(--t2)', color: 'var(--text2)', padding: '6px 2px' },
 };

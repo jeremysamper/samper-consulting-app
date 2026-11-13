@@ -618,8 +618,8 @@ const Factures = ({ user, etablissement }) => {
   if (!isConsultant) {
     return (
       <div style={{ padding: 40, textAlign: 'center' }}>
-        <div style={{ fontSize: 16, fontWeight: 700, marginTop: 10 }}>Accès consultant uniquement</div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 6 }}>Le module Factures est réservé au consultant.</div>
+        <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', marginTop: 10 }}>Accès consultant uniquement</div>
+        <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 6 }}>Le module Factures est réservé au consultant.</div>
       </div>
     );
   }
@@ -731,7 +731,7 @@ const Factures = ({ user, etablissement }) => {
               <span>Textes du document</span>
               {textsCustomized && <span style={fac.badge}>Personnalisés</span>}
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
               Émetteur, bloc client, coordonnées de paiement, mention TVA et signature sont
               enregistrés pour <strong>{selectedEtabNom}</strong>. Chaque client peut avoir ses propres textes.
             </div>
@@ -749,12 +749,12 @@ const Factures = ({ user, etablissement }) => {
             </div>
 
             {!donneesQr ? (
-              <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
                 Le PDF sort sans récépissé ni section paiement. Le client saisit l'IBAN à la main pour payer.
               </div>
             ) : (
               <>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
                   Récépissé et section paiement ajoutés au bas de la page, générés depuis le montant,
                   le numéro de facture et le bloc client.
                 </div>
@@ -806,7 +806,7 @@ const Factures = ({ user, etablissement }) => {
           <div style={fac.section}>
             <div style={{ ...fac.sectionTitle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>Notification client</span>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 11, color: 'var(--text2)', fontWeight: 500 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g2)' }}>
                 <input
                   type="checkbox"
                   checked={emailEnabled}
@@ -816,7 +816,7 @@ const Factures = ({ user, etablissement }) => {
                 {emailEnabled ? 'Activée' : 'Désactivée'}
               </label>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
               {emailEnabled
                 ? 'Après envoi dans Documents, un brouillon prérempli s\'ouvre directement dans Gmail (objet, destinataire et message).'
                 : 'Aucune notification ne sera proposée après l\'envoi dans Documents.'}
@@ -869,8 +869,8 @@ const Factures = ({ user, etablissement }) => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {recentFactures.map(f => (
                   <div key={f.id} style={fac.recentRow}>
-                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 12, fontWeight: 600 }}>{f.nom}</span>
-                    <span style={{ fontSize: 10, color: 'var(--text2)' }}>{new Date(f.createdAt).toLocaleDateString('fr-CH', { day: '2-digit', month: 'short' })}</span>
+                    <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 'var(--t1)', fontWeight: 'var(--g3)' }}>{f.nom}</span>
+                    <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{new Date(f.createdAt).toLocaleDateString('fr-CH', { day: '2-digit', month: 'short' })}</span>
                   </div>
                 ))}
               </div>
@@ -888,12 +888,12 @@ const Factures = ({ user, etablissement }) => {
               <QrApercu payload={payloadSpc(donneesQr)} />
               <div style={{ minWidth: 0 }}>
                 <div style={fac.previewLabel}>Swiss QR Code</div>
-                <div style={{ fontSize: 12, color: 'var(--text)', marginTop: 6, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text)', marginTop: 6, lineHeight: 1.5 }}>
                   {donneesQr.montant != null
                     ? `${donneesQr.devise} ${montantLisible(donneesQr.montant)}`
                     : 'Montant laissé libre'}
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 6, lineHeight: 1.5 }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 6, lineHeight: 1.5 }}>
                   Scannez-le avec votre application bancaire pour vérifier le compte, le montant et
                   la référence avant d'envoyer la facture.
                 </div>
@@ -913,8 +913,8 @@ const Factures = ({ user, etablissement }) => {
           <div className="modal-full" style={{ ...fac.modal, width: 640, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column' }}>
             <div style={fac.modalHeader}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' }}>Notifier le client</div>
-                <div style={{ fontSize: 11, color: 'var(--text2)', marginTop: 2 }}>
+                <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t3)', fontFamily: 'var(--font)' }}>Notifier le client</div>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
                   Facture n° {form.numero} pour <strong>{emailDraft.etabNom || 'client'}</strong>
                 </div>
               </div>
@@ -987,8 +987,8 @@ const Factures = ({ user, etablissement }) => {
               <div style={attachmentSaved ? fac.attachBoxDone : fac.attachBox}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 180 }}>
-                    <div style={{ fontSize: 12, fontWeight: 700 }}>Pièce jointe</div>
-                    <div style={{ fontSize: 11, opacity: 0.85, wordBreak: 'break-all' }}>{emailDraft.fileName}</div>
+                    <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)' }}>Pièce jointe</div>
+                    <div style={{ fontSize: 'var(--t1)', opacity: 0.85, wordBreak: 'break-all' }}>{emailDraft.fileName}</div>
                   </div>
                   <button
                     style={fac.attachBtn}
@@ -1007,7 +1007,7 @@ const Factures = ({ user, etablissement }) => {
                     {attachmentSaved ? 'Téléchargé' : 'Récupérer le PDF'}
                   </button>
                 </div>
-                <div style={{ fontSize: 11, marginTop: 8, lineHeight: 1.5, opacity: 0.9 }}>
+                <div style={{ fontSize: 'var(--t1)', marginTop: 8, lineHeight: 1.5, opacity: 0.9 }}>
                   {attachmentSaved
                     ? 'Le PDF est dans vos téléchargements : glissez-le dans la fenêtre Gmail avant d\'envoyer.'
                     : 'La facture est déjà classée dans Documents. Récupérez-la ici pour la joindre au message en une fois.'}
@@ -1258,21 +1258,21 @@ function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 const fac = {
   root: { display: 'flex', flexDirection: 'column', gap: 16 },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
-  title: { fontSize: 24, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)', margin: 0 },
-  sub: { fontSize: 13, color: 'var(--text2)', marginTop: 4 },
+  title: { fontSize: 'var(--t5)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)', margin: 0 },
+  sub: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 4 },
 
   // min(380px, 100%) : 2 colonnes sur desktop, empilement naturel sur mobile
   layout: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: 18 },
 
   formCol: { display: 'flex', flexDirection: 'column', gap: 26 },
   previewCol: { display: 'flex', flexDirection: 'column', gap: 8 },
-  previewLabel: { fontSize: 11, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 },
+  previewLabel: { fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g3)' },
 
   section: { padding: 0 },
-  sectionTitle: { fontSize: 16, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', marginBottom: 8 },
+  sectionTitle: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', marginBottom: 8 },
 
-  label: { display: 'block', fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4, marginTop: 10 },
-  input: { width: '100%', padding: '8px 11px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
+  label: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 4, marginTop: 10 },
+  input: { width: '100%', padding: '8px 11px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' },
   // minmax(0,1fr) : sans le minimum 0, la largeur intrinsèque des input[type=date]
   // élargit les colonnes et fait déborder la 2e date du cadre sur mobile.
   row2: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 },
@@ -1281,42 +1281,42 @@ const fac = {
   datesRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 },
 
   actions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
-  primaryBtn: { flex: 1, padding: '12px 18px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 200 },
-  ghostBtn: { flex: 1, padding: '12px 18px', background: 'var(--surface)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 180 },
+  primaryBtn: { flex: 1, padding: '12px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 200 },
+  ghostBtn: { flex: 1, padding: '12px 18px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 180 },
 
-  successBanner: { background: 'var(--success-bg)', border: '1px solid var(--success-bd)', color: 'var(--success-text)', padding: '10px 14px', borderRadius: 8, fontSize: 13, fontWeight: 600 },
+  successBanner: { background: 'var(--success-bg)', border: '1px solid var(--success-bd)', color: 'var(--success-text)', padding: '10px 14px', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)' },
 
-  smallBtn: { padding: '7px 12px', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 7, fontSize: 12, cursor: 'pointer', color: 'var(--text)', fontFamily: 'var(--font)', fontWeight: 500 },
+  smallBtn: { padding: '7px 12px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontWeight: 'var(--g2)' },
 
   badge: {
-    padding: '2px 8px', borderRadius: 12, background: 'var(--info-bg-soft)',
+    padding: '2px 8px', borderRadius: 'var(--r)', background: 'var(--info-bg-soft)',
     border: '1px solid var(--info-bd)', color: 'var(--info-text)',
-    fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3,
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
     fontFamily: 'var(--font)', whiteSpace: 'nowrap',
   },
 
   badgeOk: {
-    padding: '2px 8px', borderRadius: 12, background: 'var(--success-bg-soft)',
+    padding: '2px 8px', borderRadius: 'var(--r)', background: 'var(--success-bg-soft)',
     border: '1px solid var(--success-bd)', color: 'var(--success-text)',
-    fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3,
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
     fontFamily: 'var(--font)', whiteSpace: 'nowrap',
   },
   badgeWarn: {
-    padding: '2px 8px', borderRadius: 12, background: 'var(--warning-bg)',
+    padding: '2px 8px', borderRadius: 'var(--r)', background: 'var(--warning-bg)',
     border: '1px solid var(--warning-bd)', color: 'var(--warning-text)',
-    fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3,
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
     fontFamily: 'var(--font)', whiteSpace: 'nowrap',
   },
 
-  recentRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: 'var(--bg)', borderRadius: 5 },
+  recentRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: 'var(--bg)', borderRadius: 'var(--r)' },
 
   // ─── QR-facture ───
   qrLignes: { display: 'flex', flexDirection: 'column', gap: 6 },
   // Colonne d'étiquettes fixe, valeur souple : sans minmax(0,1fr) un IBAN long
   // repousserait la colonne et ferait déborder le cadre sur mobile.
   qrLigne: { display: 'grid', gridTemplateColumns: '78px minmax(0, 1fr)', gap: 8, alignItems: 'baseline' },
-  qrLigneLabel: { fontSize: 10, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 },
-  qrLigneVal: { fontSize: 12, color: 'var(--text)', wordBreak: 'break-word' },
+  qrLigneLabel: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
+  qrLigneVal: { fontSize: 'var(--t1)', color: 'var(--text)', wordBreak: 'break-word' },
   qrCard: {
     display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap',
     background: 'var(--surface)', border: '1px solid var(--border)',
@@ -1329,12 +1329,12 @@ const fac = {
     padding: '7px 12px', borderRadius: 18,
     background: 'var(--bg)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    color: 'var(--text)', fontSize: 12, fontWeight: 600,
+    color: 'var(--text)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
     cursor: 'pointer', fontFamily: 'var(--font)',
     transition: 'all 0.15s',
   },
   etabChipActive: {
-    background: 'var(--accent)', borderColor: 'var(--accent)', color: '#fff',
+    background: 'var(--selection)', borderColor: 'var(--onglet)', color: 'var(--text)',
   },
 
   // ─── Modales email ───
@@ -1342,46 +1342,46 @@ const fac = {
   //  donc toutes les clés `fac.modal*` sortaient undefined et les modales
   //  s'affichaient sans mise en forme)
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
-  modal: { background: 'var(--surface)', borderRadius: 12, boxShadow: '0 10px 40px rgba(0,0,0,0.28)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  modal: { background: 'var(--surface)', borderRadius: 'var(--r)', boxShadow: '0 10px 40px rgba(0,0,0,0.28)', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   modalHeader: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexShrink: 0 },
   modalFooter: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0, background: 'var(--surface)' },
-  modalLabel: { fontSize: 11, fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, display: 'block', marginBottom: 4 },
-  modalInput: { width: '100%', padding: '9px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
-  modalPrimaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 600 },
-  modalGhostBtn: { padding: '8px 14px', background: 'var(--bg)', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
-  closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)', lineHeight: 1, flexShrink: 0 },
+  modalLabel: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', display: 'block', marginBottom: 4 },
+  modalInput: { width: '100%', padding: '9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' },
+  modalPrimaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)' },
+  modalGhostBtn: { padding: '8px 14px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)' },
+  closeBtn: { background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)', lineHeight: 1, flexShrink: 0 },
 
   // Destinataire + Cc côte à côte, empilés dès que la modale est étroite
   modalRow2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 12 },
 
   linkBtn: {
     background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-    color: 'var(--accent)', fontFamily: 'var(--font)', fontSize: 11, fontWeight: 600,
+    color: 'var(--lien)', fontFamily: 'var(--font)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
     textDecoration: 'underline', textUnderlineOffset: 2,
   },
 
   noticeWarn: {
     padding: '9px 12px', background: 'var(--warning-bg)', border: '1px solid var(--warning-bd)',
-    color: 'var(--warning-text)', borderRadius: 8, fontSize: 11, lineHeight: 1.5,
+    color: 'var(--warning-text)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', lineHeight: 1.5,
   },
 
   noticeDanger: {
     padding: '9px 12px', background: 'var(--danger-bg-soft)', border: '1px solid var(--danger-bd)',
-    color: 'var(--danger-strong)', borderRadius: 8, fontSize: 11, lineHeight: 1.5,
+    color: 'var(--danger-strong)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', lineHeight: 1.5,
   },
 
   attachBox: {
-    padding: 12, borderRadius: 10,
+    padding: 12, borderRadius: 'var(--r)',
     background: 'var(--info-bg-soft)', border: '1px solid var(--info-bd)', color: 'var(--info-text)',
   },
   attachBoxDone: {
-    padding: 12, borderRadius: 10,
+    padding: 12, borderRadius: 'var(--r)',
     background: 'var(--success-bg-soft)', border: '1px solid var(--success-bd)', color: 'var(--success-text)',
   },
   attachBtn: {
     padding: '8px 13px', background: 'var(--surface)', color: 'var(--text)',
-    border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer',
-    fontFamily: 'var(--font)', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0,
+    border: '1px solid var(--border)', borderRadius: 'var(--r)', cursor: 'pointer',
+    fontFamily: 'var(--font)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', whiteSpace: 'nowrap', flexShrink: 0,
   },
 };
 

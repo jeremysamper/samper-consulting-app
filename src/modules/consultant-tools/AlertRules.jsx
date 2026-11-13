@@ -64,34 +64,34 @@ function AlertRuleCard({ rule, onEdit, onDelete, onToggle }) {
       transition: 'opacity .15s',
     }}>
       {/* Indicateur actif/inactif */}
-      <div style={{ fontSize: 16, marginTop: 3, color: rule.is_active ? sev.color : 'var(--text3)', flexShrink: 0 }}>
+      <div style={{ fontSize: 'var(--t3)', marginTop: 3, color: rule.is_active ? sev.color : 'var(--text3)', flexShrink: 0 }}>
         {rule.is_active ? '●' : '○'}
       </div>
 
       {/* Contenu principal */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-          <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: 14, fontFamily: 'var(--font-serif)' }}>
+          <span style={{ fontWeight: 'var(--g3)', color: 'var(--text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)' }}>
             {rule.name}
           </span>
           <span style={{
-            fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99,
+            fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '2px 8px', borderRadius: 'var(--r-full)',
             background: sev.bg, color: sev.text,
           }}>
             {sev.label}
           </span>
           <span style={{
-            fontSize: 11, padding: '2px 8px', borderRadius: 99,
+            fontSize: 'var(--t1)', padding: '2px 8px', borderRadius: 'var(--r-full)',
             background: 'var(--bg)', color: 'var(--text2)', border: '1px solid var(--border)',
           }}>
             {typeLabel}
           </span>
         </div>
-        <div style={{ fontSize: 12, color: 'var(--text2)' }}>
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
           {scheduleLabel(rule)}, {lastInfo.charAt(0).toLowerCase() + lastInfo.slice(1)}
         </div>
         {rule.description && (
-          <div style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>{rule.description}</div>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 2 }}>{rule.description}</div>
         )}
       </div>
 
@@ -100,7 +100,7 @@ function AlertRuleCard({ rule, onEdit, onDelete, onToggle }) {
         <BoutonActions
           id={`alerte-gerer-${rule.id}`}
           label="Gérer"
-          style={{ ...cts.ghostBtn, fontSize: 13 }}
+          style={{ ...cts.ghostBtn, fontSize: 'var(--t2)' }}
           titre={rule.name}
           sousTitre={`${sev.label}, ${typeLabel}`}
           sections={[
@@ -178,10 +178,10 @@ export default function AlertRules({ etablissement }) {
   const filterBtnBase = {
     padding: '5px 14px', background: 'var(--surface)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    borderRadius: 99, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)',
+    borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)',
     color: 'var(--text2)', transition: 'all .12s',
   };
-  const filterBtnActive = { background: 'var(--accent-light)', color: 'var(--accent)', borderColor: 'var(--accent-bd)' };
+  const filterBtnActive = { background: 'var(--selection)', color: 'var(--text)', borderColor: 'var(--onglet)' };
 
   return (
     <div style={{ maxWidth: 860 }}>
@@ -189,10 +189,10 @@ export default function AlertRules({ etablissement }) {
       {/* ─── En-tête ─── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <div style={{ fontSize: 18, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+          <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
             Alertes configurées
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 3 }}>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 3 }}>
             Vérifiées automatiquement toutes les heures ; les alertes arrivent dans la cloche des personnes choisies.
           </div>
         </div>
@@ -214,7 +214,7 @@ export default function AlertRules({ etablissement }) {
           <select
             value={filterActive}
             onChange={(e) => setFilterActive(e.target.value)}
-            style={{ ...cts.input, padding: '5px 10px', fontSize: 12, width: 'auto' }}
+            style={{ ...cts.input, padding: '5px 10px', fontSize: 'var(--t1)', width: 'auto' }}
           >
             <option value="all">Toutes les règles</option>
             <option value="active">Actives seulement</option>
@@ -225,7 +225,7 @@ export default function AlertRules({ etablissement }) {
 
       {/* ─── Chargement ─── */}
       {loading && (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)' }}>
           Chargement…
         </div>
       )}
@@ -234,10 +234,10 @@ export default function AlertRules({ etablissement }) {
       {!loading && rules.length === 0 && (
         <div style={cts.emptyState}>
           <Bell size={40} strokeWidth={1.5} aria-hidden="true" style={{ opacity: 0.3, color: 'var(--text2)' }} />
-          <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' }}>
+          <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
             Aucune règle d'alerte configurée
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text2)', textAlign: 'center', maxWidth: 360, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', textAlign: 'center', maxWidth: 360, lineHeight: 1.5 }}>
             Créez votre première alerte pour surveiller automatiquement vos équipes.
           </div>
           <button style={cts.newBtn} onClick={openCreate}>Créer une alerte</button>
@@ -246,7 +246,7 @@ export default function AlertRules({ etablissement }) {
 
       {/* ─── Aucun résultat pour les filtres ─── */}
       {!loading && rules.length > 0 && filtered.length === 0 && (
-        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text2)', fontSize: 13 }}>
+        <div style={{ padding: 32, textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)' }}>
           Aucune règle ne correspond aux filtres sélectionnés.
         </div>
       )}

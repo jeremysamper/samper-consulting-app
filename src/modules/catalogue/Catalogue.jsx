@@ -444,7 +444,7 @@ const Catalogue = ({ user, etablissement }) => {
           // Une action principale, une secondaire, et les trois façons
           // d'importer rangées dans une seule fenêtre.
           <div className="module-actions">
-            <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none' }} onClick={() => { setEditProd(null); setShowProdForm(true); }}>Nouveau produit</button>
+            <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', borderWidth: 0 }} onClick={() => { setEditProd(null); setShowProdForm(true); }}>Nouveau produit</button>
             <button style={cat.btn} onClick={() => { setEditFourn(null); setShowFournForm(true); }}>Nouveau fournisseur</button>
             <BoutonActions
               id="catalogue-importer"
@@ -488,10 +488,10 @@ const Catalogue = ({ user, etablissement }) => {
           {/* Table produits */}
           {filtered.length === 0 ? (
             <div style={cat.empty}>
-              <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', marginTop: 10 }}>
                 {produits.length === 0 ? 'Catalogue vide' : 'Aucun résultat'}
               </div>
-              <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>
+              <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 4 }}>
                 {produits.length === 0 ? 'Importez votre fichier Excel ou ajoutez un produit manuellement.' : 'Modifiez vos filtres.'}
               </div>
             </div>
@@ -500,7 +500,7 @@ const Catalogue = ({ user, etablissement }) => {
               {/* Barre sélection de masse */}
               {canWrite && (
                 <div style={cat.selectBar}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 13, fontWeight: 500 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>
                     <input
                       type="checkbox"
                       checked={selected.size === filtered.length && filtered.length > 0}
@@ -517,9 +517,9 @@ const Catalogue = ({ user, etablissement }) => {
 
                   {selected.size > 0 && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 12, color: 'var(--text2)' }}>Attribuer fournisseur :</span>
+                      <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>Attribuer fournisseur :</span>
                       <select
-                        style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer' }}
+                        style={{ padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', cursor: 'pointer' }}
                         value=""
                         onChange={async e => {
                           const fournisseurId = e.target.value;
@@ -610,8 +610,8 @@ const Catalogue = ({ user, etablissement }) => {
                             />
                           </td>
                         )}
-                        <td style={{ ...cat.td, fontWeight: 500, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.nom}>{p.nom}</td>
-                        <td style={{ ...cat.td, fontFamily: 'var(--font)', fontSize: 11, color: 'var(--text2)' }}>{p.referenceFourn || '-'}</td>
+                        <td style={{ ...cat.td, fontWeight: 'var(--g2)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.nom}>{p.nom}</td>
+                        <td style={{ ...cat.td, fontFamily: 'var(--font)', fontSize: 'var(--t1)', color: 'var(--text2)' }}>{p.referenceFourn || '-'}</td>
                         <td style={cat.td}><span style={cat.catBadge}>{categorieAffichee(p)}</span></td>
                         {/* Sélecteur fournisseur inline */}
                         <td style={cat.td}>
@@ -624,7 +624,7 @@ const Catalogue = ({ user, etablissement }) => {
                                   await legacySB.db.upsertProduit({ ...p, fournisseurId: fId, etablissementId: etabId });
                                 } catch (err) { notifyLegacy(messageErreur(err, 'catalogue'), 'error'); }
                               }}
-                              style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12, fontFamily: 'var(--font)', background: 'var(--bg)', color: p.fournisseurId ? 'var(--text)' : 'var(--text2)', maxWidth: 160, cursor: 'pointer' }}
+                              style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontFamily: 'var(--font)', background: 'var(--bg)', color: p.fournisseurId ? 'var(--text)' : 'var(--text2)', maxWidth: 160, cursor: 'pointer' }}
                             >
                               <option value="">Aucun</option>
                               {(fournisseurs || []).map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
@@ -633,7 +633,7 @@ const Catalogue = ({ user, etablissement }) => {
                             p.fournisseurNom || <span style={{ color: 'var(--text2)', fontStyle: 'italic' }}>-</span>
                           )}
                         </td>
-                        <td style={{ ...cat.td, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                        <td style={{ ...cat.td, fontWeight: 'var(--g-chiffre)', color: 'var(--lien)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap', textAlign: 'right' }}>
                           {p.prixUnitaire > 0 ? `CHF ${p.prixUnitaire.toFixed(4)}` : <span style={{ color: 'var(--text2)' }}>-</span>}
                         </td>
                         <td style={{ ...cat.td, color: 'var(--text2)' }}>/{p.uniteRef}</td>
@@ -659,7 +659,7 @@ const Catalogue = ({ user, etablissement }) => {
         <div style={cat.tableWrap}>
           {fournisseurs.length === 0 ? (
             <div style={cat.empty}>
-              <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>Aucun fournisseur</div>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', marginTop: 10 }}>Aucun fournisseur</div>
             </div>
           ) : (
             <table style={cat.table}>
@@ -675,7 +675,7 @@ const Catalogue = ({ user, etablissement }) => {
                   const nbProd = produits.filter(p => p.fournisseurId === f.id || p.fournisseurs?.some(pf => pf.fournisseurId === f.id)).length;
                   return (
                     <tr key={f.id} style={cat.tr}>
-                      <td style={{ ...cat.td, fontWeight: 500 }}>{f.nom}</td>
+                      <td style={{ ...cat.td, fontWeight: 'var(--g2)' }}>{f.nom}</td>
                       <td style={cat.td}>{f.contact || '-'}</td>
                       <td style={cat.td}>{f.tel || '-'}</td>
                       <td style={cat.td}>{f.email || '-'}</td>
@@ -886,7 +886,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
     <div className="modal-full-overlay" style={cat.overlay} onClick={onClose}>
       <div className="modal-full" style={cat.modal} onClick={e => e.stopPropagation()}>
         <div style={cat.modalHead}>
-          <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)' }}>
+          <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', fontFamily: 'var(--font)' }}>
             {prod ? 'Modifier' : 'Nouveau'} produit
           </div>
           <button type="button" className="ui-fermer" aria-label="Fermer" style={cat.closeBtn} onClick={onClose}>×</button>
@@ -916,7 +916,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
               <label style={cat.lbl}>Prix unitaire saisi (CHF / unité)</label>
               <input style={cat.inp} type="number" step="0.0001" value={form.prixUnitaire} onChange={e => up('prixUnitaire', e.target.value)} placeholder="ex: 0.0285 CHF/g" />
               {pfRows.length > 0 && (
-                <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 3 }}>
                   Sert de repli. Les références fournisseurs priment, sauf stratégie « manuel ».
                 </div>
               )}
@@ -930,14 +930,14 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
               Le prix retenu quand plusieurs références fournisseurs coexistent.
               Défaut « le plus cher » : chiffrer au moins-disant ferait annoncer
               une marge qu'on ne réalisera pas si la commande part chez l'autre. */}
-          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginTop: 4 }}>
+          <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 12, marginTop: 4 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
               <label style={{ ...cat.lbl, margin: 0 }}>Prix retenu pour le chiffrage</label>
-              <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', fontFamily: 'var(--font-num)' }}>
-                CHF {prixRetenu.toFixed(4)} <span style={{ color: 'var(--text2)', fontWeight: 400 }}>/{form.uniteRef}</span>
+              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g-chiffre)', color: 'var(--lien)', fontFamily: 'var(--font-num)' }}>
+                CHF {prixRetenu.toFixed(4)} <span style={{ color: 'var(--text2)', fontWeight: 'var(--g1)' }}>/{form.uniteRef}</span>
               </div>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text2)', marginBottom: 8 }}>{provenancePrix}</div>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 8 }}>{provenancePrix}</div>
             <div style={cat.row2}>
               <div>
                 <label style={cat.lbl}>Stratégie</label>
@@ -953,7 +953,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                 </select>
               </div>
               <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer', fontSize: 12, color: 'var(--text)' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, cursor: 'pointer', fontSize: 'var(--t1)', color: 'var(--text)' }}>
                   <input
                     type="checkbox"
                     checked={!!form.prixVerrouille}
@@ -965,7 +965,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
               </div>
             </div>
             {form.prixVerrouille && (
-              <div style={{ fontSize: 11, color: 'var(--warning-text)', marginTop: 6 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--warning-text)', marginTop: 6 }}>
                 Aucun scan de facture ni import ne modifiera ce prix.
               </div>
             )}
@@ -1000,7 +1000,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                     key={a.id}
                     type="button"
                     style={{
-                      padding: '4px 10px', borderRadius: 14, fontSize: 11, fontWeight: 500,
+                      padding: '4px 10px', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)',
                       cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid',
                       background: active ? 'var(--warning-bg)' : 'var(--bg)',
                       borderColor: active ? 'var(--warning-strong)' : 'var(--border)',
@@ -1017,7 +1017,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
               })}
             </div>
             {(form.allergenes || []).length > 0 && (
-              <div style={{ fontSize: 11, color: 'var(--warning-text)', marginTop: 6, fontWeight: 500 }}>
+              <div style={{ fontSize: 'var(--t1)', color: 'var(--warning-text)', marginTop: 6, fontWeight: 'var(--g2)' }}>
                 {(form.allergenes || []).length} allergène{(form.allergenes || []).length > 1 ? 's' : ''} sélectionné{(form.allergenes || []).length > 1 ? 's' : ''}
               </div>
             )}
@@ -1034,7 +1034,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                 // 5 colonnes ne tiennent pas dans une modale de 375 px : la table
                 // scrolle dans son conteneur, la page ne pane jamais.
                 <div style={{ overflowX: 'auto', marginBottom: 6, WebkitOverflowScrolling: 'touch' }}>
-                <table style={{ ...cat.table, fontSize: 11, minWidth: 480 }}>
+                <table style={{ ...cat.table, fontSize: 'var(--t1)', minWidth: 480 }}>
                   <thead><tr>
                     <th style={cat.th}>Fournisseur</th><th style={cat.th}>Prix achat</th>
                     <th style={cat.th}>Conditionnement</th><th style={cat.th}>Prix/unité</th>
@@ -1046,7 +1046,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                         <td style={cat.td}>{pf.fournisseurNom}</td>
                         <td style={cat.td}>CHF {pf.prixAchat}</td>
                         <td style={cat.td}>{pf.conditionnement || '-'}</td>
-                        <td style={{ ...cat.td, fontWeight: 500, color: 'var(--accent)' }}>
+                        <td style={{ ...cat.td, fontWeight: 'var(--g2)', color: 'var(--lien)' }}>
                           {pf.prixUnitaire ? `${parseFloat(pf.prixUnitaire).toFixed(4)}` : '-'}
                         </td>
                         <td style={cat.td}>{pf.estPrincipal ? 'Principal' : ''}</td>
@@ -1057,7 +1057,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                 </div>
               )}
               {showAddPF && (
-                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginTop: 6 }}>
+                <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: 12, marginTop: 6 }}>
                   <div style={cat.row3}>
                     <div>
                       <label style={cat.lbl}>Fournisseur</label>
@@ -1081,12 +1081,12 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 8, justifyContent: 'flex-end' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--t1)' }}>
                       <input type="checkbox" checked={newPF.estPrincipal} onChange={e => setNewPF(p => ({ ...p, estPrincipal: e.target.checked }))} />
                       Fournisseur principal
                     </label>
                     <button style={cat.ghostBtn} onClick={() => setShowAddPF(false)}>Annuler</button>
-                    <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none' }} onClick={addPF}>Ajouter</button>
+                    <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', borderWidth: 0 }} onClick={addPF}>Ajouter</button>
                   </div>
                 </div>
               )}
@@ -1107,13 +1107,13 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                 )}
               </div>
               {historique !== null && historique.length === 0 && (
-                <div style={{ fontSize: 12, color: 'var(--text2)', fontStyle: 'italic' }}>
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontStyle: 'italic' }}>
                   Aucun relevé. L'historique se remplit au scan des factures et aux imports.
                 </div>
               )}
               {historique !== null && historique.length > 0 && (
                 <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                <table style={{ ...cat.table, fontSize: 11, minWidth: 380 }}>
+                <table style={{ ...cat.table, fontSize: 'var(--t1)', minWidth: 380 }}>
                   <thead><tr>
                     <th style={cat.th}>Date facture</th><th style={cat.th}>Fournisseur</th>
                     <th style={cat.th}>Prix/unité</th><th style={cat.th}>Origine</th>
@@ -1129,11 +1129,11 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                         <tr key={h.id} style={cat.tr}>
                           <td style={cat.td}>{(h.releveLe || '').split('-').reverse().join('.')}</td>
                           <td style={cat.td}>{h.fournisseurNom || '-'}</td>
-                          <td style={{ ...cat.td, fontWeight: 500 }}>
+                          <td style={{ ...cat.td, fontWeight: 'var(--g2)' }}>
                             {Number(h.prixUnitaire).toFixed(4)}
                             {delta !== null && Math.abs(delta) >= 0.5 && (
                               <span style={{
-                                marginLeft: 6, fontSize: 11, fontWeight: 700,
+                                marginLeft: 6, fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
                                 color: delta > 0 ? 'var(--danger-text)' : 'var(--success-text)',
                               }}>
                                 {delta > 0 ? '+' : ''}{delta.toFixed(1)}%
@@ -1153,7 +1153,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
         </div>
         <div style={cat.modalFoot}>
           <button style={cat.ghostBtn} onClick={onClose}>Annuler</button>
-          <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>
+          <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', borderWidth: 0, opacity: saving ? 0.6 : 1 }} onClick={handleSave} disabled={saving}>
             {saving ? 'Enregistrement…' : prod ? 'Modifier' : 'Ajouter'}
           </button>
         </div>
@@ -1174,7 +1174,7 @@ const FournisseurForm = ({ fourn, onSave, onClose }) => {
     <div className="modal-full-overlay" style={cat.overlay} onClick={onClose}>
       <div className="modal-full" style={{ ...cat.modal, maxWidth: 480 }} onClick={e => e.stopPropagation()}>
         <div style={cat.modalHead}>
-          <div style={{ fontWeight: 700, fontSize: 15, fontFamily: 'var(--font-serif)' }}>{fourn ? 'Modifier' : 'Nouveau'} fournisseur</div>
+          <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', fontFamily: 'var(--font)' }}>{fourn ? 'Modifier' : 'Nouveau'} fournisseur</div>
           <button type="button" className="ui-fermer" aria-label="Fermer" style={cat.closeBtn} onClick={onClose}>×</button>
         </div>
         <div style={cat.modalBody}>
@@ -1193,7 +1193,7 @@ const FournisseurForm = ({ fourn, onSave, onClose }) => {
         </div>
         <div style={cat.modalFoot}>
           <button style={cat.ghostBtn} onClick={onClose}>Annuler</button>
-          <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', border: 'none' }} onClick={handleSave}>
+          <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', borderWidth: 0 }} onClick={handleSave}>
             {fourn ? 'Modifier' : 'Ajouter'}
           </button>
         </div>
@@ -1206,36 +1206,36 @@ const FournisseurForm = ({ fourn, onSave, onClose }) => {
 const cat = {
   root: { display: 'flex', flexDirection: 'column', gap: 16 },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 },
-  title: { fontSize: 22, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  sub: { fontSize: 13, color: 'var(--text2)', marginTop: 4 },
-  btn: { padding: '8px 14px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' },
-  ghostBtn: { padding: '8px 14px', borderRadius: 7, fontSize: 13, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)' },
+  title: { fontSize: 'var(--t4)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' },
+  sub: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 4 },
+  btn: { padding: '8px 14px', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)' },
+  ghostBtn: { padding: '8px 14px', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)' },
   tabs: { display: 'flex', gap: 6, borderBottom: '2px solid var(--border)', paddingBottom: 0 },
-  tab: { padding: '8px 16px', background: 'none', border: 'none', borderBottom: '2px solid transparent', marginBottom: -2, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, color: 'var(--text2)' },
-  tabActive: { borderBottomColor: 'var(--accent)', color: 'var(--accent)' },
+  tab: { padding: '8px 16px', background: 'none', border: 'none', borderBottom: '2px solid transparent', marginBottom: -2, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
+  tabActive: { borderBottomColor: 'var(--accent)', color: 'var(--lien)' },
   // Une seule ligne : loupe + onglets de catégories qui coulissent.
   filters: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' },
-  filterBtn: { padding: '5px 12px', borderRadius: 16, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 11, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)' },
+  filterBtn: { padding: '5px 12px', borderRadius: 'var(--r)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   filterActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' },
-  tableWrap: { overflowX: 'auto', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
-  selectBar: { padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' },
-  table: { width: '100%', borderCollapse: 'collapse', fontSize: 13 },
-  th: { padding: '10px 14px', textAlign: 'left', fontWeight: 500, fontSize: 12, color: 'var(--text2)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
+  tableWrap: { overflowX: 'auto', background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)' },
+  selectBar: { padding: '10px 14px', background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)', display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' },
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: 'var(--t2)' },
+  th: { padding: '10px 14px', textAlign: 'left', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', color: 'var(--text2)', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
   tr: { borderBottom: '1px solid var(--border)' },
   td: { padding: '9px 14px', verticalAlign: 'middle' },
   tdAction: { padding: '6px 10px', textAlign: 'right', whiteSpace: 'nowrap' },
-  catBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 10, background: 'var(--accent-light)', color: 'var(--accent)', fontSize: 11, fontWeight: 500 },
-  miniBtn: { width: 26, height: 26, border: '1px solid var(--border)', borderRadius: 5, background: 'var(--bg)', cursor: 'pointer', fontSize: 12 },
-  miniLink: { background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, fontWeight: 500 },
+  catBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 'var(--r)', background: 'var(--selection)', color: 'var(--text)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)' },
+  miniBtn: { width: 26, height: 26, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', cursor: 'pointer', fontSize: 'var(--t1)' },
+  miniLink: { background: 'none', border: 'none', color: 'var(--lien)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)' },
   empty: { padding: 60, textAlign: 'center', color: 'var(--text2)' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },
-  modal: { background: 'var(--surface)', borderRadius: 12, width: '100%', maxWidth: 680, maxHeight: '90vh', display: 'flex', flexDirection: 'column' },
+  modal: { background: 'var(--surface)', borderRadius: 'var(--r)', width: '100%', maxWidth: 680, maxHeight: '90vh', display: 'flex', flexDirection: 'column' },
   modalHead: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid var(--border)' },
   modalBody: { padding: '16px 18px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 10 },
   modalFoot: { padding: '12px 18px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' },
-  closeBtn: { background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--text2)' },
-  lbl: { display: 'block', fontSize: 12, fontWeight: 500, color: 'var(--text2)', marginBottom: 4 },
-  inp: { width: '100%', padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box' },
+  closeBtn: { background: 'none', border: 'none', fontSize: 'var(--t3)', cursor: 'pointer', color: 'var(--text2)' },
+  lbl: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', marginBottom: 4 },
+  inp: { width: '100%', padding: '8px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' },
   row2: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
   row3: { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 },
 };
@@ -1298,14 +1298,14 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
             <div style={{ padding: '8px 4px' }}>
               <div style={ipm.summaryItem}>
                 <div>
-                  <div style={{ fontWeight: 700 }}>{newItems.length} nouveaux produits prêts à être ajoutés</div>
+                  <div style={{ fontWeight: 'var(--g3)' }}>{newItems.length} nouveaux produits prêts à être ajoutés</div>
                   <div style={ipm.summaryHint}>Aucun conflit détecté avec votre catalogue actuel.</div>
                 </div>
               </div>
               {duplicates.length > 0 && (
                 <div style={{ ...ipm.summaryItem, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)' }}>
                   <div>
-                    <div style={{ fontWeight: 700, color: 'var(--warning-text)' }}>{duplicates.length} doublon{duplicates.length > 1 ? 's' : ''} détecté{duplicates.length > 1 ? 's' : ''}</div>
+                    <div style={{ fontWeight: 'var(--g3)', color: 'var(--warning-text)' }}>{duplicates.length} doublon{duplicates.length > 1 ? 's' : ''} détecté{duplicates.length > 1 ? 's' : ''}</div>
                     <div style={ipm.summaryHint}>Ces produits existent déjà (même référence ou nom). Si vous importez "tout", ils seront <strong>écrasés</strong> par les nouvelles valeurs.</div>
                   </div>
                 </div>
@@ -1313,7 +1313,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
               {aberrants.length > 0 && (
                 <div style={{ ...ipm.summaryItem, background: 'var(--danger-bg-soft)', borderColor: 'var(--danger-bd)' }}>
                   <div>
-                    <div style={{ fontWeight: 700, color: 'var(--danger-strong)' }}>{aberrants.length} prix suspect{aberrants.length > 1 ? 's' : ''}</div>
+                    <div style={{ fontWeight: 'var(--g3)', color: 'var(--danger-strong)' }}>{aberrants.length} prix suspect{aberrants.length > 1 ? 's' : ''}</div>
                     <div style={ipm.summaryHint}>Probablement un mauvais ratio prix/quantité dans la source. Vérifiez l'onglet "Prix suspects" avant d'importer.</div>
                   </div>
                 </div>
@@ -1337,7 +1337,7 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
                     <div style={ipm.rowMeta}>
                       Nouveau prix : <strong>{p.prixUnitaire?.toFixed(4)} CHF/{p.uniteRef}</strong>
                       {p._existing?.prixUnitaire && p.prixUnitaire !== p._existing.prixUnitaire && (
-                        <span style={{ marginLeft: 6, color: p.prixUnitaire > p._existing.prixUnitaire ? 'var(--danger-strong)' : 'var(--success-strong)', fontWeight: 500 }}>
+                        <span style={{ marginLeft: 6, color: p.prixUnitaire > p._existing.prixUnitaire ? 'var(--danger-strong)' : 'var(--success-strong)', fontWeight: 'var(--g2)' }}>
                           {p.prixUnitaire > p._existing.prixUnitaire ? '↑' : '↓'} {Math.abs((p.prixUnitaire / p._existing.prixUnitaire - 1) * 100).toFixed(1)}%
                         </span>
                       )}
@@ -1399,28 +1399,28 @@ const ImportPreviewModal = ({ report, importing, onCancel, onConfirmSafe, onConf
 
 const ipm = {
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
-  modal: { background: 'var(--surface)', borderRadius: 12, width: 720, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' },
+  modal: { background: 'var(--surface)', borderRadius: 'var(--r)', width: 720, maxWidth: '94vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 40px rgba(0,0,0,0.2)' },
   header: { padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  title: { fontWeight: 700, fontSize: 16, fontFamily: 'var(--font-serif)' },
-  subtitle: { fontSize: 11, color: 'var(--text2)', marginTop: 2 },
-  closeBtn: { background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: 'var(--text2)' },
+  title: { fontWeight: 'var(--g3)', fontSize: 'var(--t3)', fontFamily: 'var(--font)' },
+  subtitle: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
+  closeBtn: { background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)' },
   kpisRow: { display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, padding: '14px 20px' },
-  kpiBox: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 14px', textAlign: 'center' },
-  kpiLabel: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
-  kpiValue: { fontSize: 28, fontWeight: 700, fontFamily: 'var(--font-num)', marginTop: 4 },
+  kpiBox: { background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '10px 14px', textAlign: 'center' },
+  kpiLabel: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
+  kpiValue: { fontSize: 'var(--t6)', fontWeight: 'var(--g-chiffre)', fontFamily: 'var(--font-num)', marginTop: 4 },
   tabsBar: { display: 'flex', gap: 4, padding: '0 20px', borderBottom: '1px solid var(--border)' },
-  tab: { padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 12, color: 'var(--text2)', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'transparent' },
-  tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 500 },
+  tab: { padding: '10px 14px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t1)', color: 'var(--text2)', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: 'transparent' },
+  tabActive: { color: 'var(--text)', borderBottomColor: 'var(--onglet)', fontWeight: 'var(--g2)' },
   body: { flex: 1, overflowY: 'auto', padding: '6px 20px' },
   summaryItem: { display: 'flex', gap: 12, alignItems: 'flex-start', padding: '12px 0 12px 12px', marginBottom: 8,  borderLeft: '2px solid var(--success-bd)',},
-  summaryHint: { fontSize: 11, color: 'var(--text2)', marginTop: 4, lineHeight: 1.4 },
+  summaryHint: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4, lineHeight: 1.4 },
   list: { paddingTop: 4 },
   row: { padding: '10px 12px', borderBottom: '1px solid var(--border)' },
-  rowName: { fontSize: 13, fontWeight: 500, color: 'var(--text)' },
-  rowMeta: { fontSize: 11, color: 'var(--text2)', marginTop: 3 },
+  rowName: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' },
+  rowMeta: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 3 },
   footer: { padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500 },
-  ghostBtn: { padding: '8px 14px', background: 'none', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
+  primaryBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' },
+  ghostBtn: { padding: '8px 14px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' },
 };
 
 export default Catalogue;
