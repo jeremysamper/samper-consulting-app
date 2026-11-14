@@ -609,9 +609,10 @@ export default function FicheEditeur({
                           </button>
                         )}
                         {!lie && ing.needsReview && (
-                          <button type="button" style={{ ...es.pastille, background: 'var(--warning-bg)', color: 'var(--warning-text)' }} title="Correspondance incertaine : choisir le produit" aria-label={`Choisir le produit de ${ing.nom || 'la ligne'}`} onClick={() => { setRechercheCatalogue(ing.nom || ''); setPicker(ing.id); }}>
+                          // Signal seul : la loupe de la ligne ouvre le même choix du catalogue.
+                          <span role="img" style={{ ...es.pastille, background: 'var(--warning-bg)', color: 'var(--warning-text)', cursor: 'default' }} title="Correspondance incertaine : choisir le produit" aria-label="Correspondance incertaine : choisir le produit">
                             <AlertTriangle size={13} aria-hidden="true" />
-                          </button>
+                          </span>
                         )}
                         <DebouncedField
                           key={`${ing.id}:${ing.produitId || ''}:${ing.needsReview ? 'r' : ''}`}
