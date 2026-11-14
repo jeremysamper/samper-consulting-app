@@ -91,7 +91,7 @@ function ForfaitForm({ forfait, forfaits, droits, onClose }) {
                 {x.quantiteParJour != null && <><span data-no-translate>{x.quantiteParJour}</span> <span>par jour</span></>}
                 {x.quantiteParSejour == null && x.quantiteParJour == null && <span>sans limite</span>}
               </span>
-              <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 32, padding: '4px 8px', fontSize: 12 }} onClick={async () => { const r = await droits.supprimer(x.id); if (r.error) setErreur(r.error); else notify('Droit retiré.', 'success'); }}>Retirer</button>
+              <Btn small onClick={async () => { const r = await droits.supprimer(x.id); if (r.error) setErreur(r.error); else notify('Droit retiré.', 'success'); }}>Retirer</Btn>
             </div>
           ))}
           <div style={{ ...h.grille, marginTop: 10 }}>
