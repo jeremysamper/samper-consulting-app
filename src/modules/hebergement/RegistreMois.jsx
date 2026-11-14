@@ -1,4 +1,5 @@
 import React from 'react';
+import { Btn, CarteRepere } from '../../components/ui/index.jsx';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { Carte } from '../dashboard/tableauUi.jsx';
 import { Vide, h } from './hotelUi.jsx';
@@ -37,12 +38,9 @@ export default function RegistreMois({ sejours, chambres, occupants, lignes, reg
     telechargerTexte(`hesta-${mois}.csv`, csv);
   };
 
+  // Un chiffre du mois : une petite carte de repère (direction Galet).
   const Chiffre = ({ libelle, valeur, detail }) => (
-    <div style={{ padding: '12px 14px', background: 'var(--surface)', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', minWidth: 0 }}>
-      <div style={h.champLabel}>{libelle}</div>
-      <div style={{ fontSize: 22, fontFamily: 'var(--font-num)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }} data-no-translate>{valeur}</div>
-      {detail && <div style={h.detail}>{detail}</div>}
-    </div>
+    <CarteRepere valeur={valeur} libelle={libelle} detail={detail} style={{ padding: '14px 16px' }} />
   );
 
   return (
@@ -52,11 +50,11 @@ export default function RegistreMois({ sejours, chambres, occupants, lignes, reg
           <span>Mois</span>
           <input type="month" style={{ ...h.saisie, width: 'auto' }} value={mois} onChange={(ev) => ev.target.value && setMois(ev.target.value)} />
         </label>
-        <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 44 }} onClick={exporterRegistre} disabled={!registre.length}>Exporter le registre (CSV)</button>
-        <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 44 }} onClick={exporterHesta} disabled={!stats.parPays.length}>Exporter HESTA (CSV)</button>
+        <Btn onClick={exporterRegistre} disabled={!registre.length}>Exporter le registre (CSV)</Btn>
+        <Btn onClick={exporterHesta} disabled={!stats.parPays.length}>Exporter HESTA (CSV)</Btn>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 12 }}>
         <Chiffre libelle="Nuitées chambres" valeur={stats.nuiteesChambres} />
         <Chiffre libelle="Nuitées personnes" valeur={stats.nuiteesPersonnes} />
         <Chiffre libelle="Arrivées" valeur={stats.arrivees} detail={<><span>{stats.arriveesPersonnes}</span> <span>personnes</span></>} />
@@ -103,6 +101,6 @@ export default function RegistreMois({ sejours, chambres, occupants, lignes, reg
 }
 
 const r = {
-  ligne: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', fontSize: 14, color: 'var(--text)' },
+  ligne: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', fontSize: 'var(--t2)', color: 'var(--text)' },
   nombre: { flex: '0 0 110px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' },
 };

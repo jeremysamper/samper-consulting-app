@@ -1,4 +1,5 @@
 import React from 'react';
+import { Btn } from '../../components/ui/index.jsx';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
@@ -104,9 +105,9 @@ export default function SejourOccupants({ sejour: s, chambre, hote, hotes, occup
             <span style={{ ...h.detail, display: 'block' }}><span data-no-translate>{dateCourte(o.arrivee)} - {dateCourte(o.depart)}</span>{o.exonereTaxe && <> <span>(exonéré de taxe)</span></>}</span>
           </span>
           {o.hoteId && <Puce ton="info">Fiche hôte</Puce>}
-          <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 36, padding: '4px 10px', fontSize: 12 }} onClick={() => bulletin([o])}>Bulletin</button>
-          {peutGerer && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 36, padding: '4px 10px', fontSize: 12 }} onClick={() => ouvrir(o)}>Modifier</button>}
-          {peutSupprimer && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 36, padding: '4px 10px', fontSize: 12 }} onClick={() => supprimer(o)}>Retirer</button>}
+          <Btn small onClick={() => bulletin([o])}>Bulletin</Btn>
+          {peutGerer && <Btn small onClick={() => ouvrir(o)}>Modifier</Btn>}
+          {peutSupprimer && <Btn small onClick={() => supprimer(o)}>Retirer</Btn>}
         </div>
       ))}
 

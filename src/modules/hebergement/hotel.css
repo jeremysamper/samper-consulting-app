@@ -1,0 +1,35 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Modules de l'hôtel : mise en page (direction Galet). Les couleurs passent par
+   les jetons d'app.css ; cette feuille ne règle que la grille de l'accueil et
+   la liste en carte, par la largeur réellement disponible (requêtes de
+   conteneur, paliers 560 et 760 px).
+   .hotel-page est le conteneur (aucune fenêtre du module dedans) ; la grille
+   vit sur .hotel-grille, son enfant.
+   Téléphone : les tuiles seules. Les repères redisent les nombres que portent
+   déjà les tuiles : ils ne sont pas rendus (la page ne s'allonge pas, M15).
+   Dès 560 px : les repères, deux par ligne, sous les tuiles ; dès 760 px, ils
+   remontent en tête, tous de front.
+   ───────────────────────────────────────────────────────────────────────────── */
+.hotel-page { container-type: inline-size; container-name: hotel; min-width: 0; }
+.hotel-grille { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.hotel-reperes {
+  display: none;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+.hotel-page .ui-repere { padding: 14px 16px; }
+
+@container hotel (min-width: 560px) {
+  .hotel-grille { gap: 24px; }
+  .hotel-reperes { display: grid; }
+}
+@container hotel (min-width: 760px) {
+  .hotel-reperes { order: -1; grid-template-columns: repeat(var(--hotel-n, 4), minmax(0, 1fr)); }
+}
+
+/* Liste dans une carte blanche : les lignes sont séparées par leur filet
+   (style en ligne de la ligne) ; la dernière n'en porte pas. !important : le
+   filet est posé en style en ligne. */
+.hotel-liste > :last-child { border-bottom-width: 0 !important; }
