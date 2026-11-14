@@ -610,6 +610,92 @@ html[data-theme="dark"] {
   color-scheme: dark;
 }
 
+/* ─── Préférences de l'appareil ────────────────────────────────────────────
+   Réglages > Cet appareil > Apparence (services/preferencesAppareil.js). Les
+   attributs ne sont posés sur <html> que lorsqu'une préférence diffère de
+   l'origine : sans eux, rien ici ne s'applique. Seuls des jetons changent ;
+   un écran qui écrit ses tailles et ses couleurs par les jetons suit donc la
+   personne sans une ligne de plus.
+   Spécificité : html[data-x] (0,1,1) passe devant :root ; la variante sombre
+   html[data-theme="dark"][data-x] (0,2,1) passe devant le bloc sombre et le
+   bloc prefers-color-scheme (0,2,0).
+   Une vue capturée en PDF garde l'échelle et les couleurs d'origine (bloc
+   .pdf-render-root en fin de section ; THEME_VAR_OVERRIDES fait le reste). */
+
+/* Taille du texte. Rien sous 12 px. */
+html[data-texte="petite"] { --t1: 12px; --t2: 13px; --t3: 15px; --t4: 18px; --t5: 22px; --t6: 26px; }
+html[data-texte="grande"] { --t1: 13px; --t2: 16px; --t3: 19px; --t4: 22px; --t5: 27px; --t6: 32px; }
+html[data-texte="tres-grande"] { --t1: 15px; --t2: 18px; --t3: 21px; --t4: 25px; --t5: 30px; --t6: 36px; }
+
+/* Densité. Compacte : à la souris seulement, la cible de 44 px au doigt ne
+   bouge pas (la règle des contrôles tactiles garde aussi son plancher). */
+@media (pointer: fine) {
+  html[data-densite="compacte"] { --controle: 34px; --ligne: 38px; --ligne-aeree: 42px; --marge: 16px; }
+}
+@media (pointer: fine) and (min-width: 768px) {
+  html[data-densite="compacte"] { --marge: 24px; }
+}
+html[data-densite="aeree"] { --controle: 46px; --ligne: 50px; --ligne-aeree: 56px; --marge: 28px; }
+@media (min-width: 768px) {
+  html[data-densite="aeree"] { --marge: 40px; }
+}
+
+/* Couleur des actions : l'aplat de l'action principale, de la pilule choisie
+   et de l'entrée choisie du menu. Pétrole (la marque) n'a pas d'attribut.
+   Contrastes mesurés : texte sur l'aplat de 8,0 à 13,2 en clair et de 8,1 à
+   10,8 en sombre ; aplat sur le fond de 6,7 à 11,3. */
+html[data-accent="bleu"] { --accent: #1f4e8c; --accent2: #3d6aa8; --on-accent: #ffffff; --nav-active: #1f4e8c; --nav-text-active: #ffffff; }
+html[data-accent="vert"] { --accent: #1d5639; --accent2: #3b7656; --on-accent: #ffffff; --nav-active: #1d5639; --nav-text-active: #ffffff; }
+html[data-accent="brique"] { --accent: #8c3519; --accent2: #a65538; --on-accent: #ffffff; --nav-active: #8c3519; --nav-text-active: #ffffff; }
+html[data-accent="prune"] { --accent: #5b2a63; --accent2: #7a4a82; --on-accent: #ffffff; --nav-active: #5b2a63; --nav-text-active: #ffffff; }
+html[data-accent="graphite"] { --accent: #2b3135; --accent2: #4c555a; --on-accent: #ffffff; --nav-active: #2b3135; --nav-text-active: #ffffff; }
+html[data-theme="dark"][data-accent="bleu"] { --accent: #8db6ea; --accent2: #a6c6ef; --on-accent: #0a1d36; --nav-active: #8db6ea; --nav-text-active: #0a1d36; }
+html[data-theme="dark"][data-accent="vert"] { --accent: #86c6a0; --accent2: #a0d3b4; --on-accent: #0a2416; --nav-active: #86c6a0; --nav-text-active: #0a2416; }
+html[data-theme="dark"][data-accent="brique"] { --accent: #eea486; --accent2: #f2b8a0; --on-accent: #3a1205; --nav-active: #eea486; --nav-text-active: #3a1205; }
+html[data-theme="dark"][data-accent="prune"] { --accent: #d4a5dc; --accent2: #ddb9e3; --on-accent: #2a0f2f; --nav-active: #d4a5dc; --nav-text-active: #2a0f2f; }
+html[data-theme="dark"][data-accent="graphite"] { --accent: #c2cacf; --accent2: #d2d8db; --on-accent: #14181a; --nav-active: #c2cacf; --nav-text-active: #14181a; }
+
+/* Pastilles du choix de couleur (section Apparence) : chacune montre l'aplat
+   qu'elle donnera, dans le thème en cours. */
+.pref-teinte[data-teinte="petrole"] { background-color: #003042; }
+.pref-teinte[data-teinte="bleu"] { background-color: #1f4e8c; }
+.pref-teinte[data-teinte="vert"] { background-color: #1d5639; }
+.pref-teinte[data-teinte="brique"] { background-color: #8c3519; }
+.pref-teinte[data-teinte="prune"] { background-color: #5b2a63; }
+.pref-teinte[data-teinte="graphite"] { background-color: #2b3135; }
+html[data-theme="dark"] .pref-teinte[data-teinte="petrole"] { background-color: #74aec3; }
+html[data-theme="dark"] .pref-teinte[data-teinte="bleu"] { background-color: #8db6ea; }
+html[data-theme="dark"] .pref-teinte[data-teinte="vert"] { background-color: #86c6a0; }
+html[data-theme="dark"] .pref-teinte[data-teinte="brique"] { background-color: #eea486; }
+html[data-theme="dark"] .pref-teinte[data-teinte="prune"] { background-color: #d4a5dc; }
+html[data-theme="dark"] .pref-teinte[data-teinte="graphite"] { background-color: #c2cacf; }
+
+/* Contraste renforcé : encres secondaires plus foncées (plus claires en
+   sombre), filets et contours plus marqués. text2 sur la carte : 11,7 en
+   clair, 11,9 en sombre. */
+html[data-contraste="renforce"] { --text2: #2f3a40; --text3: #3a464c; --rule-soft: #b7c1c7; --border: #8d9aa1; --border2: #8d9aa1; --champ-bord: #7d8a91; --btn-bord: #8d9aa1; }
+html[data-theme="dark"][data-contraste="renforce"] { --text2: #d6e1e6; --text3: #c4d2d8; --rule-soft: #38525e; --border: #58737f; --border2: #58737f; --champ-bord: #7f9ba6; --btn-bord: #6a8793; }
+
+/* Animations réduites, comme la préférence du système (durées quasi nulles
+   plutôt qu'absentes : les fins d'animation attendues par le code arrivent). */
+html[data-mouvement="reduit"] *,
+html[data-mouvement="reduit"] *::before,
+html[data-mouvement="reduit"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Vue capturée en PDF : l'échelle et les filets d'origine. */
+html[data-texte] .pdf-render-root,
+html[data-densite] .pdf-render-root {
+  --t1: 12px; --t2: 14px; --t3: 17px; --t4: 20px; --t5: 24px; --t6: 29px;
+  --controle: 40px; --ligne: 44px; --ligne-aeree: 48px;
+}
+html[data-contraste] .pdf-render-root { --rule-soft: #d6dce0; --champ-bord: #b4bdc4; --btn-bord: #c2cad0; }
+html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45; --champ-bord: #66838f; --btn-bord: #4f6d79; }
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

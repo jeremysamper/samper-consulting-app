@@ -4,8 +4,15 @@ import App from './App.jsx';
 import { initPwa } from './pwa/registerPwa.js';
 import { installPreloadErrorRecovery } from './utils/preloadErrorRecovery.js';
 import { installBrandPrintStyles } from './design/installPrintStyles.js';
+import { appliquerPreferences } from './services/preferencesAppareil.js';
+import { appliquerThemeInitial } from './hooks/useTheme.js';
 import './styles/fonts.css';
 import './styles/app.css';
+
+// Préférences de l'appareil (thème, taille du texte, densité, couleur,
+// animations, contraste) posées sur <html> avant le premier rendu.
+appliquerThemeInitial();
+appliquerPreferences();
 
 // Filet anti-crash après release : un chunk lazy introuvable (ancienne
 // version encore ouverte) déclenche un rechargement unique et transparent.

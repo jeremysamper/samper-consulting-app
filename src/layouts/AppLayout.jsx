@@ -569,6 +569,9 @@ export default function AppLayout({
       onLogout,
     },
     organiserMenu: peutOrganiserMenu(user.role, shellMode) ? startOrganizing : null,
+    // Menu déplié (section Menu et gestes) : le même état que le bouton à
+    // gauche du titre ; la coque reste seule à écrire sc_menu_deplie.
+    menu: tactile ? null : { deplie: sidebarOpen, basculer: toggleSidebar },
     logo: peutChangerLogo(user.role, shellMode)
       ? { url: appLogo, nom: etablissement?.nom || '', onUpload: handleLogoUpload, onRemove: handleLogoRemove }
       : null,

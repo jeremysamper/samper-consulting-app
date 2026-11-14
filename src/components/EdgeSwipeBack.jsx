@@ -2,6 +2,7 @@ import React from 'react';
 import { ChevronLeft, Menu } from 'lucide-react';
 import { canGoBack, goBack } from '../services/historyNav.js';
 import { readText } from '../utils/storage.js';
+import { usePreferences } from '../services/preferencesAppareil.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Glisser depuis le bord gauche = retour, comme dans une app iOS.
@@ -46,6 +47,9 @@ export default function EdgeSwipeBack({ onRootSwipe }) {
   const [drag, setDrag] = React.useState(null); // { x, y, back }
   const onRootRef = React.useRef(onRootSwipe);
   onRootRef.current = onRootSwipe;
+  // Réglages > Menu et gestes écrit sc_edge_swipe : le geste suit sans
+  // recharger l'app.
+  const { gesteBord } = usePreferences();
 
   React.useEffect(() => {
     if (!isEdgeSwipeEnabled()) return undefined;
@@ -104,7 +108,7 @@ export default function EdgeSwipeBack({ onRootSwipe }) {
       document.removeEventListener('touchend', end);
       document.removeEventListener('touchcancel', end);
     };
-  }, []);
+  }, [gesteBord]);
 
   if (!drag) return null;
   const progress = Math.min(drag.x / TRIGGER, 1);

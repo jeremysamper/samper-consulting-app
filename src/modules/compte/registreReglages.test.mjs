@@ -4,7 +4,9 @@
 // (tableau écrit ici à la main, depuis les écrans d'origine), ni plus ni moins.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { GROUPES, SECTIONS, sectionsParGroupe, sectionsVisibles, signauxDe } from './registreReglages.js';
+import {
+  GROUPES, MODULES, SECTIONS, cheminDe, chercherSections, entreesParGroupe, idEntree, sectionsParGroupe, sectionsVisibles, signauxDe,
+} from './registreReglages.js';
 import { defaultPermissions, navItems, roles } from '../moduleConfig.js';
 import { getPermissionsForRole } from '../../data/demoData.js';
 
@@ -48,6 +50,10 @@ const AVANT = {
   roles: ['consultant'],
   mon_compte: ROLES,
   apparence: ROLES,
+  // 15.11.2026 : préférences de l'appareil, ouvertes à toute personne connectée.
+  langue: ROLES,
+  demarrage: ROLES,
+  menu_gestes: ROLES,
   notifications: ['consultant', 'patron', 'resp_cuisine', 'serveur', 'hote', 'receptionniste'],
   // Lot R3 : réglages sortis de leur écran de travail.
   carte_accueil: ['consultant', 'patron', 'resp_cuisine'],
@@ -144,7 +150,41 @@ test('signaux de changement : l\'id de la section, ou les tables nommées', () =
 });
 
 test('les sections se rangent par groupe, sans groupe vide', () => {
-  const groupes = sectionsParGroupe(SECTIONS.filter((s) => s.groupe !== 'equipe'));
-  assert.deepEqual(groupes.map((g) => g.id), ['maison', 'modules', 'preferences']);
-  assert.deepEqual(GROUPES.map((g) => g.id), ['maison', 'equipe', 'modules', 'preferences']);
+  const groupes = sectionsParGroupe(SECTIONS.filter((s) => s.groupe !== 'maison'));
+  assert.deepEqual(groupes.map((g) => g.id), ['moi', 'appareil', 'modules']);
+  assert.deepEqual(GROUPES.map((g) => g.id), ['moi', 'appareil', 'maison', 'modules']);
+});
+
+test('hiérarchie : une entrée par module, ses sections en pilules nommées', () => {
+  for (const s of SECTIONS.filter((x) => x.groupe === 'modules')) {
+    assert.ok(MODULES[s.module], `${s.id} : module connu`);
+  }
+  const groupes = entreesParGroupe(sectionsVisibles({ user: { id: 'u', role: 'consultant' }, permissions: getPermissionsForRole('consultant'), etablissement: etab(), shellMode: 'ordinateur' }));
+  const modules = groupes.find((g) => g.id === 'modules').entrees;
+  const planning = modules.find((e) => e.id === 'module:planning');
+  assert.deepEqual(planning.sections.map((s) => s.id), ['planning_modeles', 'planning_groupes', 'planning_masques', 'planning_contrats']);
+  assert.deepEqual(planning.detail, ["Modèles d'horaires", 'Groupes', 'Personnes masquées', 'Contrats']);
+  // Chaque section d'un module à plusieurs sections a sa pilule.
+  for (const e of modules.filter((x) => x.sections.length > 1)) {
+    for (const s of e.sections) assert.ok(s.onglet, `${s.id} : onglet`);
+  }
+  // Une entrée par module, jamais deux.
+  assert.equal(new Set(modules.map((e) => e.id)).size, modules.length);
+  // Hors modules, une entrée par section.
+  const appareil = groupes.find((g) => g.id === 'appareil').entrees;
+  assert.deepEqual(appareil.map((e) => e.id), ['apparence', 'langue', 'demarrage', 'menu_gestes', 'notifications']);
+  assert.equal(idEntree(SECTIONS.find((s) => s.id === 'spa_emails')), 'module:spa');
+  assert.equal(idEntree(SECTIONS.find((s) => s.id === 'roles')), 'roles');
+});
+
+test('recherche : libellé, mots-clés, nom du module, sans accents ; vide sans requête', () => {
+  const tout = sectionsVisibles({ user: { id: 'u', role: 'consultant' }, permissions: getPermissionsForRole('consultant'), etablissement: etab(), shellMode: 'ordinateur' });
+  const ids = (q) => chercherSections(tout, q).map((s) => s.id);
+  assert.deepEqual(ids(''), []);
+  assert.ok(ids('sombre').includes('apparence'));
+  assert.ok(ids('theme').includes('apparence'));
+  assert.deepEqual(ids('planning contrats'), ['planning_contrats']);
+  assert.ok(ids('tablette').includes('menu_gestes'));
+  assert.deepEqual(cheminDe(SECTIONS.find((s) => s.id === 'plan_salle')), ['Les modules', 'Réservations']);
+  assert.deepEqual(cheminDe(SECTIONS.find((s) => s.id === 'apparence')), ['Cet appareil']);
 });

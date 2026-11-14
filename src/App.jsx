@@ -16,6 +16,7 @@ import { getHydrateFromSupabase, removeLegacyGlobal, writeLegacyGlobal } from '.
 import { getPermissionsForRole } from './data/demoData.js';
 import { getConsultantToolsTabForPage, isModuleActiveForEtab, normalizePage, pageAccueil } from './modules/moduleConfig.js';
 import { readText, UI_STORAGE_KEYS, writeText } from './utils/storage.js';
+import { pageDeDemarrage } from './services/preferencesAppareil.js';
 import { dbService } from './services/dbService.js';
 import { setNavigationHandler } from './services/navigationService.js';
 import { pushPage, replacePage, startHistory } from './services/historyNav.js';
@@ -44,6 +45,12 @@ function lireLienNotification() {
   }
 }
 const LIEN_NOTIFICATION = typeof window !== 'undefined' ? lireLienNotification() : null;
+// Page de démarrage choisie dans Réglages > Démarrage : lue une fois, au
+// lancement, et posée comme page courante avant le premier rendu (un
+// rechargement dans le même onglet garde la page en cours, pageDeDemarrage).
+// Écrite ici et non dans readInitialPage, que le rendu d'App rappelle.
+const PAGE_DEMARRAGE = typeof window !== 'undefined' && !LIEN_NOTIFICATION?.page ? pageDeDemarrage() : null;
+if (PAGE_DEMARRAGE) writeText(UI_STORAGE_KEYS.page, normalizePage(PAGE_DEMARRAGE));
 
 function readInitialPage() {
   if (LIEN_NOTIFICATION?.page) {

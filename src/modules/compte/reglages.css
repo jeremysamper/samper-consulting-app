@@ -7,4 +7,11 @@
    bouton (tuile d'accueil, ligne cliquable) garde la sienne : c'est elle qui
    la fait reconnaître. Rien ici ne vise une vue capturée en PDF.
    ───────────────────────────────────────────────────────────────────────────── */
+/* Recherche des réglages : la croix du navigateur double le bouton Effacer.
+   L'anneau de focus se pose sur la pilule entière, comme la recherche
+   repliable des modules (.search-toggle), pas sur le champ qu'elle contient. */
+[data-reglages-recherche]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
+input[data-reglages-recherche]:focus { box-shadow: none; }
+.reglages-recherche:focus-within { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--focus-ring); }
+
 .reglages-section [data-cadre]:not(button):not([role="button"]):not(.pdf-render-root *) { box-shadow: none !important; }

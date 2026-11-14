@@ -1,15 +1,16 @@
 import React from 'react';
-import { ArrowLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Search, X } from 'lucide-react';
 import SafeModule from '../../legacy/SafeModule.jsx';
 import { getBrowserWindow } from '../../legacy/legacyApi.js';
 import { Btn } from '../../components/ui/index.jsx';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { goBack } from '../../services/historyNav.js';
 import { signalerReglage } from '../../services/reglagesSignal.js';
 import { getPermissionsForRole } from '../../data/demoData.js';
 import { readText, writeText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { ongletCompteDepuisOutils } from '../moduleConfig.js';
-import { sectionsParGroupe, sectionsVisibles, signauxDe } from './registreReglages.js';
+import { chercherSections, cheminDe, entreesParGroupe, idEntree, sectionsVisibles, signauxDe } from './registreReglages.js';
 import './reglages.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -19,10 +20,15 @@ import './reglages.css';
 // section par réglage (registreReglages.js), chacune sous la garde de son
 // module : chaque personne n'y voit que ce qu'elle règle déjà ailleurs.
 //
-// Écran large : la liste des sections à gauche, une carte par famille ; la
-// section ouverte à droite, dans une carte (direction Galet, lot 6).
+// Hiérarchie (15.11.2026) : quatre espaces (Moi, Cet appareil, La maison, Les
+// modules), une entrée par module qui porte ses sections en pilules, et une
+// recherche en tête de liste.
+//
+// Écran large : la liste à gauche, une carte par espace ; l'entrée ouverte à
+// droite, son espace au-dessus du titre, ses pilules dessous, la section dans
+// une carte (direction Galet, lot 6).
 // Écran étroit (téléphone, tablette, ordinateur à barre latérale ouverte sous
-// 900 px de contenu) : la liste, puis la section ; le geste retour ramène à la
+// 900 px de contenu) : la liste, puis l'entrée ; le geste retour ramène à la
 // liste. Une section ouverte par le raccourci d'un module (ouvrirCompte) s'ouvre
 // directement : le geste retour ramène au module.
 //
@@ -114,6 +120,12 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
     return { id: etroit ? null : sectionParDefaut(ids), direct: false };
   });
   const actif = ids.includes(ouverte.id) ? ouverte.id : null;
+  const [requete, setRequete] = React.useState('');
+
+  // Dernière section ouverte dans chaque entrée de module : rouvrir Planning
+  // ramène à la pilule où l'on était.
+  const dernieres = React.useRef(new Map());
+
   React.useEffect(() => { removeStorageKeys([UI_STORAGE_KEYS.compteTab]); }, []);
 
   // Deux volets : jamais de volet vide. Une section perdue (droit retiré,
@@ -147,7 +159,7 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
     return () => signalerSection(actif);
   }, [actif, isActive]);
 
-  // Écran étroit : une section choisie dans la liste est un niveau de plus, le
+  // Écran étroit : une entrée choisie dans la liste est un niveau de plus, le
   // geste retour ramène à la liste. Ouverte par un raccourci, elle n'empile
   // rien : le geste retour ramène au module.
   const retourListe = React.useCallback(() => setOuverte({ id: null, direct: false }), []);
@@ -157,39 +169,115 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
 
   if (!sections.length) return null;
 
-  const groupes = sectionsParGroupe(sections);
+  const groupes = entreesParGroupe(sections);
+  const toutesEntrees = groupes.flatMap((g) => g.entrees);
   const section = sections.find((s) => s.id === actif) || null;
-  const choisir = (id) => setOuverte({ id, direct: false });
+  const entree = section ? toutesEntrees.find((e) => e.id === idEntree(section)) : null;
+  if (section && entree) dernieres.current.set(entree.id, section.id);
+  const resultats = chercherSections(sections, requete);
+  const enRecherche = requete.trim().length > 0;
+
+  const choisirSection = (id) => setOuverte({ id, direct: false });
+  const choisirEntree = (e) => {
+    const derniere = dernieres.current.get(e.id);
+    const id = e.sections.some((s) => s.id === derniere) ? derniere : e.sections[0].id;
+    choisirSection(id);
+  };
+  // Une pilule garde la façon dont l'entrée a été ouverte (retour au module).
+  const choisirPilule = (id) => setOuverte((o) => ({ id, direct: o.direct }));
+
+  const recherche = (
+    <div style={st.recherche} role="search" className="reglages-recherche">
+      <Search size={18} strokeWidth={1.75} aria-hidden="true" style={st.rechercheIcone} />
+      <input
+        type="search"
+        value={requete}
+        onChange={(e) => setRequete(e.target.value)}
+        onKeyDown={(e) => { if (e.key === 'Escape' && requete) { e.stopPropagation(); setRequete(''); } }}
+        placeholder="Chercher un réglage"
+        aria-label="Chercher un réglage"
+        style={st.rechercheChamp}
+        data-reglages-recherche=""
+      />
+      {enRecherche && (
+        <button type="button" onClick={() => setRequete('')} aria-label="Effacer la recherche" style={st.rechercheEffacer}>
+          <X size={16} strokeWidth={1.75} aria-hidden="true" />
+        </button>
+      )}
+    </div>
+  );
+
+  const boutonEntree = ({ cle, libelle, detail, courant, onClick, nombre, attribut }) => (
+    <button
+      key={cle}
+      type="button"
+      data-cadre=""
+      {...attribut}
+      aria-current={courant ? 'page' : undefined}
+      style={{ ...st.entree, ...(etroit ? st.entreeEtroite : null), ...(courant ? st.entreeActive : null) }}
+      onClick={onClick}
+    >
+      <span style={st.entreeTexte}>
+        <span style={st.entreeLibelle}>{libelle}</span>
+        {detail && (
+          <span style={{ ...st.entreeDetail, ...(courant ? st.entreeDetailActive : null) }}>
+            {Array.isArray(detail) ? <Morceaux parties={detail} /> : detail}
+          </span>
+        )}
+      </span>
+      {!etroit && nombre > 1 && <span style={{ ...st.nombre, ...(courant ? st.nombreActif : null) }} aria-hidden="true" data-no-translate="">{nombre}</span>}
+      {etroit && <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" style={st.chevron} />}
+    </button>
+  );
+
+  const listeEntrees = groupes.map((groupe) => (
+    <div key={groupe.id} role="group" aria-label={groupe.label} data-cadre="" style={etroit ? st.groupeEtroit : st.groupe}>
+      <div style={etroit ? st.groupeTitreEtroit : st.groupeTitre}>{groupe.label}</div>
+      {groupe.entrees.map((e) => boutonEntree({
+        cle: e.id,
+        libelle: e.libelle,
+        detail: etroit ? e.detail : null,
+        courant: !etroit && entree?.id === e.id,
+        onClick: () => choisirEntree(e),
+        nombre: e.sections.length,
+        attribut: e.module ? { 'data-reglage-module': e.module } : { 'data-reglage': e.sections[0].id },
+      }))}
+    </div>
+  ));
+
+  const listeResultats = (
+    <div role="group" aria-label="Résultats" data-cadre="" style={etroit ? st.groupeEtroit : st.groupe}>
+      <div style={etroit ? st.groupeTitreEtroit : st.groupeTitre}>Résultats</div>
+      {resultats.length === 0 && <p style={st.vide}>Aucun réglage ne correspond.</p>}
+      {resultats.map((s) => boutonEntree({
+        cle: s.id,
+        libelle: s.libelle,
+        detail: cheminDe(s),
+        courant: !etroit && s.id === actif,
+        onClick: () => choisirSection(s.id),
+        attribut: { 'data-reglage': s.id },
+      }))}
+    </div>
+  );
 
   const liste = (
     <nav aria-label="Réglages" style={etroit ? st.listeEtroite : st.liste} data-reglages-liste="">
-      {groupes.map((groupe) => (
-        <div key={groupe.id} role="group" aria-label={groupe.label} data-cadre="" style={etroit ? st.groupeEtroit : st.groupe}>
-          <div style={etroit ? st.groupeTitreEtroit : st.groupeTitre}>{groupe.label}</div>
-          {groupe.sections.map((s) => {
-            const courant = !etroit && s.id === actif;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                data-cadre=""
-                data-reglage={s.id}
-                aria-current={courant ? 'page' : undefined}
-                style={{ ...st.entree, ...(etroit ? st.entreeEtroite : null), ...(courant ? st.entreeActive : null) }}
-                onClick={() => choisir(s.id)}
-              >
-                <span style={st.entreeTexte}>
-                  <span style={st.entreeLibelle}>{s.libelle}</span>
-                  {etroit && s.detail && <span style={st.entreeDetail}>{s.detail}</span>}
-                </span>
-                {etroit && <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" style={st.chevron} />}
-              </button>
-            );
-          })}
-        </div>
-      ))}
+      {recherche}
+      {enRecherche ? listeResultats : listeEntrees}
     </nav>
   );
+
+  // Les pilules d'une entrée à plusieurs sections.
+  const pilules = entree && entree.sections.length > 1 ? (
+    <SegmentedTabs
+      tabs={entree.sections.map((s) => ({ id: s.id, label: s.onglet || s.libelle }))}
+      active={actif}
+      onChange={choisirPilule}
+      retourLigne
+    />
+  ) : null;
+  const titre = entree ? entree.libelle : section?.libelle;
+  const espace = section ? cheminDe(section)[0] : '';
 
   const corps = section ? (
     <SectionMontee
@@ -215,11 +303,15 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
                 <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
                 <span>Retour</span>
               </Btn>
-              <div style={st.titreEtroit}>{section.libelle}</div>
+              <div style={st.titreEtroit}>
+                <div style={st.espace}>{espace}</div>
+                <div>{titre}</div>
+              </div>
               {ouverte.direct && (
                 <Btn variant="ghost" onClick={retourListe} style={st.tous}>Tous les réglages</Btn>
               )}
             </div>
+            {pilules}
             {corps}
           </>
         )}
@@ -232,21 +324,38 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
       {liste}
       <div style={st.volet}>
         {section && (
-          <div style={st.enTete} className="no-print">
-            {/* Venue d'un module par son raccourci : le bouton y ramène, comme le geste retour. */}
-            {ouverte.direct && (
-              <Btn variant="ghost" onClick={retourModule} style={st.retour}>
-                <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>Retour</span>
-              </Btn>
-            )}
-            <h2 style={st.titre}>{section.libelle}</h2>
+          <div style={st.enTeteLarge} className="no-print">
+            <div style={st.enTete}>
+              {/* Venue d'un module par son raccourci : le bouton y ramène, comme le geste retour. */}
+              {ouverte.direct && (
+                <Btn variant="ghost" onClick={retourModule} style={st.retour}>
+                  <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
+                  <span>Retour</span>
+                </Btn>
+              )}
+              <div style={st.titreBloc}>
+                <div style={st.espace}>{espace}</div>
+                <h2 style={st.titre}>{titre}</h2>
+              </div>
+            </div>
+            {pilules}
           </div>
         )}
         {corps}
       </div>
     </div>
   );
+}
+
+// Une liste de libellés, chacun dans son nœud : le traducteur les prend un par
+// un dans le glossaire au lieu d'envoyer à l'IA chaque assemblage.
+function Morceaux({ parties }) {
+  return parties.map((partie, i) => (
+    <React.Fragment key={partie}>
+      {i > 0 && ', '}
+      <span>{partie}</span>
+    </React.Fragment>
+  ));
 }
 
 // La section : l'écran d'origine, isolé (un écran qui plante ne fait pas
@@ -281,11 +390,6 @@ function SectionMontee({ section, user, etablissement, permissions, shellMode, r
   );
 }
 
-// Direction Galet : une carte blanche par famille de sections (fond --zone,
-// filet --rule-soft, rayon --r-lg, ombre --sh), ses entrées en lignes ; la
-// section choisie en aplat sombre, comme l'entrée choisie d'un menu. La
-// section ouverte est une carte à son tour dès 1100 px de contenu
-// (reglages.css retire l'ombre des cartes que l'écran d'origine pose dedans).
 const carte = {
   background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)', boxSizing: 'border-box', minWidth: 0,
@@ -297,17 +401,32 @@ const st = {
   // Deux volets : la liste reste en vue quand la section défile, et défile
   // seule si elle dépasse l'écran (--app-header-h : la barre du haut).
   liste: {
-    width: 236, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 0,
+    width: 248, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 0,
     maxHeight: 'calc(100dvh - var(--app-header-h, 64px) - 48px)', overflowY: 'auto', overscrollBehavior: 'contain',
   },
   listeEtroite: { display: 'flex', flexDirection: 'column', gap: 16, width: '100%', minWidth: 0 },
-  // Liste seule : une carte par famille ; dedans, une colonne au téléphone,
+  // Recherche : une pilule, comme celle de la barre du haut.
+  recherche: {
+    display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 6px 0 14px', boxSizing: 'border-box',
+    background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r-full)',
+    flexShrink: 0,
+  },
+  rechercheIcone: { flexShrink: 0, color: 'var(--text3)' },
+  rechercheChamp: {
+    flex: 1, minWidth: 0, minHeight: 40, padding: 0, background: 'transparent', borderWidth: 0, borderStyle: 'none',
+    outline: 'none', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)',
+  },
+  rechercheEffacer: {
+    width: 36, height: 36, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    background: 'transparent', borderWidth: 0, borderStyle: 'none', borderRadius: 'var(--r-full)', color: 'var(--text2)', cursor: 'pointer',
+  },
+  // Liste seule : une carte par espace ; dedans, une colonne au téléphone,
   // deux ou trois dès que la largeur le permet (tablette, ordinateur à barre
-  // latérale ouverte), pour que toutes les sections tiennent en un écran ou
+  // latérale ouverte), pour que toutes les entrées tiennent en un écran ou
   // presque.
   groupeEtroit: { ...carte, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 2, padding: 6 },
   groupeTitreEtroit: { gridColumn: '1 / -1', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', padding: '8px 10px 4px' },
-  groupe: { ...carte, display: 'flex', flexDirection: 'column', gap: 2, padding: 6 },
+  groupe: { ...carte, display: 'flex', flexDirection: 'column', gap: 2, padding: 6, flexShrink: 0 },
   groupeTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', padding: '8px 10px 4px' },
   entree: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '8px 10px',
@@ -319,8 +438,19 @@ const st = {
   entreeTexte: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
   entreeLibelle: { display: 'block' },
   entreeDetail: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text2)', lineHeight: 1.35 },
+  entreeDetailActive: { color: 'var(--on-accent)' },
+  // Nombre de sections d'une entrée de module : une pastille discrète.
+  nombre: {
+    flexShrink: 0, minWidth: 22, height: 22, padding: '0 6px', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    borderRadius: 'var(--r-full)', background: 'var(--piste)', color: 'var(--text2)', fontSize: 'var(--t1)', fontFamily: 'var(--font-num)',
+  },
+  nombreActif: { background: 'transparent', color: 'var(--on-accent)' },
   chevron: { flexShrink: 0, color: 'var(--text3)' },
+  vide: { margin: 0, padding: '8px 10px 12px', fontSize: 'var(--t2)', color: 'var(--text2)' },
   volet: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 },
+  enTeteLarge: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
+  titreBloc: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 },
+  espace: { fontSize: 'var(--t2)', fontWeight: 'var(--g1)', color: 'var(--text3)', lineHeight: 1.3 },
   titre: { margin: 0, fontSize: 'var(--t6)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.15 },
   enTete: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 },
   retour: { minHeight: 44, flexShrink: 0 },
