@@ -232,8 +232,10 @@ function CarteMenu({ menu, saison, voirPrix, canEditMenus, onModifier, onImprime
       </div>
 
       <div style={st.carteActions}>
+        {/* Pilule secondaire : l'aplat sombre reste à « Nouveau groupe », seule
+            action principale de l'écran. */}
         {canEditMenus && (
-          <button type="button" onClick={onModifier} style={{ ...st.bouton, ...st.boutonPrincipal }}>Modifier</button>
+          <button type="button" onClick={onModifier} style={st.bouton}>Modifier</button>
         )}
         {blocs.length > 0 && <button type="button" onClick={onImprimer} style={st.bouton}>PDF</button>}
       </div>
