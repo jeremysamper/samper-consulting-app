@@ -67,7 +67,7 @@ const LIBELLES_QUI = { reservation: 'Réservation', passage: 'Client de passage'
 
 export default function TicketEcran({
   ticket, articles, boutons = {}, categories = [], reglages = REGLAGES_DEFAUT,
-  peutHabiller = false, onBoutonsChange, onOuvrirReglages,
+  peutHabiller = false, onBoutonsChange,
   ticketsMemeTable, onDeplacer, onFusionne, onClos, reload,
   cartes = [], reservation = null, reservations = [], onReservationsChange,
   modeTest = false, onQuittance,
@@ -511,9 +511,6 @@ export default function TicketEcran({
               <Btn variant={editionBoutons ? 'primary' : 'ghost'} onClick={() => setEditionBoutons((v) => !v)} style={st.btn44}>
                 Modifier les boutons
               </Btn>
-            )}
-            {peutHabiller && onOuvrirReglages && (
-              <Btn variant="ghost" onClick={onOuvrirReglages} style={st.btn44}>Réglages de la caisse</Btn>
             )}
           </div>
         )}

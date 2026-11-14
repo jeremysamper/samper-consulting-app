@@ -38,8 +38,7 @@ import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcra
 import AccueilPlanning from './AccueilPlanning.jsx';
 import { equipeParEtat, heuresPrevues } from './accueilPlanning.js';
 import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
-import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
-import { ouvrirCompte } from '../../services/navigationService.js';
+import { equipeDuPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
 import { useContrats } from './contratsService.js';
 import { calcHeures, periodeEnCours, soldePersonne } from './soldesHeures.js';
 
@@ -136,8 +135,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // user_peut_gerer('planning')), comptes partagés = consultant et patron.
   const groupesEtab = usePlanningGroupes(etabId);
   const groupesActifs = groupesEtab.status === 'ready' && groupesEtab.groupes.length > 0;
-  const canGererGroupes = canWrite;
-  const canPostes = estDirectionPlanning(user.role);
   const [groupeFiltre, setGroupeFiltre] = React.useState('tous'); // 'tous' | id de groupe | 'sans'
   // Ce compte est-il un compte de pointage partagé (iPad du restaurant) ?
   const mesGroupesPoste = groupesEtab.postesParCompte.get(user.id) || null;
@@ -169,7 +166,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // du pointage pour toute l'équipe. Chacun garde ses propres horaires (pour
   // pointer) ; le relevé CCNT travaille sur l'équipe complète.
   const masquesEtab = usePlanningMasques(etabId);
-  const canMasquer = estDirectionPlanning(user.role) && masquesEtab.status !== 'absent';
   const estMasque = (userId) => userId !== user.id && masquesEtab.masques.has(userId);
   const employees = equipe.filter(u => !estMasque(u.id));
 
@@ -1261,10 +1257,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Choix de « Gérer », partagés par la barre de la grille et la tuile Gérer
   // de l'accueil, avec les gardes d'aujourd'hui.
   const choixAbsences = absencesEtab.status !== 'absent' && { titre: 'Absences', detail: 'Congés, formations et absences de l\'équipe.', onClick: () => setShowAbsences(true) };
-  const choixModeles = canWrite && modelesEtab.status !== 'absent' && { titre: 'Modèles d\'horaires', detail: `Les heures de Midi, Soir, Coupure, Longue… pour ${etablissement?.nom || 'cet établissement'}.`, onClick: () => ouvrirCompte('planning_modeles') };
-  const choixGroupes = groupesActifs && (canGererGroupes || canPostes) && { titre: 'Groupes', detail: 'Salle, Cuisine et les groupes ajoutés.', onClick: () => ouvrirCompte('planning_groupes') };
-  const choixMasques = canMasquer && { titre: `Personnes masquées${masquesEtab.masques.size > 0 ? ` (${equipe.filter(u => masquesEtab.masques.has(u.id)).length})` : ''}`, detail: 'Retirer quelqu\'un de l\'affichage du planning.', onClick: () => ouvrirCompte('planning_masques') };
-  const choixContrats = canWrite && contratsEtab.status !== 'absent' && { titre: 'Contrats', detail: 'Taux, heures par semaine et vacances de chacun, pour le solde d\'heures.', onClick: () => ouvrirCompte('planning_contrats') };
 
   // Solde du mois de la personne connectée (Mes horaires) : du 1er à hier,
   // le 1er le mois précédent. Rien tant que contrats et absences ne sont pas lus.
@@ -1299,7 +1291,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           gerer={[
             // Sur téléphone, les cartes du pointage n'ouvrent pas le détail : pas de correction.
             !isMobile && { titre: 'Corriger un pointage', detail: 'Touchez ensuite la ligne de la personne.', onClick: () => setEcran('equipe') },
-            choixAbsences, choixModeles, choixGroupes, choixMasques, choixContrats,
+            choixAbsences,
             { titre: 'Dupliquer la semaine', onClick: () => setShowDupliquer(true) },
             canExport && { titre: 'Exporter', onClick: () => setExportOuvert(true) },
           ]}
@@ -1372,10 +1364,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
           sections={[{ items: [
             canWrite && activeTab === 'planning' && { titre: 'Sélectionner plusieurs horaires', detail: 'Pour les supprimer ou les recopier ailleurs.', onClick: () => { setRemplissage(null); if (!selectionMode) toggleSelectionMode(); } },
             activeTab === 'planning' && choixAbsences,
-            choixModeles,
-            choixGroupes,
-            choixMasques,
-            choixContrats,
           ] }]}
         />
       </div>

@@ -18,6 +18,10 @@ import { zurichDateHeure } from '../../utils/zurichTime.js';
 export const ACTIF_SPA = (r) => !['annulee', 'absent'].includes(r.statut);
 export const SANS_PRATICIEN_SPA = 'À attribuer';
 
+// Minutes en cabine d'un ensemble de rendez-vous (somme des durées), lue aussi
+// par l'agenda (AgendaSpa.jsx : la journée, chaque praticien).
+export const minutesSpa = (rdvs) => (rdvs || []).reduce((s, r) => s + (Number(r.dureeMin) || 0), 0);
+
 export function serieSpa({ reservations, bons }, tranches) {
   const rdv = (reservations || []).filter((r) => /^\d{4}-\d{2}-\d{2}/.test(String(r?.dateRdv || '')));
   const bonsDates = (bons || []).filter((b) => b?.createdAt).map((b) => zurichDateHeure(b.createdAt).jour);
@@ -36,7 +40,7 @@ export function serieSpa({ reservations, bons }, tranches) {
       fin: t.fin,
       vide: dedans.length === 0,
       soins: actifs.length,
-      minutes: actifs.reduce((s, r) => s + (Number(r.dureeMin) || 0), 0),
+      minutes: minutesSpa(actifs),
       annules: dedans.length - actifs.length,
       parPraticien,
       bons: bonsDates.filter((j) => j >= t.debut && j <= t.fin).length,

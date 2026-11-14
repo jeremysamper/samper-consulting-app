@@ -40,17 +40,17 @@ export function Marqueur({ rang, taille = 10, creux = false }) {
 }
 
 const st = {
-  legende: { display: 'flex', flexWrap: 'wrap', gap: '6px 16px', fontSize: 13, color: 'var(--text2)', marginBottom: 10 },
+  legende: { display: 'flex', flexWrap: 'wrap', gap: '6px 16px', fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 10 },
   itemLegende: { display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 },
-  numero: { fontFamily: 'var(--font-num)', fontSize: 12, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  numero: { fontFamily: 'var(--font-num)', fontSize: 'var(--t1)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   graduation: { position: 'absolute', left: 0, right: 0, borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)', pointerEvents: 'none' },
-  chiffreAxe: { position: 'absolute', bottom: 2, fontSize: 11, lineHeight: '12px', color: 'var(--text3)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums', background: 'var(--surface)', padding: '0 3px' },
-  axe: { position: 'relative', height: 16, marginTop: 4, fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
-  detail: { marginTop: 8, minHeight: 44, fontSize: 13, color: 'var(--text2)' },
+  chiffreAxe: { position: 'absolute', bottom: 2, fontSize: 'var(--t1)', lineHeight: '14px', color: 'var(--text3)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums', background: 'var(--surface)', padding: '0 3px' },
+  axe: { position: 'relative', height: 16, marginTop: 4, fontSize: 'var(--t1)', color: 'var(--text3)', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
+  detail: { marginTop: 8, minHeight: 44, fontSize: 'var(--t2)', color: 'var(--text2)' },
   detailTitre: { fontFamily: 'var(--font-num)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums', marginBottom: 4 },
   detailLigne: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', padding: '2px 0' },
   valeur: { fontFamily: 'var(--font-num)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
-  bout: { position: 'absolute', transform: 'translate(6px, -50%)', display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 11, color: 'var(--text)', fontFamily: 'var(--font-num)', background: 'var(--surface)', padding: '0 3px', borderRadius: 3, pointerEvents: 'none', whiteSpace: 'nowrap' },
+  bout: { position: 'absolute', transform: 'translate(6px, -50%)', display: 'inline-flex', alignItems: 'center', gap: 3, fontSize: 'var(--t1)', color: 'var(--text)', fontFamily: 'var(--font-num)', background: 'var(--surface)', padding: '0 3px', borderRadius: 'var(--r-sm)', pointerEvents: 'none', whiteSpace: 'nowrap' },
 };
 
 // Nom d'une série : une donnée saisie ou un chiffre ne se traduit pas.
@@ -80,6 +80,9 @@ export function Legende({ series, comparaison, libelleComparaison }) {
           <Marqueur rang={s.rang} />
           <NomSerie s={s} />
           {libelleUnite(s.unite) ? <span data-no-translate>({libelleUnite(s.unite)})</span> : null}
+          {/* S3 : la valeur de la série sur la période (total d'un flux, taux
+              recalculé, dernier relevé), en tête comme sur l'écran d'origine. */}
+          {estNombre(s.total) ? <span data-stat-total="">: <Valeur v={s.total} unite={s.unite} /></span> : null}
         </span>
       ))}
       {comparaison ? (
@@ -129,6 +132,22 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
     });
     return d;
   };
+  // Une seule courbe : sa surface jusqu'à zéro, en aplat léger de sa couleur
+  // (un tronçon par suite de valeurs présentes, jamais un pont sur un trou).
+  const aire = (s, valeurs) => {
+    const z = zero(s);
+    let d = '';
+    let debut = -1;
+    const fermer = (fin) => { if (debut >= 0 && fin > debut) d += `L${x(fin)} ${z.toFixed(3)} L${x(debut)} ${z.toFixed(3)} Z `; debut = -1; };
+    valeurs.forEach((v, i) => {
+      const yy = y(s, v);
+      if (yy == null) { fermer(i - 1); return; }
+      d += `${debut < 0 ? 'M' : 'L'}${x(i)} ${yy.toFixed(3)} `;
+      if (debut < 0) debut = i;
+    });
+    fermer(valeurs.length - 1);
+    return d;
+  };
   // Marqueurs : tous jusqu'à 45 points, sinon un sur k, le dernier toujours.
   const pasMarqueur = n <= 45 ? 1 : Math.ceil(n / 24);
   const dernierRang = (s) => { for (let i = s.valeurs.length - 1; i >= 0; i -= 1) if (estNombre(s.valeurs[i])) return i; return -1; };
@@ -139,7 +158,7 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
   return (
     <div style={{ minWidth: 0 }} data-stat-graphique={type}>
       <Legende series={series} comparaison={comparaison && type === 'courbe'} libelleComparaison={libelleComparaison} />
-      <div style={{ position: 'relative', height: hauteur, marginTop: 14, marginRight: type === 'courbe' ? 26 : 0 }}>
+      <div style={{ position: 'relative', height: hauteur, marginTop: 14, marginRight: type === 'courbe' ? 26 : 0 }} data-stat-trace="">
         {echelles.g.graduations.map((g) => {
           const frac = positionSur(echelles.g, g);
           const droite = echelles.d ? echelles.d.min + frac * (echelles.d.max - echelles.d.min) : null;
@@ -153,6 +172,7 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
         <svg viewBox={`0 0 ${Math.max(n, 1) * 10} 100`} preserveAspectRatio="none" width="100%" height="100%" style={{ position: 'absolute', inset: 0, display: 'block', overflow: 'visible' }} aria-hidden="true">
           {type === 'courbe' && series.map((s) => (
             <g key={s.id}>
+              {series.length === 1 ? <path d={aire(s, s.valeurs)} style={{ fill: couleurSerie(s.rang), fillOpacity: 0.08, stroke: 'none' }} data-stat-aire="" /> : null}
               {s.comparaison ? <path d={chemin(s, s.comparaison)} vectorEffect="non-scaling-stroke" style={{ fill: 'none', stroke: couleurSerie(s.rang), strokeWidth: 2, strokeDasharray: '6 5', opacity: 0.75 }} /> : null}
               <path d={chemin(s, s.valeurs)} vectorEffect="non-scaling-stroke" style={{ fill: 'none', stroke: couleurSerie(s.rang), strokeWidth: 2.2, strokeLinejoin: 'round' }} />
             </g>
@@ -219,7 +239,7 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
               data-stat-colonne=""
               style={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', cursor: 'pointer', background: sel === i && genre !== 'temps' ? 'var(--bg2)' : 'transparent', opacity: sel === i && genre !== 'temps' ? 0.35 : 1 }}
             >
-              {type !== 'courbe' && c.barres.every((b) => !estNombre(b.v)) ? <span style={{ fontSize: 10, color: 'var(--text3)', lineHeight: '12px', paddingBottom: 2 }}>n/a</span> : null}
+              {type !== 'courbe' && c.barres.every((b) => !estNombre(b.v)) ? <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: '14px', paddingBottom: 2 }}>n/a</span> : null}
             </div>
           ))}
         </div>
@@ -233,7 +253,7 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
           ))}
         </div>
       ) : (
-        <div style={{ display: 'flex', gap: 2, marginTop: 4, fontSize: 11, color: 'var(--text3)' }}>
+        <div style={{ display: 'flex', gap: 2, marginTop: 4, fontSize: 'var(--t1)', color: 'var(--text3)' }}>
           {colonnes.map((c) => (
             <span key={c.cle} style={{ flex: '1 1 0', minWidth: 0, textAlign: 'center', overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }} data-no-translate>{c.serie.rang + 1}</span>
           ))}

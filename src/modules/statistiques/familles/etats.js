@@ -14,6 +14,7 @@
 
 import { etatMarges } from '../../comptabilite/serieMarges.js';
 import { etatChiffrage } from '../../consultant-tools/serieChiffrage.js';
+import { carnetsAVenir } from '../../previsions/rapport/computeReservationStats.js';
 
 const pct = (v) => (v == null ? null : v / 100);
 const instantane = (calculer) => (donnees, tranches, ctx) => {
@@ -39,6 +40,31 @@ const mesureFiche = (id, libelle, unite, lire, categories, phrase) => ({
   lignes: (p) => (p.fiches || []).map(({ r, c }) => ({ cle: r.id, libelle: r.nom, valeur: lire(r, c) })),
   phrase,
 });
+
+// Carnet à venir du rapport des réservations (S3) : couverts déjà réservés pour
+// les 7, 14 et 30 prochains jours, ce qui l'était à la date comparable (celle
+// de la comparaison de la vue, comme le rapport) et la variation.
+const ligneCarnet = (lire) => (p) => (p.carnets || []).map((c) => ({ cle: String(c.jours), libelle: `${c.jours} jours`, valeur: lire(c) }));
+const mesureCarnet = (id, libelle, unite, lire, phrase) => ({
+  id, libelle, unite, nature: 'etat', categories: 'horizons_carnet', libelleCategories: 'Horizon', valeur: () => null, lignes: ligneCarnet(lire), phrase,
+});
+export const familleCarnet = {
+  id: 'carnet',
+  libelle: 'Carnet à venir',
+  journee: 'aujourd\'hui, pour les jours qui viennent',
+  calculer: instantane((d, ctx) => ({
+    carnets: carnetsAVenir({ lignes: d.lignes, aujourdhui: ctx?.aujourdhui, reference: ctx?.reference, service: ctx?.filtres?.service || 'tous', parametres: d.parametres }),
+    avecReference: !!ctx?.reference && ctx.reference !== ctx.aujourdhui,
+  })),
+  mesures: [
+    mesureCarnet('carnet.couverts', 'Couverts au carnet', 'nombre', (c) => c.actuel,
+      'Couverts déjà réservés pour les prochains jours (confirmés, demandes, arrivés, partis), comme le carnet à venir du rapport.'),
+    mesureCarnet('carnet.avant', 'Couverts au carnet à la date comparable', 'nombre', (c) => c.avant,
+      'Ce qui était déjà réservé à la date comparable de la comparaison choisie, pour le même nombre de jours.'),
+    mesureCarnet('carnet.variation', 'Variation du carnet', 'pct', (c) => pct(c.variation),
+      'Écart du carnet d\'aujourd\'hui sur celui de la date comparable, en pour cent ; n/a sans base.'),
+  ],
+};
 
 export const familleMarges = {
   id: 'marges',

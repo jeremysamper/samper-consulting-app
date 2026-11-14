@@ -16,6 +16,7 @@ import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { compteSop } from './serieSop.js';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING - MODULE SOP & CHECKLISTS
@@ -149,6 +150,9 @@ const SOP = ({ user, etablissement }) => {
     { id: 'modeles', Icone: Library, libelle: 'Modèles', etat: <>à importer</>, visible: canManage, onClick: () => setShowTemplates(true) },
   ];
 
+  // Exécutions terminées : le compte partagé avec les Statistiques (D3).
+  const terminees = compteSop(executions).terminees;
+
   return (
     <div style={ss.root}>
       {/* Header */}
@@ -156,7 +160,7 @@ const SOP = ({ user, etablissement }) => {
         <div>
           <div style={ss.subtitle}>
             {sops.filter(s => s.actif).length} procédure{sops.filter(s => s.actif).length > 1 ? 's' : ''}
-            {', '}{executions.filter(e => e.statut === 'terminee').length} exécution{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''} terminée{executions.filter(e => e.statut === 'terminee').length > 1 ? 's' : ''}
+            {', '}{terminees} exécution{terminees > 1 ? 's' : ''} terminée{terminees > 1 ? 's' : ''}
           </div>
         </div>
       </div>

@@ -1,12 +1,11 @@
 import React from 'react';
-import { BarChart3, CalendarClock, ChevronsRight, ClipboardCheck, ConciergeBell, FlaskConical, History, LayoutGrid, Zap, ReceiptText, SlidersHorizontal } from 'lucide-react';
+import { CalendarClock, ChevronsRight, ClipboardCheck, ConciergeBell, History, LayoutGrid, Zap, ReceiptText } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
 import { Btn } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { dbService } from '../../services/dbService.js';
-import { ouvrirCompte } from '../../services/navigationService.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { usePlanSalle } from '../../hooks/usePlanSalle.js';
 import { zurichAjouterJours, zurichDateHeure, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
@@ -19,7 +18,7 @@ import BandeauTest from './BandeauTest.jsx';
 import InvitationAvisPret from './InvitationAvisPret.jsx';
 import Historique from './Historique.jsx';
 import Cloture from './Cloture.jsx';
-import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
+import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest } from './modeTest.js';
 import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
@@ -28,8 +27,6 @@ import { resumeService } from './resumeService.js';
 import { CarteTablesOuvertes, ReperesCaisse } from './CartesCaisse.jsx';
 import './caisse.css';
 
-// Rapports (v8) : chargés à la demande, ils ne pèsent pas sur la prise de commande.
-const Rapports = React.lazy(() => import('./rapports/Rapports.jsx'));
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Caisse v1 : prise de commande par table depuis le plan de salle, ventes
@@ -79,10 +76,9 @@ const Rapports = React.lazy(() => import('./rapports/Rapports.jsx'));
 // Ni l'historique ni la clôture ne s'ouvrent en mode test : ils ne montrent
 // que de vraies ventes.
 //
-// v8 : rapports. Une tuile « Rapports » pour consultant, patron et
-// responsable de cuisine (la base rend à chacun ce qu'il peut lire : tout pour
-// la direction, les plats vendus et les services pour le responsable de
-// cuisine ; elle refuse les autres rôles). Jamais en mode test.
+// v8 : rapports. Depuis le 14.11.2026 ils s'ouvrent dans Statistiques
+// (analyse « Caisse », statistiques/RapportCaisse.jsx), pour les mêmes rôles
+// et hors mode test : la tuile « Rapports » a quitté cet accueil.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const dateCH = (jour) => { const [a, m, j] = String(jour || '').split('-'); return j ? `${j}.${m}.${a}` : ''; };
@@ -285,7 +281,22 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // Les réglages de la caisse vivent dans la page des réglages (section
   // 'caisse') : ce qui y change s'applique ici sans recharger l'app, même sans
   // temps réel (terminaux, tickets de test vidés).
-  useReglageModifie('caisse', () => { rechargerGrille(); rechargerTerminaux(); rechargerTickets(); });
+  useReglageModifie('caisse', () => {
+    rechargerGrille(); rechargerTerminaux();
+    // Poste passé en mode test depuis la page des réglages : l'écran repart
+    // sans ticket, sur la clé que la base vient de rendre ; les tickets de
+    // test se lisent au rendu suivant.
+    const cle = lireModeTest(etabId);
+    if (cle && cle !== cleTest) {
+      lectureTickets.current += 1;
+      setTickets([]);
+      setTicketId(null);
+      setProposerVider(false);
+      setCleTest(cle);
+      return;
+    }
+    rechargerTickets();
+  });
 
   // Realtime : une arrivée cochée à l'accueil, une réservation prise au
   // téléphone, une table posée sur le plan de salle.
@@ -345,25 +356,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     if (modeTest && ecran === 'sans_ticket') retourAccueil();
   }, [modeTest, ecran, retourAccueil]);
 
-  async function entrerModeTest() {
-    if (testEnCours || modeTest || !peutActiverTest) return;
-    if (!window.confirm('Passer ce poste en mode test ? Les tickets ouverts ici ne compteront pas dans les chiffres. Les autres postes continuent de vendre normalement.')) return;
-    setTestEnCours(true);
-    try {
-      const { data, error } = await caisse.testEntrer(etabId, poste);
-      if (error) { notify(error, 'error'); return; }
-      if (!data?.cle) { notify("Le mode test n'a pas pu être activé. Réessayez.", 'error'); return; }
-      retenirModeTest(etabId, data.cle);
-      lectureTickets.current += 1;
-      setTickets([]);
-      setTicketId(null);
-      setProposerVider(false);
-      setCleTest(data.cle);
-      notify('Mode test activé sur ce poste', 'success');
-    } finally {
-      setTestEnCours(false);
-    }
-  }
+  // L'entrée en mode test se fait dans la page des réglages (section Caisse,
+  // « Mode test ») depuis le 14.11.2026 ; cet écran la reprend au signal de la
+  // section (voir useReglageModifie plus haut) ou à son ouverture.
 
   // Sortie en un tap. Les tickets de test restent en base jusqu'à leur purge :
   // un responsable se voit proposer de les vider tout de suite.
@@ -488,10 +483,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   }
 
   // Réglages de la caisse : une section de la page des réglages, pour les trois
-  // rôles que la base laisse écrire (gardesCaisse.js). L'accueil et le ticket y
-  // mènent d'un toucher ; depuis le ticket la page se pose par-dessus, le ticket
-  // reste ouvert et le geste retour y ramène.
-  const ouvrirReglages = (parDessus = false) => ouvrirCompte('caisse', { parDessus });
+  // rôles que la base laisse écrire (gardesCaisse.js). Depuis le 14.11.2026 on
+  // y entre par la page des réglages seule : ni l'accueil ni le ticket n'y
+  // mènent plus.
 
   // Bandeau du mode test : en tête de chaque écran de la caisse, sans exception.
   const bandeauTest = modeTest ? <BandeauTest onQuitter={quitterModeTest} enCours={testEnCours} /> : null;
@@ -550,13 +544,6 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           : <><span>{etatJour?.tickets_du_jour ?? 0}</span> <span>tickets à clôturer aujourd'hui</span></>,
         onClick: () => setEcran('cloture'),
       }]),
-      ...(modeTest || !peutHabiller ? [] : [{
-        id: 'rapports',
-        libelle: 'Rapports',
-        Icone: BarChart3,
-        etat: peutAnnuler ? 'Chiffres, plats vendus, fichiers pour la fiduciaire' : 'Plats vendus et services, midi et soir',
-        onClick: () => setEcran('rapports'),
-      }]),
     ];
     const enRetard = !modeTest && peutHabiller ? (etatJour?.a_cloturer || []) : [];
     return (
@@ -613,22 +600,6 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             />
           </div>
         </div>
-        {(peutHabiller || (peutActiverTest && !modeTest)) && (
-          <div style={st.reglagesAccueil}>
-            {peutHabiller && (
-              <Btn variant="ghost" onClick={() => ouvrirReglages()} style={st.btn44}>
-                <SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>Réglages de la caisse</span>
-              </Btn>
-            )}
-            {peutActiverTest && !modeTest && (
-              <Btn variant="ghost" disabled={testEnCours} onClick={entrerModeTest} style={st.btn44}>
-                <FlaskConical size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>Mode test</span>
-              </Btn>
-            )}
-          </div>
-        )}
       </>
     );
   }
@@ -736,15 +707,6 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     );
   }
 
-  // ── Rapports (v8) ──
-  if (ecran === 'rapports' && !modeTest && peutHabiller) {
-    return (
-      <React.Suspense fallback={<p style={st.vide}>Chargement…</p>}>
-        <Rapports etablissement={etablissement} reglages={reglages} onRetour={retourAccueil} />
-      </React.Suspense>
-    );
-  }
-
   // ── Tickets ouverts ──
   if (ecran === 'tickets') {
     return (
@@ -823,7 +785,6 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           onReservationsChange={rechargerReservations}
           peutHabiller={peutHabiller}
           onBoutonsChange={rechargerBoutons}
-          onOuvrirReglages={() => ouvrirReglages(true)}
           ticketsMemeTable={autresMemeTable}
           onDeplacer={() => { setModeTables('deplacer'); setEcran('tables'); }}
           onFusionne={rechargerTickets}
@@ -877,7 +838,6 @@ const st = {
   sansTicketNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', overflowWrap: 'anywhere' },
   sansTicketActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   num: { fontFamily: 'var(--font-num)' },
-  reglagesAccueil: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 },
   ticketPret: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--success-text)', fontWeight: 'var(--g3)' },
   // Après la sortie du mode test : proposition de vider, pour un responsable.
   // Bandeau en carte blanche (direction Galet) : jour non clôturé, tickets

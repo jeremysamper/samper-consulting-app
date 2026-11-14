@@ -1,5 +1,5 @@
 import React from 'react';
-import { Banknote, CalendarClock, ChartColumn, ChartLine, ClipboardList, Receipt, Settings2, Truck } from 'lucide-react';
+import { Banknote, CalendarClock, ChartColumn, ClipboardList, Receipt, Truck } from 'lucide-react';
 import { Btn } from '../../components/ui/index.jsx';
 import { Choix, Fenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
@@ -9,7 +9,7 @@ import { zurichToday } from '../../utils/zurichTime.js';
 import { dateCH, estCompte } from './inventaireLignes.js';
 import { estACompleter } from './achatsLogic.js';
 import { estFacture, totauxFactures } from './facturesLogic.js';
-import { depensesParMois, echeancier, trierDocuments } from '../factures-achats/analysesAchats.js';
+import { datesAVerifier, depensesParMois, echeancier, trierDocuments } from '../factures-achats/analysesAchats.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Accueil du module Inventaire : une tuile par tâche, dans l'ordre où la
@@ -27,20 +27,19 @@ import { depensesParMois, echeancier, trierDocuments } from '../factures-achats/
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TUILES_PAR_VUE = {
-  inventaire: ['compte', 'ecarts', 'gerer'],
-  achats: ['livraison', 'facture', 'reglement', 'echeances', 'analyses'],
+  inventaire: ['compte', 'ecarts'],
+  achats: ['livraison', 'facture', 'reglement', 'echeances'],
 };
 
-const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const plusRecent = (docs) => docs.slice().sort((a, b) => String(b.dateDocument || '').localeCompare(String(a.dateDocument || '')))[0];
 
 export default function AccueilInventaire({
   vue = 'inventaire', perimetreActif, perimetres, pilesParPerimetre, inv, docs,
-  canManage, canRegler, canImportXlsx,
-  onJeCompte, onImport, onCompleter, onReglement, onEcheances, onAnalyses, onEcarts, onChoisirPerimetre, onNouveauPerimetre, gerer,
+  canRegler,
+  onJeCompte, onImport, onCompleter, onReglement, onEcheances, onVerifierDates, onEcarts, onChoisirPerimetre, onNouveauPerimetre,
 }) {
-  const [fenetre, setFenetre] = React.useState(null); // 'perimetre' | 'gerer' | null
+  const [fenetre, setFenetre] = React.useState(null); // 'perimetre' | null
   const fermer = React.useCallback(() => setFenetre(null), []);
   const aujourdhui = zurichToday();
 
@@ -58,6 +57,9 @@ export default function AccueilInventaire({
   // Tuiles de Factures & achats : dépenses des 12 mois (tous périmètres) et
   // échéances (droit « Régler les factures »).
   const depenses = achatsVue ? depensesParMois(trierDocuments(docs).factures, aujourdhui).total : null;
+  // Dates à vérifier : contrôle de saisie, resté dans le module quand les
+  // analyses des dépenses sont parties dans Statistiques (S3).
+  const aVerifier = achatsVue && onVerifierDates ? datesAVerifier(trierDocuments(docs).factures) : [];
   const echeances = achatsVue && canRegler ? echeancier(docs, aujourdhui) : null;
   const enRetard = echeances?.tranches.find(t => t.id === 'retard')?.factures.length || 0;
   const prochaine = echeances?.tranches.filter(t => t.id !== 'retard' && t.id !== 'sans')
@@ -100,22 +102,12 @@ export default function AccueilInventaire({
         : prochaine ? <>prochaine le <span>{dateCH(prochaine)}</span></> : <>aucune échéance à venir</>,
     },
     {
-      id: 'analyses', Icone: ChartLine, libelle: 'Analyses des dépenses', onClick: onAnalyses,
-      etat: !depenses ? null : depenses.montant == null
-        ? <>aucune facture chiffrée sur 12 mois</>
-        : <><span>CHF</span> <span>{chf(depenses.montant)}</span> sur 12 mois</>,
-    },
-    {
       id: 'ecarts', Icone: ChartColumn, libelle: 'Écarts et documents', onClick: onEcarts,
       etat: !inv
         ? <>aucun inventaire</>
         : inv.statut === 'validé'
           ? <>inventaire du <span>{dateCH(inv.date)}</span>, validé</>
           : <>inventaire du <span>{dateCH(inv.date)}</span>, en cours</>,
-    },
-    {
-      id: 'gerer', Icone: Settings2, libelle: 'Gérer', onClick: () => setFenetre('gerer'), visible: canManage,
-      etat: <>périmètres, lignes, import Excel</>,
     },
   ];
 
@@ -134,7 +126,7 @@ export default function AccueilInventaire({
       {!achatsVue && <ReperesInventaire dernier={dernier} perimetreActif={perimetreActif} perimetres={perimetres} pilesParPerimetre={pilesParPerimetre} />}
       {!achatsVue && <CarteInventaire dernier={dernier} perimetreActif={perimetreActif} />}
       {achatsVue && <ReperesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} depenses={depenses} />}
-      {achatsVue && <CartesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} onAnalyses={onAnalyses} onEcheances={onEcheances} />}
+      {achatsVue && <CartesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} onEcheances={onEcheances} />}
 
       {achatsVue && aCompleter > 0 && (
         <div style={st.bandeau} data-bandeau-a-completer="">
@@ -142,6 +134,15 @@ export default function AccueilInventaire({
             <span>{aCompleter}</span> {aCompleter > 1 ? 'documents à compléter' : 'document à compléter'} : la lecture n’a pas tout trouvé (fournisseur, date ou montant TTC).
           </span>
           <Btn small variant="ghost" onClick={() => (onCompleter ? onCompleter() : onImport(facturesACompleter ? 'facture' : 'bon_livraison'))}>Compléter</Btn>
+        </div>
+      )}
+
+      {aVerifier.length > 0 && (
+        <div style={st.bandeau} data-bandeau-dates="">
+          <span style={{ flex: '1 1 240px', minWidth: 0 }}>
+            <span>{aVerifier.length}</span> <span>{aVerifier.length > 1 ? 'dates à vérifier' : 'date à vérifier'}</span>. <span>Date de facture antérieure de plus d'un an à son enregistrement : l'année a peut-être été mal lue. Rien n'est corrigé d'office.</span>
+          </span>
+          <Btn small variant="ghost" onClick={() => onVerifierDates(aVerifier.map(d => d.id))}>Vérifier ces dates</Btn>
         </div>
       )}
 
@@ -170,51 +171,6 @@ export default function AccueilInventaire({
         </Fenetre>
       )}
 
-      {fenetre === 'gerer' && (
-        <Fenetre
-          id="inventaire-gerer"
-          titre="Gérer l'inventaire"
-          sousTitre={gerer.aInventaire ? <><span data-no-translate>{perimetreActif}</span>, inventaire du <span>{dateCH(inv.date)}</span></> : null}
-          onClose={fermer}
-        >
-          {[
-            {
-              titre: 'Inventaires',
-              items: [
-                gerer.aInventaire && { titre: 'Renommer le périmètre', detail: `Change le nom « ${perimetreActif} » sur tous ses inventaires.`, onClick: gerer.onRenommer },
-                gerer.aInventaire && gerer.estValide && { titre: 'Rouvrir cet inventaire', detail: 'Il repassera « en cours » et redeviendra modifiable.', onClick: gerer.onRouvrir },
-              ],
-            },
-            {
-              titre: 'Lignes',
-              items: [
-                gerer.peutSelectionner && { titre: 'Sélectionner des lignes', detail: 'Pour en supprimer, les ranger par zone ou en exporter une partie en Excel.', onClick: gerer.onSelectionnerLignes },
-                gerer.aInventaire && gerer.aRecettes && { titre: 'Produits maison (fiches recettes)', detail: 'Relier les préparations maison à leur fiche, chiffrées au coût matière.', onClick: gerer.onProduitsMaison },
-              ],
-            },
-            {
-              titre: 'Import Excel',
-              items: [
-                canImportXlsx && { titre: 'Importer un classeur XLSX', detail: 'Met à jour les produits de cet inventaire, ou crée un inventaire complet depuis un classeur Sec / Positif / Négatif.', onClick: gerer.onImporterXlsx },
-                canImportXlsx && { titre: 'Télécharger le modèle XLSX', detail: 'Le fichier à remplir avant un import.', onClick: gerer.onModeleXlsx },
-              ],
-            },
-            {
-              items: [
-                gerer.aInventaire && gerer.peutSupprimer && { titre: 'Supprimer cet inventaire', onClick: gerer.onSupprimer, danger: true },
-              ],
-            },
-          ]
-            .map(s => ({ ...s, items: s.items.filter(Boolean) }))
-            .filter(s => s.items.length)
-            .map((s, i) => (
-              <div key={s.titre || i} style={st.section}>
-                {s.titre && <div style={st.sectionTitre}>{s.titre}</div>}
-                {s.items.map(it => <Choix key={it.titre} {...it} onClick={() => { fermer(); it.onClick(); }} />)}
-              </div>
-            ))}
-        </Fenetre>
-      )}
     </div>
   );
   return <div className={achatsVue ? 'ach-page' : 'inv-page'}>{page}</div>;

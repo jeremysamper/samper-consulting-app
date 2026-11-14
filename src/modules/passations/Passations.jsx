@@ -1,5 +1,5 @@
 import React from 'react';
-import { AtSign, ListTodo, MessagesSquare, NotebookPen, Plus, Repeat } from 'lucide-react';
+import { AtSign, ListTodo, MessagesSquare, NotebookPen, Plus } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -8,7 +8,6 @@ import { Btn } from '../../components/ui/index.jsx';
 import { BoutonActions, Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import EnTeteSection from '../../components/parcours/EnTeteSection.jsx';
-import { ouvrirCompte } from '../../services/navigationService.js';
 import { peutGererPassations } from './gardesPassations.js';
 import { zurichAjouterJours, zurichToday } from '../../utils/zurichTime.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
@@ -230,7 +229,6 @@ export default function Passations({ user, etablissement, ecranReglage = null })
     { id: 'nouvelle', libelle: 'Nouvelle passation', Icone: Plus, onClick: () => setForm({ passation: null }) },
     { id: 'canaux', libelle: 'Canaux', Icone: MessagesSquare, etat: <><AtSign size={14} strokeWidth={1.8} aria-hidden="true" style={{ verticalAlign: '-2px' }} /> {etat(mesMentions.length, 'mention cette semaine', 'mentions cette semaine')}</>, onClick: () => setEcran('canaux') },
     { id: 'taches', libelle: 'Tâches du jour', Icone: ListTodo, etat: etat(restantes.length, 'tâche à faire', 'tâches à faire'), onClick: () => setEcran('taches') },
-    { id: 'recurrentes', libelle: 'Tâches récurrentes', Icone: Repeat, visible: peutGerer, etat: etat(taches.rows.filter((t) => t.actif).length, 'tâche active', 'tâches actives'), onClick: () => ouvrirCompte('passations_taches') },
   ];
   const ongletsPoles = POLES.map((p) => ({ id: p.id, label: p.label }));
   const ongletsCanaux = [CANAL_TOUS, ...POLES].map((p) => ({ id: p.id, label: p.label }));

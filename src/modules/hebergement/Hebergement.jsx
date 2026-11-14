@@ -1,5 +1,5 @@
 import React from 'react';
-import { BedDouble, BookOpen, Croissant, DoorOpen, LogIn, LogOut, Plus, Tag, Users } from 'lucide-react';
+import { BedDouble, BookOpen, Croissant, LogIn, LogOut, Plus, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -19,7 +19,6 @@ import HotesGestion, { HoteForm } from './HotesGestion.jsx';
 import SejourNote from './SejourNote.jsx';
 import SejourOccupants from './SejourOccupants.jsx';
 import { estDirectionHotel } from './gardesHotel.js';
-import { ouvrirCompte } from '../../services/navigationService.js';
 import RegistreMois from './RegistreMois.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -173,8 +172,6 @@ export default function Hebergement({ user, etablissement }) {
     },
     { id: 'nouveau', libelle: 'Nouveau séjour', Icone: Plus, visible: peutGerer, onClick: () => setForm({ sejour: null }) },
     { id: 'hotes', libelle: 'Hôtes', Icone: Users, etat: etat(hotes.rows.filter((x) => !x.archive).length, 'fiche', 'fiches'), onClick: () => setEcran('hotes') },
-    { id: 'chambres', libelle: 'Chambres', Icone: DoorOpen, visible: direction, etat: etat(chambres.rows.filter((c) => c.actif).length, 'chambre active', 'chambres actives'), onClick: () => ouvrirCompte('hebergement_chambres') },
-    { id: 'tarifs', libelle: 'Tarifs et taxes', Icone: Tag, visible: direction, etat: etat(tarifs.rows.filter((t) => t.actif).length, 'tarif actif', 'tarifs actifs'), onClick: () => ouvrirCompte('hebergement_tarifs') },
     { id: 'registre', libelle: 'Registre et statistiques', Icone: BookOpen, visible: direction, etat: <span>Nuitées, HESTA, taxes du mois</span>, onClick: () => setEcran('registre') },
   ];
   const lierHote = async (s, hoteId) => {

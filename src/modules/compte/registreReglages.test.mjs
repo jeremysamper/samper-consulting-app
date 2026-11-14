@@ -56,6 +56,9 @@ const AVANT = {
   factures_email: ['consultant'],
   technique_plans: ['consultant', 'patron', 'gouvernante', 'technicien'],
   plan_salle: ['consultant', 'patron', 'resp_cuisine', 'hote'],
+  // 14.11.2026 : la fenêtre « Gérer » de l'accueil de l'Inventaire (droit
+  // « Modifier » du module, donné par défaut à ces trois rôles).
+  inventaire_gerer: ['consultant', 'patron', 'resp_cuisine'],
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {

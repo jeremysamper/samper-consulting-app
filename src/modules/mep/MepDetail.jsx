@@ -7,6 +7,7 @@ import { s, formatDateService, formatFaitAt } from './MiseEnPlace.styles.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
+import { avancementMep } from './serieMep.js';
 
 // Detail d'une liste : deux sections (Urgent non congelable en premier, puis
 // Grosse production congelable), case a cocher en temps reel, barre d'avancement
@@ -89,8 +90,8 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
   };
 
   const renderSection = (title, hint, list, variant) => {
-    const total = list.length;
-    const faits = list.filter(i => i.fait).length;
+    // Avancement de la section : calcul partagé avec les Statistiques (D3).
+    const { preparations: total, faites: faits } = avancementMep(list);
     const pct = total > 0 ? Math.round(faits / total * 100) : 0;
     return (
       <div data-cadre="" style={{ ...s.section, ...(variant === 'urgent' ? s.sectionUrgent : s.sectionGrosse) }}>

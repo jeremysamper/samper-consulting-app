@@ -4,7 +4,7 @@ import { notify } from '../../components/toast/index.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { zurichDateHeure } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
-import { libellePoste } from './modeTest.js';
+import { ROLES_MODE_TEST, libellePoste, lireModeTest, retenirModeTest } from './modeTest.js';
 import ListeTriable from './ListeTriable.jsx';
 import SectionTerminal from './tpe/SectionTerminal.jsx';
 import { COULEURS, LIBELLES_COULEURS, PICTOS, pictoParId } from './boutons.js';
@@ -63,7 +63,7 @@ const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 // touche la clé du prestataire.
 export default function ReglagesCaisse({
   etablissementId, articles, boutons, categories, cartes = [], config, onChange,
-  poste = null, peutLireJournalTests = false, onTestsVides,
+  poste = null, peutLireJournalTests = false, onTestsVides, onModeTest,
   role = null, terminaux = [], lectureTerminaux = 'lue', onTerminauxChange,
 }) {
   const [section, setSection] = React.useState('categories');
@@ -227,6 +227,8 @@ export default function ReglagesCaisse({
               poste={poste}
               peutLireJournal={peutLireJournalTests}
               onTestsVides={onTestsVides}
+              peutActiver={ROLES_MODE_TEST.includes(role)}
+              onModeTest={onModeTest}
             />
           )}
         </div>
@@ -632,9 +634,30 @@ const ACTIONS_JOURNAL = {
   purge: 'Tickets de test vidés',
 };
 
-function SectionTest({ etablissementId, reglages, regler, poste, peutLireJournal, onTestsVides }) {
+function SectionTest({ etablissementId, reglages, regler, poste, peutLireJournal, onTestsVides, peutActiver = false, onModeTest }) {
   const [journal, setJournal] = React.useState(null);
   const [enCours, setEnCours] = React.useState(false);
+  // Ce poste : l'entrée en mode test se fait ici (14.11.2026), plus sur
+  // l'accueil de la caisse. La sortie reste dans le bandeau de la caisse, vu
+  // sur chacun de ses écrans tant que le poste est en test.
+  const [cleTest, setCleTest] = React.useState(() => lireModeTest(etablissementId));
+  const [entree, setEntree] = React.useState(false);
+  async function entrer() {
+    if (entree || cleTest || !peutActiver) return;
+    if (!window.confirm('Passer ce poste en mode test ? Les tickets ouverts ici ne compteront pas dans les chiffres. Les autres postes continuent de vendre normalement.')) return;
+    setEntree(true);
+    try {
+      const { data, error } = await caisse.testEntrer(etablissementId, poste);
+      if (error) { notify(error, 'error'); return; }
+      if (!data?.cle) { notify("Le mode test n'a pas pu être activé. Réessayez.", 'error'); return; }
+      retenirModeTest(etablissementId, data.cle);
+      setCleTest(data.cle);
+      notify('Mode test activé sur ce poste', 'success');
+      onModeTest?.();
+    } finally {
+      setEntree(false);
+    }
+  }
 
   const lireJournal = React.useCallback(async () => {
     if (!peutLireJournal) return;
@@ -660,6 +683,17 @@ function SectionTest({ etablissementId, reglages, regler, poste, peutLireJournal
 
   return (
     <div style={st.bloc}>
+      {peutActiver && (
+        <>
+          <div style={st.sousTitre}>Ce poste</div>
+          <p style={st.aide} data-caisse-poste-test={cleTest ? 'actif' : 'normal'}>
+            {cleTest
+              ? "Ce poste est en mode test : rien de ce qui s'y vend ne compte dans les chiffres. Pour revenir aux vraies ventes, ouvrez la caisse et touchez « Quitter le mode test » dans le bandeau."
+              : 'En mode test, les tickets ouverts sur ce poste ne comptent dans aucun chiffre. Les autres postes continuent de vendre normalement.'}
+          </p>
+          {!cleTest && <div><Btn variant="ghost" disabled={entree} onClick={entrer} style={st.btn44}>Passer ce poste en mode test</Btn></div>}
+        </>
+      )}
       <div style={st.sousTitre}>Envoyer les tests en cuisine</div>
       <div style={st.rang}>
         <Btn variant={reglages.tests_en_cuisine ? 'ghost' : 'primary'} onClick={() => regler({ tests_en_cuisine: null })} style={st.btnChoix}>Non, rien en cuisine</Btn>

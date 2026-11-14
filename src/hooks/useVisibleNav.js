@@ -1,5 +1,6 @@
 import React from 'react';
 import { navItems as NAV_ITEMS, isModuleActiveForEtab } from '../modules/moduleConfig.js';
+import { voitUneAnalyse } from '../modules/statistiques/gardesStatistiques.js';
 import { getDemoData } from '../data/demoData.js';
 import { applyNavOrder, useNavOrder } from './useNavOrder.js';
 import { useUnreadPrivateMessages } from './useUnreadPrivateMessages.js';
@@ -37,6 +38,11 @@ export function useVisibleNav({ user, etablissement, perms }) {
     if (item.id === 'kds' && !['consultant', 'resp_cuisine', 'cuisinier'].includes(role)) return false;
     // Journal d'activité : consultant et patron (miroir de la RLS journal_activite).
     if (item.id === 'journal' && !['consultant', 'patron'].includes(role)) return false;
+    // Statistiques : aussi pour qui voit une analyse venue d'un module (rapport
+    // des réservations, analyses des dépenses, rapports de caisse). Ces
+    // analyses n'ont plus d'entrée dans leur module : sans cette ligne, la
+    // personne les perdrait (clé absente, ou module hors de la liste de la maison).
+    if (item.id === 'statistiques' && voitUneAnalyse({ role }, perms, etablissement)) return true;
     // Modules choisis pour l'établissement courant (Paramètres), pour tous les
     // rôles consultant compris : le menu montre ce que l'équipe utilise.
     if (!isModuleActiveForEtab(etablissement, item.permKey)) return false;

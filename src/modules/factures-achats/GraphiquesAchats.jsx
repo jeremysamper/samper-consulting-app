@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Graphiques des achats en SVG maison, sur le modèle de RapportGraphiques.jsx
+// Graphiques des achats en SVG maison, sur le modèle des graphiques de l'ancien rapport des réservations (parti en S3)
 // (Réservations) : tracé à la largeur de l'écran (375 px compris), texte dans
 // les couleurs de texte, la couleur portée par la barre ou la courbe, un tap
 // (ou le survol) sur une colonne affiche son détail sous le graphique.
