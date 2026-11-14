@@ -253,18 +253,39 @@
   --serie-5: #7e22ce;
   --serie-6: #92400e;
 
-  /* Palette des boutons produits de la Caisse (fonds doux, texte --text).
+  /* Palette des boutons produits de la Caisse (fonds doux et vifs, texte --text).
      Cles stockees en base (caisse_boutons.couleur), jamais un hex.
      Contraste mesure (scripts du lot v3) : --text sur chaque fond passe
-     14,1:1 au moins en clair et 10,4:1 au moins en sombre. */
+     10,7:1 au moins en clair et 6,6:1 au moins en sombre (14.11.2026,
+     28 couleurs). Chroma ramene dans le gamut sRGB pour les nouvelles. */
   --caisse-rouge: oklch(92% 0.05 25);
   --caisse-orange: oklch(92% 0.05 60);
   --caisse-jaune: oklch(92% 0.05 95);
+  --caisse-anis: oklch(92% 0.05 125);
   --caisse-vert: oklch(92% 0.05 145);
   --caisse-turquoise: oklch(92% 0.05 185);
+  --caisse-ciel: oklch(92% 0.05 215);
   --caisse-bleu: oklch(92% 0.05 240);
+  --caisse-indigo: oklch(92% 0.036 270);
   --caisse-violet: oklch(92% 0.05 300);
+  --caisse-fuchsia: oklch(92% 0.05 325);
   --caisse-rose: oklch(92% 0.05 350);
+  --caisse-rouge-vif: oklch(84% 0.086 25);
+  --caisse-orange-vif: oklch(84% 0.1 60);
+  --caisse-jaune-vif: oklch(84% 0.1 95);
+  --caisse-anis-vif: oklch(84% 0.1 125);
+  --caisse-vert-vif: oklch(84% 0.1 145);
+  --caisse-turquoise-vif: oklch(84% 0.1 185);
+  --caisse-ciel-vif: oklch(84% 0.1 215);
+  --caisse-bleu-vif: oklch(84% 0.087 240);
+  --caisse-indigo-vif: oklch(84% 0.077 270);
+  --caisse-violet-vif: oklch(84% 0.092 300);
+  --caisse-fuchsia-vif: oklch(84% 0.1 325);
+  --caisse-rose-vif: oklch(84% 0.1 350);
+  --caisse-gris: oklch(92% 0 0);
+  --caisse-ardoise: oklch(84% 0.015 250);
+  --caisse-sable: oklch(92% 0.03 80);
+  --caisse-caramel: oklch(84% 0.06 65);
 
   color-scheme: light;
 }
@@ -405,15 +426,35 @@
   --serie-6: oklch(83% 0.105 82);
 
     /* Palette caisse en sombre : memes teintes, fonds assombris
-       (--text sombre passe 10,4:1 au moins sur chacun). */
+       (--text sombre passe 6,6:1 au moins sur chacun). */
     --caisse-rouge: oklch(32% 0.055 25);
     --caisse-orange: oklch(32% 0.055 60);
     --caisse-jaune: oklch(32% 0.055 95);
+    --caisse-anis: oklch(32% 0.055 125);
     --caisse-vert: oklch(32% 0.055 145);
     --caisse-turquoise: oklch(32% 0.055 185);
+    --caisse-ciel: oklch(32% 0.055 215);
     --caisse-bleu: oklch(32% 0.055 240);
+    --caisse-indigo: oklch(32% 0.055 270);
     --caisse-violet: oklch(32% 0.055 300);
+    --caisse-fuchsia: oklch(32% 0.055 325);
     --caisse-rose: oklch(32% 0.055 350);
+    --caisse-rouge-vif: oklch(42% 0.09 25);
+    --caisse-orange-vif: oklch(42% 0.09 60);
+    --caisse-jaune-vif: oklch(42% 0.085 95);
+    --caisse-anis-vif: oklch(42% 0.09 125);
+    --caisse-vert-vif: oklch(42% 0.09 145);
+    --caisse-turquoise-vif: oklch(42% 0.073 185);
+    --caisse-ciel-vif: oklch(42% 0.073 215);
+    --caisse-bleu-vif: oklch(42% 0.09 240);
+    --caisse-indigo-vif: oklch(42% 0.09 270);
+    --caisse-violet-vif: oklch(42% 0.09 300);
+    --caisse-fuchsia-vif: oklch(42% 0.09 325);
+    --caisse-rose-vif: oklch(42% 0.09 350);
+    --caisse-gris: oklch(32% 0 0);
+    --caisse-ardoise: oklch(42% 0.015 250);
+    --caisse-sable: oklch(32% 0.03 80);
+    --caisse-caramel: oklch(42% 0.05 65);
 
   color-scheme: dark;
   }
@@ -536,15 +577,35 @@ html[data-theme="dark"] {
   --serie-6: oklch(83% 0.105 82);
 
     /* Palette caisse en sombre : memes teintes, fonds assombris
-       (--text sombre passe 10,4:1 au moins sur chacun). */
+       (--text sombre passe 6,6:1 au moins sur chacun). */
     --caisse-rouge: oklch(32% 0.055 25);
     --caisse-orange: oklch(32% 0.055 60);
     --caisse-jaune: oklch(32% 0.055 95);
+    --caisse-anis: oklch(32% 0.055 125);
     --caisse-vert: oklch(32% 0.055 145);
     --caisse-turquoise: oklch(32% 0.055 185);
+    --caisse-ciel: oklch(32% 0.055 215);
     --caisse-bleu: oklch(32% 0.055 240);
+    --caisse-indigo: oklch(32% 0.055 270);
     --caisse-violet: oklch(32% 0.055 300);
+    --caisse-fuchsia: oklch(32% 0.055 325);
     --caisse-rose: oklch(32% 0.055 350);
+    --caisse-rouge-vif: oklch(42% 0.09 25);
+    --caisse-orange-vif: oklch(42% 0.09 60);
+    --caisse-jaune-vif: oklch(42% 0.085 95);
+    --caisse-anis-vif: oklch(42% 0.09 125);
+    --caisse-vert-vif: oklch(42% 0.09 145);
+    --caisse-turquoise-vif: oklch(42% 0.073 185);
+    --caisse-ciel-vif: oklch(42% 0.073 215);
+    --caisse-bleu-vif: oklch(42% 0.09 240);
+    --caisse-indigo-vif: oklch(42% 0.09 270);
+    --caisse-violet-vif: oklch(42% 0.09 300);
+    --caisse-fuchsia-vif: oklch(42% 0.09 325);
+    --caisse-rose-vif: oklch(42% 0.09 350);
+    --caisse-gris: oklch(32% 0 0);
+    --caisse-ardoise: oklch(42% 0.015 250);
+    --caisse-sable: oklch(32% 0.03 80);
+    --caisse-caramel: oklch(42% 0.05 65);
 
   color-scheme: dark;
 }

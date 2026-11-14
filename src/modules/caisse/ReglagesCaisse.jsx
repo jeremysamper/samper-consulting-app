@@ -7,7 +7,8 @@ import * as caisse from '../../services/caisseService.js';
 import { ROLES_MODE_TEST, libellePoste, lireModeTest, retenirModeTest } from './modeTest.js';
 import ListeTriable from './ListeTriable.jsx';
 import SectionTerminal from './tpe/SectionTerminal.jsx';
-import { COULEURS, LIBELLES_COULEURS, PICTOS, pictoParId } from './boutons.js';
+import { pictoParId } from './boutons.js';
+import { ChoixCouleur, ChoixPicto } from './ChoixHabillage.jsx';
 import { CATEGORIES_DEFAUT, ID_A_TRIER, estCategorieDefaut, estCategorieVirtuelle, rangerArticles } from './categories.js';
 import {
   DELAIS_NO_SHOW, FAMILLES_PAIEMENT, FORMAT_NUMERO_TVA, HEURES_BASCULE, HEURES_FIN_JOURNEE, LIBELLES_FAMILLES,
@@ -340,32 +341,9 @@ function EditeurCategorie({ categorie, vide, onEnregistrer, onSupprimer, onFerme
     <div style={st.editeur}>
       <Input value={nom} onChange={(e) => setNom(e.target.value.slice(0, 40))} placeholder="Nom de la catégorie" style={st.champ} />
       <div style={st.sousTitre}>Couleur des boutons de la catégorie</div>
-      <div style={st.rang}>
-        <Btn variant={couleur == null ? 'primary' : 'ghost'} onClick={() => setCouleur(null)} style={st.btn44}>Aucune</Btn>
-        {COULEURS.map((c) => (
-          <button
-            key={c}
-            type="button"
-            aria-label={LIBELLES_COULEURS[c]}
-            onClick={() => setCouleur(c)}
-            style={{
-              ...st.pastille,
-              background: `var(--caisse-${c})`,
-              borderColor: couleur === c ? 'var(--accent)' : 'var(--border)',
-              borderWidth: couleur === c ? 3 : 1,
-            }}
-          />
-        ))}
-      </div>
+      <ChoixCouleur valeur={couleur} onChange={setCouleur} />
       <div style={st.sousTitre}>Pictogramme</div>
-      <div style={st.rang}>
-        <Btn variant={picto == null ? 'primary' : 'ghost'} onClick={() => setPicto(null)} style={st.btn44}>Aucun</Btn>
-        {PICTOS.map((p) => (
-          <Btn key={p.id} variant={picto === p.id ? 'primary' : 'ghost'} onClick={() => setPicto(p.id)} style={st.btn44} ariaLabel={p.libelle}>
-            <p.Icone size={20} strokeWidth={1.75} aria-hidden="true" />
-          </Btn>
-        ))}
-      </div>
+      <ChoixPicto valeur={picto} onChange={setPicto} />
       <div style={{ ...st.rang, justifyContent: 'space-between', marginTop: 6 }}>
         {vide
           ? <Btn variant="danger" onClick={onSupprimer} style={st.btn44}>Supprimer</Btn>
