@@ -425,7 +425,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                     </div>
                     <div style={ss.sopCardActions}>
                       <button
-                        style={doneToday && sop.frequence === 'quotidien' ? ss.gererBtn : ss.startBtn}
+                        style={ss.gererBtn}
                         onClick={() => handleStart(sop)}
                         title={doneToday && sop.frequence === 'quotidien'
                             ? "Relancer (déjà validée aujourd'hui)"
@@ -1256,7 +1256,6 @@ const ss = {
   sopCardFait: { ...etiquette, color: 'var(--success-text)', background: 'var(--success-bg-soft)' },
   sopCardActions: { display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' },
   gererBtn: { padding: '7px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap' },
-  startBtn: { padding: '7px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', whiteSpace: 'nowrap' },
   iconBtn: { width: 30, height: 30, padding: 0, background: 'var(--piste)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-full)', cursor: 'pointer', fontSize: 'var(--t1)', color: 'var(--text2)' },
   // « × » discret : texte --text3, rouge au survol et au focus (classe btn-suppr-discret).
   iconBtnDanger: { width: 40, height: 40, padding: 0, background: 'transparent', border: '1px solid transparent', borderRadius: 'var(--r-full)', cursor: 'pointer', fontSize: 'var(--t4)', lineHeight: 1, color: 'var(--text3)', flexShrink: 0 },

@@ -209,7 +209,7 @@ export default function Journal({ etablissement }) {
         <Panneau>
           <div className="form-alert error" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
             Le journal n'a pas pu être chargé.
-            <Btn variant="primary" small onClick={() => setEssai((n) => n + 1)}>Réessayer</Btn>
+            <Btn small onClick={() => setEssai((n) => n + 1)}>Réessayer</Btn>
           </div>
         </Panneau>
       )}

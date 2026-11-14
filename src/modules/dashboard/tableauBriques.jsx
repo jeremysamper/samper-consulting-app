@@ -56,11 +56,13 @@ export function Section({ id, titre, sousTitre, action, panneau = true, children
 // que Midi et Soir, ou Réservations et Groupes, se distinguent d'un regard.
 // `bandeau={false}` : un titre de niveau au-dessus, sans bandeau (« Qui
 // travaille aujourd'hui » dans l'onglet du téléphone, au-dessus de Midi).
-export function SousSection({ titre, icone: Icone, compte, sousTitre, action, niveau = 3, bandeau = true, children, style, className }) {
+// teteHaute : la bande garde la hauteur d'une bande à lien (44 px) même sans
+// lien, pour que deux colonnes voisines restent alignées.
+export function SousSection({ titre, icone: Icone, compte, sousTitre, action, niveau = 3, bandeau = true, teteHaute = false, children, style, className }) {
   const Titre = `h${niveau}`;
   return (
     <div className={className} style={{ minWidth: 0, ...style }}>
-      <div className={bandeau ? 'tdb-sous-tete' : undefined} style={b.sousTete}>
+      <div className={bandeau ? 'tdb-sous-tete' : undefined} style={teteHaute ? { ...b.sousTete, minHeight: 44 } : b.sousTete}>
         <div style={{ flex: '1 1 auto', minWidth: 0 }}>
           <Titre style={bandeau ? b.sousTitreTexte : { ...b.sousTitreTexte, ...b.sousTitreFort }}>
             {Icone && <Icone size={16} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--lien)', alignSelf: 'center', flexShrink: 0 }} />}

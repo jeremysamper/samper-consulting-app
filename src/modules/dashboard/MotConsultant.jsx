@@ -68,7 +68,7 @@ export default function MotConsultant({ message, consultant, onPublier }) {
               </button>
             )}
             <button type="button" onClick={() => setEdition(false)} style={{ ...s.bouton, ...s.secondaire }}>Annuler</button>
-            <button type="button" onClick={() => publier(brouillon)} disabled={enCours || !brouillon.trim()} style={{ ...s.bouton, ...s.principal, opacity: enCours || !brouillon.trim() ? 0.6 : 1 }}>
+            <button type="button" onClick={() => publier(brouillon)} disabled={enCours || !brouillon.trim()} style={{ ...s.bouton, ...s.secondaire, opacity: enCours || !brouillon.trim() ? 0.65 : 1 }}>
               {enCours ? 'Publication…' : 'Publier'}
             </button>
           </div>
@@ -112,7 +112,6 @@ const s = {
     minHeight: 44, padding: '10px 18px', borderRadius: 'var(--r-sm)', cursor: 'pointer',
     fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', borderWidth: 1, borderStyle: 'solid',
   },
-  principal: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
   secondaire: { background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderColor: 'var(--btn-bord)' },
   discret: { background: 'transparent', color: 'var(--danger-text)', borderColor: 'transparent' },
 };
