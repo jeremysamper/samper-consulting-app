@@ -36,8 +36,11 @@ export function allergiesDe(resa) {
   return vus;
 }
 
-export const estSurTable = (resa, tableId) =>
-  (resa?.reservation_tables || []).some((l) => l.table_id === tableId);
+// tableId : l'id d'une table, ou la liste des tables d'une tablée.
+export const estSurTable = (resa, tableId) => {
+  const ids = Array.isArray(tableId) ? tableId : [tableId];
+  return (resa?.reservation_tables || []).some((l) => ids.includes(l.table_id));
+};
 
 const cleHeure = (r) => `${r.date_service || ''} ${r.heure_arrivee || ''}`;
 
