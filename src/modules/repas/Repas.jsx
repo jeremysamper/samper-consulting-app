@@ -9,8 +9,8 @@ import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
 import { zurichAjouterJours, zurichToday } from '../../utils/zurichTime.js';
-import { Carte, Puce } from '../dashboard/tableauUi.jsx';
-import { Champ, Liste, PageHotel, ReperesHotel, Vide, h } from '../hebergement/hotelUi.jsx';
+import { Puce } from '../dashboard/tableauUi.jsx';
+import { CarteHotel, Champ, Liste, PageHotel, ReperesHotel, Vide, h } from '../hebergement/hotelUi.jsx';
 import {
   PENSIONS, REPAS, STATUTS_ROOM_SERVICE, chf, commandeOuverte, couvertsRepas, dateCourte, heureZurich, isoZurich, libelleDe, nomPersonne, personnes,
   sejoursActifs, tonDe, totalArticles, useChambres, useHotes, useLignesSejour, useRoomService, useSejours,
@@ -198,13 +198,13 @@ export default function Repas({ user, etablissement }) {
           <SegmentedTabs tabs={[{ id: 'aujourdhui', label: 'Aujourd\'hui' }, { id: 'demain', label: 'Demain' }]} active={jour} onChange={setJour} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 12 }}>
             {REPAS.map((r) => (
-              <Carte key={r.id} titre={r.label} sousTitre={<><span>{nb(parRepas[r.id])}</span> <span>{nb(parRepas[r.id]) === 1 ? 'couvert' : 'couverts'}</span>, <span>{parRepas[r.id].length}</span> <span>{parRepas[r.id].length === 1 ? 'séjour' : 'séjours'}</span></>}>
+              <CarteHotel key={r.id} titre={r.label} sousTitre={<><span>{nb(parRepas[r.id])}</span> <span>{nb(parRepas[r.id]) === 1 ? 'couvert' : 'couverts'}</span>, <span>{parRepas[r.id].length}</span> <span>{parRepas[r.id].length === 1 ? 'séjour' : 'séjours'}</span></>}>
                 {!parRepas[r.id].length && <div style={h.detail}>Personne pour ce repas.</div>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {parRepas[r.id].map((s) => {
                     const ho = hoteDe(s);
                     return (
-                      <div key={s.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', padding: '4px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' }}>
+                      <div key={s.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', padding: '4px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)' }}>
                         <span style={{ fontSize: 14, color: 'var(--text)' }} data-no-translate>{s.nomHote}</span>
                         <span style={h.detail}>{numero(s) && <><span>ch.</span> <span data-no-translate>{numero(s)}</span>, </>}<span data-no-translate>{personnes(s)}</span> <span>{personnes(s) > 1 ? 'personnes' : 'personne'}</span>, <span>{libelleDe(PENSIONS, s.pension)}</span></span>
                         {ho?.allergies && <span style={{ ...h.detail, color: 'var(--danger-text)' }} data-no-translate>{ho.allergies}</span>}
@@ -213,7 +213,7 @@ export default function Repas({ user, etablissement }) {
                     );
                   })}
                 </div>
-              </Carte>
+              </CarteHotel>
             ))}
           </div>
         </>

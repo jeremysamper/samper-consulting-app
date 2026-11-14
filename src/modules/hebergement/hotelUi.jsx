@@ -74,6 +74,20 @@ export function Liste({ children }) {
   return <div className="hotel-liste" data-cadre="" style={h.liste}>{children}</div>;
 }
 
+// Une carte blanche à titre (couverts d'un repas, registre du mois). La carte
+// du tableau de bord ne porte pas data-cadre : hors de lui, elle s'aplatit.
+export function CarteHotel({ titre, sousTitre, children }) {
+  return (
+    <section data-cadre="" style={{ ...h.carte, gap: 12 }}>
+      <header style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+        <h2 style={h.carteTitre}>{titre}</h2>
+        {sousTitre && <div style={h.detail}>{sousTitre}</div>}
+      </header>
+      <div style={{ minWidth: 0 }}>{children}</div>
+    </section>
+  );
+}
+
 // Accueil d'un module de l'hôtel : le conteneur de requêtes et sa grille
 // (hotel.css). Les enfants sont les tuiles du module puis ses repères.
 export function PageHotel({ children }) {
@@ -133,6 +147,7 @@ export const h = {
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   },
   sousTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text2)', margin: '6px 0 0' },
+  carteTitre: { margin: 0, fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' },
   erreur: { fontSize: 'var(--t2)', color: 'var(--danger-text)', lineHeight: 1.45 },
   // Carte blanche d'un bloc (chambre, passation) : porte data-cadre.
   carte: {

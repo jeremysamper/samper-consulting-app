@@ -1,8 +1,7 @@
 import React from 'react';
 import { Btn, CarteRepere } from '../../components/ui/index.jsx';
 import { zurichToday } from '../../utils/zurichTime.js';
-import { Carte } from '../dashboard/tableauUi.jsx';
-import { Vide, h } from './hotelUi.jsx';
+import { CarteHotel, Vide, h } from './hotelUi.jsx';
 import {
   PIECES_IDENTITE, chf, dateCourte, libelleDe, registreDuMois, statsMois, telechargerTexte, versCsv,
 } from './hotelData.js';
@@ -65,7 +64,7 @@ export default function RegistreMois({ sejours, chambres, occupants, lignes, reg
         <Chiffre libelle="Taxe d'hébergement du mois" valeur={`CHF ${chf(stats.taxes.hebergement)}`} />
       </div>
 
-      <Carte titre="Nuitées par pays de domicile (HESTA)">
+      <CarteHotel titre="Nuitées par pays de domicile (HESTA)">
         {!stats.parPays.length && <div style={h.detail}>Aucune nuitée ce mois.</div>}
         {stats.parPays.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -78,9 +77,9 @@ export default function RegistreMois({ sejours, chambres, occupants, lignes, reg
             ))}
           </div>
         )}
-      </Carte>
+      </CarteHotel>
 
-      <Carte titre="Registre des nuitées" sousTitre={<><span>{registre.length}</span> <span>{registre.length > 1 ? 'personnes hébergées' : 'personne hébergée'}</span></>}>
+      <CarteHotel titre="Registre des nuitées" sousTitre={<><span>{registre.length}</span> <span>{registre.length > 1 ? 'personnes hébergées' : 'personne hébergée'}</span></>}>
         {!registre.length && <div style={h.detail}>Personne n'est inscrite au registre pour ce mois. Les personnes s'ajoutent depuis la fiche d'un séjour.</div>}
         {registre.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -94,7 +93,7 @@ export default function RegistreMois({ sejours, chambres, occupants, lignes, reg
             ))}
           </div>
         )}
-      </Carte>
+      </CarteHotel>
       {!sejours.length && <Vide>Aucun séjour enregistré pour l'instant.</Vide>}
     </section>
   );
