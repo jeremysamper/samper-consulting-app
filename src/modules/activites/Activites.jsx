@@ -260,7 +260,7 @@ function Pointage({ sejours, chambres, forfaits, droits, consommations, activite
                       {e.droit.quantiteParSejour == null && e.droit.quantiteParJour == null && <>, <span>sans limite</span>{e.surJour ? <>, <span data-no-translate>{e.surJour}</span> <span>aujourd'hui</span></> : null}</>}
                     </span>
                   </span>
-                  {e.epuise ? <Puce ton="danger">Épuisé</Puce> : <Btn variant="primary" onClick={() => pointer(e)} disabled={enCours}>Pointer</Btn>}
+                  {e.epuise ? <Puce ton="danger">Épuisé</Puce> : <Btn onClick={() => pointer(e)} disabled={enCours}>Pointer</Btn>}
                 </div>
               ))}
             </div>
