@@ -21,8 +21,8 @@ self.addEventListener('push', (event) => {
     body: m.corps || '',
     tag: m.tag || undefined,
     renotify: Boolean(m.tag),
-    icon: '/icons/icon-192-v3.png',
-    badge: '/icons/icon-192-v3.png',
+    icon: '/icons/icon-192-v4.png',
+    badge: '/icons/icon-192-v4.png',
     data: { url: m.url || '/', groupe, cle },
   };
   if (Array.isArray(m.vibration) && m.vibration.length) options.vibrate = m.vibration;

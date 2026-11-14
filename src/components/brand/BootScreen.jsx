@@ -214,9 +214,9 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
           <div className="bv-text" style={s.textRow}>
             <p style={s.word}>Bienvenue</p>
             <p style={s.sign} aria-hidden="true">
-              Ritmo
+              Jouanet
               <br />
-              Gestion culinaire
+              Hôtellerie et restauration
             </p>
           </div>
         </>

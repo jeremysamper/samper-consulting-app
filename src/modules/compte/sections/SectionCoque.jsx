@@ -40,7 +40,7 @@ export function SectionLogo() {
         <div style={st.apercu} aria-hidden="true">
           {logo.url
             ? <img src={logo.url} alt="" style={st.image} />
-            : <SamperMark size={64} radius={0} title="Ritmo" style={{ width: '100%', height: '100%', display: 'block' }} />}
+            : <SamperMark size={64} radius={0} title="Jouanet" style={{ width: '100%', height: '100%', display: 'block' }} />}
         </div>
         <p style={st.texte}>
           <span>Le logo de</span> <span data-no-translate="">{logo.nom || ''}</span> <span>dans la barre latérale, sur la page d'accueil et sur les factures.</span>

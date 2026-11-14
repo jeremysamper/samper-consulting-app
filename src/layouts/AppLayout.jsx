@@ -541,7 +541,7 @@ export default function AppLayout({
 
   const handleLogoRemove = async () => {
     if (!etablissement?.id) return;
-    if (!confirmLegacy('Revenir au logo Ritmo par défaut pour ' + etablissement.nom + ' ?')) return;
+    if (!confirmLegacy('Revenir au logo Jouanet par défaut pour ' + etablissement.nom + ' ?')) return;
     if (legacySB) {
       try {
         await legacySB.db.updateEtablissementLogo(etablissement.id, null);
@@ -588,7 +588,7 @@ export default function AppLayout({
           // Le logo d'un établissement se pose sur une pastille à la couleur
           // du menu d'avant Office (--logo-fond) : un logo importé clair, sur
           // fond transparent, garde l'allure qu'il avait sur le menu sombre.
-          // Sans logo, on affiche la marque Ritmo (fond pétrole intégré au
+          // Sans logo, on affiche la marque Jouanet (fond pétrole intégré au
           // SVG) et le conteneur reste transparent.
           background: appLogo ? 'var(--logo-fond)' : 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -607,7 +607,7 @@ export default function AppLayout({
       >
         {appLogo
           ? <img src={appLogo} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          : <SamperMark size={size} radius={0} title="Ritmo" style={{ width: '100%', height: '100%', display: 'block' }} />}
+          : <SamperMark size={size} radius={0} title="Jouanet" style={{ width: '100%', height: '100%', display: 'block' }} />}
         {canEditLogo && logoHover && (
           <div style={{
             position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)',
