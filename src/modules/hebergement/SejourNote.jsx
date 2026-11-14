@@ -1,4 +1,5 @@
 import React from 'react';
+import { Btn } from '../../components/ui/index.jsx';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { zurichToday } from '../../utils/zurichTime.js';
@@ -141,7 +142,7 @@ export default function SejourNote({ sejour: s, chambre, tarif, reglages, occupa
                 <span style={h.detail}> <span>{libelleDe(TYPES_LIGNE, l.type)}</span>{l.quantite !== 1 && <> <span data-no-translate>{l.quantite} x {chf(l.prixUnitaire)}</span></>}</span>
               </span>
               <span style={n.montant} data-no-translate>{chf(l.montant)}</span>
-              {peutSupprimer && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 32, padding: '4px 8px', fontSize: 12 }} onClick={() => supprimer(l)} disabled={enCours}>Supprimer</button>}
+              {peutSupprimer && <Btn small onClick={() => supprimer(l)} disabled={enCours}>Supprimer</Btn>}
             </div>
           ))}
         </div>
@@ -149,7 +150,7 @@ export default function SejourNote({ sejour: s, chambre, tarif, reglages, occupa
       <div style={n.totaux}>
         <div style={n.totalLigne}><span>Total de la note</span><span data-no-translate>CHF {chf(totaux.total)}</span></div>
         <div style={n.totalLigne}><span>Encaissé</span><span data-no-translate>CHF {chf(totaux.encaisse)}</span></div>
-        <div style={{ ...n.totalLigne, fontWeight: 600, fontSize: 16 }}><span>Solde dû</span><span data-no-translate>CHF {chf(totaux.solde)}</span></div>
+        <div style={{ ...n.totalLigne, fontWeight: 'var(--g3)', fontSize: 'var(--t3)' }}><span>Solde dû</span><span data-no-translate>CHF {chf(totaux.solde)}</span></div>
         {totaux.tva > 0 && <div style={h.detail}><span>dont TVA</span> <span data-no-translate>{String(reglages?.tvaTaux ?? '').replace('.', ',')} %</span> <span>sur l'hébergement :</span> <span data-no-translate>CHF {chf(totaux.tva)}</span></div>}
       </div>
 
@@ -184,7 +185,7 @@ export default function SejourNote({ sejour: s, chambre, tarif, reglages, occupa
             <Champ label="Jour"><input type="date" style={h.saisie} value={f.jour} onChange={champ('jour')} /></Champ>
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-            {totaux.solde > 0 && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 36, fontSize: 13 }} onClick={() => setF((p) => ({ ...p, montant: String(totaux.solde) }))}><span>Tout le solde</span> <span data-no-translate>({chf(totaux.solde)})</span></button>}
+            {totaux.solde > 0 && <Btn onClick={() => setF((p) => ({ ...p, montant: String(totaux.solde) }))}><span>Tout le solde</span> <span data-no-translate>({chf(totaux.solde)})</span></Btn>}
             <button type="button" style={st.secondaire} onClick={() => setMode(null)}>Annuler</button>
             <button type="button" style={st.primaire} onClick={encaisser} disabled={enCours}>Enregistrer l'encaissement</button>
           </div>

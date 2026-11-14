@@ -16,7 +16,7 @@ import { peutGererTechnique } from './gardesTechnique.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
-import { Champ, Liste, Vide, h } from '../hebergement/hotelUi.jsx';
+import { Champ, Liste, PageHotel, ReperesHotel, Vide, h } from '../hebergement/hotelUi.jsx';
 import {
   CATEGORIES_TECHNIQUE, PRIORITES, STATUTS_ORDRE, chf, dateCourte, dateHeureZurich, demandeOuverte, equipeDe, libelleDe, nomPersonne, ordreOuvert,
   planDu, planEnRetard, tonDe, trierChambres, trierOrdres, useChambres, useDemandes, useEquipements, useMaintenancePlans, useOrdresTravail,
@@ -232,7 +232,7 @@ function OrdreFiche({ ordre: o, chambres, equipements, plans, moi, peutGerer, pe
             </label>
           )}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Btn variant="primary" onClick={terminer} disabled={enCours} style={{ minHeight: 44 }}>Terminer l'ordre</Btn>
+            <Btn variant="primary" onClick={terminer} disabled={enCours}>Terminer l'ordre</Btn>
           </div>
         </div>
       )}
@@ -485,10 +485,17 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
     <section className="technique" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' }}>
       {!etabId && <Vide>Aucun établissement sélectionné.</Vide>}
       {etabId && ecran === ECRAN_ACCUEIL && (
-        <>
+        <PageHotel>
           <AccueilModule tuiles={tuiles} />
+          {ordres.status === 'ready' && (
+            <ReperesHotel reperes={[
+              { id: 'ordres', Icone: ClipboardList, valeur: ouverts.length, libelle: ouverts.length === 1 ? 'ordre ouvert' : 'ordres ouverts', detail: 'Ordres de travail' },
+              { id: 'preventif', Icone: Repeat, valeur: plansDus.length, libelle: plansDus.length === 1 ? 'tâche à faire' : 'tâches à faire', detail: 'Préventif' },
+              { id: 'hors-service', Icone: DoorClosed, valeur: horsService.length, libelle: horsService.length === 1 ? 'chambre' : 'chambres', detail: 'Chambres hors service' },
+            ]} />
+          )}
           {etatLecture && <Vide>{etatLecture}</Vide>}
-        </>
+        </PageHotel>
       )}
       {etabId && enReglage && peutGerer && (
         <EnTeteSection actions={enPlans ? (
@@ -560,9 +567,9 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
                   </span>
                   <span style={h.ligneDroite}>
                     {!p.actif ? <Puce ton="neutre">Inactif</Puce> : retard ? <Puce ton="danger"><span>En retard depuis le</span> <span data-no-translate>{dateCourte(p.prochaineFois)}</span></Puce> : <Puce ton={du ? 'warning' : 'info'}><span>{du ? 'À faire' : 'Prochaine fois le'}</span> {!du && <span data-no-translate>{dateCourte(p.prochaineFois)}</span>}</Puce>}
-                    {!enPlans && p.actif && existant && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setFicheId(existant.id)}>Voir l'ordre</button>}
-                    {!enPlans && p.actif && !existant && peutGerer && <Btn variant="primary" onClick={() => creerDepuisPlan(p)} style={{ minHeight: 40, fontSize: 13 }}>Créer l'ordre</Btn>}
-                    {peutGerer && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => ouvrirPlan(p)}>Modifier</button>}
+                    {!enPlans && p.actif && existant && <Btn onClick={() => setFicheId(existant.id)}>Voir l'ordre</Btn>}
+                    {!enPlans && p.actif && !existant && peutGerer && <Btn variant="primary" onClick={() => creerDepuisPlan(p)}>Créer l'ordre</Btn>}
+                    {peutGerer && <Btn onClick={() => ouvrirPlan(p)}>Modifier</Btn>}
                   </span>
                 </div>
               );
@@ -585,9 +592,9 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
                   </span>
                   <span style={h.ligneDroite}>
                     {ordre
-                      ? <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setFicheId(ordre.id)}><span>Ordre :</span> <span data-no-translate>{ordre.titre}</span></button>
-                      : <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setForm({ ordre: null, prerempli: { titre: c.horsServiceMotif || `Chambre ${c.numero}`, chambreId: c.id, priorite: 'haute' } })}>Ouvrir un ordre</button>}
-                    {peutEtages && <Btn variant="primary" onClick={() => remettreChambre(c)} style={{ minHeight: 40, fontSize: 13 }}>Remettre à faire</Btn>}
+                      ? <Btn onClick={() => setFicheId(ordre.id)}><span>Ordre :</span> <span data-no-translate>{ordre.titre}</span></Btn>
+                      : <Btn onClick={() => setForm({ ordre: null, prerempli: { titre: c.horsServiceMotif || `Chambre ${c.numero}`, chambreId: c.id, priorite: 'haute' } })}>Ouvrir un ordre</Btn>}
+                    {peutEtages && <Btn variant="primary" onClick={() => remettreChambre(c)}>Remettre à faire</Btn>}
                   </span>
                 </div>
               );

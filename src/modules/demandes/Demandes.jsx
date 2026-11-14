@@ -3,6 +3,7 @@ import { ChevronRight, Plus } from 'lucide-react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
+import { Btn } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
@@ -100,10 +101,10 @@ export default function Demandes({ user, etablissement }) {
       {etabId && (
         <>
           <div className="module-actions">
-            <button type="button" className="ui-btn ui-btn--primary" style={{ ...d.action, minHeight: 48, padding: '10px 16px', fontSize: 14 }} onClick={() => setForm({ demande: null })}>
+            <Btn variant="primary" onClick={() => setForm({ demande: null })} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
               <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
               <span>Nouvelle demande</span>
-            </button>
+            </Btn>
             <SegmentedTabs size="sm" tabs={[{ id: 'a_traiter', label: 'À traiter' }, { id: 'faites', label: 'Faites et annulées' }]} active={vue} onChange={setVue} />
             <SearchToggle value={recherche} onChange={setRecherche} placeholder="Titre, chambre, hôte…" />
           </div>
@@ -147,7 +148,7 @@ export default function Demandes({ user, etablissement }) {
 function LigneDemande({ demande: dm, chambre, hote, maintenant, onClick }) {
   const retard = demandeEnRetard(dm, maintenant);
   return (
-    <button type="button" className="tdb-lien" style={{ ...h.ligne, ...(dm.escaladee || retard ? { borderColor: 'var(--danger-bd)' } : null) }} onClick={onClick} data-demande={dm.id}>
+    <button type="button" className="tdb-lien" style={{ ...h.ligne, ...(dm.escaladee || retard ? h.ligneEtat : null) }} onClick={onClick} data-demande={dm.id}>
       <span style={h.ligneGauche}>
         <span style={h.nomHote} data-no-translate>{dm.titre}</span>
         <span style={h.detail}>
@@ -380,9 +381,5 @@ function Ligne({ label, children }) {
 }
 
 const d = {
-  action: {
-    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '8px 12px', fontSize: 13, fontFamily: 'var(--font)',
-    borderRadius: 'var(--r-sm)', cursor: 'pointer', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 700, flexShrink: 0,
-  },
-  ligneJournal: { display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', padding: '6px 0', borderBottom: '1px solid var(--border)' },
+  ligneJournal: { display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', padding: '6px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)' },
 };
