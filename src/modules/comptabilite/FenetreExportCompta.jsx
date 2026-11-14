@@ -208,6 +208,6 @@ export default function FenetreExportCompta({
 const st = {
   dates: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))', gap: 10 },
   champ: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
-  progression: { fontSize: 13, color: 'var(--text2)', marginRight: 'auto' },
+  progression: { fontSize: 'var(--t2)', color: 'var(--text2)', marginRight: 'auto' },
   bouton: { minHeight: 44 },
 };

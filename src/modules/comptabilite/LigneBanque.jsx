@@ -21,7 +21,7 @@ export function DescLigne({ ligne, avecTexte = false }) {
       {' '}<span>le</span> <span>{dateCH(ligne.dateOperation)}</span>
       {nom ? <>, <span data-no-translate>{nom}</span></> : null}
       {avecTexte && ligne.contrepartie && ligne.libelle
-        ? <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)', overflowWrap: 'anywhere' }} data-no-translate>{ligne.libelle}</span>
+        ? <span style={{ display: 'block', fontSize: 'var(--t1)', color: 'var(--text2)', overflowWrap: 'anywhere' }} data-no-translate>{ligne.libelle}</span>
         : null}
     </>
   );

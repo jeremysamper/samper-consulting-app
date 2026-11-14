@@ -32,24 +32,24 @@ function Rang({ r, libellePrec, comparable }) {
   const avecEcart = !r.pct && !r.texte && !r.sansEcart && montrerB;
   const e = avecEcart ? ecart(r.a, r.b) : null;
   const prec = montrerB ? <Valeur v={r.b} pct={r.pct} />
-    : r.b == null ? <Valeur v={null} /> : <span style={{ fontSize: 12, color: 'var(--text2)' }}>incomplet</span>;
+    : r.b == null ? <Valeur v={null} /> : <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>incomplet</span>;
   return (
     <div className={`compta-rang${r.fort ? ' compta-rang--fort' : ''}`} data-rang={r.id}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14, color: 'var(--text)' }}>{r.label}</div>
-        {r.detail && <div style={{ ...ui.ligneDetail, fontWeight: 400, marginTop: 2 }}>{r.detail}</div>}
+        <div style={{ fontSize: 'var(--t2)', color: 'var(--text)' }}>{r.label}</div>
+        {r.detail && <div style={{ ...ui.ligneDetail, fontWeight: 'var(--g1)', marginTop: 2 }}>{r.detail}</div>}
       </div>
       <div style={{ textAlign: 'right' }}>
-        {r.texte ? <span style={{ fontSize: 13, color: 'var(--text3)', fontWeight: 400 }}>{r.texte}</span> : <Valeur v={r.a} pct={r.pct} danger={r.danger} />}
+        {r.texte ? <span style={{ fontSize: 'var(--t2)', color: 'var(--text3)', fontWeight: 'var(--g1)' }}>{r.texte}</span> : <Valeur v={r.a} pct={r.pct} danger={r.danger} />}
       </div>
-      <div className="compta-col-prec" style={{ fontWeight: 400, color: 'var(--text2)' }}>
+      <div className="compta-col-prec" style={{ fontWeight: 'var(--g1)', color: 'var(--text2)' }}>
         {r.texte ? null : prec}
       </div>
-      <div className="compta-col-ecart" style={{ fontSize: 13, fontWeight: 400, color: 'var(--text2)', fontFamily: 'var(--font-num)' }}>
+      <div className="compta-col-ecart" style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g1)', color: 'var(--text2)', fontFamily: 'var(--font-num)' }}>
         {e && e !== 'n/a' ? e : null}
       </div>
       {!r.texte && libellePrec && (
-        <div className="compta-sous-prec" style={{ ...ui.ligneDetail, fontWeight: 400 }}>
+        <div className="compta-sous-prec" style={{ ...ui.ligneDetail, fontWeight: 'var(--g1)' }}>
           <span>{libellePrec}</span> : {prec}{e && e !== 'n/a' ? <>, <span>{e}</span></> : null}
         </div>
       )}
@@ -123,7 +123,7 @@ export default function EcranEnsemble({ s, p, periode, precedente, hebergement, 
   return (
     <div style={ui.page}>
       <div className="compta-tableau" data-ensemble="">
-        <div className="compta-rang compta-rang-tete" style={{ fontSize: 12, color: 'var(--text2)' }}>
+        <div className="compta-rang compta-rang-tete" style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
           <span />
           <span style={{ textAlign: 'right' }}>{libelleCourant}</span>
           <span style={{ textAlign: 'right' }}>{libellePrec}</span>
@@ -181,5 +181,5 @@ export default function EcranEnsemble({ s, p, periode, precedente, hebergement, 
 
 const st = {
   reserve: { color: 'var(--warning-text)' },
-  source: { margin: 0, fontSize: 13, color: 'var(--text2)', lineHeight: 1.55 },
+  source: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.55 },
 };

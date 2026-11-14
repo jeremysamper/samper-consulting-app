@@ -149,10 +149,10 @@ export default function FenetreCharge({ etabId, charge, aujourdhui, onClose, onE
 const st = {
   puces: { display: 'flex', flexWrap: 'wrap', gap: 6 },
   puce: {
-    minHeight: 44, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13,
+    minHeight: 44, padding: '8px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)', color: 'var(--text)',
   },
-  puceActive: { borderColor: 'var(--accent)', background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 500 },
+  puceActive: { borderColor: 'var(--accent)', background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 'var(--g2)' },
   // Plancher de 200 px : un champ date natif iOS ne se rétrécit pas.
   grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))', gap: 12 },
 };

@@ -99,7 +99,7 @@ export default function EcranCharges({ etabId, charges, aujourdhui, peutEcrire, 
                 {doublons.length > 0 && (
                   <div style={ui.section} data-doublons="">
                     {doublons.map(d => (
-                      <p key={`${d.charge.id}-${d.facture.id}`} style={{ margin: 0, fontSize: 13, color: 'var(--warning-text)', lineHeight: 1.5 }}>
+                      <p key={`${d.charge.id}-${d.facture.id}`} style={{ margin: 0, fontSize: 'var(--t2)', color: 'var(--warning-text)', lineHeight: 1.5 }}>
                         <span>Possible doublon avec une charge fixe :</span> <span data-no-translate>{d.facture.fournisseurNom}</span>, <span>facture du</span> <span>{dateCH(d.facture.dateDocument)}</span>
                       </p>
                     ))}
@@ -161,6 +161,6 @@ export default function EcranCharges({ etabId, charges, aujourdhui, peutEcrire, 
 const st = {
   gerer: {
     minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', flexShrink: 0,
-    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },
 };

@@ -96,7 +96,7 @@ export default function FenetreSalaire({ etabId, personne, mode, salaire, debutP
           <span style={st.caseCible}>
             <input type="checkbox" checked={f.treizieme} onChange={e => set('treizieme', e.target.checked)} style={st.caseInput} />
           </span>
-          <span style={{ fontSize: 14, color: 'var(--text)' }}>13e salaire</span>
+          <span style={{ fontSize: 'var(--t2)', color: 'var(--text)' }}>13e salaire</span>
         </label>
       )}
       <div style={st.grille}>

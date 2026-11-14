@@ -28,7 +28,7 @@ const COULEURS = { succes: 'var(--success-text)', alerte: 'var(--warning-text)',
 
 function FoodCost({ v }) {
   if (v == null) return <span style={{ color: 'var(--text2)' }}>n/a</span>;
-  return <span style={{ fontFamily: 'var(--font-num)', color: COULEURS[niveauFoodCost(v)], fontWeight: 500 }}>{pctTexte(v)}</span>;
+  return <span style={{ fontFamily: 'var(--font-num)', color: COULEURS[niveauFoodCost(v)], fontWeight: 'var(--g2)' }}>{pctTexte(v)}</span>;
 }
 
 // Une cellule chiffrée : son libellé n'apparaît que sur un conteneur étroit
@@ -152,7 +152,7 @@ function OngletCartes({ cartes, carte, calcul, onCarte }) {
     <section style={ui.section} data-onglet-cartes="">
       {cartes.length > 1 && (
         <label style={st.choix}>
-          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)' }}>Carte</span>
+          <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' }}>Carte</span>
           <select value={carte?.id || ''} onChange={e => onCarte(e.target.value)} style={st.select} data-no-translate>
             {cartes.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
           </select>
@@ -202,11 +202,11 @@ function OngletCartes({ cartes, carte, calcul, onCarte }) {
 }
 
 const st = {
-  note: { display: 'block', fontSize: 12, color: 'var(--warning-text)', lineHeight: 1.4 },
-  noteDiscrete: { display: 'block', fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 },
+  note: { display: 'block', fontSize: 'var(--t1)', color: 'var(--warning-text)', lineHeight: 1.4 },
+  noteDiscrete: { display: 'block', fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 },
   choix: { display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 360 },
   select: {
     minHeight: 44, padding: '8px 12px', borderRadius: 8, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14,
+    background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)',
   },
 };
