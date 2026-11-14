@@ -25,6 +25,11 @@ import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
 import { useMaintenant } from './mesures.js';
 import { resumeService } from './resumeService.js';
 import { CarteTablesOuvertes, ReperesCaisse } from './CartesCaisse.jsx';
+import { peutGererReservations } from '../previsions/gardeEnLigne.js';
+import {
+  ajustementsDuService, lignesDeplacement, lignesReunion, lignesSeparation, reservationDirecte,
+  reservationsPosees, serviceDuMoment, tablesDuService, tableesDe, ticketsSurPlan,
+} from './planService.js';
 import './caisse.css';
 
 
@@ -97,6 +102,11 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const [erreurTickets, setErreurTickets] = React.useState(null);
   const [tables, setTables] = React.useState([]);
   const [salles, setSalles] = React.useState([]);
+  // Plan du service (organisé dans Réservations) : écarts du jour au plan de
+  // base, décor de la salle, et vrai quand la base sait les écrire.
+  const [ajustements, setAjustements] = React.useState([]);
+  const [ajustDispo, setAjustDispo] = React.useState(false);
+  const [elements, setElements] = React.useState([]);
   // Plats et cartes tels que lus ; les articles en vente en sont déduits avec
   // le réglage « Cartes en vente » (voir plus bas).
   const [plats, setPlats] = React.useState([]);
@@ -223,16 +233,25 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     setTickets(data);
   }, [etabId, modeTest]);
 
-  // Plan de salle (lecture seule) et articles : rechargés au changement
-  // d'établissement et après l'hydratation post-login (legacyVersion).
+  // Plan de salle : tables, salles, décor et écarts du service du jour, tels
+  // que Réservations les a posés. Une lecture en échec garde le plan connu.
+  const rechargerPlan = React.useCallback(async () => {
+    if (!etabId) return;
+    const [t, s, el, aj] = await Promise.all([
+      plan.listTables(), plan.listSalles(), plan.listElements(), plan.listAjustements(zurichToday()),
+    ]);
+    if (t.data) setTables(t.data);
+    if (s.data) setSalles(s.data);
+    if (el.data) setElements(el.data);
+    if (aj.data) { setAjustements(aj.data); setAjustDispo(!aj.indispo); }
+  }, [etabId, plan]);
+
+  // Articles : relus au changement d'établissement et après l'hydratation
+  // post-login (legacyVersion). Le plan a sa propre lecture, plus bas.
   React.useEffect(() => {
     let vivant = true;
     (async () => {
       if (!etabId) return;
-      const [t, s] = await Promise.all([plan.listTables(), plan.listSalles()]);
-      if (!vivant) return;
-      setTables(t.data || []);
-      setSalles(s.data || []);
       const db = dbService.getDb();
       if (!db) return;
       const [platsLus, cartes] = await Promise.all([
@@ -244,7 +263,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       setCartesLues(cartes || []);
     })();
     return () => { vivant = false; };
-  }, [etabId, plan, legacyVersion]);
+  }, [etabId, legacyVersion]);
 
   // Réservations du jour et de la veille. Une lecture en échec garde les
   // dernières connues : la caisse reste utilisable (passage, vente directe).
@@ -306,7 +325,23 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     return rt.subscribeReload(['reservations', 'reservation_tables'], rechargerReservations);
   }, [etabId, rechargerReservations]);
 
+  // Realtime : des tables déplacées ou réunies dans Réservations (ou sur un
+  // autre poste), une salle redessinée.
+  React.useEffect(() => {
+    const rt = dbService.getRealtime();
+    if (!rt?.subscribeReload || !etabId) return undefined;
+    return rt.subscribeReload(['salle_tables_service', 'salle_tables', 'salles', 'salle_elements'], rechargerPlan);
+  }, [etabId, rechargerPlan]);
+
   const jour = zurichToday();
+  // Plan relu au changement d'établissement, après l'hydratation post-login
+  // et quand le jour change (les écarts du nouveau jour).
+  React.useEffect(() => { rechargerPlan(); }, [jour, rechargerPlan, legacyVersion]);
+  // Plan du service en cours : midi jusqu'à 16 h, soir ensuite.
+  const service = serviceDuMoment(zurichNowMinutes());
+  const ajustParTable = React.useMemo(() => ajustementsDuService(ajustements, service), [ajustements, service]);
+  const tablesVues = React.useMemo(() => tablesDuService(tables, ajustParTable), [tables, ajustParTable]);
+  const tablees = React.useMemo(() => tableesDe(tablesVues.filter((t) => t.actif !== false)), [tablesVues]);
   const sansTicket = reservationsSansTicket(reservations, {
     jour, maintenantMinutes: zurichNowMinutes(), delaiMinutes: reglages.delai_no_show_min, tickets,
   });
@@ -319,8 +354,22 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     if (ecran === 'ticket' && ticketId && !ticket) retourAccueil();
   }, [ecran, ticketId, ticket, retourAccueil]);
 
-  const ticketsParTable = {};
-  tickets.forEach((t) => { if (t.table_id && !ticketsParTable[t.table_id]) ticketsParTable[t.table_id] = t; });
+  // Un ticket couvre sa tablée et les tables de sa réservation.
+  const ticketsParTable = ticketsSurPlan(tickets, tablees, reservations);
+  // Réservation du service posée sur chaque tablée libre : son nom, son heure
+  // et ses couverts s'écrivent sur le plan.
+  const attendues = {};
+  const membresDe = new Map();
+  tablees.forEach(({ principale, membres }) => membresDe.set(principale.id, membres));
+  membresDe.forEach((membres, id) => {
+    if (ticketsParTable[id]) return;
+    const r = reservationsPosees(reservations, { jour, service, tableIds: membres.map((m) => m.id), tickets })[0];
+    if (r) attendues[id] = { nom: r.nom, heure: heureCourte(r.heure_arrivee), couverts: r.nb_couverts };
+  });
+  // Déplacer ou réunir des tables pour le service : le droit d'écrire dans
+  // Réservations (case Modifier du module, comme la RLS de
+  // salle_tables_service). Jamais en mode test : le plan est celui de tous.
+  const peutDeplacerTables = ajustDispo && !modeTest && peutGererReservations(user?.role);
 
   // ── Mode test (v6) ──
   // Retour du poste en mode normal, côté écran : la mémoire locale s'efface,
@@ -409,31 +458,95 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       setEcran('ticket');
       return;
     }
-    // Table libre : la caisse demande qui s'assoit avant d'ouvrir le ticket.
+    // Table libre : la seule réservation du service posée dessus dans
+    // Réservations s'ouvre d'un toucher, dès 45 min avant son heure. Sinon
+    // (aucune, plusieurs, trop tôt, mode test), la caisse demande qui s'assoit.
+    const membres = tablees.get(table.id)?.membres || [table];
+    const directe = modeTest ? null : reservationDirecte(reservations, {
+      jour, service, tableIds: membres.map((m) => m.id), tickets, maintenantMinutes: zurichNowMinutes(),
+    });
+    if (directe) {
+      const ok = await ouvrirSur(table, { qui: 'reservation', reservationId: directe.id });
+      if (ok) notify('Ticket ouvert pour la réservation de la table', 'success');
+      return;
+    }
     setQuiTable(table);
   }
 
-  // Réponse de la feuille « Qui est à cette table ? ». La RPC est idempotente
-  // (double tap, deux postes sur la même table) ; le verrou local évite le
-  // second appel.
+  // Glisser un ticket sur une autre table du plan : il y passe, si elle est
+  // libre (deux tickets se fusionnent depuis le ticket).
+  async function transfererTicket(ticketT, tableCible) {
+    if (ticketT.table_id === tableCible.id) return;
+    const occupant = ticketsParTable[tableCible.id];
+    if (occupant && occupant.id !== ticketT.id) {
+      notify('Cette table a déjà un ticket ouvert. Fusionnez-les depuis le ticket.', 'warning');
+      return;
+    }
+    const { error } = await caisse.majTicket(ticketT.id, { table_id: tableCible.id });
+    if (error) { notify(error, 'error'); return; }
+    notify('Ticket changé de table', 'success');
+    await rechargerTickets();
+  }
+
+  // Écarts du service écrits depuis la caisse, au même endroit que
+  // Réservations. Affichés tout de suite, relus ensuite (et par le temps réel
+  // sur les autres postes).
+  async function ecrireAjustements(lignes, effacer = []) {
+    setAjustements((prev) => [
+      ...prev.filter((a) => !(a.service === service
+        && (effacer.includes(a.table_id) || lignes.some((l) => l.table_id === a.table_id)))),
+      ...lignes.map((l) => ({ ...l, date_service: jour, service })),
+    ]);
+    const r1 = lignes.length ? await plan.enregistrerAjustements(jour, service, lignes) : { error: null };
+    const r2 = effacer.length ? await plan.effacerAjustements(jour, service, effacer) : { error: null };
+    if (r1.error || r2.error) notify(r1.error || r2.error, 'error');
+    rechargerPlan();
+  }
+
+  function reunirTables({ source, cible, centre }) {
+    const ticketsSource = new Set(source.map((t) => ticketsParTable[t.id]?.id).filter(Boolean));
+    const ticketsCible = new Set(cible.map((t) => ticketsParTable[t.id]?.id).filter(Boolean));
+    if (ticketsSource.size && ticketsCible.size && [...ticketsSource].some((id) => !ticketsCible.has(id))) {
+      notify('Deux tickets sont ouverts : fusionnez-les depuis le ticket avant de réunir les tables.', 'warning');
+      return;
+    }
+    ecrireAjustements(lignesReunion(source, cible, centre, ajustParTable));
+  }
+
+  async function remettrePlanDeBase() {
+    setAjustements((prev) => prev.filter((a) => a.service !== service));
+    const { error } = await plan.effacerAjustements(jour, service);
+    if (error) notify(error, 'error');
+    rechargerPlan();
+  }
+
+  // Réponse de la feuille « Qui est à cette table ? ».
   async function ouvrirPour(choix) {
-    if (verrouOuverture.current || !quiTable) return;
+    if (!quiTable) return;
+    await ouvrirSur(quiTable, choix);
+  }
+
+  // Ouvre le ticket d'une table. La RPC est idempotente (double tap, deux
+  // postes sur la même table) ; le verrou local évite le second appel.
+  async function ouvrirSur(table, choix) {
+    if (verrouOuverture.current || !table) return false;
     verrouOuverture.current = true;
     setOuverture(true);
     try {
       // En mode test, la même feuille s'ouvre (on s'entraîne au vrai geste),
       // mais la base ouvre un ticket de test : ni réservation ni fiche client.
       const { data, error, modeTestInactif } = await caisse.ouvrirTicket({
-        etablissementId: etabId, tableId: quiTable.id, ...choix,
+        etablissementId: etabId, tableId: table.id, ...choix,
         ...(modeTest ? { test: true, poste, posteCle: cleTest } : null),
       });
-      if (modeTestInactif) { sortirDuTestIci(error); return; }
-      if (error) { notify(error, 'error'); return; }
+      if (modeTestInactif) { sortirDuTestIci(error); return false; }
+      if (error) { notify(error, 'error'); return false; }
       if (data?.deja_ouvert) notify('Cette table avait déjà un ticket ouvert.', 'info');
       await Promise.all([rechargerTickets(), rechargerReservations()]);
       setQuiTable(null);
       setTicketId(data.ticket_id);
       setEcran('ticket');
+      return true;
     } finally {
       verrouOuverture.current = false;
       setOuverture(false);
@@ -619,7 +732,23 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         }}
       >
         {tables.some((t) => t.actif !== false) ? (
-          <PlanTables salles={salles} tables={tables} ticketsParTable={ticketsParTable} noms={nomsTables} onTapTable={tapTable} />
+          <PlanTables
+            salles={salles}
+            tables={tablesVues}
+            tablees={tablees}
+            ticketsParTable={ticketsParTable}
+            noms={nomsTables}
+            attendues={attendues}
+            elements={elements}
+            onTapTable={tapTable}
+            onTransferer={deplacement ? null : transfererTicket}
+            choixSeul={deplacement}
+            peutDeplacer={peutDeplacerTables}
+            onDeplacerGroupe={({ membres, dx, dy }) => ecrireAjustements(lignesDeplacement(membres, dx, dy, ajustParTable))}
+            onReunir={reunirTables}
+            onSeparer={(membres) => { const s = lignesSeparation(membres, ajustParTable); ecrireAjustements(s.lignes, s.effacer); }}
+            onRemettre={remettrePlanDeBase}
+          />
         ) : (
           <div style={st.videBloc}>
             <p style={st.vide}>Aucune table dans le plan de salle. Dessinez la salle dans Réservations, ou vendez sans table.</p>
@@ -630,8 +759,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           <QuiEstLa
             key={quiTable.id}
             table={quiTable}
+            tableIds={(tablees.get(quiTable.id)?.membres || [quiTable]).map((m) => m.id)}
             etablissementId={etabId}
-            reservations={reservationsAttachables(reservations, { jour, tableId: quiTable.id, tickets })}
+            reservations={reservationsAttachables(reservations, { jour, tableId: (tablees.get(quiTable.id)?.membres || [quiTable]).map((m) => m.id), tickets })}
             enCours={ouverture}
             onChoisir={ouvrirPour}
             onClose={() => setQuiTable(null)}

@@ -32,6 +32,10 @@ export const BRAND_COLORS = {
   sand: '#C9BCA3', // sable
   cream: '#EFE8DD', // logo sur le fond pétrole
   shadow: '#04222D', // presque le fond, donne la profondeur
+  // Le bleu le plus sombre de la marque, dans la teinte du pétrole : fond de
+  // l'écran de chargement (BootScreen.jsx), du pré-splash de vite-index.html
+  // et du lancement natif (background_color de public/manifest.json).
+  abysse: '#000D13',
 };
 
 // Grille de référence de tous les tracés : 24 x 24 (viewBox « 0 0 24 24 »).

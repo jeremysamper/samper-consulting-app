@@ -10,17 +10,10 @@ const TABLE_DECOR  = 'salle_elements';
 // Codes « table ou colonne absente » : la migration n'est pas passée.
 const CODES_SCHEMA_ABSENT = new Set(['42P01', 'PGRST205', '42703', 'PGRST204']);
 
-// Canevas virtuel du plan. Toutes les coordonnées stockées sont exprimées
-// dedans, jamais en pixels : le plan doit tomber juste sur l'iPad de l'entrée
-// comme sur l'écran du bureau. Le composant met ce canevas à l'échelle de la
-// largeur disponible, le ratio ne bouge pas.
-export const PLAN_W = 1000;
-export const PLAN_H = 700;
-
-// Pas de la grille d'aimantation, en unités canevas. Sans elle, un plan
-// dessiné au doigt part de travers : deux tables côte à côte ne sont jamais
-// alignées à l'unité près.
-export const PLAN_GRID = 10;
+// Canevas virtuel du plan et pas de la grille : planSalleCanevas.js, sans
+// dépendance, pour que les fonctions pures qui les lisent (plan du service de
+// la caisse) se testent sous Node. Rendus ici pour les lecteurs d'avant.
+export { PLAN_W, PLAN_H, PLAN_GRID } from './planSalleCanevas.js';
 
 // Le plan de salle repose sur des tables ajoutées par les migrations
 // 20260817. Tant qu'elles ne sont pas passées, PostgREST répond « relation

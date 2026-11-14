@@ -128,7 +128,9 @@ export function CasesCouverts({ disabled, onChoisir }) {
   );
 }
 
-export default function QuiEstLa({ table, etablissementId, reservations, enCours = false, onChoisir, onClose }) {
+// tableIds : les tables de la tablée (plan du service), sinon la table seule.
+export default function QuiEstLa({ table, tableIds = null, etablissementId, reservations, enCours = false, onChoisir, onClose }) {
+  const ici = tableIds?.length ? tableIds : table.id;
   const [etape, setEtape] = React.useState('menu'); // menu | reservations | passage | compte | compteCouverts
   const [clients, setClients] = React.useState(null);
   const [erreurClients, setErreurClients] = React.useState(null);
@@ -160,7 +162,7 @@ export default function QuiEstLa({ table, etablissementId, reservations, enCours
     return () => { vivant = false; };
   }, [etape, clients, etablissementId]);
 
-  const surTable = reservations.filter((r) => estSurTable(r, table.id));
+  const surTable = reservations.filter((r) => estSurTable(r, ici));
   const match = makeSearchMatcher(rechercheClient);
   const trouves = rechercheClient.trim().length >= 2
     ? (clients || []).filter((c) => match(c.nom, c.prenom, nomFiche(c))).slice(0, 30)
@@ -225,7 +227,7 @@ export default function QuiEstLa({ table, etablissementId, reservations, enCours
             <div style={st.rangTitre}>Réservations du jour</div>
             <ListeReservations
               reservations={reservations}
-              tableId={table.id}
+              tableId={ici}
               disabled={enCours}
               onChoisir={(r) => onChoisir({ qui: 'reservation', reservationId: r.id })}
             />

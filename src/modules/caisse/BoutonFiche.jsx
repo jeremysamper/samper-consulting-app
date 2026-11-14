@@ -1,7 +1,8 @@
 import React from 'react';
 import { Btn, Input } from '../../components/ui/index.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
-import { COULEURS, LIBELLES_COULEURS, PICTOS, nomCourtDefaut } from './boutons.js';
+import { nomCourtDefaut } from './boutons.js';
+import { ChoixCouleur, ChoixPicto } from './ChoixHabillage.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Habillage d'un bouton produit (consultant, patron, resp_cuisine) : nom
@@ -59,33 +60,10 @@ export default function BoutonFiche({ plat, bouton, onEnregistrer, onClose }) {
         />
 
         <div style={st.rangTitre}>Couleur</div>
-        <div style={st.rang}>
-          <Btn variant={couleur == null ? 'primary' : 'ghost'} onClick={() => setCouleur(null)} style={st.btn44}>Aucune</Btn>
-          {COULEURS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={LIBELLES_COULEURS[c]}
-              onClick={() => setCouleur(c)}
-              style={{
-                ...st.pastille,
-                background: `var(--caisse-${c})`,
-                borderColor: couleur === c ? 'var(--accent)' : 'var(--border)',
-                borderWidth: couleur === c ? 3 : 1,
-              }}
-            />
-          ))}
-        </div>
+        <ChoixCouleur valeur={couleur} onChange={setCouleur} />
 
         <div style={st.rangTitre}>Pictogramme</div>
-        <div style={st.rang}>
-          <Btn variant={picto == null ? 'primary' : 'ghost'} onClick={() => setPicto(null)} style={st.btn44}>Aucun</Btn>
-          {PICTOS.map((p) => (
-            <Btn key={p.id} variant={picto === p.id ? 'primary' : 'ghost'} onClick={() => setPicto(p.id)} style={st.btn44} ariaLabel={p.libelle}>
-              <p.Icone size={20} strokeWidth={1.75} aria-hidden="true" />
-            </Btn>
-          ))}
-        </div>
+        <ChoixPicto valeur={picto} onChange={setPicto} />
 
         <div style={st.pied}>
           <Btn variant="primary" onClick={enregistrer} disabled={enCours} style={st.btn44}>Enregistrer</Btn>
@@ -104,19 +82,13 @@ const st = {
   feuille: {
     background: 'var(--surface)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-    borderRadius: 'var(--r-lg)', padding: '20px 22px', width: 520, maxWidth: '100%',
+    borderRadius: 'var(--r-lg)', padding: '20px 22px', width: 640, maxWidth: '100%',
     maxHeight: '90vh', overflowY: 'auto',
     boxShadow: 'var(--sh-lg)', boxSizing: 'border-box',
   },
   enTete: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 6 },
   titre: { fontSize: 18, fontWeight: 500, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.2, minWidth: 0 },
   rangTitre: { fontSize: 12, fontWeight: 600, color: 'var(--text3)', margin: '14px 0 6px' },
-  rang: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
-  // Pastille de couleur : cible 44 px, anneau accent quand elle est choisie.
-  pastille: {
-    width: 44, height: 44, borderRadius: '50%', cursor: 'pointer', padding: 0,
-    borderStyle: 'solid',
-  },
   pied: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 },
   btn44: { minHeight: 44, flexShrink: 0 },
 };

@@ -224,6 +224,10 @@ const REGLES = Object.entries(MOTS_CLES).flatMap(([rayon, mots]) =>
   })),
 );
 
+// Le nom est celui d'une recette de l'établissement : une préparation maison,
+// qui se fait en cuisine et ne se commande pas.
+export const estPreparation = (nom, ctx) => !!ctx?.recettesNoms?.has(norm(nom));
+
 // « Eau (gélatine) » : la parenthèse précise un usage, pas un produit.
 export const estNonCommandable = (nom) => NON_COMMANDABLE.test(norm(String(nom || '').replace(/\([^)]*\)/g, ' ')));
 

@@ -10,10 +10,9 @@ import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
 import { peutGererReservations } from './gardeEnLigne.js';
-import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
 import { useReservationsJour } from './useReservationsJour.js';
-import { readText, writeText, removeStorageKeys } from '../../utils/storage.js';
+import { removeStorageKeys } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 
 // Tuile Le rapport (statistiques, lecture seule) : la direction, l'hôte et le
@@ -24,9 +23,10 @@ import { zurichToday } from '../../utils/zurichTime.js';
 // Depuis le 14.11.2026 le rapport s'ouvre dans Statistiques (analyse
 // « Réservations », pour ces mêmes rôles) : la tuile a quitté cet accueil.
 
-// Mode service resté ouvert sur cet appareil (valeur : id de l'établissement).
-// L'iPad de l'entrée qui recharge en plein service (mise à jour, réveil)
-// retombe dans le mode service du jour au lieu de l'accueil du module.
+// Plus de mode service ici depuis le 14.11.2026 (décision de Jérémy) : ce
+// module met les réservations en place, le service se joue dans la Caisse,
+// qui ouvre ses tables sur le plan organisé ici. La clé qui rouvrait le mode
+// service d'un iPad rechargé est effacée au montage.
 const CLE_MODE_SERVICE = 'sc_resa_mode_service';
 
 // Réglages de la réservation en ligne : la direction (gardeEnLigne.js). Ils
@@ -55,11 +55,7 @@ export default function Previsions({ user, etablissement }) {
   // Le champ de « Je cherche une réservation » prend la main quand on vient de
   // toucher sa tuile.
   const [champAuToucher, setChampAuToucher] = useState(false);
-  // Date affichée en mode service (écran scindé plan + réservations), null
-  // quand il est fermé.
-  const [modeService, setModeService] = useState(() => (
-    etablissement?.id && readText(CLE_MODE_SERVICE) === etablissement.id ? zurichToday() : null
-  ));
+  useEffect(() => { removeStorageKeys([CLE_MODE_SERVICE]); }, []);
   // Relance la recherche après une modification : sans ça, la liste continue
   // d'afficher la version d'avant la modification qu'on vient de faire.
   const [rechercheKey,  setRechercheKey]  = useState(0);
@@ -132,20 +128,6 @@ export default function Previsions({ user, etablissement }) {
   // « + Saisir une autre » et, après une fermeture en cours d'enregistrement,
   // fermait le formulaire rouvert entre-temps.
   function handleSaved() {
-    setRefreshKey((k) => k + 1);
-  }
-
-  // Seul le mode service du jour est retenu d'un chargement à l'autre : rouvrir
-  // demain sur la date d'hier tromperait l'hôte.
-  function ouvrirModeService(date) {
-    setModeService(date);
-    if (date === zurichToday()) writeText(CLE_MODE_SERVICE, etabId);
-    else removeStorageKeys([CLE_MODE_SERVICE]);
-  }
-
-  function fermerModeService() {
-    setModeService(null);
-    removeStorageKeys([CLE_MODE_SERVICE]);
     setRefreshKey((k) => k + 1);
   }
 
@@ -232,7 +214,6 @@ export default function Previsions({ user, etablissement }) {
               onResaUpdated={() => setRefreshKey((k) => k + 1)}
               refreshKey={refreshKey}
               canEdit={canEdit}
-              onModeService={ouvrirModeService}
               onNouvelle={canEdit && etabId ? () => setShowForm(true) : null}
             />
           )}
@@ -250,7 +231,6 @@ export default function Previsions({ user, etablissement }) {
           onResaUpdated={() => setRefreshKey((k) => k + 1)}
           refreshKey={refreshKey}
           canEdit={canEdit}
-          onModeService={ouvrirModeService}
           onNouvelle={canEdit && etabId ? () => setShowForm(true) : null}
         />
       )}
@@ -324,16 +304,6 @@ export default function Previsions({ user, etablissement }) {
           onEdit={canEdit ? (r) => { setResaTrouvee(null); setResaEnEdition(r); } : undefined}
           onClose={() => setResaTrouvee(null)}
           onResaUpdated={() => { setResaTrouvee(null); bumpRecherche(); }}
-        />
-      )}
-
-      {modeService && etabId && (
-        <ModeService
-          etablissementId={etabId}
-          date={modeService}
-          canEdit={canEdit}
-          onClose={fermerModeService}
-          onChange={() => setRefreshKey((k) => k + 1)}
         />
       )}
 
