@@ -242,8 +242,8 @@ export default function Repas({ user, etablissement }) {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <span style={h.detail}><span>Prise par</span> <span data-no-translate>{nomPersonne(c.createdBy)}</span>{c.livreePar && <>, <span>livrée par</span> <span data-no-translate>{nomPersonne(c.livreePar)}</span></>}</span>
                     <span style={{ flex: 1 }} />
-                    {c.statut === 'recue' && <Btn variant="primary" onClick={() => changer(c, { statut: 'en_cuisine' }, 'Commande en cuisine.')}>En cuisine</Btn>}
-                    {commandeOuverte(c) && <Btn variant="primary" onClick={() => changer(c, { statut: 'livree' }, 'Commande livrée.')}>Livrée</Btn>}
+                    {c.statut === 'recue' && <Btn onClick={() => changer(c, { statut: 'en_cuisine' }, 'Commande en cuisine.')}>En cuisine</Btn>}
+                    {commandeOuverte(c) && <Btn onClick={() => changer(c, { statut: 'livree' }, 'Commande livrée.')}>Livrée</Btn>}
                     {commandeOuverte(c) && <Btn onClick={() => changer(c, { statut: 'annulee' }, 'Commande annulée.')}>Annuler</Btn>}
                     {c.statut === 'livree' && !c.porteeSurNote && peutNoter && c.total > 0 && <Btn onClick={() => porterSurNote(c)}>Porter sur la note</Btn>}
                     {peutGerer && commandeOuverte(c) && <Btn onClick={() => setForm({ commande: c })}>Modifier</Btn>}
