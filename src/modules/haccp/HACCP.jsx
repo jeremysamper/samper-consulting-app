@@ -922,7 +922,6 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
               canWrite={canWrite}
               isConsultant={isConsultant}
               onReleve={ouvrirReleveGuide}
-              onReglages={() => ouvrirCompte('haccp')}
               onReessayer={relire}
             />
             <AccueilHaccp controles={compte} canWrite={canWrite} onOuvrir={ouvrirEcran} />

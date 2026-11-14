@@ -102,7 +102,7 @@ function Tournees({ tournees }) {
 
 export default function MaintenantHaccp({
   lecture, enEchecRelecture, derniereMaj, etat, maintenant,
-  canWrite, isConsultant, onReleve, onReglages, onReessayer,
+  canWrite, isConsultant, onReleve, onReessayer,
 }) {
   const [reessaiEnCours, setReessaiEnCours] = React.useState(false);
   const monteRef = React.useRef(true);
@@ -139,9 +139,9 @@ export default function MaintenantHaccp({
   // ─── Rien de réglé ───
   if (etat.statut === 'non_regle') {
     return (
-      <Carte ton="neutre" bouton={isConsultant ? (
-        <button type="button" style={st.primaire} data-cadre="" data-haccp-action="reglages" onClick={onReglages}>Ajouter les frigos et appareils</button>
-      ) : null}>
+      // Le consultant règle les frigos par « Réglages », en tête de l'accueil :
+      // la carte ne porte pas un second bouton vers la même section.
+      <Carte ton="neutre">
         <div style={{ ...st.surtitre, color: ENCRES.neutre }}>Pas encore prêt</div>
         <div style={st.ligne}>Aucun frigo à relever n'est réglé pour cet établissement.</div>
         {!isConsultant && <div style={st.ligne}>Le consultant ajoute les frigos à relever. En attendant, les étiquettes et les contrôles fonctionnent.</div>}
