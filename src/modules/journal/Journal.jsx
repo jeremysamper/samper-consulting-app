@@ -1,6 +1,6 @@
 import React from 'react';
-import { Building2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
-import { etablissementService, supabase } from '../../services/supabase.js';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { supabase } from '../../services/supabase.js';
 import { roles } from '../moduleConfig.js';
 import { zurichAjouterJours, zurichDateHeure, zurichLundi, zurichMinuitIso } from '../../utils/zurichTime.js';
 import { Btn, Panneau, SectionHeader } from '../../components/ui/index.jsx';
@@ -12,8 +12,8 @@ import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 // Alimenté par le déclencheur journal_activite_log (migration 20261015) ;
 // lecture réservée au consultant et au patron par la RLS.
 // La semaine en cours d'office ; semaine précédente, suivante et « Exporter »
-// en gros boutons ; un autre établissement, s'il y en a plusieurs, derrière
-// un bouton nommé puis une tuile (le cas rare ne pousse pas la liste).
+// en gros boutons ; l'établissement se change par la coque, comme partout
+// (le sélecteur de la barre du haut), le journal le suit.
 
 const ACTIONS = { INSERT: 'Création', UPDATE: 'Modification', DELETE: 'Suppression' };
 const COULEUR_ACTION = { INSERT: 'var(--success-text)', UPDATE: 'var(--accent)', DELETE: 'var(--danger-text)' };
@@ -119,29 +119,17 @@ const slug = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
 // Gros boutons : 48 px au doigt, texte lisible ; des pilules (Btn).
 const gros = { minHeight: 48, padding: '10px 16px', fontSize: 'var(--t2)' };
 
-export default function Journal({ user, etablissement }) {
+export default function Journal({ etablissement }) {
   const lundiCourant = zurichLundi();
-  const [etabs, setEtabs] = React.useState([]);
-  const [etabId, setEtabId] = React.useState(etablissement?.id || '');
+  // L'établissement est celui de la coque : son sélecteur, dans la barre du
+  // haut, change aussi le journal affiché.
+  const etabId = etablissement?.id || '';
   const [lundi, setLundi] = React.useState(lundiCourant);
   const [lignes, setLignes] = React.useState([]);
   const [etat, setEtat] = React.useState('chargement');
   const [essai, setEssai] = React.useState(0);
   const [enExport, setEnExport] = React.useState(false);
-  const [choixEtab, setChoixEtab] = React.useState(false);
   const estCourante = lundi === lundiCourant;
-
-  React.useEffect(() => {
-    if (etablissement?.id) setEtabId(etablissement.id);
-  }, [etablissement?.id]);
-
-  React.useEffect(() => {
-    let actif = true;
-    etablissementService.listForUser(user)
-      .then((rows) => { if (actif) setEtabs(rows || []); })
-      .catch(() => {});
-    return () => { actif = false; };
-  }, [user]);
 
   React.useEffect(() => {
     if (!etabId) return undefined;
@@ -163,7 +151,7 @@ export default function Journal({ user, etablissement }) {
     return groupes;
   }, [lignes]);
 
-  const nomEtab = etabs.find((e) => e.id === etabId)?.nom || etablissement?.nom || etabId;
+  const nomEtab = etablissement?.nom || etabId;
 
   const exporter = async () => {
     if (!etabId || enExport) return;
@@ -195,12 +183,6 @@ export default function Journal({ user, etablissement }) {
           à la même hauteur qu'avant, aucun défilement de plus. */}
       <div style={js.rangee}>
         <span style={js.contexte} data-no-translate>{nomEtab}</span>
-        {etabs.length > 1 && (
-          <Btn onClick={() => setChoixEtab((v) => !v)} style={gros}>
-            <Building2 size={18} strokeWidth={1.75} aria-hidden="true" />
-            <span>Un autre établissement</span>
-          </Btn>
-        )}
         <span style={{ ...js.contexte, fontFamily: 'var(--font-num)' }}>{libelleSemaine(lundi)}</span>
         <Btn onClick={() => setLundi(zurichAjouterJours(lundi, -7))} ariaLabel="Semaine précédente" style={gros}>
           <ChevronLeft size={18} strokeWidth={1.75} aria-hidden="true" />
@@ -220,12 +202,6 @@ export default function Journal({ user, etablissement }) {
           </Btn>
         </div>
       </div>
-      {choixEtab && etabs.length > 1 && (
-        <AccueilModule tuiles={etabs.map((e) => ({
-          id: e.id, libelle: e.nom, brut: true, Icone: Building2, etat: e.id === etabId ? 'Affiché' : null,
-          onClick: () => { setEtabId(e.id); setChoixEtab(false); },
-        }))} />
-      )}
 
       {etat === 'chargement' && <Panneau><div style={js.note}>Chargement…</div></Panneau>}
 
