@@ -568,7 +568,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
               Les tickets de test restent en base jusqu'à leur purge automatique, sous 24 heures. Vous pouvez les vider maintenant.
             </p>
             <span style={st.propositionActions}>
-              <Btn variant="primary" disabled={testEnCours} onClick={viderLesTests} style={st.btn44}>Vider les tickets de test</Btn>
+              <Btn disabled={testEnCours} onClick={viderLesTests} style={st.btn44}>Vider les tickets de test</Btn>
               <Btn variant="ghost" onClick={() => setProposerVider(false)} style={st.btn44}>Plus tard</Btn>
             </span>
           </div>
@@ -576,7 +576,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         {erreurTickets && (
           <div style={st.erreur}>
             <p style={{ margin: 0 }}>{erreurTickets}</p>
-            <Btn variant="primary" onClick={rechargerTickets} style={st.btn44}>Réessayer</Btn>
+            <Btn onClick={rechargerTickets} style={st.btn44}>Réessayer</Btn>
           </div>
         )}
         {enRetard.length > 0 && (
@@ -586,7 +586,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
               {enRetard.length > 1 && <>{' '}<span style={st.num}>{enRetard.length}</span> <span>jours attendent leur clôture.</span></>}
             </p>
             <span style={st.propositionActions}>
-              <Btn variant="primary" onClick={() => setEcran('cloture')} style={st.btn44}>Clôturer</Btn>
+              <Btn onClick={() => setEcran('cloture')} style={st.btn44}>Clôturer</Btn>
             </span>
           </div>
         )}
@@ -652,7 +652,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         ) : (
           <div style={st.videBloc}>
             <p style={st.vide}>Aucune table dans le plan de salle. Dessinez la salle dans Réservations, ou vendez sans table.</p>
-            <Btn variant="primary" onClick={venteDirecte} style={st.btn44}>Vente directe</Btn>
+            <Btn onClick={venteDirecte} style={st.btn44}>Vente directe</Btn>
           </div>
         )}
         {quiTable && !deplacement && (
