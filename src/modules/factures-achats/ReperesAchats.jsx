@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlarmClock, Banknote, ChartLine } from 'lucide-react';
-import { Arc, Barres, BoutonFleche, CarteAvant, CarteRepere, Panneau, carteAvantStyles, ligneStyle } from '../../components/ui/index.jsx';
+import { Arc, Barres, CarteAvant, CarteRepere, Panneau, carteAvantStyles, ligneStyle } from '../../components/ui/index.jsx';
 import { dateCH } from '../inventaire/inventaireLignes.js';
 import { depensesSixMois, partsFournisseurs, prochainesEcheances, reperesAchats } from './accueilAchats.js';
 import './achats.css';
@@ -15,12 +15,13 @@ import './achats.css';
 //                factures », comme leurs tuiles), dépenses des 12 mois (comme
 //                la tuile des analyses)
 //   échéances    (carte blanche) les factures à régler les plus pressées ;
-//                même droit que la tuile « Échéances », la flèche l'ouvre
+//                même droit que la tuile « Échéances », qui l'ouvre
 //   soleil       les dépenses des six derniers mois
 //   ciel         les dépenses des 12 mois par fournisseur
 //
 // Les deux cartes pastel ont la garde de la tuile des analyses (aucune garde
-// de plus que la page) ; leur flèche ouvre les analyses. Une carte sans donnée
+// de plus que la page) ; la tuile ouvre les analyses, les cartes n'ont pas de
+// flèche en plus (une seule façon d'ouvrir une chose). Une carte sans donnée
 // n'est pas rendue. Au téléphone (achats.css) : une seule carte de mise en
 // avant (les dépenses), pas de liste des échéances (la tuile y mène), et le
 // repère des dépenses, que la carte répète, n'est pas rendu.
@@ -78,26 +79,25 @@ export default function ReperesAchats({ docs, aujourdhui, canRegler, depenses })
 
 // La liste des échéances et les deux cartes pastel, enfants directs de la
 // grille de l'accueil (achats.css les range).
-export function CartesAchats({ docs, aujourdhui, canRegler, onAnalyses, onEcheances }) {
+export function CartesAchats({ docs, aujourdhui, canRegler }) {
   return (
     <>
-      {canRegler && <ListeEcheances docs={docs} aujourdhui={aujourdhui} onOuvrir={onEcheances} />}
+      {canRegler && <ListeEcheances docs={docs} aujourdhui={aujourdhui} />}
       <div className="ach-cartes">
-        <CarteSixMois docs={docs} aujourdhui={aujourdhui} onOuvrir={onAnalyses} />
-        <CarteFournisseurs docs={docs} aujourdhui={aujourdhui} onOuvrir={onAnalyses} />
+        <CarteSixMois docs={docs} aujourdhui={aujourdhui} />
+        <CarteFournisseurs docs={docs} aujourdhui={aujourdhui} />
       </div>
     </>
   );
 }
 
-function ListeEcheances({ docs, aujourdhui, onOuvrir }) {
+function ListeEcheances({ docs, aujourdhui }) {
   const e = React.useMemo(() => prochainesEcheances(docs, aujourdhui, 5), [docs, aujourdhui]);
   return (
     <div className="ach-echeances" data-achats-echeances="">
       <Panneau style={st.panneau}>
         <div style={st.teteCarte}>
           <h2 style={st.titreCarte}>Prochaines échéances</h2>
-          <BoutonFleche onClick={onOuvrir} libelle="Ouvrir les échéances" />
         </div>
         {e.lignes.length === 0 ? (
           <p style={st.vide}>Toutes les factures sont réglées.</p>
@@ -132,7 +132,7 @@ function ListeEcheances({ docs, aujourdhui, onOuvrir }) {
   );
 }
 
-function CarteSixMois({ docs, aujourdhui, onOuvrir }) {
+function CarteSixMois({ docs, aujourdhui }) {
   const s = React.useMemo(() => depensesSixMois(docs, aujourdhui), [docs, aujourdhui]);
   if (s.total == null) return null;
   const c = carteAvantStyles('soleil');
@@ -142,7 +142,6 @@ function CarteSixMois({ docs, aujourdhui, onOuvrir }) {
       className="ach-soleil"
       data-carte="six-mois"
       titre={<span style={st.titrePastel}>Six derniers mois</span>}
-      action={<BoutonFleche onClick={onOuvrir} libelle="Ouvrir les analyses des dépenses" />}
     >
       <p style={st.ligneChiffre}>
         <span style={c.chiffre} data-no-translate="">{`CHF ${chf(s.total)}`}</span>
@@ -160,7 +159,7 @@ function CarteSixMois({ docs, aujourdhui, onOuvrir }) {
   );
 }
 
-function CarteFournisseurs({ docs, aujourdhui, onOuvrir }) {
+function CarteFournisseurs({ docs, aujourdhui }) {
   const p = React.useMemo(() => partsFournisseurs(docs, aujourdhui, 4), [docs, aujourdhui]);
   if (p.total == null) return null;
   const c = carteAvantStyles('ciel');
@@ -171,7 +170,6 @@ function CarteFournisseurs({ docs, aujourdhui, onOuvrir }) {
       className="ach-ciel"
       data-carte="fournisseurs"
       titre={<span style={st.titrePastel}>Par fournisseur, sur 12 mois</span>}
-      action={<BoutonFleche onClick={onOuvrir} libelle="Ouvrir les analyses des dépenses" />}
     >
       <div className="ach-repartition">
         <Arc parts={parts} total={p.total} piste="var(--surface)">
