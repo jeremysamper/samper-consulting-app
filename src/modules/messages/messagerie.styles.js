@@ -1,9 +1,10 @@
 // Messagerie : styles partagés par la page Messages et le panneau de la barre
 // du haut (ligne d'une personne, pastille d'initiales, fil, bulles, zone de
-// saisie). Valeurs de la direction Office, écrites par les jetons
-// (.claude/rules/direction-office.md) : graisses --g1 à --g3, tailles --t1 à
-// --t4, rayon --r, filets --rule-soft, ligne choisie en --selection. Les
-// contours s'écrivent en borderWidth, borderStyle et borderColor.
+// saisie). Valeurs écrites par les jetons (direction Galet,
+// .claude/rules/direction-galet.md) : graisses --g1 à --g3, tailles --t1 à
+// --t4, rayon --r pour une ligne, --r-lg pour une bulle, filets --rule-soft,
+// ligne choisie en --selection. Les contours s'écrivent en borderWidth,
+// borderStyle et borderColor.
 
 // Hauteur d'une cible d'action : 44 px au doigt (coque téléphone ou
 // tablette), --controle (40 px) à l'ordinateur.
@@ -44,7 +45,7 @@ export const sm = {
   // Bulles : data-cadre les soustrait à la règle « Plus de carrés », qui
   // aplatissait la bulle reçue (fond et contour retirés). Largeur de lecture :
   // 560 px au plus, quelle que soit la largeur du fil.
-  bulle: { padding: '8px 12px', minWidth: 0, borderWidth: 1, borderStyle: 'solid', borderRadius: 'var(--r)' },
+  bulle: { padding: '8px 14px', minWidth: 0, borderWidth: 1, borderStyle: 'solid', borderRadius: 'var(--r-lg)' },
   bulleMoi: { background: 'var(--selection)', borderColor: 'var(--selection)' },
   bulleAutre: { background: 'var(--surface)', borderColor: 'var(--rule-soft)' },
   bulleTexte: { fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap', overflowWrap: 'break-word' },

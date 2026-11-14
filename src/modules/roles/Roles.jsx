@@ -30,6 +30,10 @@ import Interrupteur from './Interrupteur.jsx';
 // changée n'enregistre que l'ÉCART de cette personne à son rôle (table
 // `permissions_utilisateurs`) ; « Revenir aux droits du rôle » efface ses
 // écarts. Le consultant voit et gère tout, il n'a rien à régler.
+//
+// Direction Galet (lot 6) : une carte blanche par personne (initiales en
+// cercle, rôle, sites), la personne choisie en carte à droite, boutons en
+// pilules.
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Modules réglables : ceux du menu. Les outils du consultant (et ses pages
@@ -526,7 +530,7 @@ const Roles = ({ user }) => {
           </div>
         ) : (
           <>
-            <div style={{ padding: '10px 18px', fontSize: 'var(--t1)', color: 'var(--text2)', borderBottom: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ padding: '10px 18px', fontSize: 'var(--t1)', color: 'var(--text2)', borderBottom: '1px solid var(--rule-soft)', background: 'var(--bg)', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               <span style={{ flex: 1, minWidth: 200, lineHeight: 1.5 }}>
                 Les droits partent de ceux du rôle <strong>{role.label}</strong>. Ce que vous changez ne concerne que {u.prenom}.
                 {' '}L'interrupteur ouvre le module dans son menu. « Modifier » : il peut y créer, modifier et supprimer.
@@ -755,26 +759,28 @@ const Roles = ({ user }) => {
 const ros = {
   root: { display: 'flex', flexDirection: 'column', gap: 14 },
   tabs: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  addBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 40 },
-  ghostBtn: { padding: '8px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  smallGhost: { padding: '6px 10px', minHeight: 36, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  titre: { fontSize: 'var(--t4)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.2 },
-  permLayout: { display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 14, alignItems: 'start' },
-  // Qui fait quoi : une carte par personne, empilées.
+  addBtn: { padding: '8px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  ghostBtn: { padding: '8px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  smallGhost: { padding: '6px 10px', minHeight: 36, background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  titre: { fontSize: 'var(--t5)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.2 },
+  permLayout: { display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 24, alignItems: 'start' },
+  // Qui fait quoi : une carte blanche par personne (fond --zone, filet
+  // --rule-soft, rayon --r-lg, ombre --sh), empilées au même pas qu'avant.
   peopleCol: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
   personCard: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '7px 12px', minHeight: 50, boxSizing: 'border-box',
-    background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)',
-    cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left',
+    background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)',
+    boxShadow: 'var(--sh)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left',
   },
   personActive: { background: 'var(--selection)', borderColor: 'var(--onglet)' },
   personNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   personLigne: { fontSize: 'var(--t1)', color: 'var(--text2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', lineHeight: 1.4 },
-  modulesCol: { background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)', overflow: 'hidden', minWidth: 0 },
-  modulesHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'var(--surface)', flexWrap: 'wrap', gap: 10 },
+  // La personne choisie : une carte blanche, ses modules en lignes.
+  modulesCol: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)', overflow: 'hidden', minWidth: 0 },
+  modulesHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid var(--rule-soft)', background: 'var(--zone)', flexWrap: 'wrap', gap: 10 },
   moduleList: { display: 'flex', flexDirection: 'column' },
   // Un module : sa ligne (nom, interrupteur), puis ses cases quand il est ouvert.
-  moduleBloc: { padding: '2px 12px 4px 18px', borderBottom: '1px solid var(--border)' },
+  moduleBloc: { padding: '2px 12px 4px 18px', borderBottom: '1px solid var(--rule-soft)' },
   moduleRow: { display: 'flex', alignItems: 'center', gap: 8 },
   // « Modifier » et les droits d'action sous leur module : en retrait, libellé nommé.
   droitRow: { display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 16, paddingRight: 6 },
@@ -782,11 +788,11 @@ const ros = {
   // 44 px : la cible au doigt, pas plus, la fenêtre garde sa hauteur sur téléphone.
   roleTuile: { minHeight: 44, padding: '6px 8px', justifyContent: 'center' },
   roleTuileChoisie: { borderColor: 'var(--onglet)', background: 'var(--selection)' },
-  permBadge: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '3px 8px', borderRadius: 'var(--r)', whiteSpace: 'nowrap', flexShrink: 0 },
+  permBadge: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '3px 10px', borderRadius: 'var(--r-full)', whiteSpace: 'nowrap', flexShrink: 0 },
   userAvatar: { width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 'var(--g3)', fontSize: 'var(--t2)', flexShrink: 0 },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 12 },
-  modal: { background: 'var(--surface)', borderRadius: 'var(--r)', width: 640, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.2)' },
-  modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' },
+  modal: { background: 'var(--surface)', borderRadius: 'var(--r-xl)', width: 640, maxWidth: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--sh-lg)' },
+  modalHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--rule-soft)' },
   closeBtn: { background: 'none', border: 'none', fontSize: 'var(--t3)', cursor: 'pointer', color: 'var(--text2)' },
   fieldLabel: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', marginBottom: 6 },
   fieldInput: { width: '100%', padding: '9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },

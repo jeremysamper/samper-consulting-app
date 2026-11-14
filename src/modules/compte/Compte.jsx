@@ -10,6 +10,7 @@ import { getPermissionsForRole } from '../../data/demoData.js';
 import { readText, writeText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { ongletCompteDepuisOutils } from '../moduleConfig.js';
 import { sectionsParGroupe, sectionsVisibles, signauxDe } from './registreReglages.js';
+import './reglages.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE DES RÉGLAGES (page hors menu 'compte') : tout ce qui se règle dans
@@ -18,7 +19,8 @@ import { sectionsParGroupe, sectionsVisibles, signauxDe } from './registreReglag
 // section par réglage (registreReglages.js), chacune sous la garde de son
 // module : chaque personne n'y voit que ce qu'elle règle déjà ailleurs.
 //
-// Écran large : la liste des sections à gauche, la section ouverte à droite.
+// Écran large : la liste des sections à gauche, une carte par famille ; la
+// section ouverte à droite, dans une carte (direction Galet, lot 6).
 // Écran étroit (téléphone, tablette, ordinateur à barre latérale ouverte sous
 // 900 px de contenu) : la liste, puis la section ; le geste retour ramène à la
 // liste. Une section ouverte par le raccourci d'un module (ouvrirCompte) s'ouvre
@@ -33,6 +35,11 @@ import { sectionsParGroupe, sectionsVisibles, signauxDe } from './registreReglag
 // ─────────────────────────────────────────────────────────────────────────────
 
 const LARGEUR_DEUX_VOLETS = 900;
+// La section ouverte ne se pose dans une carte qu'à partir de cette largeur de
+// contenu : en dessous, le retrait de la carte faisait perdre sa colonne à une
+// grille de section (réservation en ligne, deux colonnes de 340 px à la
+// tablette), mesuré au banc. La section reste alors posée sur la page.
+const LARGEUR_CARTE_SECTION = 1100;
 
 // Le changement d'une section, signalé à ses lecteurs (son module d'origine).
 const signalerSection = (id) => signauxDe(id).forEach(signalerReglage);
@@ -97,6 +104,7 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
     return () => ro.disconnect();
   }, []);
   const etroit = shellMode === 'telephone' || largeur < LARGEUR_DEUX_VOLETS;
+  const enCarte = !etroit && largeur >= LARGEUR_CARTE_SECTION;
 
   // { id, direct } : direct = ouverte par un raccourci (retour = le module),
   // sinon choisie dans la liste (retour = la liste, sur écran étroit).
@@ -156,7 +164,7 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
   const liste = (
     <nav aria-label="Réglages" style={etroit ? st.listeEtroite : st.liste} data-reglages-liste="">
       {groupes.map((groupe) => (
-        <div key={groupe.id} role="group" aria-label={groupe.label} style={etroit ? st.groupeEtroit : st.groupe}>
+        <div key={groupe.id} role="group" aria-label={groupe.label} data-cadre="" style={etroit ? st.groupeEtroit : st.groupe}>
           <div style={etroit ? st.groupeTitreEtroit : st.groupeTitre}>{groupe.label}</div>
           {groupe.sections.map((s) => {
             const courant = !etroit && s.id === actif;
@@ -192,6 +200,7 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
       permissions={permissions}
       shellMode={shellMode}
       revenir={ouverte.direct ? retourModule : undefined}
+      enCarte={enCarte}
     />
   ) : null;
 
@@ -246,11 +255,16 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
 // ouvrent restent de vraies fenêtres. `revenir` n'est donné qu'à une section
 // ouverte par le raccourci d'un module : un bouton qui fermait la fenêtre
 // d'origine (« Enregistrer » des textes de facture) y ramène.
-function SectionMontee({ section, user, etablissement, permissions, shellMode, revenir }) {
+function SectionMontee({ section, user, etablissement, permissions, shellMode, revenir, enCarte = false }) {
   const Composant = composantDe(section);
   const signaler = React.useCallback(() => signalerSection(section.id), [section.id]);
   return (
-    <div style={st.section} data-section={section.id}>
+    <div
+      style={enCarte ? st.sectionCarte : st.section}
+      className={enCarte ? 'reglages-section' : undefined}
+      data-cadre={enCarte ? '' : undefined}
+      data-section={section.id}
+    >
       <SafeModule name={section.libelle}>
         <React.Suspense fallback={<p style={st.attente}>Chargement…</p>}>
           <Composant
@@ -267,40 +281,52 @@ function SectionMontee({ section, user, etablissement, permissions, shellMode, r
   );
 }
 
+// Direction Galet : une carte blanche par famille de sections (fond --zone,
+// filet --rule-soft, rayon --r-lg, ombre --sh), ses entrées en lignes ; la
+// section choisie en aplat sombre, comme l'entrée choisie d'un menu. La
+// section ouverte est une carte à son tour dès 1100 px de contenu
+// (reglages.css retire l'ombre des cartes que l'écran d'origine pose dedans).
+const carte = {
+  background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+  borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)', boxSizing: 'border-box', minWidth: 0,
+};
+
 const st = {
   racine: { display: 'flex', alignItems: 'flex-start', gap: 24, minWidth: 0, width: '100%' },
-  racineEtroite: { display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0, width: '100%' },
+  racineEtroite: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, width: '100%' },
   // Deux volets : la liste reste en vue quand la section défile, et défile
   // seule si elle dépasse l'écran (--app-header-h : la barre du haut).
   liste: {
-    width: 236, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10, position: 'sticky', top: 0,
+    width: 236, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 0,
     maxHeight: 'calc(100dvh - var(--app-header-h, 64px) - 48px)', overflowY: 'auto', overscrollBehavior: 'contain',
   },
-  listeEtroite: { display: 'flex', flexDirection: 'column', gap: 18, width: '100%', minWidth: 0 },
-  // Liste seule : une colonne au téléphone, deux ou trois dès que la largeur
-  // le permet (tablette, ordinateur à barre latérale ouverte), pour que toutes
-  // les sections tiennent en un écran ou presque.
-  groupeEtroit: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 6, minWidth: 0 },
-  groupeTitreEtroit: { gridColumn: '1 / -1', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text3)', margin: '0 0 0 2px', letterSpacing: 0.2 },
-  groupe: { display: 'flex', flexDirection: 'column', gap: 2 },
-  groupeTitre: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text3)', margin: '0 0 2px 10px', letterSpacing: 0.2 },
+  listeEtroite: { display: 'flex', flexDirection: 'column', gap: 16, width: '100%', minWidth: 0 },
+  // Liste seule : une carte par famille ; dedans, une colonne au téléphone,
+  // deux ou trois dès que la largeur le permet (tablette, ordinateur à barre
+  // latérale ouverte), pour que toutes les sections tiennent en un écran ou
+  // presque.
+  groupeEtroit: { ...carte, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 2, padding: 6 },
+  groupeTitreEtroit: { gridColumn: '1 / -1', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', padding: '8px 10px 4px' },
+  groupe: { ...carte, display: 'flex', flexDirection: 'column', gap: 2, padding: 6 },
+  groupeTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', padding: '8px 10px 4px' },
   entree: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '8px 10px',
-    background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)', color: 'var(--text)',
+    background: 'transparent', border: 'none', borderRadius: 'var(--r)', color: 'var(--text)',
     fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g1)', lineHeight: 1.25, textAlign: 'left', cursor: 'pointer',
   },
-  entreeEtroite: { minHeight: 56, padding: '10px 12px', background: 'var(--zone)', borderRadius: 'var(--r-lg)', fontSize: 'var(--t2)' },
-  entreeActive: { background: 'var(--selection)', color: 'var(--text)', fontWeight: 'var(--g2)' },
+  entreeEtroite: { minHeight: 56, padding: '10px 12px', fontSize: 'var(--t2)' },
+  entreeActive: { background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 'var(--g2)' },
   entreeTexte: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
   entreeLibelle: { display: 'block' },
   entreeDetail: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text2)', lineHeight: 1.35 },
   chevron: { flexShrink: 0, color: 'var(--text3)' },
-  volet: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 14 },
-  titre: { margin: 0, fontSize: 'var(--t4)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.15 },
+  volet: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 },
+  titre: { margin: 0, fontSize: 'var(--t6)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.15 },
   enTete: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 },
   retour: { minHeight: 44, flexShrink: 0 },
   tous: { minHeight: 44, flexShrink: 0, marginLeft: 'auto' },
-  titreEtroit: { flex: '1 1 160px', minWidth: 0, fontSize: 'var(--t4)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.15 },
+  titreEtroit: { flex: '1 1 160px', minWidth: 0, fontSize: 'var(--t5)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.15 },
   section: { display: 'flex', flexDirection: 'column', minWidth: 0, width: '100%' },
+  sectionCarte: { ...carte, display: 'flex', flexDirection: 'column', width: '100%', padding: '20px 22px' },
   attente: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)' },
 };

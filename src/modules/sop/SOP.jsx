@@ -5,7 +5,7 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { canManageModule } from '../../data/demoData.js';
-import { Btn } from '../../components/ui/index.jsx';
+import { Anneau, Btn } from '../../components/ui/index.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
@@ -330,7 +330,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
             <button
               style={{
                 ...ss.chip,
-                ...(onboardingMode ? { background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-bd)', fontWeight: 700 } : {}),
+                ...(onboardingMode ? { background: 'var(--warning-bg)', color: 'var(--warning-text)', borderColor: 'var(--warning-bd)', fontWeight: 'var(--g3)' } : {}),
               }}
               onClick={() => setOnboardingMode(prev => !prev)}
               title="Afficher uniquement les SOPs taggées 'essentielle'"
@@ -362,7 +362,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
       {/* Bandeau d'info quand mode nouveau cuisinier actif */}
       {onboardingMode && (
         <div style={{
-          padding: '10px 0 10px 12px',  borderLeft: '2px solid var(--warning-bd)',  marginBottom:12, fontSize:12, color:'var(--warning-text)', lineHeight:1.5,
+          padding: '10px 0 10px 12px',  borderLeft: '2px solid var(--warning-bd)',  marginBottom:12, fontSize: 'var(--t1)', color:'var(--warning-text)', lineHeight:1.5,
         }}>
           <strong>Mode "Nouveau cuisinier"</strong> - Voici les {essentialCount} procédure{essentialCount>1?'s':''} essentielle{essentialCount>1?'s':''} à exécuter en priorité. Pour qu'une SOP apparaisse ici, ajoutez-lui le tag <code>essentielle</code> dans son éditeur.
         </div>
@@ -370,10 +370,10 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
 
       {filtered.length === 0 && (
         <div style={ss.empty}>
-          <div style={{ fontSize: 15, fontWeight: 700, marginTop: 10 }}>
+          <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', marginTop: 10 }}>
             {sops.length === 0 ? 'Aucune procédure' : 'Aucun résultat'}
           </div>
-          <div style={{ fontSize: 13, color: 'var(--text2)', marginTop: 4 }}>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text3)', marginTop: 4 }}>
             {sops.length === 0 ? 'Créez une procédure avec « Nouvelle procédure », ou importez-en une depuis « Modèles ».' : 'Modifiez vos filtres.'}
           </div>
         </div>
@@ -387,7 +387,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
           <button type="button" className="mini" style={ss.groupHeader} onClick={() => basculerFrequence(freq.id)} aria-expanded={!plie}>
             <Chevron size={16} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--text2)' }} />
             <span style={ss.groupTitle}>{freq.label}</span>
-            <span style={{ fontSize: 11, color: 'var(--text2)' }}>({byFreq[freq.id].length})</span>
+            <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>({byFreq[freq.id].length})</span>
           </button>
           {!plie && <div style={ss.cardsGrid}>
             {byFreq[freq.id].map(sop => {
@@ -560,27 +560,26 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
           <span>Retour</span>
         </Btn>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sop.titre}</div>
-          <div style={{ fontSize: 11, color: 'var(--text2)' }}>
+          <div style={ss.checklistTitre}>{sop.titre}</div>
+          <div style={ss.checklistQuand}>
             {new Date(execution.heureDebut).toLocaleString('fr-CH', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
             {execution.operateurNom && `, ${execution.operateurNom}`}
           </div>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: progress === 100 ? 'var(--success-text)' : 'var(--accent)', fontFamily: 'var(--font-num)' }}>
-            {checkedSteps}/{totalSteps}
+        {/* La part faite : un anneau, son compte écrit à côté. */}
+        <div style={ss.part}>
+          <div>
+            <div style={{ ...ss.partCompte, color: progress === 100 ? 'var(--success-text)' : 'var(--text)' }}>
+              {checkedSteps}/{totalSteps}
+            </div>
+            <div style={ss.partPourcent}>{progress}%</div>
           </div>
-          <div style={{ fontSize: 11, color: 'var(--text2)' }}>{progress}%</div>
+          <Anneau part={totalSteps > 0 ? checkedSteps / totalSteps : 0} couleur={progress === 100 ? 'var(--success-strong)' : 'var(--accent)'} />
         </div>
       </div>
 
-      {/* Barre de progression */}
-      <div style={ss.progressBarOuter}>
-        <div style={{ ...ss.progressBarInner, width: `${progress}%`, background: progress === 100 ? 'var(--success-strong)' : 'var(--accent)' }} />
-      </div>
-
       {/* Sections + étapes */}
-      <div style={{ padding: '12px 16px 100px' }}>
+      <div style={ss.corps}>
         {(sop.sections || []).map(section => {
           const sectionSteps = section.etapes || [];
           const sectionChecked = sectionSteps.filter(e => stepStates[`${section.id}:${e.id}`]?.cochee).length;
@@ -645,7 +644,7 @@ const SopChecklist = ({ execution, sop, user, etablissement, onBack }) => {
 
         {/* Notes */}
         <div style={{ marginTop: 20 }}>
-          <label style={{ fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3 }}>Notes (optionnel)</label>
+          <label style={ss.notesLabel}>Notes (optionnel)</label>
           <textarea
             value={notes}
             onChange={e => setNotes(e.target.value)}
@@ -1220,93 +1219,107 @@ const SopEditor = ({ sop, etabId, onBack, onSaved }) => {
 };
 
 // ─── Styles ───
+// Direction Galet (lot 6) : la marge de page vient de la coque ; procédures en
+// cartes blanches (fond --zone, filet --rule-soft, rayon --r-lg, ombre --sh),
+// catégorie et tags en étiquettes sur la piste, boutons et filtres en
+// pilules (le filtre choisi en aplat sombre) ; la checklist garde sa barre
+// d'action collante, devenue une carte flottante (--r-lg, --sh-lg), et dit
+// la part faite par un anneau, son compte écrit à côté.
+const carte = { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)' };
+const etiquette = { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', background: 'var(--piste)', borderRadius: 'var(--r-full)', padding: '1px 8px', whiteSpace: 'nowrap', lineHeight: 1.5 };
+
 const ss = {
-  root: { padding: 16 },
+  root: {},
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, marginBottom: 16, flexWrap: 'wrap' },
-  title: { fontSize: 24, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)', margin: 0 },
-  subtitle: { fontSize: 12, color: 'var(--text2)', marginTop: 4 },
-  primaryBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500 },
-  ghostBtn: { padding: '7px 14px', background: 'none', color: 'var(--text)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13 },
-  tabs: { display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid var(--border)' },
-  tab: { padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, color: 'var(--text2)', borderBottom: '2px solid transparent' },
-  tabActive: { color: 'var(--accent)', borderBottomColor: 'var(--accent)', fontWeight: 500 },
+  title: { fontSize: 'var(--t6)', fontWeight: 'var(--g2)', color: 'var(--text)', fontFamily: 'var(--font)', margin: 0 },
+  subtitle: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 4 },
+  primaryBtn: { padding: '8px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)' },
+  ghostBtn: { padding: '7px 16px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' },
+  tabs: { display: 'flex', gap: 4, marginBottom: 16, flexWrap: 'wrap' },
+  tab: { padding: '8px 16px', background: 'transparent', border: 'none', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', color: 'var(--text2)' },
+  tabActive: { background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 'var(--g2)' },
   filtersBar: { display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' },
-  chip: { padding: '5px 12px', background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 14, fontSize: 12, cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text2)' },
+  chip: { padding: '6px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--btn-texte)' },
   chipActive: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
-  empty: { padding: 40, textAlign: 'center', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
+  empty: { ...carte, padding: 40, textAlign: 'center' },
   // Titre d'un groupe de fréquence : un bouton qui replie le groupe.
   groupHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' },
-
-  groupTitle: { fontSize: 13, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 },
-  cardsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 },
-  sopCard: { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: 14, display: 'flex', alignItems: 'flex-start', gap: 10 },
-  sopCardTitle: { fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
-  sopCardDesc: { fontSize: 12, color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 },
-  sopCardMeta: { display: 'flex', gap: '4px 10px', marginTop: 8, flexWrap: 'wrap', alignItems: 'center' },
-  sopCardSteps: { fontSize: 11, color: 'var(--text2)' },
-  sopCardCat: { fontSize: 11, fontWeight: 500, color: 'var(--text2)' },
-  sopCardTag: { fontSize: 11, fontWeight: 500, color: 'var(--text2)' },
-  sopCardFait: { fontSize: 11, fontWeight: 500, color: 'var(--success-text)' },
+  groupTitle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  cardsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 12 },
+  sopCard: { ...carte, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 },
+  sopCardTitle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', lineHeight: 1.3 },
+  sopCardDesc: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 },
+  sopCardMeta: { display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' },
+  sopCardSteps: { fontSize: 'var(--t1)', color: 'var(--text2)' },
+  sopCardCat: etiquette,
+  sopCardTag: etiquette,
+  sopCardFait: { ...etiquette, color: 'var(--success-text)', background: 'var(--success-bg-soft)' },
   sopCardActions: { display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' },
-  gererBtn: { padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text2)', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, whiteSpace: 'nowrap' },
-  startBtn: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 7, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 700, whiteSpace: 'nowrap' },
-  iconBtn: { width: 30, height: 30, padding: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 6, cursor: 'pointer', fontSize: 12, color: 'var(--text2)' },
+  gererBtn: { padding: '7px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap' },
+  startBtn: { padding: '7px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', whiteSpace: 'nowrap' },
+  iconBtn: { width: 30, height: 30, padding: 0, background: 'var(--piste)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-full)', cursor: 'pointer', fontSize: 'var(--t1)', color: 'var(--text2)' },
   // « × » discret : texte --text3, rouge au survol et au focus (classe btn-suppr-discret).
-  iconBtnDanger: { width: 40, height: 40, padding: 0, background: 'transparent', border: '1px solid transparent', borderRadius: 6, cursor: 'pointer', fontSize: 22, lineHeight: 1, color: 'var(--text3)', flexShrink: 0 },
-  miniBadge: { fontSize: 11, fontWeight: 500, padding: '2px 6px', borderRadius: 4 },
+  iconBtnDanger: { width: 40, height: 40, padding: 0, background: 'transparent', border: '1px solid transparent', borderRadius: 'var(--r-full)', cursor: 'pointer', fontSize: 'var(--t4)', lineHeight: 1, color: 'var(--text3)', flexShrink: 0 },
+  miniBadge: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', padding: '2px 10px', borderRadius: 'var(--r-full)' },
 
-  // Checklist
+  // Checklist : retour, titre et part faite posés sur la page (l'en-tête
+  // reste collant, au fond de la page) ; les sections en cartes.
   checklistRoot: { background: 'var(--bg)', minHeight: '100vh', position: 'relative' },
-  checklistHeader: { position: 'sticky', top: 0, zIndex: 10, background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 },
-  backBtn: { width: 36, height: 36, padding: 0, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 8, cursor: 'pointer', fontSize: 16, color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  checklistHeader: { position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg)', padding: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 12 },
+  backBtn: { width: 40, height: 40, padding: 0, background: 'var(--btn-fond)', border: '1px solid var(--btn-bord)', borderRadius: 'var(--r-full)', cursor: 'pointer', fontSize: 'var(--t3)', color: 'var(--btn-texte)', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   // « Retour » de la checklist : celui des écrans de tâche (EcranTache), 44 px.
   retourBtn: { minHeight: 44, flexShrink: 0 },
-  progressBarOuter: { height: 4, background: 'var(--bg)', position: 'sticky', top: 60, zIndex: 9 },
-  progressBarInner: { height: '100%', transition: 'width 0.3s, background 0.3s' },
-  sectionBlock: { marginBottom: 16, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 6, overflow: 'hidden' },
-  sectionHeader: { padding: '8px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' },
-  sectionTitle: { fontSize: 12, fontWeight: 700, color: 'var(--text)', textTransform: 'uppercase', letterSpacing: 0.4 },
-  sectionCount: { fontSize: 11, color: 'var(--text2)', fontWeight: 500 },
+  checklistTitre: { fontSize: 'var(--t4)', fontWeight: 'var(--g2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  checklistQuand: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
+  part: { display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 },
+  partCompte: { fontSize: 'var(--t4)', fontWeight: 'var(--g-chiffre)', fontFamily: 'var(--font-num)', lineHeight: 1, color: 'var(--text)', textAlign: 'right' },
+  partPourcent: { fontSize: 'var(--t1)', color: 'var(--text2)', textAlign: 'right', marginTop: 2 },
+  corps: { padding: '4px 0 16px' },
+  sectionBlock: { ...carte, marginBottom: 16, padding: 6, overflow: 'hidden' },
+  sectionHeader: { padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--rule-soft)' },
+  sectionTitle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  sectionCount: { fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font-num)' },
   // Étapes en grandes cases : case de 30 px, la ligne entière coche, même
   // hauteur de ligne qu'avant (le rembourrage cède ce que la case gagne).
-  etapeRow: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer' },
+  etapeRow: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '10px 14px', borderBottom: '1px solid var(--rule-soft)', cursor: 'pointer' },
   etapeRowChecked: { background: 'var(--success-bg-soft)' },
-  checkbox: { width: 30, height: 30, borderRadius: 8, borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 0 },
+  checkbox: { width: 30, height: 30, borderRadius: 'var(--r-sm)', borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--champ-bord)', background: 'var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 0 },
   checkboxChecked: { background: 'var(--success-fill)', borderColor: 'var(--success-fill)' },
-  etapeLabel: { fontSize: 14, color: 'var(--text)', lineHeight: 1.4 },
+  etapeLabel: { fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.4 },
   etapeLabelChecked: { textDecoration: 'line-through', color: 'var(--text2)' },
-  criticalDot: { color: 'var(--danger-text)', marginRight: 6, fontSize: 11 },
-  etapeInfo: { fontSize: 11, color: 'var(--text2)', fontStyle: 'italic', marginTop: 4, paddingLeft: 4 },
-  photoToggle: { marginTop: 6, padding: '4px 10px', background: 'var(--bg)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 14, fontSize: 11, fontWeight: 500, color: 'var(--text2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  photoToggleOpen: { background: 'var(--surface)', borderColor: 'var(--accent)', color: 'var(--accent)' },
-  etapePhoto: { display: 'block', width: '100%', maxWidth: 420, height: 'auto', maxHeight: 340, objectFit: 'contain', marginTop: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', cursor: 'zoom-in' },
+  criticalDot: { color: 'var(--danger-text)', marginRight: 6, fontSize: 'var(--t1)' },
+  etapeInfo: { fontSize: 'var(--t1)', color: 'var(--text2)', fontStyle: 'italic', marginTop: 4, paddingLeft: 4 },
+  photoToggle: { marginTop: 6, padding: '4px 12px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  photoToggleOpen: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' },
+  etapePhoto: { display: 'block', width: '100%', maxWidth: 420, height: 'auto', maxHeight: 340, objectFit: 'contain', marginTop: 8, borderRadius: 'var(--r)', border: '1px solid var(--rule-soft)', background: 'var(--bg)', cursor: 'zoom-in' },
   zoomOverlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16, cursor: 'zoom-out' },
-  zoomImg: { maxWidth: '96vw', maxHeight: '86vh', objectFit: 'contain', borderRadius: 8, cursor: 'default' },
-  zoomClose: { position: 'absolute', top: 12, right: 12, width: 38, height: 38, borderRadius: 10, background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', fontSize: 18, cursor: 'pointer' },
-  notesInput: { width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', boxSizing: 'border-box', resize: 'vertical', marginTop: 4 },
-  checklistFooter: { position: 'fixed', bottom: 0, left: 0, right: 0, background: 'var(--surface)', borderTop: '1px solid var(--border)', padding: '12px 16px', display: 'flex', gap: 10, zIndex: 10 },
-  abandonBtn: { flex: 1, padding: '12px', background: 'var(--danger-bg-soft)', color: '#dc2626', border: '1px solid transparent', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500 },
-  validateBtn: { flex: 2, padding: '12px', background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: 8, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 700 },
+  zoomImg: { maxWidth: '96vw', maxHeight: '86vh', objectFit: 'contain', borderRadius: 'var(--r)', cursor: 'default' },
+  zoomClose: { position: 'absolute', top: 12, right: 12, width: 40, height: 40, borderRadius: '50%', background: 'rgba(255,255,255,0.15)', color: '#fff', border: 'none', fontSize: 'var(--t3)', cursor: 'pointer' },
+  notesLabel: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
+  notesInput: { width: '100%', padding: '10px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box', resize: 'vertical', marginTop: 6 },
+  // Barre d'action collante en bas : une carte flottante (M9). Elle reste à
+  // l'écran pendant que la liste défile, et se pose sous les notes à la fin.
+  checklistFooter: { position: 'sticky', bottom: 8, display: 'flex', gap: 10, padding: '12px 16px', background: 'var(--surface)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh-lg)', zIndex: 10 },
+  abandonBtn: { flex: 1, minHeight: 44, padding: '10px 12px', background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid transparent', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' },
+  validateBtn: { flex: 2, minHeight: 44, padding: '10px 12px', background: 'var(--success-fill)', color: 'var(--on-success)', border: 'none', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)' },
 
   // Historique
-  histDate: { fontSize: 12, fontWeight: 700, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 },
-  histRow: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 6 },
+  histDate: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginBottom: 8 },
+  histRow: { ...carte, display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', marginBottom: 8 },
 
   // Éditeur
   editorRoot: { background: 'var(--bg)', minHeight: '100vh' },
-  editorHeader: { position: 'sticky', top: 0, zIndex: 10, background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 10 },
-  editorBody: { padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 800, margin: '0 auto' },
-  editorCard: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 14 },
-  bigTitle: { width: '100%', padding: '10px 0', border: 'none', borderBottom: '2px solid var(--border)', fontSize: 22, fontFamily: 'var(--font-serif)', fontWeight: 700, color: 'var(--text)', background: 'transparent', outline: 'none' },
-  fieldLabel: { fontSize: 11, fontWeight: 500, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: 0.3, display: 'block', marginBottom: 4 },
-  input: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' },
-  select: { padding: '8px 12px', border: '1px solid var(--border)', borderRadius: 7, fontSize: 13, fontFamily: 'var(--font)', background: 'var(--bg)', color: 'var(--text)', width: '100%', cursor: 'pointer', boxSizing: 'border-box' },
+  editorHeader: { position: 'sticky', top: 0, zIndex: 10, background: 'var(--bg)', padding: '4px 0 12px', display: 'flex', alignItems: 'center', gap: 10 },
+  editorBody: { padding: '4px 0 16px', display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 800, margin: '0 auto' },
+  editorCard: { ...carte, padding: '16px 18px' },
+  bigTitle: { width: '100%', padding: '10px 0', border: 'none', borderBottom: '2px solid var(--rule-soft)', fontSize: 'var(--t5)', fontFamily: 'var(--font)', fontWeight: 'var(--g2)', color: 'var(--text)', background: 'transparent', outline: 'none' },
+  fieldLabel: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', display: 'block', marginBottom: 6 },
+  input: { padding: '8px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' },
+  select: { padding: '8px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', width: '100%', cursor: 'pointer', boxSizing: 'border-box' },
   // flexWrap : sur mobile le bloc « Critique + ✕ » passe à la ligne plutôt que
   // d'écraser les champs texte une fois la vignette photo ajoutée à gauche.
   etapeEditRow: { display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--rule-soft)', flexWrap: 'wrap' },
-  addStepBtn: { alignSelf: 'flex-start', minHeight: 38, padding: '8px 14px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-sm)', fontSize: 13, fontWeight: 500, color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 6 },
-
-  // Modale
+  addStepBtn: { alignSelf: 'flex-start', minHeight: 38, padding: '8px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--btn-texte)', cursor: 'pointer', fontFamily: 'var(--font)', marginTop: 6 },
 };
 
 export default SOP;

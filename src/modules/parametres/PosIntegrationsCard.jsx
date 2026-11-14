@@ -91,9 +91,9 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
       zIndex: 1100, padding: 16,
     }} onClick={onCancel}>
       <div className="modal-sheet" style={{
-        background: 'var(--surface)', borderRadius: 'var(--r)', width: 460,
+        background: 'var(--surface)', borderRadius: 'var(--r-xl)', width: 460,
         maxWidth: '100%', maxHeight: '80vh', overflow: 'auto',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.25)',
+        boxShadow: 'var(--sh-lg)',
       }} onClick={(e) => e.stopPropagation()}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', fontFamily: 'var(--font)' }}>
@@ -126,8 +126,8 @@ function LocationSelector({ locations, connectionId, etablissementId, providerId
           ))}
         </div>
         <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border)', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button type="button" onClick={onCancel} style={{ padding: '8px 16px', borderRadius: 'var(--r)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' }}>Annuler</button>
-          <button type="button" onClick={handleSave} disabled={!selected || saving} style={{ padding: '8px 18px', borderRadius: 'var(--r)', border: 'none', background: selected ? 'var(--accent)' : 'var(--border)', color: selected ? 'var(--on-accent)' : 'var(--text3)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: selected ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', opacity: saving ? 0.7 : 1 }}>
+          <button type="button" onClick={onCancel} style={{ padding: '8px 16px', borderRadius: 'var(--r-full)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' }}>Annuler</button>
+          <button type="button" onClick={handleSave} disabled={!selected || saving} style={{ padding: '8px 18px', borderRadius: 'var(--r-full)', border: 'none', background: selected ? 'var(--accent)' : 'var(--border)', color: selected ? 'var(--on-accent)' : 'var(--text3)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: selected ? 'pointer' : 'not-allowed', fontFamily: 'var(--font)', opacity: saving ? 0.7 : 1 }}>
             {saving ? 'Enregistrement…' : 'Confirmer'}
           </button>
         </div>
@@ -203,7 +203,7 @@ function BackfillBlock({ connectionId, hasData, onComplete }) {
           onClick={handleBackfill}
           disabled={running}
           style={{
-            padding: '8px 16px', borderRadius: 'var(--r)',
+            padding: '8px 16px', borderRadius: 'var(--r-full)',
             background: running ? 'var(--border)' : 'var(--accent)',
             color: running ? 'var(--text2)' : 'var(--on-accent)', border: 'none',
             fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
@@ -284,7 +284,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
           type="button"
           onClick={onShowGuide}
           style={{
-            padding: '8px 16px', borderRadius: 'var(--r)',
+            padding: '8px 16px', borderRadius: 'var(--r-full)',
             border: '1px solid var(--border)', background: 'var(--surface)',
             color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
             cursor: 'pointer', fontFamily: 'var(--font)',
@@ -298,7 +298,7 @@ function SetupScreen({ provider, secretsConfigured, onShowGuide, onConnect, busy
           disabled={!configured || busy}
           title={!configured && !checking ? "Configure d'abord les secrets Supabase" : undefined}
           style={{
-            padding: '8px 20px', borderRadius: 'var(--r)', border: 'none',
+            padding: '8px 20px', borderRadius: 'var(--r-full)', border: 'none',
             background: (!configured || busy) ? 'var(--border)' : 'var(--accent)',
             color: (!configured || busy) ? 'var(--text3)' : 'var(--on-accent)',
             fontSize: 'var(--t2)', fontWeight: 'var(--g2)',
@@ -478,9 +478,9 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t2)', color: 'var(--text)' }}>{provider.label}</span>
               {loading && <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>Chargement…</span>}
-              {!loading && isConnected    && <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '2px 8px', borderRadius: 20, background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' }}>Connecté</span>}
-              {!loading && isError        && <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '2px 8px', borderRadius: 20, background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' }}>Erreur</span>}
-              {!loading && needsLocation  && <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '2px 8px', borderRadius: 20, background: 'var(--warning-bg-soft)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)' }}>Sélection requise</span>}
+              {!loading && isConnected    && <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '2px 8px', borderRadius: 'var(--r-full)', background: 'var(--success-bg-soft)', color: 'var(--success-text)', border: '1px solid var(--success-bd)' }}>Connecté</span>}
+              {!loading && isError        && <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '2px 8px', borderRadius: 'var(--r-full)', background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)' }}>Erreur</span>}
+              {!loading && needsLocation  && <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '2px 8px', borderRadius: 'var(--r-full)', background: 'var(--warning-bg-soft)', color: 'var(--warning-text)', border: '1px solid var(--warning-bd)' }}>Sélection requise</span>}
             </div>
             {isConnected && (
               <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 3 }}>
@@ -503,7 +503,7 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
             <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {needsLocation && (
                 <button type="button" onClick={handleConnect} disabled={busy}
-                  style={{ padding: '8px 16px', borderRadius: 'var(--r)', background: busy ? 'var(--warning-bd)' : 'var(--accent)', color: busy ? 'var(--text)' : 'var(--on-accent)', border: 'none', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.8 : 1 }}>
+                  style={{ padding: '8px 16px', borderRadius: 'var(--r-full)', background: busy ? 'var(--warning-bd)' : 'var(--accent)', color: busy ? 'var(--text)' : 'var(--on-accent)', border: 'none', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.8 : 1 }}>
                   {action === 'connecting' ? 'Connexion…' : 'Reconnecter'}
                 </button>
               )}
@@ -511,18 +511,18 @@ function ProviderCard({ provider, etablissementId, canEdit }) {
                 <>
                   {isConnected && (
                     <button type="button" onClick={handleTest} disabled={busy}
-                      style={{ padding: '8px 14px', borderRadius: 'var(--r)', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
+                      style={{ padding: '8px 14px', borderRadius: 'var(--r-full)', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
                       {action === 'testing' ? 'Test…' : 'Tester'}
                     </button>
                   )}
                   {isError && (
                     <button type="button" onClick={handleConnect} disabled={busy}
-                      style={{ padding: '8px 14px', borderRadius: 'var(--r)', background: 'var(--warning-bg-soft)', border: '1px solid transparent', color: 'var(--warning-text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}>
+                      style={{ padding: '8px 14px', borderRadius: 'var(--r-full)', background: 'var(--warning-bg-soft)', border: '1px solid transparent', color: 'var(--warning-text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)' }}>
                       Reconnecter
                     </button>
                   )}
                   <button type="button" onClick={handleDisconnect} disabled={busy}
-                    style={{ padding: '8px 14px', borderRadius: 'var(--r)', background: 'var(--danger-bg-soft)', border: '1px solid transparent', color: 'var(--danger-text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
+                    style={{ padding: '8px 14px', borderRadius: 'var(--r-full)', background: 'var(--danger-bg-soft)', border: '1px solid transparent', color: 'var(--danger-text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: busy ? 'wait' : 'pointer', fontFamily: 'var(--font)', opacity: busy ? 0.6 : 1 }}>
                     {action === 'disconnecting' ? 'Déconnexion…' : 'Déconnecter'}
                   </button>
                 </>
@@ -585,15 +585,15 @@ export default function PosIntegrationsCard({ etablissement, user }) {
 
   if (!etablissementId) {
     return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '16px 20px', fontSize: 'var(--t2)', color: 'var(--text2)' }}>
+      <div style={{ background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)', padding: '16px 20px', fontSize: 'var(--t2)', color: 'var(--text2)' }}>
         Sélectionnez un établissement pour gérer ses intégrations POS.
       </div>
     );
   }
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' }}>
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <div style={{ background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)', overflow: 'hidden' }}>
+      <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--rule-soft)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div>
           <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>Intégrations POS</div>
           <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>Synchronisation des ventes : {etablissement?.nom || etablissementId}</div>
@@ -603,7 +603,7 @@ export default function PosIntegrationsCard({ etablissement, user }) {
       {loadingProviders ? (
         <div style={{ padding: '24px 20px', fontSize: 'var(--t2)', color: 'var(--text3)', textAlign: 'center' }}>Chargement…</div>
       ) : providers.length === 0 ? (
-        <div style={{ padding: '24px 20px', fontSize: 'var(--t2)', color: 'var(--text2)', textAlign: 'center' }}>Aucun provider POS disponible.</div>
+        <div style={{ padding: '24px 20px', fontSize: 'var(--t2)', color: 'var(--text3)', textAlign: 'center' }}>Aucun provider POS disponible.</div>
       ) : (
         providers.map((p) => (
           <ProviderCard key={p.id} provider={p} etablissementId={etablissementId} canEdit={canEdit} />

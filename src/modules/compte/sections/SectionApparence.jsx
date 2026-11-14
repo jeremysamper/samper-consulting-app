@@ -35,7 +35,7 @@ const st = {
   liste: { display: 'flex', flexDirection: 'column', maxWidth: 640 },
   ligne: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
-    padding: '14px 0', borderBottom: '1px solid var(--border)', minWidth: 0,
+    padding: '14px 0', borderBottom: '1px solid var(--rule-soft)', minWidth: 0,
   },
   texte: { flex: '1 1 240px', minWidth: 0 },
   titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' },

@@ -1,0 +1,19 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Documents (direction Galet, lot 6) : la grille des dossiers en cartes. Elle
+   suit la largeur de sa zone (requête de conteneur), pas celle de la fenêtre.
+   Le conteneur est une enveloppe qui ne porte que la grille : la visionneuse
+   en position fixe vit hors de lui.
+   Téléphone : deux dossiers de front. Dès 560 px de zone : autant de colonnes
+   de 220 px au moins que la largeur en laisse.
+   ───────────────────────────────────────────────────────────────────────────── */
+.docs-dossiers-zone { container-type: inline-size; container-name: docs; min-width: 0; }
+.docs-dossiers {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+@container docs (min-width: 560px) {
+  .docs-dossiers { gap: 16px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}
