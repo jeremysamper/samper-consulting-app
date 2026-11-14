@@ -924,7 +924,6 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
               onReleve={ouvrirReleveGuide}
               onReglages={() => ouvrirCompte('haccp')}
               onReessayer={relire}
-              onRegistre={() => ouvrirEcran('releves')}
             />
             <AccueilHaccp controles={compte} canWrite={canWrite} onOuvrir={ouvrirEcran} />
           </div>

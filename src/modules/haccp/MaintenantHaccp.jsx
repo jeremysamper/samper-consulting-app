@@ -1,6 +1,6 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
-import { Anneau, BoutonFleche, Btn, CarteAvant, Encadre, Panneau, carteAvantStyles } from '../../components/ui/index.jsx';
+import { Anneau, Btn, CarteAvant, Encadre, Panneau, carteAvantStyles } from '../../components/ui/index.jsx';
 import { heureEnMinutes } from './HACCP.utils.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,7 +102,7 @@ function Tournees({ tournees }) {
 
 export default function MaintenantHaccp({
   lecture, enEchecRelecture, derniereMaj, etat, maintenant,
-  canWrite, isConsultant, onReleve, onReglages, onReessayer, onRegistre,
+  canWrite, isConsultant, onReleve, onReglages, onReessayer,
 }) {
   const [reessaiEnCours, setReessaiEnCours] = React.useState(false);
   const monteRef = React.useRef(true);
@@ -185,7 +185,6 @@ export default function MaintenantHaccp({
     return (
       <Carte
         ton={aJour ? tonAJour : 'neutre'}
-        onRegistre={onRegistre}
         bouton={aJour
           ? boutonHorsTournee
           : boutonReleve(etat.zonesFaitesJour > 0 ? 'Continuer le relevé' : 'Commencer le relevé')}
@@ -233,7 +232,7 @@ export default function MaintenantHaccp({
     const retard = etat.statut === 'en_retard' ? Math.max(0, maintenantMin - (heureEnMinutes(courante.heure) ?? 0)) : 0;
     const ton = etat.statut === 'a_faire' ? 'neutre' : retard >= 120 ? 'grave' : 'retard';
     return (
-      <Carte ton={ton} onRegistre={onRegistre} pied={tuiles} bouton={boutonReleve(courante.faites > 0 ? 'Continuer le relevé' : 'Commencer le relevé')}>
+      <Carte ton={ton} pied={tuiles} bouton={boutonReleve(courante.faites > 0 ? 'Continuer le relevé' : 'Commencer le relevé')}>
         <Surtitre ton={ton}>{etat.statut === 'a_faire' ? <>À faire maintenant</> : <>En retard</>}</Surtitre>
         <div style={st.titre}>
           Relevé de <N>{courante.heure}</N>
@@ -257,7 +256,7 @@ export default function MaintenantHaccp({
   if (etat.statut === 'manque') {
     const seule = manquees.length === 1 ? manquees[0] : null;
     return (
-      <Carte ton="retard" onRegistre={onRegistre} pied={tuiles} bouton={boutonHorsTournee}>
+      <Carte ton="retard" pied={tuiles} bouton={boutonHorsTournee}>
         <Surtitre ton="retard">En retard</Surtitre>
         <div style={st.titre}>
           {seule ? <>Relevé de <N>{seule.heure}</N> pas fait</> : <><N>{manquees.length}</N> relevés pas faits</>}
@@ -277,7 +276,7 @@ export default function MaintenantHaccp({
 
   // ─── Rien à faire maintenant, rien en retard ───
   return (
-    <Carte ton={tonAJour} onRegistre={onRegistre} pied={tuiles} bouton={boutonHorsTournee}>
+    <Carte ton={tonAJour} pied={tuiles} bouton={boutonHorsTournee}>
       <Surtitre ton={tonAJour} ok={coche}>{surtitreAJour}</Surtitre>
       {prochaine ? (
         <>
@@ -311,15 +310,14 @@ function Surtitre({ ton, ok = false, children }) {
   );
 }
 
-// La carte nuit : le texte et la flèche du registre, le bouton du relevé
+// La carte nuit : le texte (le registre s'ouvre par sa tuile), le bouton du relevé
 // (pleine largeur au téléphone, borné au-delà), puis les tuiles des heures de
 // relevé. data-haccp-ton garde l'état lisible pour le banc.
-function Carte({ ton, bouton, pied, onRegistre, children }) {
+function Carte({ ton, bouton, pied, children }) {
   return (
     <CarteAvant ton="nuit" data-haccp-maintenant="" data-haccp-ton={ton}>
       <div className="haccp-maintenant-tete">
         <div style={st.texte}>{children}</div>
-        <BoutonFleche onClick={onRegistre} libelle="Le registre" ton="nuit" />
       </div>
       {bouton && <div className="haccp-maintenant-action">{bouton}</div>}
       {pied}
