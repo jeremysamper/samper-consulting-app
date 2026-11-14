@@ -60,7 +60,7 @@ const moisPlus = (cle, n) => {
   const t = a * 12 + (m - 1) + n;
   return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`;
 };
-const libelleMois = (cle, { long = false, annee = false } = {}) => {
+export const libelleMois = (cle, { long = false, annee = false } = {}) => {
   const [a, m] = cle.split('-').map(Number);
   const nom = (long ? MOIS_LONGS : MOIS_COURTS)[m - 1];
   return annee ? `${nom} ${a}` : nom;
