@@ -1,6 +1,8 @@
 import React from 'react';
 import { Bell, CalendarDays, CalendarPlus, ChartColumn, ConciergeBell, LayoutGrid, Search, Settings2, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
+import ReperesReservations, { CarteServiceDuJour } from './ReperesReservations.jsx';
+import { chiffresDuJour } from './accueilReservations.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Accueil du module Réservations : une tuile par tâche, sur la grille partagée
@@ -14,10 +16,15 @@ import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 // couverts : couverts du jour (no-shows exclus, comme la vue jour), null tant
 // que la lecture n'a pas abouti. Nombres dans leurs propres nœuds : la phrase
 // autour reste une entrée du glossaire.
+//
+// Direction Galet : repères et carte du service du jour autour des tuiles
+// (ReperesReservations.jsx, reservations.css), comptés sur resasDuJour, les
+// réservations du jour déjà lues pour la tuile Ce soir (null tant que la
+// lecture n'a pas abouti ou si elle a échoué : rien n'est rendu).
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AccueilReservations({
-  couverts, notificationsActives, canEdit, voitRapport, voitReglages,
+  couverts, resasDuJour, notificationsActives, canEdit, voitRapport, voitReglages,
   onReserver, onService, onPlanning, onPlan, onChercher, onClients, onRapport, onNotifications, onReglages,
 }) {
   const tuiles = [
@@ -39,5 +46,14 @@ export default function AccueilReservations({
     },
     { id: 'reglages', Icone: Settings2, libelle: 'Réglages', onClick: onReglages, visible: voitReglages, etat: <>réservation en ligne, e-mails, SMS</> },
   ];
-  return <AccueilModule tuiles={tuiles} />;
+  const chiffres = resasDuJour ? chiffresDuJour(resasDuJour) : null;
+  return (
+    <div className="resa-page">
+      <div className="resa-grille">
+        <ReperesReservations chiffres={chiffres} />
+        <CarteServiceDuJour chiffres={chiffres} onOuvrir={onService} />
+        <AccueilModule tuiles={tuiles} />
+      </div>
+    </div>
+  );
 }

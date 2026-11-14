@@ -1,0 +1,47 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Module Groupes : mise en page de l'accueil (direction Galet). Les couleurs
+   passent par les jetons d'app.css, jamais par une fonction de couleur.
+   Le calendrier garde ses cases, leurs couleurs d'état et leurs gestes ; il
+   est posé, avec la barre du mois et la légende, dans une carte blanche.
+   Requêtes de conteneur sur .grp-page, l'enveloppe des repères et de la
+   carte du calendrier seulement : la fiche, le formulaire et la feuille du
+   jour (voiles en position fixe) sont rendus hors d'elle.
+   ───────────────────────────────────────────────────────────────────────────── */
+.grp-page {
+  container-type: inline-size;
+  container-name: grp;
+  min-width: 0;
+}
+.grp-reperes {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+  margin-bottom: 16px;
+}
+.grp-page .ui-repere { padding: 12px; }
+.grp-page .ui-repere-icone { display: none !important; }
+
+/* Le calendrier du mois dans une carte blanche (data-cadre la garde). */
+.grp-carte {
+  min-width: 0;
+  padding: 12px;
+  margin-bottom: 16px;
+  border-radius: var(--r-lg);
+  background: var(--zone);
+  box-shadow: inset 0 0 0 1px var(--rule-soft), var(--sh);
+}
+
+/* Téléphone : deux repères sur une ligne ; « Lu, à préparer » est déjà dit
+   par le bandeau d'anticipation (!important : la carte pose son display en
+   style inline). */
+@container grp (max-width: 559.98px) {
+  .grp-reperes > [data-repere="a-preparer"] { display: none !important; }
+}
+@container grp (min-width: 560px) {
+  .grp-page .ui-repere { padding: 14px 16px; }
+  .grp-page .ui-repere-icone { display: inline-flex !important; }
+  .grp-reperes { gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 24px; }
+  .grp-carte { padding: 20px; margin-bottom: 24px; }
+}

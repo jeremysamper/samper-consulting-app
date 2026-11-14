@@ -177,7 +177,7 @@ export default function Previsions({ user, etablissement }) {
   };
 
   return (
-    <section style={{ padding: '20px 24px', position: 'relative', minHeight: '100%' }}>
+    <section style={{ position: 'relative', minHeight: '100%' }}>
       {/* Bannière si pas d'établissement */}
       {!etabId && (
         <div style={{
@@ -203,6 +203,7 @@ export default function Previsions({ user, etablissement }) {
       {etabId && surAccueil && (
         <AccueilReservations
           couverts={couvertsDuJour}
+          resasDuJour={jourAccueil.resas && !jourAccueil.error ? jourAccueil.resas : null}
           notificationsActives={notifications.actif}
           canEdit={canEdit}
           voitRapport={voitRapport}
