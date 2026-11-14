@@ -1,6 +1,12 @@
 import { getBrowserWindow } from '../../legacy/legacyApi.js';
 import { encadreStyle } from '../../components/ui/index.jsx';
 
+// Direction Galet : la liste de gauche, l'en-tête de la fiche et ses blocs
+// (prix de vente, analyse, ingrédients) sont des cartes blanches (fond --zone,
+// filet doux et ombre --sh : la règle « Plus de carrés » ne les aplatit pas),
+// boutons et recherche en pilules, lignes séparées par le filet doux.
+const CARTE = { borderRadius: 'var(--r-lg)', background: 'var(--zone)', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)' };
+
 export const cts = {
   tabsBar: { display: 'flex', gap: 4, padding: '0 4px', marginBottom: 12, borderBottom: '1px solid var(--border)', flexWrap: 'wrap', alignItems: 'center' },
   tabBtn: { padding: '10px 16px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', color: 'var(--text2)', borderBottom: '2px solid transparent', whiteSpace: 'nowrap' },
@@ -8,23 +14,23 @@ export const cts = {
   tabsDivider: { width: 1, height: 22, background: 'var(--border)', margin: '0 8px' },
   fallback: { padding: 40, textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)' },
   root: { display: 'grid', gridTemplateColumns: '280px 1fr', gap: 24, height: 'calc(100vh - 160px)', minHeight: 600 },
-  leftCol: { display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)', paddingRight: 16, overflow: 'hidden', minWidth: 0 },
-  leftHeader: { padding: '0 0 12px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 },
-  newBtn: { padding: '9px 14px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  search: { padding: '8px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
+  leftCol: { display: 'flex', flexDirection: 'column', ...CARTE, padding: '12px 12px 0', overflow: 'hidden', minWidth: 0 },
+  leftHeader: { padding: '0 0 12px', borderBottom: '1px solid var(--rule-soft)', display: 'flex', flexDirection: 'column', gap: 8 },
+  newBtn: { padding: '9px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  search: { padding: '8px 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none' },
   leftList: { flex: 1, overflowY: 'auto' },
-  recetteItem: { padding: '11px 14px', borderBottom: '1px solid var(--border)', cursor: 'pointer', transition: 'background .12s' },
+  recetteItem: { padding: '11px 14px', borderBottom: '1px solid var(--rule-soft)', cursor: 'pointer', transition: 'background .12s' },
   recetteItemActive: { background: 'var(--selection)', borderLeft: '3px solid var(--onglet)' },
   // ─── Hiérarchie cartes > plats ───
-  carteHeader: { display: 'flex', alignItems: 'center', gap: 4, padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', cursor: 'pointer' },
+  carteHeader: { display: 'flex', alignItems: 'center', gap: 4, padding: '9px 12px', borderBottom: '1px solid var(--rule-soft)', background: 'transparent', cursor: 'pointer' },
   carteFolderName: { flex: 1, minWidth: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  carteCount: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '1px 8px', flexShrink: 0 },
-  platHeader: { display: 'flex', alignItems: 'center', gap: 4, padding: '8px 8px 8px 6px', borderBottom: '1px solid var(--border)' },
+  carteCount: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', background: 'var(--piste)', borderRadius: 'var(--r-full)', padding: '1px 8px', flexShrink: 0 },
+  platHeader: { display: 'flex', alignItems: 'center', gap: 4, padding: '8px 8px 8px 6px', borderBottom: '1px solid var(--rule-soft)' },
   platToggle: { width: 22, height: 22, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--t1)', color: 'var(--text2)', flexShrink: 0 },
   platName: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   platMeta: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
   platEditBtn: { width: 24, height: 24, background: 'none', border: 'none', cursor: 'pointer', fontSize: 'var(--t1)', color: 'var(--text2)', borderRadius: 'var(--r)', flexShrink: 0 },
-  orphelinHeader: { padding: '14px 14px 6px', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text2)', borderBottom: '1px solid var(--border)' },
+  orphelinHeader: { padding: '14px 14px 6px', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text2)', borderBottom: '1px solid var(--rule-soft)' },
   recItemName: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', marginBottom: 3 },
   recItemMeta: { fontSize: 'var(--t1)', color: 'var(--text2)' },
   // Recette cachée dans Cartes & Recettes (colonne recettes.masquee).
@@ -32,16 +38,16 @@ export const cts = {
   // Encadré de statut (filet gauche au ton, voir Encadre).
   bandeauCachee: { margin: '0 0 10px', fontSize: 'var(--t1)', lineHeight: 1.4, ...encadreStyle('alerte') },
   rightCol: { display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', paddingRight: 4 },
-  emptyState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)' },
+  emptyState: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, padding: 40, ...CARTE },
   actionBar: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' },
-  ghostBtn: { padding: '7px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  ghostBtn: { padding: '7px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   printZone: { display: 'flex', flexDirection: 'column', gap: 16, background: 'transparent' },
-  header: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: '18px 22px' },
+  header: { ...CARTE, padding: '18px 20px' },
   titleInput: { width: '100%', fontSize: 'var(--t4)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', border: 'none', background: 'transparent', outline: 'none', padding: 0 },
   inlineField: { display: 'flex', flexDirection: 'column', gap: 3 },
   inlineInput: { padding: '5px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', background: 'var(--surface)', fontFamily: 'var(--font)', color: 'var(--text)' },
-  grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px 32px' },
-  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', overflow: 'hidden' },
+  grid: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 16, alignItems: 'start' },
+  card: { ...CARTE, padding: '14px 18px 4px', overflow: 'hidden' },
   cardTitle: { padding: '4px 0 10px', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' },
   paramGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px 16px', padding: '4px 0 14px' },
   field: { display: 'flex', flexDirection: 'column', gap: 4 },
@@ -50,8 +56,8 @@ export const cts = {
   kpiGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '14px 24px', padding: '4px 0 14px' },
   kpiItem: { display: 'flex', flexDirection: 'column', gap: 4, whiteSpace: 'nowrap', fontSize: 'var(--t3)', fontFamily: 'var(--font-num)' },
   kpiLabel: { fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g2)', whiteSpace: 'normal', fontFamily: 'var(--font)' },
-  smallBtn: { padding: '5px 12px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  ingHead: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
+  smallBtn: { padding: '5px 14px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  ingHead: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', borderBottom: '1px solid var(--rule-soft)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
   ingRow: { display: 'grid', gridTemplateColumns: '2fr 80px 90px 110px 90px 32px', gap: 8, padding: '6px 0', alignItems: 'center' },
   ingInput: { padding: '6px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', outline: 'none', width: '100%', boxSizing: 'border-box' },
   // ─── Barre de recalcul des quantités (carte Ingrédients) ──────────────────
@@ -95,6 +101,6 @@ export const cts = {
 
 if (getBrowserWindow()?.innerWidth < 900) {
   cts.root = { ...cts.root, gridTemplateColumns: '1fr', height: 'auto' };
-  cts.leftCol = { ...cts.leftCol, borderRight: 'none', paddingRight: 0, borderBottom: '1px solid var(--border)', paddingBottom: 12 };
+  cts.leftCol = { ...cts.leftCol, paddingBottom: 12 };
   cts.grid = { ...cts.grid, gridTemplateColumns: '1fr' };
 }
