@@ -568,7 +568,7 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
                   <span style={h.ligneDroite}>
                     {!p.actif ? <Puce ton="neutre">Inactif</Puce> : retard ? <Puce ton="danger"><span>En retard depuis le</span> <span data-no-translate>{dateCourte(p.prochaineFois)}</span></Puce> : <Puce ton={du ? 'warning' : 'info'}><span>{du ? 'À faire' : 'Prochaine fois le'}</span> {!du && <span data-no-translate>{dateCourte(p.prochaineFois)}</span>}</Puce>}
                     {!enPlans && p.actif && existant && <Btn onClick={() => setFicheId(existant.id)}>Voir l'ordre</Btn>}
-                    {!enPlans && p.actif && !existant && peutGerer && <Btn variant="primary" onClick={() => creerDepuisPlan(p)}>Créer l'ordre</Btn>}
+                    {!enPlans && p.actif && !existant && peutGerer && <Btn onClick={() => creerDepuisPlan(p)}>Créer l'ordre</Btn>}
                     {peutGerer && <Btn onClick={() => ouvrirPlan(p)}>Modifier</Btn>}
                   </span>
                 </div>
@@ -594,7 +594,7 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
                     {ordre
                       ? <Btn onClick={() => setFicheId(ordre.id)}><span>Ordre :</span> <span data-no-translate>{ordre.titre}</span></Btn>
                       : <Btn onClick={() => setForm({ ordre: null, prerempli: { titre: c.horsServiceMotif || `Chambre ${c.numero}`, chambreId: c.id, priorite: 'haute' } })}>Ouvrir un ordre</Btn>}
-                    {peutEtages && <Btn variant="primary" onClick={() => remettreChambre(c)}>Remettre à faire</Btn>}
+                    {peutEtages && <Btn onClick={() => remettreChambre(c)}>Remettre à faire</Btn>}
                   </span>
                 </div>
               );
