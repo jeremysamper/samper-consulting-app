@@ -270,6 +270,9 @@ const Documents = ({ user, etablissement }) => {
   };
 
   // ═══ Ouvrir, télécharger ═══
+  // Le toucher de la ligne ouvre : le menu d'actions ne le redit pas. Sans
+  // droit d'écriture, un dossier n'a plus d'action à offrir, et pas de menu.
+  const aDesActions = (doc) => canWrite || doc.type === 'file';
   const ouvrir = async (doc) => {
     if (doc.type === 'folder') { setSearch(''); setCurrentFolder(doc.id); return; }
     if (!legacySB) return;
@@ -451,7 +454,7 @@ const Documents = ({ user, etablissement }) => {
             </label>
           )}
           {icone(doc)}
-          {!sel.active && (
+          {!sel.active && aDesActions(doc) && (
             <button
               type="button"
               style={{ ...ds.menuBtn, marginLeft: 'auto' }}
@@ -495,7 +498,7 @@ const Documents = ({ user, etablissement }) => {
           <div style={ds.ligneNom}>{doc.nom}</div>
           <div style={ds.ligneMeta}>{ou ? `Dans ${ou}, ${metaDe(doc)}` : metaDe(doc)}</div>
         </div>
-        {!sel.active && (
+        {!sel.active && aDesActions(doc) && (
           <button
             type="button"
             style={ds.menuBtn}
@@ -521,15 +524,23 @@ const Documents = ({ user, etablissement }) => {
       {/* ── Chemin + actions ── */}
       <div style={ds.entete}>
         <nav style={ds.fil} aria-label="Emplacement">
-          <button type="button" style={{ ...ds.filBtn, ...(currentFolder ? null : ds.filBtnActif) }} onClick={() => setCurrentFolder(null)}>Documents</button>
+          {/* L'emplacement ouvert se lit, il ne se touche pas : y revenir ne
+              faisait rien. Les dossiers au-dessus restent des boutons. */}
+          {currentFolder
+            ? <button type="button" style={ds.filBtn} onClick={() => setCurrentFolder(null)}>Documents</button>
+            : <span style={{ ...ds.filBtn, ...ds.filBtnActif }} aria-current="location">Documents</span>}
           {filAriane.map((f, i) => (
             <React.Fragment key={f.id}>
               <span style={ds.filSep} aria-hidden="true">/</span>
-              <button
-                type="button"
-                style={{ ...ds.filBtn, ...(i === filAriane.length - 1 ? ds.filBtnActif : null) }}
-                onClick={() => setCurrentFolder(f.id)}
-              >{f.nom}</button>
+              {i === filAriane.length - 1
+                ? <span style={{ ...ds.filBtn, ...ds.filBtnActif }} aria-current="location">{f.nom}</span>
+                : (
+                  <button
+                    type="button"
+                    style={ds.filBtn}
+                    onClick={() => setCurrentFolder(f.id)}
+                  >{f.nom}</button>
+                )}
             </React.Fragment>
           ))}
         </nav>
@@ -630,7 +641,6 @@ const Documents = ({ user, etablissement }) => {
       {actions && (
         <Fenetre id="documents-actions" titre={actions.nom} onClose={() => setActions(null)} largeur={420}>
             <div style={ds.menuListe}>
-              <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); ouvrir(d); }}>Ouvrir</button>
               {actions.type === 'file' && (
                 <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); telecharger(d); }}>Télécharger</button>
               )}
@@ -761,7 +771,7 @@ const ds = {
   entete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
   fil: { display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', minWidth: 0 },
   filBtn: { background: 'none', border: 'none', color: 'var(--lien)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '6px 8px', borderRadius: 'var(--r)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  filBtnActif: { color: 'var(--text)' },
+  filBtnActif: { color: 'var(--text)', cursor: 'default', display: 'inline-block', lineHeight: 'normal' },
   filSep: { color: 'var(--text3)', fontSize: 'var(--t2)' },
   btnPrimaire: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   btnGhost: { padding: '8px 14px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
