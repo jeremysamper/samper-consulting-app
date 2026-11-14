@@ -4662,6 +4662,12 @@ export const UI_GLOSSARY = {
   "Groupes annulés, comptés au jour de l'événement prévu.": "Cancelled groups, counted on the day of the planned event.",
   // ── Statistiques (S2) : vues enregistrées et export PDF ──
   "Vues enregistrées": "Saved views",
+  // Statistiques, écran à graphique principal (14.11.2026).
+  'Ma vue': 'My view',
+  'Rapport complet': 'Full report',
+  'Valeurs exactes': 'Exact values',
+  'Chiffre': 'Revenue',
+  "Les réglages de la caisse n'ont pas pu être lus.": "The register settings could not be read.",
   "Exporter en PDF": "Export to PDF",
   "Rangez la vue affichée sous un nom pour la retrouver.": "Save the view shown under a name to find it again.",
   "Nom de la vue affichée": "Name of the view shown",

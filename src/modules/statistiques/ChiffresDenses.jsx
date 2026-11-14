@@ -17,7 +17,7 @@ import { nombreDe } from './echelles.js';
 const estNombre = (v) => typeof v === 'number' && Number.isFinite(v);
 
 // Écart, comme le tableau : en points pour un pourcentage, sinon relatif.
-function Ecart({ e, unite }) {
+export function Ecart({ e, unite }) {
   if (!e || e.valeur == null) return <span>n/a</span>;
   if (unite === 'pct') return <span>{e.valeur > 0 ? '+' : ''}{nombreDe(e.valeur, unite)} pts</span>;
   return <span>{e.pct == null ? 'n/a' : `${e.pct > 0 ? '+' : ''}${nombreDe(e.pct, 'pct')} %`}</span>;

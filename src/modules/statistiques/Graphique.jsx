@@ -132,6 +132,22 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
     });
     return d;
   };
+  // Une seule courbe : sa surface jusqu'à zéro, en aplat léger de sa couleur
+  // (un tronçon par suite de valeurs présentes, jamais un pont sur un trou).
+  const aire = (s, valeurs) => {
+    const z = zero(s);
+    let d = '';
+    let debut = -1;
+    const fermer = (fin) => { if (debut >= 0 && fin > debut) d += `L${x(fin)} ${z.toFixed(3)} L${x(debut)} ${z.toFixed(3)} Z `; debut = -1; };
+    valeurs.forEach((v, i) => {
+      const yy = y(s, v);
+      if (yy == null) { fermer(i - 1); return; }
+      d += `${debut < 0 ? 'M' : 'L'}${x(i)} ${yy.toFixed(3)} `;
+      if (debut < 0) debut = i;
+    });
+    fermer(valeurs.length - 1);
+    return d;
+  };
   // Marqueurs : tous jusqu'à 45 points, sinon un sur k, le dernier toujours.
   const pasMarqueur = n <= 45 ? 1 : Math.ceil(n / 24);
   const dernierRang = (s) => { for (let i = s.valeurs.length - 1; i >= 0; i -= 1) if (estNombre(s.valeurs[i])) return i; return -1; };
@@ -156,6 +172,7 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
         <svg viewBox={`0 0 ${Math.max(n, 1) * 10} 100`} preserveAspectRatio="none" width="100%" height="100%" style={{ position: 'absolute', inset: 0, display: 'block', overflow: 'visible' }} aria-hidden="true">
           {type === 'courbe' && series.map((s) => (
             <g key={s.id}>
+              {series.length === 1 ? <path d={aire(s, s.valeurs)} style={{ fill: couleurSerie(s.rang), fillOpacity: 0.08, stroke: 'none' }} data-stat-aire="" /> : null}
               {s.comparaison ? <path d={chemin(s, s.comparaison)} vectorEffect="non-scaling-stroke" style={{ fill: 'none', stroke: couleurSerie(s.rang), strokeWidth: 2, strokeDasharray: '6 5', opacity: 0.75 }} /> : null}
               <path d={chemin(s, s.valeurs)} vectorEffect="non-scaling-stroke" style={{ fill: 'none', stroke: couleurSerie(s.rang), strokeWidth: 2.2, strokeLinejoin: 'round' }} />
             </g>

@@ -41,8 +41,9 @@ export const GARDES_ECRANS = {
   pos: (ctx) => ecranOuvert('pos', ctx),
 };
 
-// Familles dont l'écran d'analyse est devenu un raccourci (S3).
-export const FAMILLES_A_RACCOURCI = ['achats', 'comptabilite', 'reservations', 'pos'];
+// Familles dont l'écran d'analyse est devenu un raccourci (S3), puis une
+// analyse du module (14.11.2026, la tuile « Rapports » de la caisse comprise).
+export const FAMILLES_A_RACCOURCI = ['achats', 'comptabilite', 'reservations', 'pos', 'caisse'];
 
 // La page Statistiques : la clé, ou un écran d'analyse parti vers elle.
 export function peutOuvrirStatistiques(user, permissions, etablissement) {

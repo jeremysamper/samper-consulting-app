@@ -13,13 +13,42 @@
 
 const DOUZE_MOIS = { periode: 'douze_mois', pas: 'mois' };
 
+// Ordre des pilules d'analyses, en tête du module (14.11.2026 : les tuiles et
+// onglets d'origine sont partis des modules, ces analyses s'ouvrent d'ici).
+export const ORDRE_ANALYSES = ['caisse', 'reservations', 'achats', 'comptabilite', 'marges', 'pos'];
+
 export const RACCOURCIS = {
+  // Caisse, « Rapports » : les chiffres de la caisse sur le graphique (mêmes
+  // points que les Rapports, serieRapports), puis le rapport complet de la
+  // caisse, monté tel quel (`ecran`) : journal, heures, exports et dossier
+  // fiduciaire n'y changent pas. Une vue dont aucune mesure n'est visible pour
+  // le niveau de la personne (cuisine) n'est pas proposée.
+  caisse: {
+    famille: 'caisse',
+    libelle: 'Caisse',
+    vues: [
+      { id: 'chiffre', libelle: 'Chiffre d\'affaires', court: 'Chiffre', periode: 'mois', pas: 'jour', comparaison: 'precedente',
+        graphiques: [{ mesures: ['caisse.ca_ttc'] }] },
+      { id: 'plats', libelle: 'Plats vendus', court: 'Plats', periode: 'mois', pas: 'jour', comparaison: 'precedente',
+        tableaux: [{ titre: 'Tous les produits', mesures: ['caisse.plats_qte', 'caisse.plats_ttc'], ventilation: 'produit', tri: 'decroissant' }],
+        graphiques: [{ mesures: ['caisse.plats_qte'], ventilation: 'categorie' }] },
+      { id: 'services', libelle: 'Services', periode: 'mois', pas: 'jour', comparaison: 'precedente',
+        graphiques: [{ mesures: ['caisse.ca_ttc'], ventilation: 'service' }] },
+      { id: 'paiements', libelle: 'Paiements', periode: 'mois', pas: 'jour', comparaison: 'precedente',
+        graphiques: [{ mesures: ['caisse.net_encaisse'], ventilation: 'moyen' }] },
+      { id: 'personnes', libelle: 'Personnes', periode: 'mois', pas: 'jour', comparaison: 'precedente',
+        graphiques: [{ mesures: ['caisse.ventes'], ventilation: 'personne' }] },
+      { id: 'rapport', libelle: 'Rapport complet', court: 'Rapport', ecran: 'rapport_caisse', periode: 'mois', pas: 'jour',
+        graphiques: [{ mesures: ['caisse.ca_ttc'] }] },
+    ],
+  },
   // Comptabilité, « Vue d'ensemble » (carte Résultat estimé) : ses neuf
   // chiffres en lignes, comparés à la période précédente, sur la période du
   // module. Une période d'inventaire garde l'écran d'origine (variation de
   // stock, que les Statistiques ne comptent pas).
   comptabilite: {
     famille: 'comptabilite',
+    libelle: 'Comptabilité',
     vues: [
       { id: 'ensemble', libelle: 'Vue d\'ensemble', periode: 'mois', pas: 'mois', comparaison: 'precedente', explications: true,
         chiffres: ['comptabilite.ca_ht', 'comptabilite.matiere', 'comptabilite.marge_brute', 'comptabilite.personnel', 'comptabilite.charges',
@@ -32,6 +61,7 @@ export const RACCOURCIS = {
   // ligne par plat ou par fiche et la ligne « un plat de chaque ».
   marges: {
     famille: 'marges',
+    libelle: 'Marges',
     vues: [
       { id: 'cartes', libelle: 'Par carte', court: 'Cartes', periode: 'mois', pas: 'mois', graphiques: [{ mesures: ['marges.carte_marge'] }],
         tableaux: [{ mesures: ['marges.carte_cout', 'marges.carte_prix', 'marges.carte_marge', 'marges.carte_food_cost'] }] },
@@ -44,6 +74,7 @@ export const RACCOURCIS = {
   // réglages d'ouverture du rapport).
   reservations: {
     famille: 'reservations',
+    libelle: 'Réservations',
     vues: [
       { id: 'cles', libelle: 'Chiffres clés', court: 'Clés', periode: 'mois', pas: 'jour', comparaison: 'precedente',
         chiffres: ['reservations.couverts', 'reservations.tables', 'reservations.couverts_par_semaine', 'reservations.taille_moyenne', 'reservations.taux_no_show', 'reservations.taux_non_pointe', 'reservations.occupation', 'reservations.taux_annulation', 'reservations.couverts_jour_ouverture'],
@@ -98,6 +129,7 @@ export const RACCOURCIS = {
   // la période d'avant et l'écart, comme l'ancien classement de Ventes POS, parti en S3.
   pos: {
     famille: 'pos',
+    libelle: 'Ventes POS',
     vues: [
       { id: 'j7', libelle: '7 jours', periode: { id: 'libre', jours: 7 }, pas: 'jour', comparaison: 'precedente',
         tableaux: [{ titre: 'Plats vendus', mesures: ['pos.qte'], ventilation: 'plat', tri: 'decroissant', comparaison: true }],
@@ -116,6 +148,7 @@ export const RACCOURCIS = {
   // (Tous par défaut, comme l'écran d'origine).
   achats: {
     famille: 'achats',
+    libelle: 'Achats',
     vues: [
       { id: 'depenses', libelle: 'Dépenses par mois', court: 'Dépenses', ...DOUZE_MOIS, comparaison: 'n1', graphiques: [{ mesures: ['achats.depenses', 'achats.factures'] }] },
       { id: 'fournisseurs', libelle: 'Par fournisseur', court: 'Fournisseurs', ...DOUZE_MOIS, graphiques: [{ mesures: ['achats.depenses'], ventilation: 'fournisseur' }] },
