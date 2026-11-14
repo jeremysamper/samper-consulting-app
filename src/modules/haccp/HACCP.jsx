@@ -922,9 +922,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
               canWrite={canWrite}
               isConsultant={isConsultant}
               onReleve={ouvrirReleveGuide}
-              onReglages={() => ouvrirCompte('haccp')}
               onReessayer={relire}
-              onRegistre={() => ouvrirEcran('releves')}
             />
             <AccueilHaccp controles={compte} canWrite={canWrite} onOuvrir={ouvrirEcran} />
           </div>
@@ -1132,8 +1130,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                     <div style={{...hcfg.toggle,background:c.actif?'var(--accent)':'var(--border)'}} onClick={()=>toggleCreneau(c)}>
                       <div style={{...hcfg.toggleThumb,left:c.actif?'calc(100% - 20px)':'2px'}}/>
                     </div>
-                    <button style={hcfg.editBtn} onClick={()=>setCreneauModal(c)}>Modifier</button>
-                    <button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteCreneau(c.id)}>Supprimer</button>
+                    <BoutonActions id={`haccp-creneau-${c.id}`} label="Gérer" style={hcfg.gererBtn} titre="Gérer" sousTitre={<span data-no-translate="">{c.heure}, {c.label}</span>} sections={[{ items: [
+                      { titre: 'Modifier', onClick: () => setCreneauModal(c) },
+                      { titre: 'Supprimer', danger: true, onClick: () => deleteCreneau(c.id) },
+                    ] }]} />
                   </div>
                 ))}
               </div>
@@ -1166,8 +1166,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                     onClick={()=>toggleZone(z)}>
                     <div style={{...hcfg.toggleThumb,left:z.actif?'calc(100% - 20px)':'2px'}}/>
                   </div>
-                  <button style={hcfg.editBtn} onClick={()=>setZoneModal(z)}>Modifier</button>
-                  <button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteZone(z.id)}>Supprimer</button>
+                  <BoutonActions id={`haccp-zone-${z.id}`} label="Gérer" style={hcfg.gererBtn} titre="Gérer" sousTitre={<span data-no-translate="">{z.nom}</span>} sections={[{ items: [
+                    { titre: 'Modifier', onClick: () => setZoneModal(z) },
+                    { titre: 'Supprimer', danger: true, onClick: () => deleteZone(z.id) },
+                  ] }]} />
                 </div>
               ))}
             </div>
@@ -1199,8 +1201,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                     onClick={()=>toggleCtrl(c)}>
                     <div style={{...hcfg.toggleThumb,left:c.actif?'calc(100% - 20px)':'2px'}}/>
                   </div>
-                  <button style={hcfg.editBtn} onClick={()=>setCtrlModal(c)}>Modifier</button>
-                  <button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteCtrl(c.id)}>Supprimer</button>
+                  <BoutonActions id={`haccp-controle-${c.id}`} label="Gérer" style={hcfg.gererBtn} titre="Gérer" sousTitre={<span data-no-translate="">{c.label}</span>} sections={[{ items: [
+                    { titre: 'Modifier', onClick: () => setCtrlModal(c) },
+                    { titre: 'Supprimer', danger: true, onClick: () => deleteCtrl(c.id) },
+                  ] }]} />
                 </div>
               ))}
             </div>

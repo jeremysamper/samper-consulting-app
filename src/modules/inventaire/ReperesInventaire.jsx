@@ -1,6 +1,6 @@
 import React from 'react';
 import { CalendarCheck, ClipboardList, Layers } from 'lucide-react';
-import { Anneau, BoutonFleche, CarteAvant, CarteRepere, carteAvantStyles } from '../../components/ui/index.jsx';
+import { Anneau, CarteAvant, CarteRepere, carteAvantStyles } from '../../components/ui/index.jsx';
 import { dateCH, estCompte } from './inventaireLignes.js';
 import { avancementZones } from './zones.js';
 import './inventaire.css';
@@ -17,7 +17,7 @@ import './inventaire.css';
 //                l'ordre du tour, avec ce qui y est compté et son anneau (mêmes
 //                comptes que les onglets de zone du comptage, avancementZones)
 //
-// La flèche de la carte ouvre le comptage, comme la tuile « Je compte ». Au
+// La carte n'a pas de flèche : la tuile « Je compte » ouvre le comptage. Au
 // téléphone (inventaire.css), le repère des produits comptés n'est pas rendu :
 // la carte le dit déjà. Sans inventaire, la carte n'est pas rendue.
 // Nombres, dates et noms dans leurs propres nœuds : la phrase autour reste une
@@ -64,7 +64,7 @@ export default function ReperesInventaire({ dernier, perimetreActif, perimetres,
 
 const cs = carteAvantStyles('nuit');
 
-export function CarteInventaire({ dernier, perimetreActif, onOuvrir }) {
+export function CarteInventaire({ dernier, perimetreActif }) {
   if (!dernier) return null;
   const lignes = dernier.lignes || [];
   const valide = dernier.statut === 'validé';
@@ -75,7 +75,6 @@ export function CarteInventaire({ dernier, perimetreActif, onOuvrir }) {
       ton="nuit"
       className="inv-carte-nuit"
       data-inventaire-carte=""
-      action={<BoutonFleche ton="nuit" onClick={onOuvrir} libelle="Ouvrir le comptage" />}
       titre={<span style={{ ...st.surtitre, color: valide ? 'var(--carte-nuit-succes)' : 'var(--carte-nuit-info)' }}>{valide ? 'Validé' : 'En cours'}</span>}
     >
       <div style={{ minWidth: 0 }}>

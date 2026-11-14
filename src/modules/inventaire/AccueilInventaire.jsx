@@ -132,7 +132,7 @@ export default function AccueilInventaire({
         {perimetres.length > 1 && <Btn variant="ghost" onClick={() => setFenetre('perimetre')} style={{ minHeight: 44 }}>Changer de périmètre</Btn>}
       </div>
       {!achatsVue && <ReperesInventaire dernier={dernier} perimetreActif={perimetreActif} perimetres={perimetres} pilesParPerimetre={pilesParPerimetre} />}
-      {!achatsVue && <CarteInventaire dernier={dernier} perimetreActif={perimetreActif} onOuvrir={onJeCompte} />}
+      {!achatsVue && <CarteInventaire dernier={dernier} perimetreActif={perimetreActif} />}
       {achatsVue && <ReperesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} depenses={depenses} />}
       {achatsVue && <CartesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} onAnalyses={onAnalyses} onEcheances={onEcheances} />}
 

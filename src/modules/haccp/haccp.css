@@ -68,11 +68,12 @@
 .haccp-page .ui-repere { padding: 12px; }
 .haccp-page .ui-repere-icone { display: none !important; }
 
-/* Carte « Maintenant » (carte nuit) : le texte et la flèche du registre en
-   tête, le bouton du relevé dessous, puis une tuile par heure de relevé. */
+/* Carte « Maintenant » (carte nuit) : le texte en tête (le registre s'ouvre
+   par sa tuile), le bouton du relevé dessous, puis une tuile par heure de
+   relevé. */
 .haccp-maintenant-tete {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 12px 16px;
   min-width: 0;
