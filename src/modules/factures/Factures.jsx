@@ -797,10 +797,6 @@ const Factures = ({ user, etablissement }) => {
                 )}
               </>
             )}
-
-            <button style={{ ...fac.smallBtn, marginTop: 10 }} onClick={openTextsEditor}>
-              Modifier les données de paiement
-            </button>
           </div>
 
           <div style={fac.section}>
