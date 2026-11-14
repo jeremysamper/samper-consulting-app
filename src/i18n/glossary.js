@@ -1659,6 +1659,28 @@ export const UI_GLOSSARY = {
   'Gérer la commande': 'Manage the order',
   'Vider la liste': 'Clear the list',
 
+  // ── Commande par carte : un onglet par carte, une carte par plat ──
+  'Ma commande': 'My order',
+  'Fonds de cuisine': 'Kitchen basics',
+  'préparation': 'prep',
+  'aussi dans': 'also in',
+  'autres plats': 'other dishes',
+  'sans fiche technique': 'no recipe card',
+  'Préparation non affichée': 'Hidden preparation',
+  'cachée': 'hidden',
+  'plats': 'dishes',
+  'plat': 'dish',
+  'produits à commander': 'items to order',
+  'produit à commander': 'item to order',
+  "Rien à commander pour l'instant": 'Nothing to order yet',
+  'Cochez des produits dans les onglets des cartes, ou ajoutez un produit.': 'Tick products in the menu tabs, or add a product.',
+  'Rechercher un plat ou un produit…': 'Search a dish or a product…',
+  'Aucun plat ni produit pour ce filtre.': 'No dish or product for this filter.',
+  "Les fiches n'ont pas pu être lues.": 'The recipe cards could not be loaded.',
+  'Vider la commande': 'Clear the order',
+  'Ma commande rangée par rayon, prête à envoyer.': 'My order sorted by aisle, ready to send.',
+  'Une fois la commande passée : tout se décoche, pour la suivante.': 'Once the order is placed: everything is unticked, ready for the next one.',
+
   // ── HACCP par tâche : accueil du module, une tuile par tâche ──
   'Je relève une température': 'I take a temperature',
   'Je photographie une étiquette': 'I photograph a label',

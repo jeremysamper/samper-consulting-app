@@ -1640,6 +1640,28 @@ export const UI_GLOSSARY_ES = {
   'Gérer la commande': 'Gestionar el pedido',
   'Vider la liste': 'Vaciar la lista',
 
+  // ── Commande par carte : un onglet par carte, une carte par plat ──
+  'Ma commande': 'Mi pedido',
+  'Fonds de cuisine': 'Básicos de cocina',
+  'préparation': 'preparación',
+  'aussi dans': 'también en',
+  'autres plats': 'otros platos',
+  'sans fiche technique': 'sin ficha técnica',
+  'Préparation non affichée': 'Preparación no mostrada',
+  'cachée': 'oculta',
+  'plats': 'platos',
+  'plat': 'plato',
+  'produits à commander': 'productos por pedir',
+  'produit à commander': 'producto por pedir',
+  "Rien à commander pour l'instant": 'Nada que pedir por ahora',
+  'Cochez des produits dans les onglets des cartes, ou ajoutez un produit.': 'Marque productos en las pestañas de las cartas, o añada un producto.',
+  'Rechercher un plat ou un produit…': 'Buscar un plato o un producto…',
+  'Aucun plat ni produit pour ce filtre.': 'Ningún plato ni producto para este filtro.',
+  "Les fiches n'ont pas pu être lues.": 'No se pudieron leer las fichas.',
+  'Vider la commande': 'Vaciar el pedido',
+  'Ma commande rangée par rayon, prête à envoyer.': 'Mi pedido ordenado por sección, listo para enviar.',
+  'Une fois la commande passée : tout se décoche, pour la suivante.': 'Una vez hecho el pedido: todo se desmarca, para el siguiente.',
+
   // ── HACCP par tâche : accueil du module, une tuile par tâche ──
   'Je relève une température': 'Tomo una temperatura',
   'Je photographie une étiquette': 'Fotografío una etiqueta',
