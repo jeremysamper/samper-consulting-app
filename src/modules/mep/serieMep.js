@@ -6,20 +6,18 @@
 //   listes : [{ dateService, items: [{ fait }] }]
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Avancement d'un ensemble de préparations : faites sur préparations. Lu par
+// le détail d'une liste (MepDetail.jsx, une section) et par serieMep.
+export function avancementMep(items) {
+  const liste = items || [];
+  const faites = liste.filter((i) => i.fait).length;
+  return { preparations: liste.length, faites, taux: liste.length ? faites / liste.length : null };
+}
+
 export function serieMep(listes, tranches) {
   const datees = (listes || []).filter((l) => /^\d{4}-\d{2}-\d{2}/.test(String(l?.dateService || '')));
   return (tranches || []).map((t) => {
     const dedans = datees.filter((l) => l.dateService.slice(0, 10) >= t.debut && l.dateService.slice(0, 10) <= t.fin);
-    const items = dedans.flatMap((l) => l.items || []);
-    const faites = items.filter((i) => i.fait).length;
-    return {
-      debut: t.debut,
-      fin: t.fin,
-      vide: dedans.length === 0,
-      listes: dedans.length,
-      preparations: items.length,
-      faites,
-      taux: items.length ? faites / items.length : null,
-    };
+    return { debut: t.debut, fin: t.fin, vide: dedans.length === 0, listes: dedans.length, ...avancementMep(dedans.flatMap((l) => l.items || [])) };
   });
 }

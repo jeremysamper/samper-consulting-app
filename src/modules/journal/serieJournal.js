@@ -3,7 +3,7 @@
 // node --test, serieJournal.test.mjs), pour le module Statistiques. Le jour
 // d'une entrée est celui de Zurich (Journal.jsx borne ses semaines du lundi
 // minuit au lundi suivant, heure de Zurich). Libellés des modules : ceux de
-// Journal.jsx (MODULES, l. 22).
+// Journal.jsx, qui les lit ici.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { zurichDateHeure } from '../../utils/zurichTime.js';

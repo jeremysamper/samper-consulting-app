@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, CalendarRange, ChartPie, Coins, Landmark, Percent, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
+import { Building2, CalendarRange, Coins, Landmark, Percent, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
 import { echeancier } from '../factures-achats/analysesAchats.js';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import BarrePeriode from './BarrePeriode.jsx';
@@ -114,8 +114,6 @@ export default function AccueilCompta({
         : etatPersonnel !== 'ready' ? null
           : personnelVide || <><Chf v={s.personnel} /> <span>estimés</span></>,
     },
-    // Pas de chiffre calculé : les fiches ne sont lues qu'à l'ouverture (D25).
-    { id: 'marges', libelle: 'Marges', Icone: ChartPie, onClick: () => onOuvrir('marges'), etat: <>par plat et par carte</> },
     peutEcrire && {
       id: 'tva', libelle: 'TVA', Icone: Percent, onClick: () => onOuvrir('tva'),
       etat: etats.tva !== 'ready' ? null : (() => {
@@ -179,7 +177,7 @@ export default function AccueilCompta({
             )}
             <CarteChiffre
               id="resultat" titre="Résultat estimé" Icone={Scale} etat={etats.resultat}
-              valeur={<Chf v={s.resultat} entier />} lignes={resultatLignes} onClick={() => onOuvrir('ensemble')}
+              valeur={<Chf v={s.resultat} entier />} lignes={resultatLignes} onClick={periode?.type === 'inventaire' ? () => onOuvrir('ensemble') : undefined}
               ton={s.resultat != null && s.resultat < 0 ? 'danger' : undefined}
             />
           </div>

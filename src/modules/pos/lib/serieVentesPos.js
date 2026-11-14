@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Ventes de la caisse reliée (Lightspeed) par tranche, sans React ni service
 // (testé par node --test, serieVentesPos.test.mjs), pour le module
-// Statistiques. Mêmes règles que le top et flop (useTopFlop.js) : quantités
+// Statistiques. Mêmes règles que l'ancien classement de Ventes POS, parti en S3 : quantités
 // vendues par article de la caisse reliée, au jour de la vente ; le chiffre
 // est la colonne revenue_cts, que la Comptabilité lit aussi (en centimes).
 //   ventes : [{ pos_item_id, date, qty, revenue_cts }]

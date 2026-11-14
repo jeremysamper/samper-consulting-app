@@ -18,14 +18,14 @@ import { nomDepuisLibelle } from '../inventaire/achatsLogic.js';
 import { AUTRES, classerProduit, contexteClassement } from '../commande/classerProduit.js';
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
-export const NON_CLASSE = 'Non classé';
-export const SANS_FOURNISSEUR = 'Fournisseur non lu';
+const NON_CLASSE = 'Non classé';
+const SANS_FOURNISSEUR = 'Fournisseur non lu';
 const MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const MOIS_LONGS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
 const nombre = (v) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
 const arrondi = (v) => Math.round(v * 100) / 100;
-const perimetreDe = (d) => (d.perimetre || '').trim() || 'Général';
+export const perimetreDe = (d) => (d.perimetre || '').trim() || 'Général';
 
 // Montant retenu d'une facture et sa source : 'ht' | 'ttc' | 'lignes' | null.
 export function montantFacture(d) {
@@ -188,7 +188,7 @@ export function parRayon(factures, catalogue = []) {
 
 // Prix unitaire d'une ligne lue : montant / quantité totale, ramenée au kg,
 // au litre ou à la pièce ; sinon par colis. null si rien ne se divise.
-export function prixLigne(l) {
+function prixLigne(l) {
   const m = nombre(l.montantLigne);
   if (m == null || m <= 0) return null;
   const total = nombre(l.quantiteTotale);

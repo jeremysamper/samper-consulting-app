@@ -23,6 +23,7 @@ import { dateComplete } from './pdfGroupe.js';
 import {
   NUMERO_COMPLEMENTS, STATUTS, groupesAAnticiper, libelleGroupe, metaStatut,
 } from './typesGroupe.js';
+import { chiffresGroupes } from './serieGroupes.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GROUPES - calendrier des événements de groupe.
@@ -184,7 +185,8 @@ export default function Groupes({ user, etablissement }) {
   );
   const duMoisActifs = duMois.filter((g) => !g.annule);
   const duMoisAnnules = duMois.filter((g) => g.annule);
-  const totalPax = duMoisActifs.reduce((s, g) => s + g.nbPax, 0);
+  // Compteurs du mois : calcul partagé avec les Statistiques (D3).
+  const chiffresMois = chiffresGroupes(duMois);
 
   const fiche = ficheId ? groupes.find((g) => g.id === ficheId) || null : null;
   const groupesDuJourOuvert = jourOuvert
@@ -389,8 +391,8 @@ export default function Groupes({ user, etablissement }) {
                  sur un téléphone (nom du client, heure) ── */}
           <div style={{ marginTop: 18 }}>
             <div style={st.titreListe}>
-              {duMoisActifs.length
-                ? `${duMoisActifs.length} groupe${duMoisActifs.length > 1 ? 's' : ''} en ${MOIS[vue.mois].toLowerCase()}, ${totalPax} pax`
+              {chiffresMois.groupes
+                ? `${chiffresMois.groupes} groupe${chiffresMois.groupes > 1 ? 's' : ''} en ${MOIS[vue.mois].toLowerCase()}, ${chiffresMois.convives} pax`
                 : status === 'ready' ? `Aucun groupe en ${MOIS[vue.mois].toLowerCase()}.` : ''}
             </div>
             <div style={st.liste}>
@@ -400,7 +402,7 @@ export default function Groupes({ user, etablissement }) {
             {duMoisAnnules.length > 0 && (
               <div style={{ marginTop: 10 }}>
                 <button type="button" onClick={() => setVoirAnnules((v) => !v)} style={st.lien}>
-                  {voirAnnules ? 'Masquer' : 'Voir'} les groupes annulés ({duMoisAnnules.length})
+                  {voirAnnules ? 'Masquer' : 'Voir'} les groupes annulés ({chiffresMois.annules})
                 </button>
                 {voirAnnules && (
                   <div style={{ ...st.liste, marginTop: 8 }}>

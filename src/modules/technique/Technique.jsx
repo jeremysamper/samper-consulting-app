@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardList, DoorClosed, Plus, Repeat, Wrench } from 'lucide-react';
+import { ClipboardList, DoorClosed, Plus, Repeat } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -456,7 +456,6 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
     { id: 'nouveau', libelle: 'Nouvel ordre', Icone: Plus, onClick: () => setForm({ ordre: null, prerempli: {} }) },
     { id: 'preventif', libelle: 'Préventif', Icone: Repeat, etat: etat(plansDus.length, 'tâche à faire', 'tâches à faire'), onClick: () => setEcran('preventif') },
     { id: 'hors_service', libelle: 'Chambres hors service', Icone: DoorClosed, etat: etat(horsService.length, 'chambre', 'chambres'), onClick: () => setEcran('hors_service') },
-    { id: 'equipements', libelle: 'Équipements', Icone: Wrench, visible: peutGerer, etat: etat(equipements.rows.filter((e) => e.actif).length, 'en service', 'en service'), onClick: () => ouvrirCompte('technique_equipements') },
   ];
   const etatLecture = ordres.status === 'absent' ? 'Le module Technique n\'est pas encore activé sur la base de données.'
     : ordres.status === 'error' ? 'Les ordres de travail n\'ont pas pu être lus. Nouvel essai en cours…' : null;

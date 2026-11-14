@@ -40,3 +40,12 @@ test('dernier relevé d\'une zone : le plus récent par date puis heure', () => 
   assert.equal(p.parZone.z1.valeur, attendu.valeur);
   assert.equal(p.parZone.z1.heure, '18:00');
 });
+
+test('les chiffres du registre des relevés (HACCP.jsx) sont ceux de chiffresReleves', async () => {
+  const { chiffresReleves } = await import('./serieHaccp.js');
+  const rows = Array.from({ length: 37 }, (_, i) => ({ zoneId: `z${i % 4}`, valeur: 2 + (i % 7), date: '2026-11-0' + (1 + (i % 9)), heure: '08:00', conforme: i % 5 !== 0 }));
+  const nbAnomalies = rows.filter((r) => !r.conforme).length;
+  const ancien = { total: rows.length, conformes: rows.length - nbAnomalies, anomalies: nbAnomalies, taux: Math.round((rows.length - nbAnomalies) / rows.length * 100) };
+  const c = chiffresReleves(rows);
+  assert.deepEqual({ total: c.releves, conformes: c.conformes, anomalies: c.anomalies, taux: Math.round(c.taux * 100) }, ancien);
+});

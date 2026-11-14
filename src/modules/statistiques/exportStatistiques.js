@@ -20,24 +20,27 @@ const titreColonne = (c) => `${c.libelle}${libelleUnite(c.unite) ? ` (${libelleU
 // Une feuille pour un tableau rendu par tableauDe() : la période, puis chaque
 // série (et sa valeur d'avant quand une comparaison est tracée), une ligne
 // par tranche, la période entière en dernière ligne, l'écart d'arrondi dessous.
+// Un tableau dense (S3, `categories`) suit la mise en page des valeurs
+// d'aujourd'hui : une ligne par catégorie, sans dates, mais sur la période.
 export function feuilleDe(tableau, { nom, libelleComparaison = '' }) {
   const avecAvant = tableau.lignes.some((l) => l.avant.some((v) => v != null)) || tableau.periode.avant.some((v) => v != null);
+  const parCategorie = tableau.etat || tableau.categories;
   // Valeurs d'aujourd'hui : une ligne par plat ou par fiche, sans dates.
-  const colonnes = tableau.etat ? [T(tableau.libelleCategories || 'Ligne', 34)] : [T('Période', 14), T('Du, au', 26)];
+  const colonnes = parCategorie ? [T(tableau.libelleCategories || 'Ligne', 34)] : [T('Période', 14), T('Du, au', 26)];
   tableau.colonnes.forEach((c) => {
     colonnes.push(N(titreColonne(c), 22));
     if (avecAvant) colonnes.push(N(`${c.libelle}, ${libelleComparaison || 'avant'}`, 22));
   });
   const ligneDe = (libelle, detail, valeurs, avant, fort) => {
-    const cellules = tableau.etat ? [libelle] : [libelle, detail];
+    const cellules = parCategorie ? [libelle] : [libelle, detail];
     tableau.colonnes.forEach((c, i) => {
       cellules.push(valeurTableur(valeurs[i], c.unite));
       if (avecAvant) cellules.push(valeurTableur(avant[i], c.unite));
     });
     return rang(cellules, fort);
   };
-  const rangs = tableau.lignes.map((l) => ligneDe(libelleTranche(l.tranche), tableau.etat ? '' : bornesTranche(l.tranche), l.valeurs, l.avant, false));
-  if (!tableau.sansTotal) rangs.push(ligneDe(tableau.etat ? tableau.libelleTotal || 'Ensemble' : 'Période entière', tableau.colonnes.map((c) => LIBELLE_NATURE[c.nature]).filter((v, i, a) => a.indexOf(v) === i).join(', '), tableau.periode.valeurs, tableau.periode.avant, true));
+  const rangs = tableau.lignes.map((l) => ligneDe(libelleTranche(l.tranche), parCategorie ? '' : bornesTranche(l.tranche), l.valeurs, l.avant, false));
+  if (!tableau.sansTotal) rangs.push(ligneDe(parCategorie ? tableau.libelleTotal || 'Ensemble' : 'Période entière', tableau.colonnes.map((c) => LIBELLE_NATURE[c.nature]).filter((v, i, a) => a.indexOf(v) === i).join(', '), tableau.periode.valeurs, tableau.periode.avant, true));
   if (tableau.arrondis.length) {
     rangs.push(rang([]));
     tableau.arrondis.forEach((a) => rangs.push(rang([`Arrondi, ${a.libelle}`, `la somme des lignes diffère du total de ${a.ecart.toFixed(2)}`])));
@@ -47,6 +50,6 @@ export function feuilleDe(tableau, { nom, libelleComparaison = '' }) {
 }
 
 export function telechargerTableaux(tableaux, { titre, nomFichier, libelleComparaison = '' }) {
-  const feuilles = tableaux.map((t, i) => feuilleDe(t, { nom: `Graphique ${i + 1}`, libelleComparaison }));
+  const feuilles = tableaux.map((t, i) => feuilleDe(t, { nom: t.nomFeuille || `Graphique ${i + 1}`, libelleComparaison }));
   telechargerFichier(xlsxFeuilles(feuilles, titre), nomFichier, MIME_XLSX);
 }

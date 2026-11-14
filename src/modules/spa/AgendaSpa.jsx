@@ -8,6 +8,7 @@ import {
   Avatar, EtatVide, decalerJour, dureeLisible, heureFin, hhmm, jourComplet,
   metaStatutRdv, minutes, nomClient, st,
 } from './spaUi.jsx';
+import { ACTIF_SPA, minutesSpa } from './serieSpa.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Agenda du spa.
@@ -21,7 +22,8 @@ import {
 // libres entre deux soins, ce que la réception cherche au téléphone.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const ACTIF = (r) => !['annulee', 'absent'].includes(r.statut);
+// Soins actifs et minutes en cabine : règles partagées avec les Statistiques (D3).
+const ACTIF = ACTIF_SPA;
 const PX_MIN = 1.2;           // 1 minute = 1,2 px → 1 heure = 72 px
 const PAS_CRENEAU = 30;       // créneaux cliquables toutes les 30 min
 const SANS_PRATICIEN = '__sans__';
@@ -54,7 +56,7 @@ export default function AgendaSpa({
   );
   const actifs = duJour.filter(ACTIF);
   const annules = duJour.filter((r) => !ACTIF(r));
-  const minutesSoins = actifs.reduce((sum, r) => sum + r.dureeMin, 0);
+  const minutesSoins = minutesSpa(actifs);
   const estAujourdhui = date === aujourdhui;
 
   return (
@@ -216,7 +218,7 @@ function Planning({ date, estAujourdhui, maintenant, actifs, praticiensConnus, c
           {colonnes.map((p) => {
             const nomP = p === SANS_PRATICIEN ? '' : p;
             const siens = actifs.filter((r) => (p === SANS_PRATICIEN ? !r.praticien : r.praticien === p));
-            const occupe = siens.reduce((sum, r) => sum + r.dureeMin, 0);
+            const occupe = minutesSpa(siens);
             return (
               <div key={p} style={{ flex: '1 1 200px', minWidth: 200, borderLeft: '1px solid var(--spa-line)' }}>
                 <div style={s.enteteColonne}>

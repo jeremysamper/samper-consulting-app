@@ -13,30 +13,24 @@
 // affiche « non lu » et « Réessayer », pas un zéro (D9).
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { isModuleActiveForEtab, isPageActiveForEtab, peutOuvrirPage } from '../moduleConfig.js';
 import { dbService } from '../../services/dbService.js';
 import * as caisse from '../../services/caisseService.js';
 import { lireFenetre } from '../caisse/rapports/lectureRapport.js';
-import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
-import { lireModeTest } from '../caisse/modeTest.js';
-import { ROLES_RAPPORT } from '../previsions/rapport/gardeRapport.js';
 import { lireReferentiel, lireReservations } from '../previsions/rapport/useRapportReservations.js';
-import { estDirection, peutReglerFactures } from '../comptabilite/gardesCompta.js';
+import { GARDES_ECRANS, ecranOuvert } from './gardesStatistiques.js';
 import { lireContrats, lirePeriode } from '../planning/contratsService.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
 import { lireGroupes } from '../../hooks/useGroupes.js';
 import { supabase } from '../../services/supabase.js';
 import { toutesLesPages } from '../../utils/lirePages.js';
-import { zurichAjouterJours, zurichMinuitIso } from '../../utils/zurichTime.js';
+import { zurichAjouterJours, zurichMinuitIso, zurichToday } from '../../utils/zurichTime.js';
 import { mapReservation as mapRdvSpa } from '../spa/spaData.js';
 import {
   mapActivite, mapChambre, mapDemande, mapInscription, mapJournal, mapLigne, mapLinge, mapOccupant, mapOrdre, mapSejour,
 } from '../hebergement/hotelData.js';
 
-// Garde d'un écran d'origine, la chaîne même de LegacyModuleHost.jsx : page
-// active pour l'établissement, puis droit d'ouvrir la page.
-const ecranOuvert = (page, { role, permissions, etablissement }) => isPageActiveForEtab(etablissement, page)
-  && peutOuvrirPage(page, { role }, permissions);
+// Gardes des écrans d'origine : gardesStatistiques.js (léger, lu aussi par
+// LegacyModuleHost pour l'accès par raccourci).
 
 // Toutes les pages d'une lecture (utils/lirePages.js) ; ici une erreur
 // remonte, pour que la famille s'affiche « non lu ».
@@ -62,8 +56,7 @@ export const LECTURES = {
   // Rapports de la caisse : tuile « Rapports » (habillage, hors mode test),
   // puis le niveau rendu par la base (direction ou cuisine).
   caisse: {
-    visible: ({ role, permissions, etablissement }) => isModuleActiveForEtab(etablissement, 'caisse')
-      && permissions.caisse === true && peutHabillerCaisse(role) && !lireModeTest(etablissement?.id),
+    visible: GARDES_ECRANS.caisse,
     // Le niveau se demande à la base, comme le font les onglets des Rapports :
     // une journée suffit, la réponse porte `niveau`.
     async sonder(etabId, aujourdhui) {
@@ -79,10 +72,21 @@ export const LECTURES = {
   },
   // Rapport des réservations : ROLES_RAPPORT.
   reservations: {
-    visible: ({ role, permissions, etablissement }) => isModuleActiveForEtab(etablissement, 'previsions')
-      && permissions.previsions === true && ROLES_RAPPORT.includes(role),
+    visible: GARDES_ECRANS.reservations,
     async lire(etabId, debut, fin) {
       const [lignes, referentiel] = await Promise.all([lireReservations(etabId, debut, fin), lireReferentiel(etabId)]);
+      return { lignes, ...referentiel };
+    },
+  },
+  // Carnet à venir du rapport (S3) : les réservations d'un an en arrière à
+  // trente jours devant, pour le carnet d'aujourd'hui et celui de la date
+  // comparable. Même garde que le rapport.
+  carnet: {
+    sansFenetre: true,
+    visible: GARDES_ECRANS.reservations,
+    async lire(etabId) {
+      const auj = zurichToday();
+      const [lignes, referentiel] = await Promise.all([lireReservations(etabId, zurichAjouterJours(auj, -400), zurichAjouterJours(auj, 30)), lireReferentiel(etabId)]);
       return { lignes, ...referentiel };
     },
   },
@@ -90,7 +94,7 @@ export const LECTURES = {
   // Tous les documents de l'établissement en une lecture (pas de fenêtre).
   achats: {
     sansFenetre: true,
-    visible: ({ permissions, etablissement }) => isModuleActiveForEtab(etablissement, 'inventaire') && permissions.inventaire !== false,
+    visible: GARDES_ECRANS.achats,
     async lire(etabId) {
       const db = pont();
       const [docs, catalogue] = await Promise.all([db.listAchatsDocuments(etabId), db.listProduits(etabId, { strict: true })]);
@@ -102,8 +106,7 @@ export const LECTURES = {
   // hook useCompta, appelé par l'écran (parHook).
   comptabilite: {
     parHook: true,
-    visible: ({ role, permissions, etablissement }) => isModuleActiveForEtab(etablissement, 'comptabilite')
-      && permissions.comptabilite === true && (estDirection(role) || peutReglerFactures(role)),
+    visible: GARDES_ECRANS.comptabilite,
   },
   // Pertes : l'écran Pertes, toutes les pertes de l'établissement (sans
   // fenêtre, comme l'écran qui ne filtre pas par date).

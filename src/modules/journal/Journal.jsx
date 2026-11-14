@@ -6,6 +6,7 @@ import { zurichAjouterJours, zurichDateHeure, zurichLundi, zurichMinuitIso } fro
 import { Btn, Panneau, SectionHeader } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
+import { MODULES_JOURNAL, OPERATIONS_JOURNAL } from './serieJournal.js';
 
 // Journal d'activité : qui a créé, modifié ou supprimé quoi dans les recettes,
 // produits, pertes et inventaires d'un établissement, semaine par semaine.
@@ -15,11 +16,13 @@ import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 // en gros boutons ; l'établissement se change par la coque, comme partout
 // (le sélecteur de la barre du haut), le journal le suit.
 
-const ACTIONS = { INSERT: 'Création', UPDATE: 'Modification', DELETE: 'Suppression' };
+// Libellés des actions et des modules : ceux du journal dans les Statistiques
+// (serieJournal.js), écrits une seule fois (D3).
+const ACTIONS = OPERATIONS_JOURNAL;
 const COULEUR_ACTION = { INSERT: 'var(--success-text)', UPDATE: 'var(--accent)', DELETE: 'var(--danger-text)' };
 // caisse : corrections d'une réservation par le service (RPC
 // caisse_corriger_reservation, migration 20261110_caisse_v5).
-const MODULES = { recettes: 'Recettes', produits: 'Produits', pertes: 'Pertes', inventaires: 'Inventaires', caisse: 'Caisse' };
+const MODULES = MODULES_JOURNAL;
 const COLONNES = 'id, created_at, acteur_id, acteur_nom, acteur_role, module, operation, libelle, colonnes_modifiees';
 const PAGE = 1000;
 

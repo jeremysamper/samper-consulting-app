@@ -17,6 +17,7 @@ import { Choix, Fenetre, st as stFenetre } from '../../components/ui/Fenetres.js
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { totauxPertes } from './calculPertes.js';
 import { Printer, Trash2 } from 'lucide-react';
 
 // Choix exclusif en tuiles (motif, unité) : un toucher au lieu des deux d'une
@@ -189,11 +190,8 @@ const Pertes = ({ user, etablissement }) => {
 
   // Total et répartition sur le même ensemble filtré : la répartition divisait
   // toutes les pertes par le total filtré (« Infinity% » sur un filtre vide).
-  const totalValeur = filtered.reduce((s,p) => s + p.quantite * p.valeurUnit, 0);
-  const parCategorie = filtered.reduce((acc,p) => {
-    const k = p.categorie; const v = p.quantite * p.valeurUnit;
-    acc[k] = (acc[k]||0) + v; return acc;
-  }, {});
+  // Calcul partagé avec les Statistiques (calculPertes.js, D3).
+  const { valeur: totalValeur, parCategorie } = totauxPertes(filtered);
 
   const handleSubmit = async () => {
     if (!form.produit || !form.quantite || !form.valeurUnit) { alertLegacy('Veuillez remplir tous les champs obligatoires.'); return; }

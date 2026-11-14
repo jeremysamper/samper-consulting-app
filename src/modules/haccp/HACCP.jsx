@@ -34,10 +34,10 @@ import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import Tracabilite from './Tracabilite.jsx';
 import EtiquettesDlc from './EtiquettesDlc.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { ouvrirCompte } from '../../services/navigationService.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { peutConfigurerHaccp } from './gardesHaccp.js';
 import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
+import { chiffresReleves } from './serieHaccp.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -655,14 +655,15 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
         };
       }),
     }));
-    const nbAnomalies = rows.filter(r => !r.conforme).length;
+    // Chiffres du registre : calcul partagé avec les Statistiques (D3).
+    const chiffres = chiffresReleves(rows);
     const payload = {
       periodeLabel: period === 'jour' ? capitalize(fmtJour(dateFilter)) : capitalize(moisLabel),
       stats: {
-        total: rows.length,
-        conformes: rows.length - nbAnomalies,
-        anomalies: nbAnomalies,
-        taux: Math.round((rows.length - nbAnomalies) / rows.length * 100),
+        total: chiffres.releves,
+        conformes: chiffres.conformes,
+        anomalies: chiffres.anomalies,
+        taux: Math.round(chiffres.taux * 100),
       },
       days,
     };
@@ -902,12 +903,8 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
             {(pret || isConsultant) && (
               <div className="module-actions">
                 {pret && boutonExporter('haccp-dashboard-print')}
-                {/* Réglages du consultant : un bouton discret plutôt qu'une
-                    cinquième tuile seule sur sa rangée. data-tuile : même
-                    crochet du banc qu'avant. */}
-                {isConsultant && (
-                  <button type="button" data-tuile="config" style={hs.exportBtn} onClick={() => ouvrirCompte('haccp')}>Réglages</button>
-                )}
+                {/* Les réglages du HACCP s'ouvrent par la page des réglages
+                    seule (section 'haccp') : plus de bouton ici. */}
               </div>
             )}
           </div>

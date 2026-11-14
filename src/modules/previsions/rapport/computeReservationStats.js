@@ -366,6 +366,30 @@ function temporalite(lignes, bornes, ctx, services) {
   };
 }
 
+// ── Carnet à venir ─────────────────────────────────────────────────────────
+// Lignes déjà préparées (preparerLignes) ; ctx : { aujourdhui, reference, service }.
+function carnetsDe(toutes, ctx) {
+  // Carnet à venir : couverts déjà réservés pour les N prochains jours, et ce
+  // qui l'était à la date comparable. Une réservation annulée depuis ne compte
+  // ni d'un côté ni de l'autre (la date d'annulation n'est pas gardée).
+  const carnet = (depuis, N) => somme(toutes.filter((r) => (
+    AU_CARNET.has(r.statut)
+    && (ctx.service === 'tous' || r.svc === ctx.service)
+    && r.date >= depuis && r.date <= zurichAjouterJours(depuis, N - 1)
+    && (!r.cree || r.cree <= depuis)
+  )));
+  return HORIZONS_CARNET.map((N) => {
+    const actuel = carnet(ctx.aujourdhui, N);
+    const avant = carnet(ctx.reference, N);
+    return { jours: N, actuel, avant, variation: variationPct(actuel, avant) };
+  });
+}
+
+// Carnet à venir pour les Statistiques (S3) : les lignes lues telles quelles.
+export function carnetsAVenir({ lignes, aujourdhui, reference, service = 'tous', parametres = null }) {
+  return carnetsDe(preparerLignes(lignes, aujourdhui, aDuBrunch(lignes, parametres)), { aujourdhui, reference: reference || aujourdhui, service });
+}
+
 // ── Anticipation ──────────────────────────────────────────────────────────
 function anticipation(lignes, toutes, ctx) {
   const valides = lignes.filter((r) => r.classe !== 'annulee' && r.delai !== null);
@@ -380,20 +404,7 @@ function anticipation(lignes, toutes, ctx) {
   };
   const parCanal = CANAUX.map((c) => ({ id: c.id, label: c.label, ...resume(valides.filter((r) => r.canal === c.id)) }));
 
-  // Carnet à venir : couverts déjà réservés pour les N prochains jours, et ce
-  // qui l'était à la date comparable. Une réservation annulée depuis ne compte
-  // ni d'un côté ni de l'autre (la date d'annulation n'est pas gardée).
-  const carnet = (depuis, N) => somme(toutes.filter((r) => (
-    AU_CARNET.has(r.statut)
-    && (ctx.service === 'tous' || r.svc === ctx.service)
-    && r.date >= depuis && r.date <= zurichAjouterJours(depuis, N - 1)
-    && (!r.cree || r.cree <= depuis)
-  )));
-  const carnets = HORIZONS_CARNET.map((N) => {
-    const actuel = carnet(ctx.aujourdhui, N);
-    const avant = carnet(ctx.reference, N);
-    return { jours: N, actuel, avant, variation: variationPct(actuel, avant) };
-  });
+  const carnets = carnetsDe(toutes, ctx);
 
   return { tranches, global: resume(valides), parCanal, carnets };
 }
@@ -605,6 +616,7 @@ export function serieReservations({ lignes, tranches, aujourdhui, service = 'tou
     const c = canaux(dedans);
     const a = anticipation(dedans, [], ctx);
     const clients = clientele(dedans);
+    const top = clients.top;
     delete clients.top;
     const temps = temporalite(dedans, t, ctx, services);
     return {
@@ -619,10 +631,17 @@ export function serieReservations({ lignes, tranches, aujourdhui, service = 'tou
       clientele: clients,
       parJourSemaine: temps.parJourSemaine,
       heatmap: temps.heatmap,
+      // Repères (jours passés) et meilleurs clients du rapport : pour les
+      // Statistiques ; les clients seulement sur une tranche unique (la période).
+      reperes: { meilleurJour: temps.meilleurJour, pireJour: temps.pireJour, meilleureSemaine: temps.meilleureSemaine },
+      meilleursClients: liste.length === 1 ? top : null,
       services: services.map((s) => {
         const l = comptees.filter((r) => r.svc === s);
         return { service: s, tables: l.length, couverts: somme(l) };
       }),
+      // Détail par jour (ou par semaine) et par service du rapport, pour le
+      // tableau dense des Statistiques : le calcul même de l'écran d'origine.
+      detail: tableau(dedans, t, ctx),
     };
   });
 }
