@@ -866,7 +866,7 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
       {!selected ? (
         <div style={cts.emptyState}>
           <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' }}>Aucune recette sélectionnée</div>
-          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Choisissez une recette dans la liste. Les fiches se créent dans Cartes & Recettes, avec la tuile « Nouvelle fiche » de l'accueil du module.</div>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>Choisissez une recette dans la liste. Les fiches se créent dans Cartes & Recettes, avec le bouton « Nouvelle fiche ».</div>
         </div>
       ) : (
         <div style={cts.rightCol}>

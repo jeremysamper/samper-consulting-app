@@ -1568,6 +1568,23 @@ export const UI_GLOSSARY_ES = {
   'autres': 'otros',
   'modifiée le': 'modificada el',
   'Aucun allergène déclaré': 'Ningún alérgeno declarado',
+  // ── Cartes & Recettes : écran d'arrivée unique (14.11.2026) ──
+  'Bibliothèque recettes': 'Biblioteca de recetas',
+  'Gérer les cartes et les fiches': 'Gestionar las cartas y las fichas',
+  'Un onglet de plus, à remplir de plats': 'Una pestaña más, para llenar de platos',
+  'nom, dates, archiver, supprimer': 'nombre, fechas, archivar, eliminar',
+  'nom, dates, archiver, cacher, supprimer': 'nombre, fechas, archivar, ocultar, eliminar',
+  "Changer l'ordre des onglets, de gauche à droite": 'Cambiar el orden de las pestañas, de izquierda a derecha',
+  'Archives': 'Archivos',
+  'carte archivée, à restaurer': 'carta archivada, para restaurar',
+  'cartes archivées, à restaurer': 'cartas archivadas, para restaurar',
+  'Sélectionner des fiches': 'Seleccionar fichas',
+  'Pour les rattacher à des plats, les archiver ou les supprimer': 'Para vincularlas a platos, archivarlas o eliminarlas',
+  'Tous les plats': 'Todos los platos',
+  'Trouver dans quelles recettes un ingrédient ou allergène apparaît': 'Buscar en qué recetas aparece un ingrediente o un alérgeno',
+  'Exporter une carte entière, des plats ou des recettes dans un seul PDF': 'Exportar una carta entera, platos o recetas en un solo PDF',
+  'Aucune recette pour cet établissement. Le bouton « Nouvelle fiche » en crée une.': 'No hay recetas para este establecimiento. El botón «Nueva ficha» crea una.',
+  'Choisissez une recette dans la liste. Les fiches se créent dans Cartes & Recettes, avec le bouton « Nouvelle fiche ».': 'Elija una receta en la lista. Las fichas se crean en Cartas y recetas, con el botón «Nueva ficha».',
 
   // ── Réservations par tâche : accueil du module ──
   'Je réserve une table': 'Reservo una mesa',

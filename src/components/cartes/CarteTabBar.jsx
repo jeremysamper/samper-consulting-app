@@ -61,6 +61,11 @@ export default function CarteTabBar({
   // des cartes », le reste va au menu. Absent (Fiches salle), « Archives »
   // reste un bouton.
   actionsMenu,
+  // Optionnel : la gestion s'ouvre depuis l'appelant (menu « Gérer » de
+  // Cartes & Recettes). La barre ne rend alors que les onglets et garde ses
+  // fenêtres, que l'appelant ouvre par commandesRef.current : creer(),
+  // modifier(carte), ordre(), archives(). Sans canManage, elles ne font rien.
+  commandesRef,
 }) {
   // modal: null | { mode: 'create' } | { mode: 'edit', carte }
   const [modal, setModal] = React.useState(null);
@@ -77,6 +82,13 @@ export default function CarteTabBar({
     setModal({ mode: 'edit', carte });
   };
   const close = () => setModal(null);
+  const gestionExterne = Boolean(commandesRef);
+  React.useImperativeHandle(commandesRef, () => ({
+    creer: () => { if (canManage) openCreate(); },
+    modifier: (carte) => { if (canManage && carte) openEdit(carte); },
+    ordre: () => { if (canManage && onReorderCartes) setOrdreDraft(cartes.map(c => c.id)); },
+    archives: () => { if (canManage && onArchiveCarte) setShowArchives(true); },
+  }), [canManage, cartes, onReorderCartes, onArchiveCarte]);
   // Menu de l'en-tête (seulement si l'appelant le demande) : les archives
   // d'abord, puis les entrées de l'appelant.
   const menuEntrees = actionsMenu ? [
@@ -185,7 +197,7 @@ export default function CarteTabBar({
                     marqueur ne s'affiche donc que chez lui, sans condition de rôle. */}
                 <span>{nomCarte(carte)}{carte.masquee === true && ' (cachée)'}</span>
               </button>
-              {canManage && active && (
+              {canManage && !gestionExterne && active && (
                 <button
                   type="button"
                   className="mini"
@@ -211,11 +223,11 @@ export default function CarteTabBar({
         ))}
       </div>
 
-      {canManage && (
+      {canManage && !gestionExterne && (
         <button className="segmented-tab" style={s.addBtn} onClick={openCreate}>Ajouter une carte</button>
       )}
 
-      {canManage && onReorderCartes && cartes.length > 1 && (
+      {canManage && !gestionExterne && onReorderCartes && cartes.length > 1 && (
         <button
           className="segmented-tab"
           style={s.ordreBtn}
@@ -224,7 +236,7 @@ export default function CarteTabBar({
         >Ordre des cartes</button>
       )}
 
-      {canManage && menuEntrees.length > 0 && (
+      {canManage && !gestionExterne && menuEntrees.length > 0 && (
         <button
           type="button"
           className="segmented-tab"
@@ -244,7 +256,7 @@ export default function CarteTabBar({
         </Fenetre>
       )}
 
-      {canManage && onArchiveCarte && archivedCartes.length > 0 && !actionsMenu && (
+      {canManage && !gestionExterne && onArchiveCarte && archivedCartes.length > 0 && !actionsMenu && (
         <button
           className="segmented-tab"
           style={s.archivesBtn}

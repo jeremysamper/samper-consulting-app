@@ -101,13 +101,14 @@ export function platsAEcrire(recette, plats) {
   });
 }
 
-// Section unique des préparations techniques dans « Je cherche une fiche » :
+// Section unique des préparations techniques dans la bibliothèque de Cartes &
+// Recettes :
 // une section par catégorie technique alignait un titre par fiche (« Bases »,
 // « Fonds », « Sauces », une fiche chacune). Chaque vignette garde sa
 // catégorie écrite sur elle.
 export const SECTION_PREPARATIONS = 'Préparations de base';
 
-// Sections de « Je cherche une fiche » : les fiches servies par catégorie,
+// Sections de la bibliothèque : les fiches servies par catégorie,
 // dans l'ordre de service, puis les préparations de base en dernier.
 export function sectionsDeFiches(fiches) {
   const servies = [];
