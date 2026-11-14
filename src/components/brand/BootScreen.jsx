@@ -74,17 +74,77 @@ function initialPhase() {
   return introSeen() || prefersReducedMotion() ? 'static' : 'play';
 }
 
+// Mise en page stable. À l'ouverture de l'app installée sur iPad, la page est
+// d'abord mise en page à une taille fausse (plus grande que l'écran, barre
+// d'état non recouverte) pendant environ 0,3 s : un logo centré dans cette
+// boîte apparaissait en bas à droite, puis sautait au centre (vidéo du
+// 14.11.2026). Le logo reste caché et son animation en pause tant que la page
+// n'a pas la taille de l'écran. Seulement pour l'app installée sur iOS
+// (navigator.standalone) : ailleurs, la fenêtre fait la taille qu'elle veut.
+// Une fenêtre d'iPadOS plus petite que l'écran ne correspond jamais : un
+// redimensionnement suivi d'un court calme, ou le délai maximal, débloque.
+const SETTLE_MAX_MS = 900;
+const SETTLE_QUIET_MS = 200;
+const SETTLE_POLL_MS = 80;
+
+function layoutMatchesScreen() {
+  try {
+    if (!navigator.standalone) return true;
+    const w = document.documentElement.clientWidth;
+    const h = document.documentElement.clientHeight;
+    const long = Math.max(screen.width, screen.height);
+    const short = Math.min(screen.width, screen.height);
+    const near = (a, b) => Math.abs(a - b) <= 2;
+    return (near(w, long) && near(h, short)) || (near(w, short) && near(h, long));
+  } catch {
+    return true;
+  }
+}
+
+function useLayoutSettled() {
+  const [settled, setSettled] = useState(layoutMatchesScreen);
+
+  useEffect(() => {
+    if (settled) return undefined;
+    let quiet;
+    const done = () => setSettled(true);
+    const poll = setInterval(() => {
+      if (layoutMatchesScreen()) done();
+    }, SETTLE_POLL_MS);
+    const onResize = () => {
+      clearTimeout(quiet);
+      if (layoutMatchesScreen()) done();
+      else quiet = setTimeout(done, SETTLE_QUIET_MS);
+    };
+    window.addEventListener('resize', onResize);
+    window.visualViewport?.addEventListener('resize', onResize);
+    const max = setTimeout(done, SETTLE_MAX_MS);
+    return () => {
+      clearInterval(poll);
+      clearTimeout(quiet);
+      clearTimeout(max);
+      window.removeEventListener('resize', onResize);
+      window.visualViewport?.removeEventListener('resize', onResize);
+    };
+  }, [settled]);
+
+  return settled;
+}
+
 export default function BootScreen({ loading = true, title = 'Connexion à votre espace', onFinished }) {
   const [phase, setPhase] = useState(initialPhase);
   const [introDone, setIntroDone] = useState(() => phase === 'static');
+  const settled = useLayoutSettled();
   const leaving = introDone && !loading;
 
+  // L'intro ne compte qu'à partir d'une mise en page stable : c'est là que le
+  // tracé démarre (les animations restent en pause avant, voir jl-attente).
   useEffect(() => {
-    if (phase !== 'play') return undefined;
+    if (phase !== 'play' || !settled) return undefined;
     markIntroSeen();
     const timer = setTimeout(() => setIntroDone(true), INTRO_MS);
     return () => clearTimeout(timer);
-  }, [phase]);
+  }, [phase, settled]);
 
   // Sortie : fondu, puis démontage. Un chargement qui repart pendant le fondu
   // l'annule (leaving repasse à false, la minuterie est effacée).
@@ -103,7 +163,7 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
 
   return (
     <div
-      className={`jl-root jl-${phase}${leaving ? ' jl-leaving' : ''}`}
+      className={`jl-root jl-${phase}${settled ? '' : ' jl-attente'}${leaving ? ' jl-leaving' : ''}`}
       style={s.root}
       onPointerDown={skip}
       data-no-translate=""

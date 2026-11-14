@@ -719,6 +719,14 @@ html[data-theme="dark"] {
   animation: jlDerive 9s ease-in-out infinite alternate;
 }
 
+/* Mise en page pas encore stable (ouverture de l'app installée sur iPad) :
+   logo caché, animations en pause à leur début. Elles partent de zéro quand
+   la classe tombe (useLayoutSettled de BootScreen.jsx). */
+.jl-attente .jl-logo { visibility: hidden; }
+.jl-attente .jl-logo,
+.jl-attente .jl-piece,
+.jl-attente .jl-lueur { animation-play-state: paused; }
+
 @keyframes jlApparait {
   from { opacity: 0; }
   to   { opacity: 1; }
