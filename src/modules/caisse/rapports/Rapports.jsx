@@ -90,7 +90,7 @@ function Rang({ titre, detail, children, brut = false }) {
   );
 }
 const Section = ({ titre, children }) => (
-  <section style={st.section}>
+  <section className="caisse-liste" data-cadre="" style={st.section}>
     <div style={st.sectionTitre}>{titre}</div>
     {children}
   </section>
@@ -684,62 +684,74 @@ const st = {
   nav: { display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 },
   fleche: {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0,
-    borderRadius: 'var(--r-sm)', border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer',
+    borderRadius: '50%', border: 'none', background: 'transparent', color: 'var(--text)', cursor: 'pointer',
   },
   inactif: { opacity: 0.3, cursor: 'default' },
   libelle: {
-    flex: 1, minWidth: 0, textAlign: 'center', fontSize: 17, fontFamily: 'var(--font-serif)', color: 'var(--text)',
+    flex: 1, minWidth: 0, textAlign: 'center', fontSize: 'var(--t3)', fontFamily: 'var(--font)', fontWeight: 'var(--g2)', color: 'var(--text)',
     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 2px',
   },
   dates: { flex: 1, minWidth: 0, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 },
   date: {
-    minHeight: 44, minWidth: 0, width: '100%', boxSizing: 'border-box', padding: '0 8px', fontFamily: 'var(--font)', fontSize: 15,
-    color: 'var(--text)', background: 'var(--surface)', borderRadius: 'var(--r-md)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+    minHeight: 44, minWidth: 0, width: '100%', boxSizing: 'border-box', padding: '0 8px', fontFamily: 'var(--font)', fontSize: 'var(--t2)',
+    color: 'var(--text)', background: 'var(--surface)', borderRadius: 'var(--r)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',
   },
   erreur: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', color: 'var(--text)' },
-  vide: { color: 'var(--text2)', fontSize: 14, margin: 0, lineHeight: 1.4 },
-  alerte: { color: 'var(--warning-text)', fontSize: 14, margin: '0 0 8px', lineHeight: 1.4 },
+  vide: { color: 'var(--text3)', fontSize: 'var(--t2)', margin: 0, lineHeight: 1.4 },
+  alerte: { color: 'var(--warning-text)', fontSize: 'var(--t2)', margin: '0 0 8px', lineHeight: 1.4 },
+  // Bandeau « Rapport provisoire » : une carte blanche, le titre garde son
+  // encre d'alerte.
   bandeau: {
-    display: 'flex', flexDirection: 'column', gap: 4, padding: '12px 14px', borderRadius: 'var(--r-lg)',
-    background: 'var(--surface2)', color: 'var(--text)', fontSize: 14, lineHeight: 1.4, minWidth: 0,
+    display: 'flex', flexDirection: 'column', gap: 4, padding: '14px 18px', borderRadius: 'var(--r-lg)', boxSizing: 'border-box',
+    background: 'var(--zone)', boxShadow: 'var(--sh)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+    color: 'var(--text)', fontSize: 'var(--t2)', lineHeight: 1.4, minWidth: 0,
   },
-  bandeauTitre: { fontWeight: 600, color: 'var(--warning-text)' },
-  provisoire: { color: 'var(--warning-text)', fontWeight: 600 },
-  cartes: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 170px), 1fr))', gap: 10 },
+  bandeauTitre: { fontWeight: 'var(--g3)', color: 'var(--warning-text)' },
+  provisoire: { color: 'var(--warning-text)', fontWeight: 'var(--g3)' },
+  // Chiffres de la période : de petites cartes blanches, le libellé au-dessus,
+  // le grand chiffre dessous (direction Galet).
+  cartes: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 170px), 1fr))', gap: 12 },
   carte: {
-    display: 'flex', flexDirection: 'column', gap: 4, padding: '14px 14px', borderRadius: 'var(--r-lg)',
-    background: 'var(--surface2)', color: 'var(--text)', minWidth: 0,
+    display: 'flex', flexDirection: 'column', gap: 4, padding: '14px 16px', borderRadius: 'var(--r-lg)', boxSizing: 'border-box',
+    background: 'var(--zone)', boxShadow: 'var(--sh)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+    color: 'var(--text)', minWidth: 0,
   },
-  carteTitre: { fontSize: 12, color: 'var(--text2)' },
+  carteTitre: { fontSize: 'var(--t1)', color: 'var(--text2)' },
   carteValeur: { minWidth: 0, overflowWrap: 'anywhere' },
-  carteDetail: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.35 },
+  carteDetail: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.35 },
   num: { fontFamily: 'var(--font-num)' },
-  numFort: { fontFamily: 'var(--font-num)', fontSize: 24, fontWeight: 600, lineHeight: 1.15 },
-  numFortPetit: { fontFamily: 'var(--font-num)', fontSize: 16, fontWeight: 600 },
-  unite: { fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--font)', fontWeight: 400 },
-  petit: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.35 },
-  petitNum: { fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--font-num)' },
-  section: { display: 'flex', flexDirection: 'column', minWidth: 0 },
-  sectionTitre: { fontSize: 17, fontFamily: 'var(--font-serif)', color: 'var(--text)', marginBottom: 4 },
+  numFort: { fontFamily: 'var(--font-num)', fontSize: 'var(--t5)', fontWeight: 'var(--g-chiffre)', lineHeight: 1.15 },
+  numFortPetit: { fontFamily: 'var(--font-num)', fontSize: 'var(--t3)', fontWeight: 'var(--g-chiffre)' },
+  unite: { fontSize: 'var(--t1)', color: 'var(--text2)', fontFamily: 'var(--font)', fontWeight: 'var(--g1)' },
+  petit: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.35 },
+  petitNum: { fontSize: 'var(--t1)', color: 'var(--text2)', fontFamily: 'var(--font-num)' },
+  // Une section du rapport : une carte blanche à titre, ses lignes séparées
+  // par un filet doux, la dernière sans (caisse.css).
+  section: {
+    display: 'flex', flexDirection: 'column', minWidth: 0, padding: '14px 18px 4px', boxSizing: 'border-box',
+    background: 'var(--zone)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+  },
+  sectionTitre: { fontSize: 'var(--t3)', fontFamily: 'var(--font)', fontWeight: 'var(--g3)', color: 'var(--text)', marginBottom: 4 },
   deux: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 14 },
   rang: {
     display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, minHeight: 44, padding: '8px 0',
-    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', color: 'var(--text)', fontSize: 15, minWidth: 0,
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', color: 'var(--text)', fontSize: 'var(--t2)', minWidth: 0,
   },
   rangTitre: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0, overflowWrap: 'anywhere' },
-  rangValeur: { flexShrink: 0, textAlign: 'right', fontSize: 15 },
+  rangValeur: { flexShrink: 0, textAlign: 'right', fontSize: 'var(--t2)' },
   outils: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', margin: '4px 0' },
   plat: {
     display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px 12px', minHeight: 44, padding: '8px 0',
-    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', color: 'var(--text)', fontSize: 15, minWidth: 0,
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', color: 'var(--text)', fontSize: 'var(--t2)', minWidth: 0,
   },
   platNom: { display: 'flex', flexDirection: 'column', gap: 2, flex: '1 1 180px', minWidth: 0, overflowWrap: 'anywhere' },
   platCellules: { display: 'flex', gap: 8, flexShrink: 0 },
   cellule: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', width: 78, minWidth: 0 },
-  heure: { display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '6px 0', color: 'var(--text)', fontSize: 15, minWidth: 0 },
+  heure: { display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, padding: '6px 0', color: 'var(--text)', fontSize: 'var(--t2)', minWidth: 0 },
   heureNom: { width: 44, flexShrink: 0 },
-  heurePiste: { flex: 1, minWidth: 40, height: 12, borderRadius: 6, background: 'var(--surface2)', overflow: 'hidden' },
-  heureBarre: { display: 'block', height: '100%', borderRadius: 6, background: 'var(--accent)' },
+  heurePiste: { flex: 1, minWidth: 40, height: 12, borderRadius: 'var(--r-full)', background: 'var(--piste)', overflow: 'hidden' },
+  heureBarre: { display: 'block', height: '100%', borderRadius: 'var(--r-full)', background: 'var(--accent)' },
   heureValeur: { display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0, minWidth: 96 },
 };

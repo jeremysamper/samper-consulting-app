@@ -123,7 +123,7 @@ export default function Cloture({ etablissementId, onDocument, onChange, termina
           </div>
 
           {etape === 1 && (
-            <div style={st.bloc} data-cloture-etape="1">
+            <div style={st.carte} data-cadre="" data-cloture-etape="1">
               <div style={st.sousTitre}>Jour à clôturer</div>
               <div style={st.rang}>
                 {jours.map((j) => (
@@ -140,7 +140,7 @@ export default function Cloture({ etablissementId, onDocument, onChange, termina
                 </p>
               )}
               {etat.ouverts > 0 ? (
-                <div style={st.alerte} data-cadre="">
+                <div style={st.alerte}>
                   <p style={st.ligneForte}><span style={st.num}>{etat.ouverts}</span> <span>tickets encore ouverts.</span></p>
                   <p style={st.aide}>Encaissez-les ou annulez-les d'abord. Sinon ils passeront au jour suivant : un ticket encaissé après la clôture appartient au lendemain.</p>
                 </div>
@@ -148,7 +148,7 @@ export default function Cloture({ etablissementId, onDocument, onChange, termina
                 <p style={st.aide}>Aucun ticket ouvert : la caisse peut être clôturée.</p>
               )}
               {complementaire && (
-                <div style={st.alerte} data-cadre="">
+                <div style={st.alerte}>
                   <p style={st.ligneForte}>Ce jour est déjà clôturé.</p>
                   <p style={st.aide}>Une clôture ne se modifie pas. Pour corriger un comptage, vous pouvez enregistrer une clôture complémentaire, avec un motif.</p>
                 </div>
@@ -160,7 +160,7 @@ export default function Cloture({ etablissementId, onDocument, onChange, termina
           )}
 
           {etape === 2 && (
-            <div style={st.bloc} data-cloture-etape="2">
+            <div style={st.carte} data-cadre="" data-cloture-etape="2">
               <p style={st.aide}>Comptez les billets et les pièces de la caisse, sans les pourboires. Le montant attendu s'affiche après la clôture, pas avant.</p>
               <label style={st.champLabel}>
                 <span style={st.sousTitre}>Fond de caisse, CHF</span>
@@ -193,7 +193,7 @@ export default function Cloture({ etablissementId, onDocument, onChange, termina
           )}
 
           {etape === 3 && (
-            <div style={st.bloc} data-cloture-etape="3">
+            <div style={st.carte} data-cadre="" data-cloture-etape="3">
               <p style={st.ligneForte}>
                 <span>Clôturer le</span> <span style={st.num}>{dateCH(jour)}</span>
               </p>
@@ -211,7 +211,7 @@ export default function Cloture({ etablissementId, onDocument, onChange, termina
       )}
 
       {clotures.length > 0 && (
-        <div style={st.bloc}>
+        <div className="caisse-liste" style={st.carte} data-cadre="">
           <div style={st.sousTitre}>Clôtures enregistrées</div>
           {clotures.map((c) => (
             <div key={c.id} style={st.ligneCloture} data-cloture={c.numero}>
@@ -241,7 +241,7 @@ function Resultat({ cloture, onDocument, onFermer, avecCartes = false, bouclemen
   const c = t.cartes || null;
   const montrerCartes = Boolean(c) && (avecCartes || (c.terminaux || []).length > 0);
   return (
-    <div style={st.bloc} data-cloture-resultat="">
+    <div style={st.carte} data-cadre="" data-cloture-resultat="">
       <p style={st.titre}>
         <span>Clôture</span> <span>Z</span><span style={st.num}>{cloture.numero}</span>{', '}<span style={st.num}>{dateCH(cloture.jour_exploitation)}</span>
       </p>
@@ -257,7 +257,7 @@ function Resultat({ cloture, onDocument, onFermer, avecCartes = false, bouclemen
       <p style={st.aide}>
         <span style={st.num}>{t.ventes?.tickets || 0}</span> <span>tickets,</span> <span style={st.num}>{t.annulations?.tickets || 0}</span> <span>annulations.</span>
       </p>
-      <div style={{ ...st.grand, ...st.ecart }} data-cadre="">
+      <div style={{ ...st.grand, ...st.ecart }}>
         <span style={st.grandLibelle}>Écart de caisse</span>
         <span style={st.grandValeur}><span>{chf(ecart)}</span> <span style={st.devise}>CHF</span></span>
       </div>
@@ -276,7 +276,7 @@ function Resultat({ cloture, onDocument, onFermer, avecCartes = false, bouclemen
                   <span>Terminal relié</span> <span data-no-translate>{x.nom}</span><span> :</span> <span style={st.num}>{chf(x.net)}</span> <span>CHF,</span> <span style={st.num}>{x.nombre}</span> <span>{Number(x.nombre) > 1 ? 'paiements' : 'paiement'}</span>
                 </p>
                 {b && (
-                  <div style={{ ...st.grand, ...st.ecart }} data-cadre="">
+                  <div style={{ ...st.grand, ...st.ecart }}>
                     <span style={st.grandLibelle}>Écart avec le bouclement du terminal</span>
                     <span style={st.grandValeur}><span>{chf(e)}</span> <span style={st.devise}>CHF</span></span>
                   </div>
@@ -309,15 +309,24 @@ const st = {
   racine: { display: 'flex', flexDirection: 'column', gap: 16, marginTop: 12, maxWidth: 640, minWidth: 0 },
   erreur: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', color: 'var(--text)', marginTop: 12 },
   etapes: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  etape: { fontSize: 14, color: 'var(--text2)', padding: '6px 12px', borderRadius: 'var(--r-full)', background: 'var(--surface2)' },
-  etapeActive: { color: 'var(--text)', fontWeight: 600 },
+  // Étapes en pilules sur la piste ; l'étape en cours en aplat sombre.
+  etape: { fontSize: 'var(--t2)', color: 'var(--text2)', padding: '6px 14px', borderRadius: 'var(--r-full)', background: 'var(--piste)' },
+  etapeActive: { color: 'var(--on-accent)', background: 'var(--accent)', fontWeight: 'var(--g3)' },
   bloc: { display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0 },
+  // Chaque étape, le résultat et les clôtures enregistrées : une carte blanche
+  // (direction Galet).
+  carte: {
+    display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, padding: '16px 18px', boxSizing: 'border-box',
+    background: 'var(--zone)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+  },
   rang: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  sousTitre: { fontSize: 13, fontWeight: 600, color: 'var(--text2)' },
-  aide: { fontSize: 14, color: 'var(--text2)', margin: 0, lineHeight: 1.4 },
-  ligneForte: { fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 },
-  titre: { fontSize: 20, fontFamily: 'var(--font-serif)', color: 'var(--text)', margin: 0 },
-  alerte: { padding: '10px 12px', borderRadius: 'var(--r-lg)', background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 4 },
+  sousTitre: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
+  aide: { fontSize: 'var(--t2)', color: 'var(--text2)', margin: 0, lineHeight: 1.4 },
+  ligneForte: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', margin: 0 },
+  titre: { fontSize: 'var(--t4)', fontFamily: 'var(--font)', fontWeight: 'var(--g3)', color: 'var(--text)', margin: 0 },
+  // Tuile intérieure d'une carte : un avertissement, un écart.
+  alerte: { padding: '10px 14px', borderRadius: 'var(--r)', background: 'var(--piste)', display: 'flex', flexDirection: 'column', gap: 4 },
   champLabel: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
   champ: { minHeight: 52, fontSize: 18, minWidth: 0, width: '100%', boxSizing: 'border-box' },
   btn44: { minHeight: 44, flexShrink: 0 },
@@ -326,13 +335,13 @@ const st = {
   pied: { display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' },
   num: { fontFamily: 'var(--font-num)' },
   grand: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 },
-  grandLibelle: { fontSize: 15, color: 'var(--text2)' },
-  grandValeur: { fontSize: 30, fontWeight: 600, fontFamily: 'var(--font-num)', lineHeight: 1.1, color: 'var(--text)' },
-  devise: { fontSize: 14, fontWeight: 500, color: 'var(--text2)' },
-  ecart: { padding: '10px 12px', borderRadius: 'var(--r-lg)', background: 'var(--surface2)' },
+  grandLibelle: { fontSize: 'var(--t2)', color: 'var(--text2)' },
+  grandValeur: { fontSize: 'var(--t6)', fontWeight: 'var(--g-chiffre)', fontFamily: 'var(--font-num)', lineHeight: 1.1, color: 'var(--text)' },
+  devise: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
+  ecart: { padding: '10px 14px', borderRadius: 'var(--r)', background: 'var(--piste)' },
   ligneCloture: {
     display: 'flex', alignItems: 'center', gap: 10, minHeight: 56, padding: '6px 0',
-    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
   },
   ligneClotureCorps: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
 };

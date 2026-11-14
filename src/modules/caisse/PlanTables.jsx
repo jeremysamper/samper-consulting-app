@@ -145,13 +145,13 @@ export default function PlanTables({ salles, tables, ticketsParTable, noms = {},
       </div>
 
       {ouvertes.length > 0 && (
-        <div style={st.liste}>
+        <div className="caisse-liste" data-cadre="" style={st.liste}>
           <div style={st.listeTitre}>Tables ouvertes</div>
           {ouvertes.map((t) => {
             const ticket = ticketsParTable[t.id];
             const e = etatTicket(ticket, maintenant);
             return (
-              <button key={t.id} type="button" data-cadre="" style={st.rang} onClick={() => onTapTable(t, ticket)}>
+              <button key={t.id} type="button" style={st.rang} onClick={() => onTapTable(t, ticket)}>
                 <span style={st.rangNom} data-no-translate>{t.nom}</span>
                 <span style={st.rangInfos}>
                   {noms[t.id] && !noms[t.id].attendu && (
@@ -230,7 +230,7 @@ const st = {
   tableNom: { fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-num)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', padding: '0 2px' },
   tableClient: { fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', padding: '0 4px' },
   tableClientAttendu: { color: 'var(--text2)' },
-  rangClient: { fontSize: 14, fontWeight: 600, color: 'var(--text)', overflowWrap: 'anywhere' },
+  rangClient: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', overflowWrap: 'anywhere' },
   tableMontant: { fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-num)' },
   tableDetail: { fontSize: 12, fontFamily: 'var(--font-num)', display: 'inline-flex', alignItems: 'baseline', whiteSpace: 'nowrap' },
   sep: { margin: '0 5px 0 2px' },
@@ -243,21 +243,29 @@ const st = {
     position: 'absolute', zIndex: 2, pointerEvents: 'none', display: 'inline-flex', alignItems: 'center', gap: 3,
     padding: '2px 7px', borderRadius: 'var(--r-full)', background: 'var(--surface)', color: 'var(--text)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', boxShadow: 'var(--sh-sm)',
-    fontSize: 13, fontWeight: 700, fontFamily: 'var(--font-num)', lineHeight: 1.2,
+    fontSize: 13, fontWeight: 'var(--g3)', fontFamily: 'var(--font-num)', lineHeight: 1.2,
   },
-  rangPret: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--success-text)', fontSize: 13, fontWeight: 600 },
-  liste: { display: 'flex', flexDirection: 'column', gap: 6, flex: '1 1 300px', minWidth: 0, maxWidth: 900 },
-  listeTitre: { fontSize: 13, fontWeight: 600, color: 'var(--text2)', margin: '4px 0 2px' },
+  rangPret: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--success-text)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)' },
+  // Tables ouvertes : une carte blanche à titre (direction Galet), une ligne
+  // par table séparée par son filet doux ; la dernière n'en porte pas
+  // (caisse.css). Le plan garde sa géométrie et ses gestes.
+  liste: {
+    display: 'flex', flexDirection: 'column', flex: '1 1 300px', minWidth: 0, maxWidth: 900, padding: '4px 18px', boxSizing: 'border-box',
+    background: 'var(--zone)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+  },
+  listeTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', margin: '12px 0 4px' },
   rang: {
-    display: 'flex', alignItems: 'center', gap: 14, minHeight: 60, padding: '10px 14px', width: '100%',
-    borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--text)', border: 'none',
-    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, textAlign: 'left',
+    display: 'flex', alignItems: 'center', gap: 14, minHeight: 60, padding: '10px 0', width: '100%', boxSizing: 'border-box',
+    borderRadius: 0, background: 'transparent', color: 'var(--text)',
+    borderWidth: 0, borderBottomWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', textAlign: 'left',
   },
-  rangNom: { fontSize: 20, fontWeight: 600, fontFamily: 'var(--font-num)', minWidth: 44, flexShrink: 0 },
+  rangNom: { fontSize: 'var(--t4)', fontWeight: 'var(--g2)', fontFamily: 'var(--font-num)', minWidth: 44, flexShrink: 0 },
   rangInfos: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
-  rangLigne: { color: 'var(--text2)', fontSize: 13 },
-  rangSuivre: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text)', fontSize: 13, fontWeight: 600 },
+  rangLigne: { color: 'var(--text2)', fontSize: 'var(--t1)' },
+  rangSuivre: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)' },
   num: { fontFamily: 'var(--font-num)' },
-  rangMontant: { fontFamily: 'var(--font-num)', fontWeight: 600, fontSize: 18, flexShrink: 0, whiteSpace: 'nowrap' },
-  devise: { fontSize: 12, fontWeight: 500, color: 'var(--text2)' },
+  rangMontant: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t3)', flexShrink: 0, whiteSpace: 'nowrap' },
+  devise: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
 };
