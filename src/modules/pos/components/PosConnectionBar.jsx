@@ -319,7 +319,8 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
       <div style={S.card} data-cadre="">
         <div style={{ ...S.row, alignItems: 'flex-start' }}>
           <IconLS />
-          <div style={{ minWidth: 0, flex: 1 }}>
+          {/* Base de 240 px : au téléphone, le bouton passe sous le texte. */}
+          <div style={{ minWidth: 0, flex: '1 1 240px' }}>
             <span style={S.title}>Aucune caisse connectée</span>
             <div style={S.sub}>
               {canConnect
