@@ -143,6 +143,14 @@ export const CATALOGUE = [
     famille: 'equipe', page: 'messages', tailles: ['petit', 'moyen'], origine: null,
     visible: (c) => c.avecMessages,
   },
+  // Points & boutique : seulement quand le système est allumé, que la personne
+  // participe et que son solde est lu. Posé à l'origine avec les repères du
+  // jour (la direction ne participe jamais).
+  {
+    id: 'mes-points', nom: 'Mes points', description: 'Votre solde de points et le prochain cadeau à portée.',
+    famille: 'equipe', page: 'points', tailles: ['petit', 'moyen', 'grand'], origine: partout('petit'),
+    visible: (c) => Boolean(c.avecPoints),
+  },
   {
     id: 'raccourcis', nom: 'Raccourcis', description: 'Les modules que vous ouvrez le plus, d\'un geste.',
     famille: 'raccourcis', page: null, tailles: ['petit', 'moyen', 'grand', 'pleine'], origine: null,

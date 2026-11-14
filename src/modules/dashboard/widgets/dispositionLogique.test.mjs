@@ -82,6 +82,25 @@ test('origine : les groupes de petits widgets remplissent leurs rangées', () =>
   assert.equal(origine('ordinateur', seul).find((x) => x.id === 'a-faire').taille, 'pleine');
 });
 
+test('mes points : seulement pour qui participe, posé avec les repères du jour', () => {
+  assert.equal(estVisible('mes-points', CUISINIER), false, 'garde fermée sans points lus');
+  assert.ok(!ids(origine('ordinateur', CONSULTANT)).includes('mes-points'));
+  const participant = { ...CUISINIER, avecPoints: true };
+  assert.equal(estVisible('mes-points', participant), true);
+  // Ordinateur : quatre petits repères sur une rangée, rien d'autre ne bouge.
+  const ordi = origine('ordinateur', participant);
+  assert.deepEqual(ids(ordi).slice(0, 4), ['repere-couverts', 'repere-groupes', 'repere-equipe', 'mes-points']);
+  assert.deepEqual(ordi.slice(0, 4).map((x) => x.taille), ['petit', 'petit', 'petit', 'petit']);
+  assert.deepEqual(ids(ordi).slice(4), ids(origine('ordinateur', CUISINIER)).slice(3));
+  // Téléphone : la rangée de deux colonnes reste pleine.
+  const tel = origine('telephone', participant);
+  assert.deepEqual(ids(tel).slice(0, 3), ['repere-couverts', 'repere-groupes', 'mes-points']);
+  assert.deepEqual(tel.slice(0, 3).map((x) => x.taille), ['petit', 'petit', 'moyen']);
+  // Seul repère : une rangée à lui (moyen), jamais un trou.
+  const seul = origine('ordinateur', { ...participant, reperes: [] });
+  assert.deepEqual(seul[0], { id: 'mes-points', taille: 'moyen' });
+});
+
 test('garde fermée : un chiffre de gestion gardé ne se rend pas pour un cuisinier, et garde sa place', () => {
   const gardee = normaliserListe([{ id: 'chiffre-pertes', taille: 'moyen' }, { id: 'pointage', taille: 'grand' }], 'tablette');
   assert.deepEqual(ids(gardee), ['chiffre-pertes', 'pointage']);
