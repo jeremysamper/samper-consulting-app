@@ -514,7 +514,12 @@ $fn$;
 -- (inventaire, zone, personne). L'établissement est celui de l'inventaire,
 -- jamais la seule colonne de la saisie. Une ligne plus ancienne du même
 -- triplet (comptage commencé avant l'allumage) empêche le crédit : rien n'est
--- crédité pour le passé. Le journal n'est jamais purgé : pas d'annulation ici.
+-- crédité pour le passé. Le journal accepte aussi une insertion directe par
+-- l'API (sa policy le permet, la RPC est SECURITY INVOKER) : on ne crédite
+-- qu'un comptage réel, sur un inventaire non validé, d'une ligne qui existe
+-- dans l'inventaire et, si une zone est donnée, d'une zone de cette ligne.
+-- Le journal n'est jamais purgé : l'annulation suit la suppression de
+-- l'inventaire (points_trg_inventaires).
 create or replace function public.points_trg_saisies_inventaire()
 returns trigger
 language plpgsql
@@ -523,14 +528,16 @@ set search_path = public, pg_temp
 as $fn$
 declare
   v_etab text;
-  v_zone text := coalesce(new.zone, '');
+  v_statut text;
+  v_zone text := btrim(coalesce(new.zone, ''));
 begin
   if new.etablissement_id is not null
      and not exists (select 1 from public.points_reglages r where r.etablissement_id = new.etablissement_id and r.actif) then
     return null;
   end if;
-  select i.etablissement_id into v_etab from public.inventaires i where i.id = new.inventaire_id;
-  if v_etab is null or (new.etablissement_id is not null and v_etab <> new.etablissement_id) then
+  select i.etablissement_id, i.statut into v_etab, v_statut from public.inventaires i where i.id = new.inventaire_id;
+  if v_etab is null or (new.etablissement_id is not null and v_etab <> new.etablissement_id)
+     or v_statut is not distinct from 'validé' then
     return null;
   end if;
   if not exists (select 1 from public.points_reglages r where r.etablissement_id = v_etab and r.actif) then
@@ -543,8 +550,22 @@ begin
     select 1 from public.inventaire_saisies_offline s
     where s.user_id = new.user_id
       and s.inventaire_id = new.inventaire_id
-      and coalesce(s.zone, '') = v_zone
+      and btrim(coalesce(s.zone, '')) = v_zone
       and s.created_at < new.created_at
+  ) then
+    return null;
+  end if;
+  -- La ligne comptée existe dans l'inventaire, et la zone est l'une des siennes.
+  if not exists (
+    select 1
+    from public.inventaires i,
+         jsonb_array_elements(case when jsonb_typeof(i.lignes) = 'array' then i.lignes else '[]'::jsonb end) l
+    where i.id = new.inventaire_id
+      and l ->> 'id' = new.ligne_id
+      and (v_zone = ''
+           or btrim(coalesce(l ->> 'zone', '')) = v_zone
+           or (jsonb_typeof(l -> 'zones') = 'array'
+               and exists (select 1 from jsonb_array_elements_text(l -> 'zones') z where btrim(z) = v_zone)))
   ) then
     return null;
   end if;
@@ -580,6 +601,17 @@ begin
       return null;
     end if;
     perform public.points_annuler('inventaires', old.id);
+    -- Les zones comptées de cet inventaire, une annulation chacune.
+    insert into public.points_mouvements
+      (etablissement_id, user_id, points, action, source_table, source_id, sens, libelle, created_by)
+    select m.etablissement_id, m.user_id, -m.points, m.action, m.source_table, m.source_id, 'annulation',
+           'Annulation : ' || coalesce(m.libelle, ''), (select auth.uid())::text
+    from public.points_mouvements m
+    where m.etablissement_id = old.etablissement_id
+      and m.source_table = 'inventaire_saisies_offline'
+      and left(m.source_id, length(old.id) + 1) = old.id || ':'
+      and m.sens = 'credit'
+    on conflict (source_table, source_id, user_id, sens) where source_table is not null do nothing;
   end if;
   return null;
 exception when others then
