@@ -44,10 +44,14 @@ export default function CeQuiVousAttend(props) {
     refs.current[suivant]?.focus();
   };
 
-  const panneau = (id) => {
+  // En colonnes, les trois blocs se voient ensemble : « Voir les
+  // réservations » et « Voir les groupes » ne se disent qu'une fois, dans la
+  // colonne du jour, et les barres de la semaine ne refont pas le premier lien.
+  // En onglets, chaque bloc garde les siens.
+  const panneau = (id, colonnes = false) => {
     if (id === 'aujourdhui') return <Jour {...props} date={props.aujourdhui} titre="Aujourd'hui" sansCouverts={mobile} />;
-    if (id === 'demain') return <Jour {...props} date={decaler(props.aujourdhui, 1)} titre="Demain" estDemain />;
-    return <Semaine {...props} />;
+    if (id === 'demain') return <Jour {...props} date={decaler(props.aujourdhui, 1)} titre="Demain" estDemain sansLiens={colonnes} />;
+    return <Semaine {...props} sansLienCouverts={colonnes} />;
   };
 
   if (mobile) {
@@ -88,8 +92,8 @@ export default function CeQuiVousAttend(props) {
     <Section id="tdb-attend" titre="Ce qui vous attend" panneau={false}>
       <div className="tdb-jours">
         <Colonne titre="Aujourd'hui" date={props.aujourdhui} actuel>{panneau('aujourdhui')}</Colonne>
-        <Colonne titre="Demain" date={decaler(props.aujourdhui, 1)}>{panneau('demain')}</Colonne>
-        <Colonne titre="Cette semaine" sousTitre="Les sept prochains jours" semaine>{panneau('semaine')}</Colonne>
+        <Colonne titre="Demain" date={decaler(props.aujourdhui, 1)}>{panneau('demain', true)}</Colonne>
+        <Colonne titre="Cette semaine" sousTitre="Les sept prochains jours" semaine>{panneau('semaine', true)}</Colonne>
       </div>
     </Section>
   );
@@ -112,7 +116,7 @@ function Colonne({ titre, date, sousTitre, semaine = false, actuel = false, chil
 
 // ── Un jour ───────────────────────────────────────────────────────────────
 function Jour({
-  date, estDemain = false, sansCouverts = false, couverts, groupes, shifts, absences, telephones, avecCouverts, avecGroupes, avecPlanning,
+  date, estDemain = false, sansCouverts = false, sansLiens = false, couverts, groupes, shifts, absences, telephones, avecCouverts, avecGroupes, avecPlanning,
   avecAbsences, nonLu, peutOuvrir, ouvrir,
 }) {
   const vers = (page) => (peutOuvrir(page) ? () => ouvrir(page) : null);
@@ -121,14 +125,14 @@ function Jour({
   return (
     <div style={s.pile}>
       {avecCouverts && !sansCouverts && (
-        <SousSection titre="Réservations" niveau={4} action={<LienModule onClick={vers('previsions')}>Voir les réservations</LienModule>}>
+        <SousSection titre="Réservations" niveau={4} action={sansLiens ? null : <LienModule onClick={vers('previsions')}>Voir les réservations</LienModule>}>
           {nonLu('couverts') ? <Vide>Réservations indisponibles pour l&apos;instant</Vide>
             : !c.total ? <Vide>Aucune réservation pour l&apos;instant.</Vide>
               : <CouvertsParService c={c} />}
         </SousSection>
       )}
       {avecGroupes && (
-        <SousSection titre="Groupes" niveau={4} action={<LienModule onClick={vers('groupes')}>Voir les groupes</LienModule>}>
+        <SousSection titre="Groupes" niveau={4} action={sansLiens ? null : <LienModule onClick={vers('groupes')}>Voir les groupes</LienModule>}>
           {nonLu('groupes') ? <Vide>Groupes indisponibles pour l&apos;instant</Vide>
             : !gJour.length ? <Vide>{estDemain ? 'Aucun groupe demain.' : "Aucun groupe aujourd'hui."}</Vide>
               : gJour.map((g) => <LigneGroupe key={g.id} g={g} onClick={vers('groupes')} />)}
@@ -271,7 +275,7 @@ function AutresGroupes({ n, onClick }) {
 }
 
 function Semaine({
-  aujourdhui, couverts, groupes, absences, avecCouverts, avecGroupes, avecAbsences, nonLu, peutOuvrir, ouvrir,
+  aujourdhui, couverts, groupes, absences, avecCouverts, avecGroupes, avecAbsences, nonLu, peutOuvrir, ouvrir, sansLienCouverts = false,
 }) {
   const vers = (page) => (peutOuvrir(page) ? () => ouvrir(page) : null);
   const jours = Array.from({ length: 7 }, (_, i) => decaler(aujourdhui, i));
@@ -324,7 +328,7 @@ function Semaine({
           action={!echecCouverts && total > 0 ? <span style={s.auTotal}><span data-no-translate>{total}</span>{' '}<span>au total</span></span> : null}
         >
           {echecCouverts ? <Vide>Réservations indisponibles pour l&apos;instant</Vide>
-            : vers('previsions')
+            : vers('previsions') && !sansLienCouverts
               ? <button type="button" className="tdb-lien" onClick={vers('previsions')} style={s.graphiqueBouton}>{graphique}</button>
               : <div style={{ position: 'relative' }}>{graphique}</div>}
         </SousSection>
