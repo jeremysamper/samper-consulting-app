@@ -12,7 +12,6 @@ import { useCartes } from '../../hooks/useCartes.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import CarteTabBar from '../../components/cartes/CarteTabBar.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
-import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { categorieDuPlat, categoriesPresentes, platCatRank } from '../../utils/categoriesPlat.js';
 import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { dureesVie } from '../../utils/etiquettesDlc.js';
@@ -21,12 +20,12 @@ import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalc
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
+import { Btn, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
-import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
-import AccueilRecettes from './AccueilRecettes.jsx';
-import ChoixEtiquette, { champRecherche } from './ChoixEtiquette.jsx';
+import { useEcranModule } from '../../components/parcours/useEcranModule.js';
+import ChoixEtiquette from './ChoixEtiquette.jsx';
+import RechercheFiches from './RechercheFiches.jsx';
 import FicheEditeur from './editeur/FicheEditeur.jsx';
 import PlatFenetre from './editeur/PlatFenetre.jsx';
 import PlatPicker from './editeur/PlatPicker.jsx';
@@ -42,7 +41,8 @@ import PhotoFiche from '../../components/fiches/PhotoFiche.jsx';
 import AllergenesFiche from '../../components/fiches/AllergenesFiche.jsx';
 import { photoDeRecette } from '../../components/fiches/rangementFiches.js';
 import VitrineCarte, { clePlat } from './VitrineCarte.jsx';
-import VitrineFiches from './VitrineFiches.jsx';
+import VitrineFiches, { fichesTrouvees } from './VitrineFiches.jsx';
+import './recettes.css';
 
 
 // CARTES & RECETTES
@@ -73,11 +73,7 @@ const statutRecette = (s) => STATUTS_RECETTE[s] || { label: s || '', couleur: 'v
 const dateSuisse = (v) => (/^\d{4}-\d{2}-\d{2}/.test(String(v || '')) ? String(v).slice(0, 10).split('-').reverse().join('.') : (v || ''));
 // Temps de la fiche qui valent quelque chose : l'import écrit 0 quand il n'en sait rien.
 const tempsFiche = (r) => [['Prépa', r.tempsPreparation], ['Cuisson', r.tempsCuisson], ['Total', r.tempsTotal]].filter(([, v]) => Number(v) > 0);
-// Allergènes en toutes lettres, jamais en codes de deux lettres.
-const nomsAllergenes = (ids) => (ids || []).map((a) => ALLERGENES_MAP[a] || a).join(', ');
 
-// Titres des écrans du parcours qui reprennent la barre et les vues d'aujourd'hui.
-const TITRES_ECRAN = { chercher: 'Je cherche une fiche', carte: 'La carte du moment', gerer: 'Gérer les cartes' };
 // Où en est une lecture, pour les lignes d'état : rien une fois lue ; sinon le
 // chargement, ou le nouvel essai programmé après un échec (réveil, réseau).
 const lectureEnCours = (status) => {
@@ -103,33 +99,6 @@ const PanneauEtat = ({ titre, texte, onRetry }) => (
     )}
   </div>
 );
-
-// ─── RecettePhoto : photo avec repli d'état ────────────────────────────────
-// Une URL cassée ou expirée bascule broken → on rend le placeholder de marque
-// (dégradé pétrole) au lieu de l'ancien display:none qui effaçait l'image en
-// silence et laissait le cadre se réagencer. Le placeholder est tokenisé :
-// l'ancien dégradé #2a2a2a→#1a1a1a rendait un rectangle quasi noir en clair.
-const RecettePhoto = ({ src, alt = '', placeholder = '', style }) => {
-  const [broken, setBroken] = React.useState(false);
-  React.useEffect(() => { setBroken(false); }, [src]);
-  if (!src || broken) {
-    // background APRÈS ...style : le style appelant (vignette, héros) peut
-    // porter un fond neutre, le placeholder impose le dégradé de marque.
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', ...style, background: 'var(--grad-brand)' }} aria-label={alt}>
-        <span style={{ fontSize: 32, opacity: 0.55 }}>{placeholder}</span>
-      </div>
-    );
-  }
-  return (
-    <img
-      src={src}
-      alt={alt}
-      style={{ objectFit: 'cover', display: 'block', ...style }}
-      onError={() => setBroken(true)}
-    />
-  );
-};
 
 // ─── smStyle : habillage commun des modales du module ─────────────────────
 // Les trois fenêtres (DuplicateRecetteModal, ExportMultipleModal,
@@ -1454,11 +1423,14 @@ const Recettes = ({ user, etablissement }) => {
   const [edition, setEdition] = React.useState(null);
   // Fenêtre du plat : { plat } pour modifier, { carteId } pour un plat neuf.
   const [platEdite, setPlatEdite] = React.useState(null);
-  // Bibliothèque de Gérer : sélection de fiches (rattacher, archiver, supprimer).
+  // Bibliothèque : sélection de fiches (rattacher, archiver, supprimer), ouverte
+  // par le menu « Gérer ».
   const selection = useSelection();
   const [selectionOccupee, setSelectionOccupee] = React.useState(false);
   const [rattacherSelection, setRattacherSelection] = React.useState(false);
   const [voirArchivees, setVoirArchivees] = React.useState(false);
+  // Section « Tous les plats » de la bibliothèque (droit « fiches »), repliée.
+  const [voirPlats, setVoirPlats] = React.useState(false);
 
   // Cartes (menus) de l'établissement - source unique partagée + realtime.
   // `cartesStatus` distingue « pas encore chargé / lecture en échec » de
@@ -1475,7 +1447,6 @@ const Recettes = ({ user, etablissement }) => {
   // Même contrat que cartesStatus, pour les recettes et les plats.
   const [dataStatus, setDataStatus] = React.useState(() => (legacySB ? 'loading' : 'ready'));
   const reloadDataRef = React.useRef(null);
-  const [expandedPlats, setExpandedPlats] = React.useState(new Set());
   const [showExportModal, setShowExportModal] = React.useState(false);
   const [showIngredientSearch, setShowIngredientSearch] = React.useState(false);
   // Carte d'accueil = préférence utilisateur par établissement (user_settings,
@@ -1484,24 +1455,20 @@ const Recettes = ({ user, etablissement }) => {
   // réglages (carteAccueil.js) : le bouton de la carte en est le raccourci.
   const { carteId: defaultCarteId, choisir: choisirCarteAccueil } = useCarteAccueil(etabId);
 
-  // Écran du parcours : l'accueil (une tuile par tâche), puis un écran par
-  // tâche. La carte du moment et la recherche se rouvrent à la visite suivante
-  // (lecture en service) ; Une étiquette et Gérer repartent de l'accueil.
-  // Revenir à l'accueil vide la frappe, referme l'étiquette et quitte
-  // l'onglet Bibliothèque de Gérer (la carte du moment rouvre une carte).
+  // Écran du module : l'écran d'arrivée (la carte du moment, la recherche, les
+  // actions et la gestion, sur place), et l'écran « Une étiquette », qui garde
+  // sa liste ouverte d'une étiquette à la suivante. Le geste retour, Échap et
+  // « Retour » ramènent de l'étiquette à l'écran d'arrivée, qui garde sa carte
+  // et sa recherche. Aucun écran n'est repris d'une visite à l'autre : le
+  // module s'ouvre toujours sur l'écran d'arrivée (une clé sc_recettes_ecran
+  // d'avant, « carte » ou « chercher », y ramène).
   const { ecran, setEcran, retourAccueil } = useEcranModule('recettes', {
-    repris: ['carte', 'chercher'],
-    surRetour: () => {
-      setSearch('');
-      setEtiquetteRecette(null);
-      selection.exit();
-      setActiveTab(t => (t === LIBRARY_TAB ? '' : t));
-    },
+    surRetour: () => setEtiquetteRecette(null),
   });
-  // Le champ de « Je cherche une fiche » prend la main quand on vient de toucher
-  // sa tuile, pas quand l'écran se rouvre seul à l'arrivée sur le module : Échap
-  // y resterait sans effet tant que le champ a la main.
-  const [champAuToucher, setChampAuToucher] = React.useState(false);
+  // Fenêtres de la barre des cartes (ajouter, modifier, ordre, archives) et
+  // détection des allergènes : ouvertes depuis le menu « Gérer ».
+  const barreCartesRef = React.useRef(null);
+  const detectionRef = React.useRef(null);
 
   // Fiche ouverte : le geste retour et Échap la referment vers l'écran d'où
   // elle a été ouverte, comme son bouton « Retour ». Échap ne fait rien dans
@@ -1515,10 +1482,10 @@ const Recettes = ({ user, etablissement }) => {
   // Au retour d'une fiche, l'écran revient là où on l'a quitté (la fiche
   // s'ouvre en haut de page et remet à zéro le défilement de ses parents).
   // À l'ouverture, le défilement de chaque parent qui défile est retenu ; au
-  // retour, il est remis tel quel : la liste de Gérer (Bibliothèque) et la
-  // recherche Allergènes retrouvent leur ligne. La clé dit en plus quelle
-  // vignette a été quittée : « plat:<id> » sur la carte du moment,
-  // « fiche:<id> » dans Je cherche une fiche ; si elle n'est plus à l'écran
+  // retour, il est remis tel quel : la bibliothèque et la recherche
+  // Allergènes retrouvent leur ligne. La clé dit en plus quelle vignette a
+  // été quittée : « plat:<id> » sur une carte, « fiche:<id> » dans la
+  // bibliothèque ; si elle n'est plus à l'écran
   // après la remise (liste relue entre-temps), elle y est ramenée. Même motif
   // que les Fiches salle.
   const racineRef = React.useRef(null);
@@ -1559,7 +1526,7 @@ const Recettes = ({ user, etablissement }) => {
       // L'éditeur d'abord : Échap revient à la fiche, un second Échap la referme.
       if (edition) fermerEditeur(); else fermerFiche();
     };
-    // Phase de capture : passe avant le retour à l'accueil du module
+    // Phase de capture : passe avant le retour à l'écran d'arrivée
     // (useEcranModule), qui laisse la main à un Échap déjà traité.
     document.addEventListener('keydown', echap, true);
     return () => document.removeEventListener('keydown', echap, true);
@@ -1822,13 +1789,16 @@ const Recettes = ({ user, etablissement }) => {
   };
 
   // Onglet carte actif (ou bibliothèque). On garde toujours un onglet valide.
-  const isLibrary = activeTab === LIBRARY_TAB;
+  // Sans aucune carte (lecture aboutie), l'écran montre la bibliothèque : le
+  // module s'ouvre toujours sur des fiches, jamais sur un panneau vide.
+  const sansCarte = cartesStatus === 'ready' && cartes.length === 0;
+  const isLibrary = activeTab === LIBRARY_TAB || sansCarte;
   const activeCarte = cartes.find(c => c.id === activeTab) || null;
   // Atterrissage : à l'ouverture (activeTab vide) ou si la carte courante a
   // disparu, on bascule sur la carte d'accueil définie par l'utilisateur, sinon
   // la 1re carte. Un choix explicite déjà valide (carte ou bibliothèque) est respecté.
-  // activeTab compte aussi : le retour à l'accueil depuis la bibliothèque de
-  // Gérer le vide, pour que la carte du moment rouvre une carte.
+  // activeTab compte aussi : une carte supprimée ou archivée laisse un onglet
+  // qui n'existe plus, la carte d'accueil reprend sa place.
   React.useEffect(() => {
     if (!cartes.length) return;
     if (activeTab === LIBRARY_TAB || cartes.some(c => c.id === activeTab)) return;
@@ -1852,39 +1822,16 @@ const Recettes = ({ user, etablissement }) => {
   // une carte vide sans onglet actif.
   const catFilterEff = cats.includes(catFilter) ? catFilter : 'Tous';
   // Recherche par mots, dans n'importe quel ordre, sans accents ni petits mots
-  // (« confit de sanglier » trouve « Sanglier confit »). Sur une carte, elle
-  // porte sur le nom du plat ET sur les recettes qui le composent : avant,
-  // seul le nom du plat comptait, une recette cherchée par son nom ne sortait
-  // jamais. Pendant une recherche, l'onglet de catégorie est ignoré (sinon un
-  // plat rangé dans un autre onglet semblait introuvable).
+  // (« confit de sanglier » trouve « Sanglier confit »). Elle porte sur toutes
+  // les fiches de l'établissement, quelle que soit la carte affichée : dès la
+  // première lettre, l'écran montre la bibliothèque filtrée (VitrineFiches :
+  // nom de la fiche et des plats qui la contiennent). Vider le champ rend la
+  // carte.
   const match = makeSearchMatcher(search);
   const q = match.active;
-  const recetteNomById = React.useMemo(() => {
-    const m = new Map();
-    recettesEtab.forEach(r => m.set(r.id, r.nom));
-    return m;
-  }, [recettesEtab]);
-  const platMatches = (p) => match(p.nom, (p.recettes || []).map(pr => recetteNomById.get(pr.recetteId)));
   const filteredPlats = platsCarte.filter(p =>
-    p.actif !== false &&
-    (q || catFilterEff === 'Tous' || categorieDuPlat(p) === catFilterEff) &&
-    platMatches(p)
+    p.actif !== false && (catFilterEff === 'Tous' || categorieDuPlat(p) === catFilterEff)
   );
-  // Résultats hors de la carte affichée (autres cartes, bibliothèque) : on les
-  // compte pour proposer d'y aller, plutôt que de laisser un écran vide.
-  // Une recette déjà comptée via son plat n'est pas recomptée : le nombre
-  // annoncé correspond aux blocs que l'on verra dans la bibliothèque.
-  const ailleursCount = (() => {
-    if (!q || isLibrary) return 0;
-    const platsAilleurs = (plats || []).filter(p => p.actif !== false && !(p.carteIds || []).includes(activeCarte?.id) && platMatches(p));
-    const dejaVues = new Set([...platsCarte, ...platsAilleurs].flatMap(p => (p.recettes || []).map(pr => pr.recetteId)));
-    return platsAilleurs.length + recettesEtab.filter(r => match(r.nom) && !dejaVues.has(r.id)).length;
-  })();
-  const voirDansBibliotheque = ailleursCount > 0 ? (
-    <button type="button" style={rs.searchElsewhereBtn} onClick={() => (ecran === 'carte' ? setEcran('chercher') : setActiveTab(LIBRARY_TAB))}>
-      {ailleursCount} autre{ailleursCount > 1 ? 's' : ''} résultat{ailleursCount > 1 ? 's' : ''} hors de cette carte : voir dans la bibliothèque ›
-    </button>
-  ) : null;
 
   // Éditeur : au-dessus de tout le reste. Il n'est monté qu'une fois la fiche
   // dans la liste (arrivée depuis le Chiffrage avant la fin de la lecture).
@@ -1940,8 +1887,11 @@ const Recettes = ({ user, etablissement }) => {
     );
   }
 
-  // Fenêtres du module (étiquette, export, recherche allergène) : les mêmes sur
-  // chaque écran, posées avant son contenu.
+  // Fenêtres du module (étiquette, export, recherche allergène, plat,
+  // rattachement) : les mêmes sur chaque écran, posées avant son contenu et
+  // hors de .rc-page (un conteneur de requêtes ne porte aucune fenêtre en
+  // position fixe). La détection des allergènes (consultant) y vit aussi :
+  // elle part du menu « Gérer » et ne rend que son voile de progression.
   const fenetres = (
     <>
       {etiquetteRecette && (
@@ -1995,30 +1945,15 @@ const Recettes = ({ user, etablissement }) => {
           onClose={() => setRattacherSelection(false)}
         />
       )}
+      {isConsultant && (
+        <DetectionAllergenes
+          recettes={recettesActives}
+          style={rs.printBtn}
+          commandesRef={detectionRef}
+          onFini={() => reloadDataRef.current && reloadDataRef.current()}
+        />
+      )}
     </>
-  );
-
-  if (ecran === ECRAN_ACCUEIL) return (
-    <div ref={racineRef} style={rs.root}>
-      {fenetres}
-      <AccueilRecettes
-        fiches={dataStatus === 'ready' ? recettesEtab.length : null}
-        lectureFiches={lectureEnCours(dataStatus)}
-        carte={activeCarte}
-        lectureCartes={lectureEnCours(cartesStatus)}
-        canEtiqueter={canEtiqueter}
-        canGerer={canManageCartes}
-        canFiches={canFiches}
-        consultant={isConsultant}
-        onNouvelle={creerFiche}
-        onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
-        onCarte={() => setEcran('carte')}
-        onAllergenes={() => setShowIngredientSearch(true)}
-        onEtiquette={() => setEcran('etiquette')}
-        onExporter={() => setShowExportModal(true)}
-        onGerer={() => setEcran('gerer')}
-      />
-    </div>
   );
 
   if (ecran === 'etiquette') return (
@@ -2029,477 +1964,302 @@ const Recettes = ({ user, etablissement }) => {
     </div>
   );
 
-  // La carte du moment, Je cherche une fiche, Gérer les cartes : la barre et
-  // les vues d'aujourd'hui sous l'en-tête de l'écran. La carte du moment garde
-  // les onglets de cartes sans les outils de gestion, la loupe passe dans
-  // l'en-tête ; Gérer garde la barre entière, onglet Bibliothèque compris ;
-  // Je cherche une fiche ouvre la bibliothèque sous un champ toujours ouvert.
-  const gerer = ecran === 'gerer';
-  const vueBiblio = ecran === 'chercher' || (gerer && isLibrary);
-  // Gérer les cartes, pour qui gère les cartes : l'en-tête garde « Ajouter une
-  // carte » et « Ordre des cartes » ; Allergènes, Exporter, Sélectionner (et
-  // les archives) passent au menu « Actions » de la barre des cartes.
-  const actionsAuMenu = gerer && canManageCartes;
-  // La loupe : dans l'en-tête de la carte du moment, dans la barre de Gérer.
-  const loupe = <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />;
+  // ─── Écran d'arrivée ──────────────────────────────────────────────────────
+  // Tout sur un écran, sans accueil à tuiles : la recherche dans toutes les
+  // fiches, les actions (Nouvelle fiche, Allergènes, Exporter, Une étiquette),
+  // le menu « Gérer » (cartes et fiches, pour qui gère les cartes), les
+  // onglets de cartes et l'onglet Bibliothèque. Le module s'ouvre sur la carte
+  // du moment : la carte d'accueil choisie, sinon la première ; sans aucune
+  // carte, sur la bibliothèque. Une recherche montre la bibliothèque filtrée,
+  // quelle que soit la carte ; la vider rend la carte. Chaque contrôle garde
+  // sa garde d'avant (canFiches, canManageCartes, canEtiqueter, consultant).
+  const vueBiblio = isLibrary || q;
+  // Choisir un onglet, c'est demander cette carte (ou toute la bibliothèque) :
+  // la recherche se vide et la sélection en cours se referme.
+  const choisirOnglet = (id) => { setSearch(''); selection.exit(); setActiveTab(id); };
+  // Sélection de fiches (droit « fiches ») : elle se fait dans la bibliothèque.
+  const entrerSelection = () => { setActiveTab(LIBRARY_TAB); selection.enter(); };
+  // « Tout sélectionner » ne coche que les fiches à l'écran (recherche
+  // comprise) et garde celles cochées avant : une suppression en lot ne
+  // touche jamais une fiche que l'écran ne montrait pas au moment de cocher.
+  const fichesMontrees = selection.active ? fichesTrouvees(recettesEtab, plats, match) : [];
+  const toutesCochees = fichesMontrees.length > 0 && fichesMontrees.every(r => selection.isSelected(r.id));
+  const basculerTout = () => {
+    const montrees = new Set(fichesMontrees.map(r => r.id));
+    selection.selectAll(toutesCochees
+      ? [...selection.ids].filter(id => !montrees.has(id))
+      : [...selection.ids, ...montrees]);
+  };
+  const nbArchives = archivedCartes.length;
+  const biblioVide = recettesEtab.length === 0 && recettesArchivees.length === 0 && (plats.length === 0 || dataStatus !== 'ready');
+
   return (
     <div ref={racineRef} style={rs.root}>
       {fenetres}
-      <EcranTache
-        titre={TITRES_ECRAN[ecran]}
-        etat={ecran === 'chercher' ? <>par nom de plat ou de recette</> : null}
-        onRetour={retourAccueil}
-        actions={ecran === 'carte' ? loupe : null}
-      />
-      {ecran === 'chercher' && (
-        <input
-          type="text"
-          inputMode="search"
-          enterKeyHint="search"
-          autoFocus={champAuToucher}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Nom d'un plat ou d'une recette"
-          aria-label="Nom d'un plat ou d'une recette"
-          style={champRecherche}
-        />
-      )}
-      {/* Barre d'outils. Mobile : onglets en bande scrollable (1 ligne) + actions
-          compactes (icônes) sur une 2e ligne → pas de pavé qui mange l'écran.
-          Desktop : onglets + actions groupées à droite. */}
-      {ecran !== 'chercher' && (
-        <div style={rs.toolbar}>
-          <div style={isMobile ? rs.tabsWrapMobile : rs.tabsWrap}>
-            <CarteTabBar
-              cartes={cartes}
-              activeId={activeTab}
-              onSelect={setActiveTab}
-              extraTabs={gerer ? [{ id: LIBRARY_TAB, label: 'Bibliothèque recettes' }] : []}
-              canManage={gerer && canManageCartes}
-              onAddCarte={addCarte}
-              onRenameCarte={renameCarte}
-              onDeleteCarte={deleteCarte}
-              archivedCartes={archivedCartes}
-              onArchiveCarte={archiveCarte}
-              canHide={gerer && isConsultant}
-              onHideCarte={masquerCarte}
-              homeId={defaultCarteId}
-              onReorderCartes={reorderCartes}
-              actionsMenu={actionsAuMenu ? [
-                { titre: 'Allergènes', detail: 'Trouver dans quelles recettes un ingrédient ou allergène apparaît', onClick: () => setShowIngredientSearch(true) },
-                { titre: 'Exporter', detail: 'Exporter une carte entière, des plats ou des recettes dans un seul PDF', onClick: () => setShowExportModal(true) },
-                isLibrary && canFiches && !selection.active && { titre: 'Sélectionner', onClick: selection.enter },
-              ] : undefined}
-            />
-          </div>
-          {gerer && (
-            <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">
-              {loupe}
-              {/* Toujours libellé (en icône seule, une loupe, il se confondait avec
-                  la loupe de recherche). Au menu « Actions » pour qui gère les cartes. */}
-              {!actionsAuMenu && (
-                <>
-                  <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
-                  <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</button>
-                </>
-              )}
-              {/* Bibliothèque, droit « fiches » : un plat sans carte, la
-                  sélection de fiches ; IA en lot pour le consultant. */}
-              {isLibrary && canFiches && (
-                <>
-                  <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: null })}>Ajouter un plat</button>
-                  {!selection.active && !actionsAuMenu && <button style={rs.printBtn} onClick={selection.enter}>Sélectionner</button>}
-                </>
-              )}
-              {isLibrary && isConsultant && (
-                <DetectionAllergenes recettes={recettesActives} style={rs.printBtn} onFini={() => reloadDataRef.current && reloadDataRef.current()} />
+      <div className="rc-page">
+        {/* La barre : le champ d'abord, puis l'action principale et les
+            actions de tous, « Gérer » en dernier. Pendant une sélection, les
+            actions laissent la place à la barre de sélection. */}
+        <div className="rc-tete no-print">
+          <RechercheFiches value={search} onChange={setSearch} />
+          {!selection.active && (
+            <div className="module-actions rc-actions">
+              {canFiches && <Btn variant="primary" onClick={creerFiche}>Nouvelle fiche</Btn>}
+              <Btn onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</Btn>
+              <Btn onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</Btn>
+              {canEtiqueter && <Btn onClick={() => setEcran('etiquette')} title="DLC d'une préparation">Une étiquette</Btn>}
+              {canManageCartes && (
+                <BoutonActions
+                  id="recettes-gerer"
+                  label="Gérer"
+                  style={rs.gererBtn}
+                  titre="Gérer les cartes et les fiches"
+                  sections={[
+                    { titre: 'Cartes', items: [
+                      { titre: 'Ajouter une carte', detail: 'Un onglet de plus, à remplir de plats', onClick: () => barreCartesRef.current?.creer() },
+                      activeCarte && {
+                        titre: 'Modifier la carte',
+                        detail: <><span data-no-translate="">{String(activeCarte.nom ?? '').trim() || '?'}</span><span>{isConsultant ? ' : nom, dates, archiver, cacher, supprimer' : ' : nom, dates, archiver, supprimer'}</span></>,
+                        onClick: () => barreCartesRef.current?.modifier(activeCarte),
+                      },
+                      cartes.length > 1 && { titre: 'Ordre des cartes', detail: "Changer l'ordre des onglets, de gauche à droite", onClick: () => barreCartesRef.current?.ordre() },
+                      nbArchives > 0 && {
+                        titre: 'Archives',
+                        detail: <><span data-no-translate="">{nbArchives}</span> <span>{nbArchives > 1 ? 'cartes archivées, à restaurer' : 'carte archivée, à restaurer'}</span></>,
+                        onClick: () => barreCartesRef.current?.archives(),
+                      },
+                    ] },
+                    { titre: 'Fiches', items: [
+                      canFiches && { titre: 'Sélectionner des fiches', detail: 'Pour les rattacher à des plats, les archiver ou les supprimer', onClick: entrerSelection },
+                      isConsultant && { titre: 'Détecter les allergènes', detail: 'Analyse des ingrédients de chaque fiche, à vérifier ensuite', onClick: () => detectionRef.current?.lancer() },
+                    ] },
+                  ]}
+                />
               )}
             </div>
           )}
         </div>
-      )}
 
-      {!vueBiblio ? (
-        !activeCarte ? (
-          // « Aucune carte » ne s'affiche que si la lecture a VRAIMENT abouti sur
-          // zéro carte. Tant qu'elle est en cours ou en échec (tablette qui sort
-          // de veille, JWT expiré, réseau coupé), on le dit et on propose un
-          // nouvel essai - un rechargement automatique est déjà programmé.
-          cartesStatus !== 'ready' ? (
-            <PanneauEtat
-              titre={cartesStatus === 'loading' ? 'Chargement des cartes…' : 'Cartes indisponibles'}
-              texte={cartesStatus === 'loading'
-                ? 'Les cartes de cet établissement arrivent.'
-                : (online
-                  ? 'La connexion a été interrompue (mise en veille de l’appareil, réseau instable). Les cartes ne sont pas perdues : nouvel essai automatique en cours.'
-                  : 'Hors ligne : les cartes s’afficheront au retour du réseau.')}
-              onRetry={cartesStatus === 'error' ? retryAll : null}
-            />
-          ) : (
-            <PanneauEtat
-              titre="Aucune carte"
-              texte={canManageCartes ? 'Créez une carte avec le bouton « Ajouter une carte ».' : 'Aucune carte définie pour cet établissement.'}
-            />
-          )
-        ) : platsCarte.length === 0 ? (
-          // Même règle pour les plats : un échec de lecture ne doit pas passer
-          // pour une carte vide.
-          dataStatus !== 'ready' ? (
-            <PanneauEtat
-              titre={dataStatus === 'loading' ? 'Chargement des plats…' : 'Plats indisponibles'}
-              texte={dataStatus === 'loading'
-                ? `Les plats de « ${activeCarte.nom} » arrivent.`
-                : (online
-                  ? 'La connexion a été interrompue. Nouvel essai automatique en cours.'
-                  : 'Hors ligne : les plats s’afficheront au retour du réseau.')}
-              onRetry={dataStatus === 'error' ? retryAll : null}
-            />
-          ) : (
-            <>
-              <PanneauEtat
-                titre={`Aucun plat sur « ${activeCarte.nom} »`}
-                texte={canFiches ? 'Ajoutez le premier plat de cette carte.' : 'Aucun plat sur cette carte pour le moment.'}
-              />
-              {canFiches && (
-                <button style={{ ...rs.printBtn, alignSelf: 'center' }} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
-              )}
-            </>
-          )
-        ) : (
-        <div style={rs.carteWrap}>
-          {/* Carte header */}
-          <div style={rs.carteHeader}>
-            <div>
-              <div style={rs.carteName}>{activeCarte.nom}</div>
-              <div style={{fontSize: 'var(--t2)', color:'var(--text2)'}}>
-                {platsCarte.length} plat{platsCarte.length > 1 ? 's' : ''}
-                {activeCarte.dateDebut && <>, du {dateSuisse(activeCarte.dateDebut)}{activeCarte.dateFin && <> au {dateSuisse(activeCarte.dateFin)}</>}</>}
-              </div>
-            </div>
-            <div style={rs.carteHeaderRight} className="no-print">
-              {/* Le plat neuf naît sur la carte affichée ; décocher la carte
-                  dans sa fenêtre retire ce seul lien. */}
-              {canFiches && (
-                <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
-              )}
-              {canManageCartes && (
-                <button
-                  style={{...rs.homeBtn, ...(defaultCarteId === activeCarte.id ? rs.homeBtnActive : {})}}
-                  onClick={() => toggleDefaultCarte(activeCarte.id)}
-                  title={defaultCarteId === activeCarte.id ? 'Carte par défaut : cliquer pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
-                >
-                  {defaultCarteId === activeCarte.id
-                    ? 'Carte par défaut'
-                    : (isMobile ? 'Par défaut' : 'Définir par défaut')}
-                </button>
-              )}
-              {/* Une carte cachée n'est servie qu'au consultant : le badge dit
-                  explicitement que la brigade ne la voit pas, sinon rien ne
-                  distingue à l'écran une carte publiée d'une carte masquée. */}
-              {activeCarte.masquee === true ? (
-                <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--warning-text)' }} title="Visible du consultant uniquement">Cachée</span>
-              ) : (
-                <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--success-text)' }}>Carte active</span>
-              )}
-            </div>
-          </div>
-
-          {/* Cat filter - une seule catégorie sur la carte : l'onglet unique
-              ferait doublon avec le titre de section, on le masque. */}
-          {catsCarte.length > 1 && !q && (
-            <SegmentedTabs
-              size="sm"
-              active={catFilterEff}
-              onChange={setCatFilter}
-              tabs={cats.map(c => ({ id: c, label: c }))}
-            />
-          )}
-
-          {q && filteredPlats.length === 0 && (
-            <div style={rs.searchEmpty}>
-              Aucun plat de « {activeCarte.nom} » ne correspond à « {search.trim()} ».
-              {voirDansBibliotheque}
-            </div>
-          )}
-          {q && filteredPlats.length > 0 && voirDansBibliotheque}
-
-          {/* Plats par catégorie, en vignettes : toucher un plat ouvre sa
-              première fiche (VitrineCarte). */}
-          <VitrineCarte
-            plats={filteredPlats}
-            categories={catsCarte}
-            recettesActives={recettesActives}
-            recettesVisibles={recettesEtab}
-            canFiches={canFiches}
-            onOuvrirRecette={(r, plat) => ouvrirFiche(r, clePlat(plat))}
-            onModifierPlat={(plat) => setPlatEdite({ plat })}
-            ficheQuitteeId={ficheQuitteeRef.current}
-            refQuittee={vignetteQuitteeRef}
+        {/* Onglets : une carte par onglet, puis la bibliothèque. La barre ne
+            rend que les onglets ; ses fenêtres de gestion s'ouvrent depuis
+            « Gérer ». Pendant une recherche, l'onglet montré est la
+            bibliothèque : c'est elle que l'écran affiche. L'onglet
+            Bibliothèque attend la première lecture des cartes : posé seul
+            puis repoussé par elles, il resterait le point d'accroche du
+            défilement et la bande s'ouvrirait sur sa fin au téléphone. */}
+        <div style={isMobile ? rs.tabsWrapMobile : rs.tabsWrap}>
+          <CarteTabBar
+            cartes={cartes}
+            activeId={vueBiblio ? LIBRARY_TAB : activeTab}
+            onSelect={choisirOnglet}
+            extraTabs={cartes.length > 0 || cartesStatus !== 'loading' ? [{ id: LIBRARY_TAB, label: 'Bibliothèque recettes' }] : []}
+            canManage={canManageCartes}
+            onAddCarte={addCarte}
+            onRenameCarte={renameCarte}
+            onDeleteCarte={deleteCarte}
+            archivedCartes={archivedCartes}
+            onArchiveCarte={archiveCarte}
+            canHide={isConsultant}
+            onHideCarte={masquerCarte}
+            homeId={defaultCarteId}
+            onReorderCartes={reorderCartes}
+            commandesRef={barreCartesRef}
           />
         </div>
-        )
-      ) : ecran === 'chercher' ? (
-        // Je cherche une fiche : une grille de fiches (VitrineFiches). Une
-        // lecture en cours ou en échec ne s'annonce jamais comme une
-        // bibliothèque vide (cf. PanneauEtat) : sans aucune fiche lue, des
-        // plats déjà là (lecture des fiches en échec) ne suffisent pas à
-        // montrer la grille, elle les donnerait tous « à compléter ».
-        recettesEtab.length === 0 && recettesArchivees.length === 0 && (plats.length === 0 || dataStatus !== 'ready') ? (
-          dataStatus !== 'ready'
-            ? <PanneauEtat
-                titre={dataStatus === 'loading' ? 'Chargement des recettes…' : 'Recettes indisponibles'}
-                texte={dataStatus === 'loading'
-                  ? 'La bibliothèque de cet établissement arrive.'
+
+        {!vueBiblio ? (
+          !activeCarte ? (
+            // Une lecture en cours ou en échec (tablette qui sort de veille,
+            // JWT expiré, réseau coupé) ne s'annonce jamais comme un
+            // établissement sans carte : on le dit et on propose un nouvel
+            // essai, un rechargement automatique est déjà programmé. Lecture
+            // aboutie sur zéro carte : l'écran montre la bibliothèque (isLibrary).
+            cartesStatus !== 'ready' ? (
+              <PanneauEtat
+                titre={cartesStatus === 'loading' ? 'Chargement des cartes…' : 'Cartes indisponibles'}
+                texte={cartesStatus === 'loading'
+                  ? 'Les cartes de cet établissement arrivent.'
                   : (online
-                    ? 'La connexion a été interrompue. Rien n’est perdu : nouvel essai automatique en cours.'
-                    : 'Hors ligne : les recettes de cet établissement n’ont pas encore été chargées sur cet appareil. Elles s’afficheront au retour du réseau.')}
+                    ? 'La connexion a été interrompue (mise en veille de l’appareil, réseau instable). Les cartes ne sont pas perdues : nouvel essai automatique en cours.'
+                    : 'Hors ligne : les cartes s’afficheront au retour du réseau.')}
+                onRetry={cartesStatus === 'error' ? retryAll : null}
+              />
+            ) : null
+          ) : platsCarte.length === 0 ? (
+            // Même règle pour les plats : un échec de lecture ne doit pas passer
+            // pour une carte vide.
+            dataStatus !== 'ready' ? (
+              <PanneauEtat
+                titre={dataStatus === 'loading' ? 'Chargement des plats…' : 'Plats indisponibles'}
+                texte={dataStatus === 'loading'
+                  ? `Les plats de « ${activeCarte.nom} » arrivent.`
+                  : (online
+                    ? 'La connexion a été interrompue. Nouvel essai automatique en cours.'
+                    : 'Hors ligne : les plats s’afficheront au retour du réseau.')}
                 onRetry={dataStatus === 'error' ? retryAll : null}
               />
-            : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize: 'var(--t2)'}}>{canFiches ? 'Aucune recette pour cet établissement. La tuile « Nouvelle fiche » en crée une.' : 'Aucune recette pour cet établissement.'}</div>
-        ) : (
-          <VitrineFiches
-            recettesEtab={recettesEtab}
-            recettesArchivees={recettesArchivees}
-            plats={plats}
-            match={match}
-            q={q}
-            recherche={search}
-            canFiches={canFiches}
-            canEtiqueter={canEtiqueter}
-            voirArchivees={voirArchivees}
-            onBasculerArchivees={() => setVoirArchivees(v => !v)}
-            onOuvrir={ouvrirFiche}
-            onEtiquette={setEtiquetteRecette}
-            onModifierPlat={(plat) => setPlatEdite({ plat })}
-            ficheQuitteeId={ficheQuitteeRef.current}
-            refQuittee={vignetteQuitteeRef}
-          />
-        )
-      ) : (
-        <div style={rs.recettesWrap}>
-          {recettesEtab.length === 0 && plats.length === 0 && (
-            dataStatus !== 'ready'
-              // Lecture en cours ou en échec : surtout ne pas annoncer une
-              // bibliothèque vide (cf. PanneauEtat).
-              ? <PanneauEtat
-                  titre={dataStatus === 'loading' ? 'Chargement des recettes…' : 'Recettes indisponibles'}
-                  texte={dataStatus === 'loading'
-                    ? 'La bibliothèque de cet établissement arrive.'
-                    : (online
-                      ? 'La connexion a été interrompue. Rien n’est perdu : nouvel essai automatique en cours.'
-                      : 'Hors ligne : les recettes de cet établissement n’ont pas encore été chargées sur cet appareil. Elles s’afficheront au retour du réseau.')}
-                  onRetry={dataStatus === 'error' ? retryAll : null}
-                />
-              : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize: 'var(--t2)'}}>{canFiches ? 'Aucune recette pour cet établissement. La tuile « Nouvelle fiche » en crée une.' : 'Aucune recette pour cet établissement.'}</div>
-          )}
-
-          {selection.active && (
-            <SelectionToolbar
-              count={selection.count}
-              total={recettesEtab.length}
-              allSelected={selection.count > 0 && selection.count === recettesEtab.length}
-              onToggleAll={() => (selection.count === recettesEtab.length ? selection.clear() : selection.selectAll(recettesEtab.map(r => r.id)))}
-              onDelete={supprimerSelection}
-              onCancel={selection.exit}
-              busy={selectionOccupee}
-            >
-              <button style={rs.printBtn} onClick={() => setRattacherSelection(true)} disabled={!selection.count || selectionOccupee}>Rattacher</button>
-              <button style={rs.printBtn} onClick={archiverSelection} disabled={!selection.count || selectionOccupee}>Archiver</button>
-            </SelectionToolbar>
-          )}
-
-          {/* ─── Hiérarchie plats avec leurs recettes ─── */}
-          {(() => {
-            const recettesParPlat = {};
-            (plats || []).forEach(p => {
-              const ids = (p.recettes || []).map(pr => pr.recetteId);
-              recettesParPlat[p.id] = recettesEtab.filter(r => ids.includes(r.id));
-            });
-            const allLinkedRecetteIds = new Set();
-            (plats || []).forEach(p => (p.recettes || []).forEach(pr => allLinkedRecetteIds.add(pr.recetteId)));
-            const orphelines = recettesEtab.filter(r =>
-              !allLinkedRecetteIds.has(r.id) && match(r.nom)
-            );
-            // Un plat sort si son nom correspond, ou si l'une de ses recettes
-            // correspond : il est alors déplié d'office pour la montrer.
-            const recetteTrouvee = (p) => q && (recettesParPlat[p.id] || []).some(r => match(r.nom));
-            const visiblePlats = (plats || []).filter(p =>
-              match(p.nom, (recettesParPlat[p.id] || []).map(r => r.nom))
-            );
-
-            // La ligne reste un <div> plutôt qu'un <button> : la convertir
-            // imposerait de neutraliser tous les styles par défaut du bouton et
-            // ferait courir un risque de régression visuelle. On lui donne donc
-            // le contrat d'accessibilité d'un bouton - rôle, focus au clavier,
-            // activation par Entrée et Espace - sans toucher au rendu. Sans ça
-            // la ligne était invisible au clavier et aux lecteurs d'écran.
-            // En sélection, toucher une fiche la coche au lieu de l'ouvrir.
-            const activerRecette = (r) => (selection.active ? selection.toggle(r.id) : ouvrirFiche(r));
-            const togglePlat = (platId, estDeplie) => {
-              const next = new Set(expandedPlats);
-              estDeplie ? next.delete(platId) : next.add(platId);
-              setExpandedPlats(next);
-            };
-            const renderRecetteCard = (r, isSubItem = false) => (
-              <div key={r.id + (isSubItem ? '-sub' : '')}
-                role="button"
-                tabIndex={0}
-                aria-label={`Ouvrir la recette ${r.nom}`}
-                style={isSubItem ? {...rs.recetteRow, ...rs.recetteRowSub} : {...rs.recetteRow, ...rs.recetteRowOrphelin}}
-                onClick={() => activerRecette(r)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault(); // Espace ferait défiler la page sinon
-                    activerRecette(r);
-                  }
-                }}>
-                {selection.active && (
-                  <input
-                    type="checkbox"
-                    checked={selection.isSelected(r.id)}
-                    onChange={() => selection.toggle(r.id)}
-                    onClick={e => e.stopPropagation()}
-                    aria-label={`Sélectionner ${r.nom}`}
-                    style={{ width: 20, height: 20, flexShrink: 0, accentColor: 'var(--accent)', cursor: 'pointer' }}
-                  />
-                )}
-                <RecettePhoto src={r.photoUrl} alt={r.nom} style={rs.thumb} />
-                <div style={rs.recetteInfo}>
-                  <div style={rs.recetteName}>{r.nom}</div>
-                  <div style={rs.recetteMeta}>{r.categorie}, {r.portions} portions, v{r.version}, modifié le {dateSuisse(r.modifie)}</div>
-                </div>
-                {/* Pastilles d'allergènes plafonnées : une recette en cumulant 5
-                    occupait 139px et écrasait le nom à 0px de large sur mobile.
-                    Au-delà de 3, le surplus est résumé par un « +N » dont
-                    l'infobulle liste les allergènes restants. */}
-                <div style={rs.recetteBadges}>
-                  {(r.allergenesIds||[]).length > 0 && (
-                    <span style={{ ...rs.allergenesTexte, ...rs.allergenesLigne }} title={nomsAllergenes(r.allergenesIds)}>{nomsAllergenes(r.allergenesIds)}</span>
-                  )}
-                </div>
-                <span style={{...rs.badge, background:'none', color: statutRecette(r.statut).couleur}}>{statutRecette(r.statut).label}</span>
-                {/* Raccourci d'étiquette : le clic et le clavier s'arrêtent au
-                    bouton, sinon ils ouvriraient aussi la fiche. */}
-                {canEtiqueter && r.statut !== 'archivée' && (
-                  <button
-                    type="button"
-                    style={rs.printBtn}
-                    aria-label={`Imprimer l'étiquette DLC de ${r.nom}`}
-                    onClick={e => { e.stopPropagation(); setEtiquetteRecette(r); }}
-                    onKeyDown={e => e.stopPropagation()}
-                  >Étiquette</button>
-                )}
-                <span style={{color:'var(--text2)', fontSize: 'var(--t3)'}}>›</span>
-              </div>
-            );
-
-            return (
+            ) : (
               <>
-                {q && visiblePlats.length === 0 && orphelines.length === 0 && !recettesArchivees.some(r => match(r.nom)) && (
-                  <div style={rs.searchEmpty}>
-                    Aucun plat ni recette ne correspond à « {search.trim()} ».
-                  </div>
+                <PanneauEtat
+                  titre={`Aucun plat sur « ${activeCarte.nom} »`}
+                  texte={canFiches ? 'Ajoutez le premier plat de cette carte.' : 'Aucun plat sur cette carte pour le moment.'}
+                />
+                {canFiches && (
+                  <button style={{ ...rs.printBtn, alignSelf: 'center' }} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
                 )}
-                {visiblePlats.map(plat => {
-                  const platRecettes = recettesParPlat[plat.id] || [];
-                  const isExpanded = expandedPlats.has(plat.id) || recetteTrouvee(plat);
-                  return (
-                    <div key={plat.id}>
-                      <div style={rs.platBlock} className="recette-plat-ligne"
-                        role="button"
-                        tabIndex={0}
-                        aria-expanded={isExpanded}
-                        aria-label={`${isExpanded ? 'Replier' : 'Déplier'} les recettes de ${plat.nom}`}
-                        onClick={() => togglePlat(plat.id, isExpanded)}
-                        onKeyDown={e => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            togglePlat(plat.id, isExpanded);
-                          }
-                        }}>
-                        <RecettePhoto src={plat.photoUrl} alt={plat.nom} style={rs.thumb} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={rs.platName}>
-                            <span style={{ marginRight: 8, fontSize: 'var(--t1)', color: 'var(--text2)' }}>{isExpanded ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}</span>
-                            {plat.nom}
-                          </div>
-                          <div style={rs.recetteMeta}>
-                            {plat.categorie}
-                            {', '}{platRecettes.length} recette{platRecettes.length > 1 ? 's' : ''}
-                          </div>
-                        </div>
-                        {canFiches && (
-                          <button
-                            type="button"
-                            style={rs.printBtn}
-                            aria-label={`Modifier le plat ${plat.nom}`}
-                            onClick={e => { e.stopPropagation(); setPlatEdite({ plat }); }}
-                            onKeyDown={e => e.stopPropagation()}
-                          >Modifier</button>
-                        )}
-                      </div>
-                      {isExpanded && platRecettes.length > 0 && (
-                        <div style={rs.sousListe}>
-                          {platRecettes.map(r => renderRecetteCard(r, true))}
-                        </div>
-                      )}
-                      {isExpanded && platRecettes.length === 0 && (
-                        <div style={rs.sousListeVide}>
-                          Aucune recette rattachée à ce plat.
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* ─── Recettes orphelines (non rattachées à un plat) ─── */}
-                {orphelines.length > 0 && plats.length > 0 && (
-                  <div style={rs.orphelinTitle}>Recettes sans plat ({orphelines.length})</div>
-                )}
-                {orphelines.length > 0 && (
-                  <div style={rs.orphelinListe}>
-                    {orphelines.map(r => renderRecetteCard(r, false))}
-                  </div>
-                )}
-
-                {/* ─── Archivées (droit « fiches ») : repliées, ouvertes
-                    d'office par une recherche qui en trouve ─── */}
-                {(() => {
-                  const archivees = recettesArchivees.filter(r => match(r.nom));
-                  if (!archivees.length || selection.active) return null;
-                  const ouvert = voirArchivees || q;
-                  return (
-                    <>
-                      <button type="button" style={{ ...rs.orphelinTitle, ...rs.archiveesTitre }} aria-expanded={!!ouvert} onClick={() => setVoirArchivees(v => !v)}>
-                        {ouvert ? <ChevronDown size={12} aria-hidden="true" /> : <ChevronRight size={12} aria-hidden="true" />}
-                        <span>Archivées ({archivees.length})</span>
-                      </button>
-                      {ouvert && (
-                        <div style={{ ...rs.orphelinListe, opacity: 0.75 }}>
-                          {archivees.map(r => renderRecetteCard(r, false))}
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
               </>
-            );
-          })()}
-        </div>
-      )}
+            )
+          ) : (
+          <div style={rs.carteWrap}>
+            {/* Carte header */}
+            <div style={rs.carteHeader}>
+              <div>
+                <div style={rs.carteName}>{activeCarte.nom}</div>
+                <div style={{fontSize: 'var(--t2)', color:'var(--text2)'}}>
+                  {platsCarte.length} plat{platsCarte.length > 1 ? 's' : ''}
+                  {activeCarte.dateDebut && <>, du {dateSuisse(activeCarte.dateDebut)}{activeCarte.dateFin && <> au {dateSuisse(activeCarte.dateFin)}</>}</>}
+                </div>
+              </div>
+              <div style={rs.carteHeaderRight} className="no-print">
+                {/* Le plat neuf naît sur la carte affichée ; décocher la carte
+                    dans sa fenêtre retire ce seul lien. */}
+                {canFiches && (
+                  <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
+                )}
+                {canManageCartes && (
+                  <button
+                    style={{...rs.homeBtn, ...(defaultCarteId === activeCarte.id ? rs.homeBtnActive : {})}}
+                    onClick={() => toggleDefaultCarte(activeCarte.id)}
+                    title={defaultCarteId === activeCarte.id ? 'Carte par défaut : cliquer pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
+                  >
+                    {defaultCarteId === activeCarte.id
+                      ? 'Carte par défaut'
+                      : (isMobile ? 'Par défaut' : 'Définir par défaut')}
+                  </button>
+                )}
+                {/* Une carte cachée n'est servie qu'au consultant : le badge dit
+                    explicitement que la brigade ne la voit pas, sinon rien ne
+                    distingue à l'écran une carte publiée d'une carte masquée. */}
+                {activeCarte.masquee === true ? (
+                  <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--warning-text)' }} title="Visible du consultant uniquement">Cachée</span>
+                ) : (
+                  <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--success-text)' }}>Carte active</span>
+                )}
+              </div>
+            </div>
+
+            {/* Cat filter - une seule catégorie sur la carte : l'onglet unique
+                ferait doublon avec le titre de section, on le masque. */}
+            {catsCarte.length > 1 && (
+              <SegmentedTabs
+                size="sm"
+                active={catFilterEff}
+                onChange={setCatFilter}
+                tabs={cats.map(c => ({ id: c, label: c }))}
+              />
+            )}
+
+            {/* Plats par catégorie, en vignettes : toucher un plat ouvre sa
+                première fiche (VitrineCarte). */}
+            <VitrineCarte
+              plats={filteredPlats}
+              categories={catsCarte}
+              recettesActives={recettesActives}
+              recettesVisibles={recettesEtab}
+              canFiches={canFiches}
+              onOuvrirRecette={(r, plat) => ouvrirFiche(r, clePlat(plat))}
+              onModifierPlat={(plat) => setPlatEdite({ plat })}
+              ficheQuitteeId={ficheQuitteeRef.current}
+              refQuittee={vignetteQuitteeRef}
+            />
+          </div>
+          )
+        ) : (
+          // La bibliothèque : toutes les fiches de l'établissement en grille
+          // (VitrineFiches), filtrées par la recherche. Même en-tête qu'une
+          // carte : son nom, son nombre, puis « Ajouter un plat » (droit
+          // « fiches » : un plat sans carte, à rattacher dans sa fenêtre).
+          <div style={rs.carteWrap}>
+            <div style={rs.carteHeader}>
+              <div>
+                <div style={rs.carteName}>Bibliothèque recettes</div>
+                <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>
+                  {dataStatus === 'ready'
+                    ? <><span data-no-translate="">{recettesEtab.length}</span> {recettesEtab.length > 1 ? 'fiches' : 'fiche'}</>
+                    : lectureEnCours(dataStatus)}
+                </div>
+              </div>
+              {canFiches && !selection.active && (
+                <div style={rs.carteHeaderRight} className="no-print">
+                  <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: null })}>Ajouter un plat</button>
+                </div>
+              )}
+            </div>
+
+            {selection.active && (
+              <SelectionToolbar
+                count={selection.count}
+                total={recettesEtab.length}
+                allSelected={toutesCochees}
+                onToggleAll={basculerTout}
+                onDelete={supprimerSelection}
+                onCancel={selection.exit}
+                busy={selectionOccupee}
+              >
+                <button style={rs.printBtn} onClick={() => setRattacherSelection(true)} disabled={!selection.count || selectionOccupee}>Rattacher</button>
+                <button style={rs.printBtn} onClick={archiverSelection} disabled={!selection.count || selectionOccupee}>Archiver</button>
+              </SelectionToolbar>
+            )}
+
+            {/* Une lecture en cours ou en échec ne s'annonce jamais comme une
+                bibliothèque vide (cf. PanneauEtat) : sans aucune fiche lue, des
+                plats déjà là (lecture des fiches en échec) ne suffisent pas à
+                montrer la grille, elle les donnerait tous « à compléter ». */}
+            {biblioVide ? (
+              dataStatus !== 'ready'
+                ? <PanneauEtat
+                    titre={dataStatus === 'loading' ? 'Chargement des recettes…' : 'Recettes indisponibles'}
+                    texte={dataStatus === 'loading'
+                      ? 'La bibliothèque de cet établissement arrive.'
+                      : (online
+                        ? 'La connexion a été interrompue. Rien n’est perdu : nouvel essai automatique en cours.'
+                        : 'Hors ligne : les recettes de cet établissement n’ont pas encore été chargées sur cet appareil. Elles s’afficheront au retour du réseau.')}
+                    onRetry={dataStatus === 'error' ? retryAll : null}
+                  />
+                : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize: 'var(--t2)'}}>{canFiches ? 'Aucune recette pour cet établissement. Le bouton « Nouvelle fiche » en crée une.' : 'Aucune recette pour cet établissement.'}</div>
+            ) : (
+              <VitrineFiches
+                recettesEtab={recettesEtab}
+                recettesArchivees={recettesArchivees}
+                plats={plats}
+                match={match}
+                q={q}
+                recherche={search}
+                canFiches={canFiches}
+                canEtiqueter={canEtiqueter}
+                voirArchivees={voirArchivees}
+                onBasculerArchivees={() => setVoirArchivees(v => !v)}
+                voirPlats={voirPlats}
+                onBasculerPlats={() => setVoirPlats(v => !v)}
+                selection={selection.active ? selection : null}
+                onOuvrir={ouvrirFiche}
+                onEtiquette={setEtiquetteRecette}
+                onModifierPlat={(plat) => setPlatEdite({ plat })}
+                ficheQuitteeId={ficheQuitteeRef.current}
+                refQuittee={vignetteQuitteeRef}
+              />
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 const rs = {
   root: {display:'flex',flexDirection:'column',gap:16},
-  searchEmpty: {display:'flex',flexDirection:'column',alignItems:'center',gap:10,padding:'28px 16px',textAlign:'center',color:'var(--text2)',fontSize: 'var(--t2)',background:'var(--surface)',border:'1px dashed var(--border)',borderRadius:'var(--r)'},
-  searchElsewhereBtn: {alignSelf:'flex-start',padding:'8px 12px',borderRadius: 'var(--r)',border: '1px solid transparent',background: 'var(--btn-fond)',color: 'var(--btn-texte)',fontFamily:'var(--font)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',textAlign:'left'},
-  toolbar: {display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'},
   tabsWrap: {minWidth:0},
   tabsWrapMobile: {width:'100%',minWidth:0},
-  toolbarActions: {display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginLeft:'auto'},
-  toolbarActionsMobile: {width:'100%',marginLeft:0},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
   // Sans cadre (la règle « Plus de carrés » l'aplatissait déjà) ni retrait
@@ -2509,64 +2269,16 @@ const rs = {
   homeBtn: {padding:'6px 14px',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',borderRadius: 'var(--r-full)',background: 'var(--btn-fond)',color: 'var(--btn-texte)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   homeBtnActive: {borderColor:'var(--onglet)',color:'var(--text)',background:'var(--selection)'},
   carteName: {fontSize: 'var(--t3)',fontWeight: 'var(--g3)',fontFamily:'var(--font)',color:'var(--text)'},
-  // Les plats de la carte et les fiches de Je cherche une fiche sont des
-  // vignettes (VitrineCarte, VitrineFiches) : leur forme vit dans
-  // src/components/fiches/fiches.css, hors de portée de la règle « Plus de
-  // carrés » qui aplatissait les tuiles posées en style inline.
-  // Allergènes en texte simple, noms complets séparés par des virgules.
-  allergenesTexte: {fontSize: 'var(--t1)',fontWeight: 'var(--g1)',color:'var(--text2)',lineHeight:1.4},
-  // Dans une ligne de liste : une seule ligne, le reste au survol (title).
-  allergenesLigne: {minWidth:0,maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'},
   // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
   // et fait se chevaucher les boutons d'une rangée sur mobile.
   etiquetteBtn:{flexShrink:0,padding:'8px 16px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius: 'var(--r-full)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  // « Gérer » de la barre : la pilule secondaire de Btn (BoutonActions rend son propre bouton).
+  gererBtn:{padding:'8px 14px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)', fontWeight: 'var(--g2)',borderRadius: 'var(--r-full)',fontSize: 13,cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   printBtn:{padding:'8px 16px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)', fontWeight: 'var(--g2)',borderRadius: 'var(--r-full)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)'},
   badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)'},
   congBtn: {padding:'7px 14px',background: 'var(--btn-fond)',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   congBtnActive: {background:'var(--selection)',borderColor:'var(--onglet)',color:'var(--text)'},
-  // Recettes list
-  recettesWrap: {display:'flex',flexDirection:'column',gap:2,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)',overflow:'hidden',boxShadow:'var(--sh-xs)'},
-  // flexWrap : sur mobile la rangee (vignette + nom + pastilles + statut +
-  // chevron) depasse la largeur disponible. Sans wrap, soit le nom s'ecrase a
-  // 0px, soit le contenu sort de la carte. En passant a la ligne, les elements
-  // secondaires descendent et le nom garde sa place.
-  recetteRow: {display:'flex',alignItems:'center',gap:14,padding:'14px 18px',borderBottom:'1px solid var(--border)',cursor:'pointer',transition:'background .12s',flexWrap:'wrap'},
 
-  // ─── Recettes rattachées à un plat : cartes détachées ─────────────────────
-  // Mesuré sur mobile : les lignes se touchaient bord à bord (0px d'écart), y
-  // compris entre l'en-tête du plat et sa première recette. Un doigt à quelques
-  // pixels de la frontière ouvrait la recette voisine - ou repliait le plat et
-  // faisait perdre sa position dans la liste.
-  // Les gouttières de 8px appartiennent à `sousListe`, qui n'a aucun onClick :
-  // un quasi-raté ne déclenche donc plus rien au lieu de déclencher la mauvaise
-  // ligne. Le fond en retrait (--bg) rend ces gouttières visibles.
-  sousListe: {display:'flex',flexDirection:'column',gap:8,padding:'8px 10px',background:'var(--bg)',borderBottom:'1px solid var(--border)'},
-  sousListeVide: {padding:'12px 10px 12px 40px',background:'var(--bg)',borderBottom:'1px solid var(--border)',fontSize: 'var(--t1)',color:'var(--text2)',fontStyle:'italic'},
-  // Rail d'accent à gauche pour garder la hiérarchie visuelle ; minHeight pose
-  // un plancher de rythme vertical (les hauteurs mesurées allaient de 91 à 123px).
-  recetteRowSub: {marginLeft:22,border:'1px solid var(--border)',borderLeft:'3px solid var(--btn-bord)',borderRadius: 'var(--r)',background:'var(--surface)',minHeight:72},
-  // Recettes sans plat : meme traitement que les sous-lignes, mais sans
-  // indentation ni rail puisqu'elles ne dependent d'aucun plat. Elles etaient
-  // separees de 2px seulement (le gap de recettesWrap), donc pas visables non
-  // plus au doigt.
-  orphelinListe: {display:'flex',flexDirection:'column',gap:8,padding:'8px 10px',background:'var(--bg)'},
-  recetteRowOrphelin: {border:'1px solid var(--border)',borderRadius: 'var(--r)',background:'var(--surface)',minHeight:72},
-  // minWidth 96 : avec minWidth:0 le nom cedait toute sa place aux elements de
-  // droite (pastilles, statut) et tombait a 0px de large, le texte se lisant
-  // alors verticalement. Le nom est l'information qu'on cherche : c'est lui qui
-  // garde un plancher, ce sont les pastilles qui se plafonnent.
-  recetteInfo: {flex:'1 1 140px',minWidth:96},
-  // 72px : la photo redevient une information (60px la réduisait à un point de
-  // couleur). Le placeholder est rendu par RecettePhoto avec ce même style.
-  thumb: { width: 72, height: 72, objectFit: 'cover', borderRadius: 'var(--r-sm)', flexShrink: 0, background: 'var(--bg)', border: '1px solid var(--border)' },
-  platBlock: { display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px', borderBottom: '1px solid var(--border)', background: 'transparent', cursor: 'pointer' },
-  platName: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', display: 'flex', alignItems: 'center' },
-  orphelinTitle: { padding: '12px 18px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', background: 'var(--bg)', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)' },
-  // Titre repliable de la section Archivées : la même ligne, en bouton.
-  archiveesTitre: { display: 'flex', alignItems: 'center', gap: 6, width: '100%', minHeight: 44, borderLeft: 'none', borderRight: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)' },
-  recetteName: {fontSize: 'var(--t2)',fontWeight: 'var(--g2)',color:'var(--text)'},
-  recetteMeta: {fontSize: 'var(--t1)',color:'var(--text2)',marginTop:2},
-  recetteBadges: {display:'flex',gap:4,flexShrink:0},
   // Detail
   // La fiche ouverte (héros, sections, colonnes) est en classes .fv-fiche de
   // src/components/fiches/fiches.css ; restent ici les contrôles de la fiche.

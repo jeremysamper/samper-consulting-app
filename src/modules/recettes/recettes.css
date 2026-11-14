@@ -1,0 +1,113 @@
+/* ─────────────────────────────────────────────────────────────
+   Cartes & Recettes : l'écran d'arrivée.
+
+   Une barre (la recherche dans toutes les fiches, puis les actions), les
+   onglets de cartes, puis la carte affichée ou la bibliothèque.
+   .rc-page est le conteneur de requêtes, .rc-tete porte la barre : la mise
+   en page suit la place réellement donnée à l'écran (menu replié ou déplié,
+   coque tactile), pas la fenêtre. Aucune fenêtre en position fixe n'est
+   rendue dans .rc-page : elles vivent à côté, dans la racine du module.
+   ───────────────────────────────────────────────────────────── */
+.rc-page {
+  container-type: inline-size;
+  container-name: rc;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.rc-tete {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+/* Le champ : contour --champ-bord, fond --surface, rayon --r, 44 px au doigt
+   comme à la souris (c'est le premier geste de l'écran). */
+.rc-recherche {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 280px;
+  max-width: 520px;
+  min-width: 0;
+  height: 44px;
+  padding: 0 6px 0 14px;
+  border: 1px solid var(--champ-bord);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--text2);
+  box-sizing: border-box;
+}
+.rc-recherche:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.rc-recherche .rc-recherche-champ {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--t2);
+}
+/* Le contour et l'anneau de focus sont portés par .rc-recherche. */
+.rc-recherche .rc-recherche-champ:focus {
+  border-color: transparent !important;
+  box-shadow: none;
+}
+.rc-recherche .rc-recherche-champ::placeholder { color: var(--text3); }
+
+/* 16 px au doigt : en dessous, iOS zoome la page à la prise du champ. */
+@media (pointer: coarse) {
+  .rc-recherche .rc-recherche-champ { font-size: 16px; }
+}
+
+.rc-recherche-effacer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: none;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text2);
+  font-family: var(--font);
+  font-size: var(--t4);
+  line-height: 1;
+  cursor: pointer;
+}
+.rc-recherche-effacer:hover { color: var(--text); background: var(--selection); }
+
+/* Les actions : poussées à droite tant qu'elles tiennent à côté du champ.
+   Elles passent à la ligne plutôt que de défiler : chaque bouton reste en
+   vue, au téléphone aussi (la barre .module-actions défile d'ordinaire). */
+.rc-actions.module-actions {
+  margin-left: auto;
+  flex-wrap: wrap;
+  overflow-x: visible;
+}
+
+/* Place étroite (tablette debout, téléphone) : le champ prend sa ligne, les
+   actions suivent, alignées à gauche sous lui. */
+@container rc (max-width: 899px) {
+  .rc-recherche {
+    flex: 1 1 100%;
+    max-width: none;
+  }
+  .rc-actions.module-actions { margin-left: 0; }
+}

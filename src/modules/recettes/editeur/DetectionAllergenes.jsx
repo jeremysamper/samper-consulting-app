@@ -9,9 +9,12 @@ import { ALLERGENES_OPTIONS } from '../../consultant-tools/ConsultantTools.const
 // Gérer de Cartes & Recettes. Reprise des Outils consultant : par lots de
 // trois, ajoute sans retirer, interruptible. Les archivées ne sont pas
 // analysées ; les cachées le sont (leurs allergènes comptent dans les plats).
+// commandesRef : la détection part du menu « Gérer » de l'écran d'arrivée
+// (commandesRef.current.lancer()) ; le composant ne rend alors que son voile
+// de progression, « style » restant celui de son bouton Annuler.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function DetectionAllergenes({ recettes = [], style, onFini }) {
+export default function DetectionAllergenes({ recettes = [], style, onFini, commandesRef }) {
   const legacySB = dbService.getBridge();
   const [progression, setProgression] = React.useState(null);
   const annulerRef = React.useRef(false);
@@ -51,11 +54,16 @@ export default function DetectionAllergenes({ recettes = [], style, onFini }) {
     onFini?.();
   };
 
+  // Sans dépendances : lancer lit la liste de fiches du rendu en cours.
+  React.useImperativeHandle(commandesRef, () => ({ lancer: () => { if (!progression) lancer(); } }));
+
   return (
     <>
-      <button type="button" style={style} onClick={lancer} disabled={!!progression} title="Analyse des ingrédients de chaque fiche, à vérifier ensuite">
-        Détecter les allergènes
-      </button>
+      {!commandesRef && (
+        <button type="button" style={style} onClick={lancer} disabled={!!progression} title="Analyse des ingrédients de chaque fiche, à vérifier ensuite">
+          Détecter les allergènes
+        </button>
+      )}
       {progression && (
         <div className="no-print" style={{ position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(20,16,12,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', width: 'min(420px,94vw)', padding: 20, boxShadow: '0 24px 60px rgba(0,0,0,0.35)' }}>

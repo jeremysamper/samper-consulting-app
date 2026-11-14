@@ -1578,6 +1578,23 @@ export const UI_GLOSSARY = {
   'autres': 'others',
   'modifiée le': 'updated on',
   'Aucun allergène déclaré': 'No allergen declared',
+  // ── Cartes & Recettes : écran d'arrivée unique (14.11.2026) ──
+  'Bibliothèque recettes': 'Recipe library',
+  'Gérer les cartes et les fiches': 'Manage menus and recipes',
+  'Un onglet de plus, à remplir de plats': 'One more tab, to fill with dishes',
+  'nom, dates, archiver, supprimer': 'name, dates, archive, delete',
+  'nom, dates, archiver, cacher, supprimer': 'name, dates, archive, hide, delete',
+  "Changer l'ordre des onglets, de gauche à droite": 'Change the order of the tabs, from left to right',
+  'Archives': 'Archives',
+  'carte archivée, à restaurer': 'archived menu, to restore',
+  'cartes archivées, à restaurer': 'archived menus, to restore',
+  'Sélectionner des fiches': 'Select recipes',
+  'Pour les rattacher à des plats, les archiver ou les supprimer': 'To link them to dishes, archive them or delete them',
+  'Tous les plats': 'All dishes',
+  'Trouver dans quelles recettes un ingrédient ou allergène apparaît': 'Find which recipes contain an ingredient or allergen',
+  'Exporter une carte entière, des plats ou des recettes dans un seul PDF': 'Export a whole menu, dishes or recipes in a single PDF',
+  'Aucune recette pour cet établissement. Le bouton « Nouvelle fiche » en crée une.': 'No recipes for this establishment. The “New sheet” button creates one.',
+  'Choisissez une recette dans la liste. Les fiches se créent dans Cartes & Recettes, avec le bouton « Nouvelle fiche ».': 'Choose a recipe in the list. Sheets are created in Menus & Recipes, with the “New sheet” button.',
 
   // ── Réservations par tâche : accueil du module ──
   'Je réserve une table': 'I book a table',

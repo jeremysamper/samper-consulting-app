@@ -53,8 +53,8 @@ export default function ChoixEtiquette({ recettes, chargement, onChoisir }) {
   );
 }
 
-// Champ toujours ouvert d'un écran dont la recherche est la tâche (ici et
-// « Je cherche une fiche ») ; 16 px : en dessous, iOS zoome la page à la prise.
+// Champ toujours ouvert d'un écran dont la recherche est la tâche ; 16 px au
+// moins : en dessous, iOS zoome la page à la prise.
 export const champRecherche = { width: '100%', padding: '12px 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t3)', fontFamily: 'var(--font)', boxSizing: 'border-box' };
 
 const st = {
