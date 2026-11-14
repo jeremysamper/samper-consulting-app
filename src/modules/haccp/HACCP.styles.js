@@ -62,7 +62,8 @@ export const hcfg = {
   rowIcon:{width:36,height:36,borderRadius: 'var(--r)',background:'var(--selection)',display:'flex',alignItems:'center',justifyContent:'center',fontSize: 'var(--t4)',flexShrink:0},
   toggle:{width:40,height:22,borderRadius:11,position:'relative',cursor:'pointer',transition:'background .2s',flexShrink:0},
   toggleThumb:{position:'absolute',top:2,width:18,height:18,borderRadius:9,background:'#fff',transition:'left .2s',boxShadow:'0 1px 3px rgba(0,0,0,0.3)'},
-  editBtn:{padding:'5px 12px',background:'var(--btn-fond)',borderWidth:1,borderStyle:'solid',borderColor:'var(--btn-bord)',borderRadius: 'var(--r-full)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color:'var(--btn-texte)',cursor:'pointer',fontFamily:'var(--font)'},
+  // « Gérer » d'une ligne des réglages (Modifier, Supprimer) : cible de 44 px au doigt.
+  gererBtn:{minHeight:44,flexShrink:0,padding:'5px 14px',background:'var(--btn-fond)',borderWidth:1,borderStyle:'solid',borderColor:'var(--btn-bord)',borderRadius: 'var(--r-full)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color:'var(--btn-texte)',cursor:'pointer',fontFamily:'var(--font)'},
   // Supprimer, sur chaque ligne : discret au repos, rouge au survol et au focus (classe btn-suppr-discret, app.css).
   deleteBtn:{padding:'5px 12px',background:'transparent',border:'1px solid transparent',borderRadius: 'var(--r-full)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color:'var(--text3)',cursor:'pointer',fontFamily:'var(--font)'},
 };
