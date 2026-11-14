@@ -95,7 +95,7 @@ const PanneauEtat = ({ titre, texte, onRetry }) => (
     <div style={{fontSize: 'var(--t2)', color:'var(--text2)', marginTop:8}}>{texte}</div>
     {onRetry && (
       <button
-        style={{marginTop:16, padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor:'pointer', fontFamily:'var(--font)'}}
+        style={{ ...rs.printBtn, marginTop: 16 }}
         onClick={onRetry}
       >
         Réessayer
