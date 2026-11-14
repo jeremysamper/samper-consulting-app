@@ -4813,6 +4813,12 @@ export const UI_GLOSSARY = {
   "Prix de vente saisi dans la fiche ; n/a sans prix.": "Selling price entered in the recipe card; n/a without a price.",
   "Coût par portion divisé par le prix de vente ; n/a sans prix.": "Cost per portion divided by the selling price; n/a without a price.",
   "Prix de vente moins coût par portion ; n/a sans prix (le Chiffrage affiche alors 0).": "Selling price less cost per portion; n/a without a price (Costing then shows 0).",
+  // Direction Galet, lot 3 (stock et fiches)
+  "produits comptés sur": "products counted out of",
+  "produit compté sur": "product counted out of",
+  "Aucun inventaire validé": "No approved inventory",
+  "périmètre": "scope",
+  "Ouvrir le comptage": "Open the count",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

@@ -3,6 +3,7 @@ import { Banknote, CalendarClock, ChartColumn, ChartLine, ClipboardList, Receipt
 import { Btn } from '../../components/ui/index.jsx';
 import { Choix, Fenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
+import ReperesInventaire, { CarteInventaire } from './ReperesInventaire.jsx';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { dateCH, estCompte } from './inventaireLignes.js';
 import { estACompleter } from './achatsLogic.js';
@@ -117,15 +118,19 @@ export default function AccueilInventaire({
     },
   ];
 
-  return (
-    <div style={st.page}>
-      <div style={st.enTete}>
+  // Inventaire (direction Galet) : repères et carte de l'inventaire autour des
+  // tuiles, sur la grille d'inventaire.css. La vue « achats » garde sa page.
+  const page = (
+    <div style={achatsVue ? st.page : undefined} className={achatsVue ? undefined : 'inv-grille'}>
+      <div style={st.enTete} className={achatsVue ? undefined : 'inv-entete'}>
         <div style={{ minWidth: 0 }}>
           <div style={st.surTitre}>Périmètre</div>
           <div style={st.perimetre} data-no-translate>{perimetreActif}</div>
         </div>
         {perimetres.length > 1 && <Btn variant="ghost" onClick={() => setFenetre('perimetre')} style={{ minHeight: 44 }}>Changer de périmètre</Btn>}
       </div>
+      {!achatsVue && <ReperesInventaire dernier={dernier} perimetreActif={perimetreActif} perimetres={perimetres} pilesParPerimetre={pilesParPerimetre} />}
+      {!achatsVue && <CarteInventaire dernier={dernier} perimetreActif={perimetreActif} onOuvrir={onJeCompte} />}
 
       {achatsVue && aCompleter > 0 && (
         <div style={st.bandeau} data-bandeau-a-completer="">
@@ -208,6 +213,7 @@ export default function AccueilInventaire({
       )}
     </div>
   );
+  return achatsVue ? page : <div className="inv-page">{page}</div>;
 }
 
 const st = {

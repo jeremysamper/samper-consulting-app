@@ -4794,4 +4794,10 @@ export const UI_GLOSSARY_ES = {
   "Prix de vente saisi dans la fiche ; n/a sans prix.": "Precio de venta introducido en la ficha; n/a sin precio.",
   "Coût par portion divisé par le prix de vente ; n/a sans prix.": "Coste por ración dividido por el precio de venta; n/a sin precio.",
   "Prix de vente moins coût par portion ; n/a sans prix (le Chiffrage affiche alors 0).": "Precio de venta menos coste por ración; n/a sin precio (el Escandallo muestra entonces 0).",
+  // Direction Galet, lot 3 (stock et fiches)
+  "produits comptés sur": "productos contados de",
+  "produit compté sur": "producto contado de",
+  "Aucun inventaire validé": "Ningún inventario validado",
+  "périmètre": "área",
+  "Ouvrir le comptage": "Abrir el recuento",
 };
