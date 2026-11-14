@@ -1,0 +1,9 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Page des réglages (direction Galet, lot 6). La section ouverte est une carte
+   blanche (Compte.jsx, st.section) ; l'écran d'origine qu'elle monte peut
+   poser ses propres cartes (Panneau, data-cadre) : elles gardent leur filet et
+   perdent leur ombre, pour ne pas empiler deux ombres l'une dans l'autre
+   (!important : la carte pose son ombre en style inline). Rien ici ne vise une
+   vue capturée en PDF.
+   ───────────────────────────────────────────────────────────────────────────── */
+.reglages-section [data-cadre]:not(.pdf-render-root *) { box-shadow: none !important; }
