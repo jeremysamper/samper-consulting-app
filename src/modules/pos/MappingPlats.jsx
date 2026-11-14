@@ -76,7 +76,7 @@ function EmptyState({ type, onNavigate }) {
         {config.desc}
       </div>
       {config.actionLabel && onNavigate && (
-        <Btn variant="primary" onClick={onNavigate} style={{ marginTop: 4 }}>{config.actionLabel}</Btn>
+        <Btn onClick={onNavigate} style={{ marginTop: 4 }}>{config.actionLabel}</Btn>
       )}
     </div>
   );

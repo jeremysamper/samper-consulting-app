@@ -117,12 +117,14 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
           style={{
             marginTop:  4,
             padding:    '10px 20px',
-            background: 'var(--accent)',
-            color:      'var(--on-accent)',
-            border:     'none',
+            background: 'var(--btn-fond)',
+            color:      'var(--btn-texte)',
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--btn-bord)',
             borderRadius: 'var(--r-full)',
             fontSize:   'var(--t2)',
-            fontWeight: 'var(--g3)',
+            fontWeight: 'var(--g2)',
             cursor:     'pointer',
             fontFamily: 'var(--font)',
           }}
