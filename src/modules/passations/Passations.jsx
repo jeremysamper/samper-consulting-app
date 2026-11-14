@@ -251,7 +251,7 @@ export default function Passations({ user, etablissement, ecranReglage = null })
         </div>
         <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }} data-no-translate>{p.contenu}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {!lue && p.createdBy !== moi && <Btn variant="primary" onClick={() => marquerLue(p)}>J'ai lu</Btn>}
+          {!lue && p.createdBy !== moi && <Btn onClick={() => marquerLue(p)}>J'ai lu</Btn>}
           {lue && <Puce ton="success">Lu</Puce>}
           {(p.createdBy === moi || peutGerer) && <Btn onClick={() => setForm({ passation: p })}>Modifier</Btn>}
           {(p.createdBy === moi || peutGerer) && <Btn onClick={async () => { const r = await passations.supprimer(p.id); if (r.error) notify(r.error, 'error'); else notify('Passation supprimée.', 'success'); }}>Supprimer</Btn>}
