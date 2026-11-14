@@ -52,23 +52,30 @@ function fmtDate(iso) {
   }
 }
 
+// Direction Galet : la barre est une carte blanche (data-cadre), ses boutons
+// des pilules ; un état (déconnecté, restaurant à choisir) garde la couleur de
+// son contour.
 const S = {
-  card:  { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 12, padding: '14px 18px' },
+  card:  {
+    background: 'var(--zone)', boxShadow: 'var(--sh)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+    borderRadius: 'var(--r-lg)', padding: '14px 18px',
+  },
   row:   { display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
-  title: { fontSize: 14, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--font)' },
-  sub:   { fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.5 },
+  title: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' },
+  sub:   { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.5 },
   pill:  (kind) => ({
-    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20, whiteSpace: 'nowrap',
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding: '2px 8px', borderRadius: 'var(--r-full)', whiteSpace: 'nowrap',
     background: `var(--${kind}-bg-soft)`, color: `var(--${kind}-text)`, border: `1px solid var(--${kind}-bd)`,
   }),
   primary: (off) => ({
-    padding: '8px 16px', borderRadius: 8, border: 'none',
+    padding: '10px 18px', borderRadius: 'var(--r-full)', border: 'none',
     background: off ? 'var(--border)' : 'var(--accent)', color: off ? 'var(--text3)' : 'var(--on-accent)',
-    fontSize: 13, fontWeight: 500, cursor: off ? 'wait' : 'pointer', fontFamily: 'var(--font)', flexShrink: 0,
+    fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: off ? 'wait' : 'pointer', fontFamily: 'var(--font)', flexShrink: 0,
   }),
   ghost: (busy) => ({
-    padding: '8px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)',
-    color: 'var(--text)', fontSize: 13, fontWeight: 500, cursor: busy ? 'wait' : 'pointer',
+    padding: '10px 16px', borderRadius: 'var(--r-full)', background: 'var(--btn-fond)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: busy ? 'wait' : 'pointer',
     fontFamily: 'var(--font)', flexShrink: 0, opacity: busy ? 0.6 : 1,
   }),
   spacer:  { flex: 1, minWidth: 0 },
@@ -192,10 +199,10 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
   // ── Chargement initial ──
   if (loading && !status) {
     return (
-      <div style={S.card}>
+      <div style={S.card} data-cadre="">
         <div style={S.row}>
           <IconLS />
-          <span style={{ fontSize: 13, color: 'var(--text3)' }}>Vérification de la caisse...</span>
+          <span style={{ fontSize: 'var(--t2)', color: 'var(--text3)' }}>Vérification de la caisse...</span>
         </div>
       </div>
     );
@@ -204,7 +211,7 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
   // ── Connecte ──
   if (isConnected) {
     return (
-      <div style={S.card}>
+      <div style={S.card} data-cadre="">
         <div style={S.row}>
           <IconLS />
           <div style={{ minWidth: 0 }}>
@@ -247,7 +254,7 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
   if (isError) {
     return (
       <>
-        <div style={{ ...S.card, borderColor: 'var(--danger-bd)' }}>
+        <div style={{ ...S.card, borderColor: 'var(--danger-bd)' }} data-cadre="">
           <div style={S.row}>
             <IconLS />
             <div style={{ minWidth: 0 }}>
@@ -280,7 +287,7 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
   if (needsLocation) {
     return (
       <>
-        <div style={{ ...S.card, borderColor: 'var(--warning-bd)' }}>
+        <div style={{ ...S.card, borderColor: 'var(--warning-bd)' }} data-cadre="">
           <div style={S.row}>
             <IconLS />
             <div style={{ minWidth: 0 }}>
@@ -309,7 +316,7 @@ export default function PosConnectionBar({ etablissement, user, onSynced }) {
   // ── Non connecte ──
   return (
     <>
-      <div style={S.card}>
+      <div style={S.card} data-cadre="">
         <div style={{ ...S.row, alignItems: 'flex-start' }}>
           <IconLS />
           <div style={{ minWidth: 0, flex: 1 }}>
