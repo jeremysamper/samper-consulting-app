@@ -10,7 +10,7 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { Fenetre } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { pictoCercleStyle } from '../../components/ui/index.jsx';
 import './documents.css';
@@ -551,7 +551,16 @@ const Documents = ({ user, etablissement }) => {
           )}
           {canWrite && (
             <>
-              <button type="button" style={ds.btnGhost} onClick={() => setNouveauDossier('')}>Nouveau dossier</button>
+              {/* En-tête : l'action principale et deux secondaires (la loupe,
+                  « Sélectionner ») ; le reste dans un seul menu. La rangée
+                  tient au téléphone sans couper « Ajouter ». */}
+              <BoutonActions
+                id="documents-gerer"
+                label="Gérer"
+                style={ds.btnGhost}
+                titre="Documents"
+                sections={[{ items: [{ titre: 'Nouveau dossier', onClick: () => setNouveauDossier('') }] }]}
+              />
               {/* Un vrai bouton (clavier, lecteur d'écran) ; le champ fichier
                   reste masqué et s'ouvre par lui. Les actions restent dans
                   l'en-tête : une rangée de gros boutons repoussait le dernier
