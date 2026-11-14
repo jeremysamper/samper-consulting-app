@@ -63,7 +63,7 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats
       <div className="pl-page">
         <div className="pl-grille">
           <ReperesPlanning equipe={equipe} heures={heures} absents={absents} />
-          <CartePlanningEquipe etats={etats} onOuvrir={onEquipe} />
+          <CartePlanningEquipe etats={etats} />
           <AccueilModule tuiles={tuiles} />
         </div>
       </div>

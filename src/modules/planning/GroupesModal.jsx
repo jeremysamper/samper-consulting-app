@@ -194,7 +194,8 @@ export default function GroupesModal({ groupesEtab, personnes, comptes, canGerer
                     <option value="">Choisir un compte…</option>
                     {comptesDisponibles.map((c) => <option key={c.id} value={c.id}>{c.prenom} {c.nom}{c.email ? ` (${c.email})` : ''}</option>)}
                   </select>
-                  <button type="button" style={{ ...pls.addBtn, minHeight: 44, flexShrink: 0 }} disabled={!compteAjoute || !!enCours} onClick={ajouterCompte}>Ajouter</button>
+                  {/* Secondaire : une seule pilule sombre par écran, celle du groupe à ajouter. */}
+                  <button type="button" style={{ ...pls.exportBtn, minHeight: 44, flexShrink: 0 }} disabled={!compteAjoute || !!enCours} onClick={ajouterCompte}>Ajouter</button>
                 </div>
               )}
               {canPostes && comptesPostes.length > 0 && (

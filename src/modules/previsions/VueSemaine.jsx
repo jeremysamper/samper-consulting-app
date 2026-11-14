@@ -332,7 +332,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
           </div>
           <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>
             {onNouvelle
-              ? <Btn variant="primary" onClick={onNouvelle} style={{ marginTop: 6 }}>Nouvelle réservation</Btn>
+              ? <Btn variant="ghost" onClick={onNouvelle} style={{ marginTop: 6 }}>Nouvelle réservation</Btn>
               : 'Les réservations de la semaine apparaîtront ici.'}
           </div>
         </div>

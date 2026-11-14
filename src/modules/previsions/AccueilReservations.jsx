@@ -51,7 +51,7 @@ export default function AccueilReservations({
     <div className="resa-page">
       <div className="resa-grille">
         <ReperesReservations chiffres={chiffres} />
-        <CarteServiceDuJour chiffres={chiffres} onOuvrir={onService} />
+        <CarteServiceDuJour chiffres={chiffres} />
         <AccueilModule tuiles={tuiles} />
       </div>
     </div>

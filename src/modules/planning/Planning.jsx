@@ -1395,7 +1395,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 {m.nom}
               </button>
             ))}
-            <button type="button" style={pls.addBtn} onClick={() => setRemplissage(null)}>Terminer</button>
+            {/* Secondaire : l'aplat sombre reste à « Ajouter », action principale de l'écran. */}
+            <button type="button" style={pls.exportBtn} onClick={() => setRemplissage(null)}>Terminer</button>
           </div>
         </div>
       )}
