@@ -96,6 +96,26 @@ Elles portent la direction à la source : passer par `src/components/ui/` plutô
 - Un état que le style en ligne ne sait pas dire (survol, focus, éteint) vit dans `app.css`, accroché à une classe ou à la valeur écrite en ligne. L'anneau de focus reste visible sur l'aplat sombre : posé hors de la pilule, ou dans la pilule à l'encre du texte.
 - Un bloc qui doit garder son cadre porte `data-cadre` ; sans lui, la règle « Plus de carrés » d'`app.css` l'aplatit sur la page.
 
+## Boutons
+Le système de contrôles du modèle : une seule pilule sombre dans la barre, des cercles à picto, une rangée de pilules de filtre dans la carte, une flèche ronde par carte, une pilule de période, aucun bouton dans les petites cartes de chiffres.
+- S1. Une seule action principale par écran (pilule sombre, `Btn primary`), dans l'en-tête de l'écran. Une deuxième pilule sombre qui n'est pas un choix en cours devient secondaire ou part au menu.
+- S2. En-tête d'écran : l'action principale, puis au plus deux actions secondaires visibles (pilules blanches). Les autres actions de l'en-tête se rangent dans un seul menu `BoutonActions`.
+- S3. Une seule façon d'ouvrir une chose. Une carte s'ouvre par son `BoutonFleche`, une ligne par son toucher. Un bouton « Voir », « Ouvrir », « Détail » ou « Modifier » posé sur une carte ou une ligne qui ouvre déjà la même chose est un doublon.
+- S4. Une ligne de liste porte au plus un contrôle visible en plus de son toucher : son « Gérer » (`BoutonActions`), ou son action unique quand elle n'en a qu'une.
+- S5. Une dimension de filtre a un seul contrôle (rangée de pilules, ou pilule de période). Onglets et liste déroulante pour le même état, « Tout afficher » et « Réinitialiser » au même effet : un seul reste.
+- S6. La coque porte la navigation. Dans un module, un bouton qui refait sur le même écran ce que la coque offre déjà (retour à l'accueil, recherche de toute l'app, établissement, langue, thème, compte, messagerie) part. Le retour d'un `EcranTache` reste.
+- S7. Une petite carte de chiffre n'a pas de bouton : elle s'ouvre entière, pour le rôle qui peut ouvrir.
+
+Verdicts d'un contrôle (liste fermée). Un contrôle : tout `Btn`, `button`, `BoutonActions`, `BoutonFleche`, `Choix`, et tout élément rendu cliquable par `onClick`. Sa fonction : ce qu'il déclenche (écriture, ouverture de fenêtre, export, impression, changement d'écran ou d'état), nommée par son gestionnaire.
+- `garde` : le contrôle reste tel quel.
+- `doublon` : un autre contrôle visible en même temps, sur le même écran, pour les mêmes rôles (même condition de rendu), déclenche la même fonction. Celui que S1 à S7 placent reste, l'autre part. Deux contrôles aux gardes différentes ne sont pas des doublons : les deux restent.
+- `coque` : S6.
+- `mort` : gestionnaire vide ou sans effet, bouton désactivé dans tous les états, annonce « à venir », fonction disparue. Il part, avec la preuve.
+- `menu` : action secondaire rare affichée en clair alors que S2 ou S4 la veut au menu. Rare, liste fermée : exporter, importer, dupliquer, archiver, supprimer, réinitialiser, actualiser, aide, réglages du module. Jamais l'action que nomme la tâche de l'écran, jamais une action du parcours principal d'un rôle. Elle coûte un toucher de plus, écrit.
+- `ouverture` : S3.
+- `filtre` : S5.
+- `a-decider` : le bouton sert, mais sa fonction paraît superflue. Il reste et s'écrit au rapport du lot : un lot ne ferme jamais une fonction.
+
 ## Béquilles
 La section « Direction Galet (béquilles) », en fin d'`app.css`, rattrape les styles en ligne d'avant : taille sous 12 px, graisse 700, rayons numériques (par famille : bouton et étiquette en pilule, champ et image en `--r`, fenêtre en `--r-xl`), accent en texte, contour des champs. Elle ne s'applique pas dans une vue capturée en PDF. Un module repris écrit ses valeurs à la source ; une béquille tombe quand plus aucun élément ne l'atteint (preuve par grep sur `src/` et par le banc).
 - Clôture du 14.11.2026 (lot 8) : une béquille est tombée, le contour des boutons à fond doux sans bord (`--surface2` et `border: none`) : la grille de la caisse et sa feuille « Qui est à cette table ? » écrivent leur contour à la source, sur `--surface`, et le banc n'a vu aucune empreinte changer. Les deux crans d'opacité des éléments éteints restent : un grep de la source n'y trouvait aucun site, le banc en a vu sur la réservation close (jour et fiche) et sur les réglages du HACCP.
