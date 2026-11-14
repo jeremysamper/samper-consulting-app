@@ -29,6 +29,9 @@ const loadComptabilite = () => import('./comptabilite/Comptabilite.jsx');
 // Statistiques : module de la direction, pas de préchargement idle non plus.
 const loadStatistiques = () => import('./statistiques/Statistiques.jsx');
 const loadKds = () => import('./kds/Kds.jsx');
+// Points & boutique (lot P1) : pas de préchargement, ouvert à peu de monde
+// tant que le système n'est pas allumé.
+const loadPoints = () => import('./points/Points.jsx');
 const loadMep = () => import('./mep/MiseEnPlace.jsx');
 const loadMessages = () => import('./messages/Messages.jsx');
 const loadParametres = () => import('./parametres/Parametres.jsx');
@@ -71,6 +74,7 @@ const Journal = lazy(loadJournal);
 const Comptabilite = lazy(loadComptabilite);
 const Statistiques = lazy(loadStatistiques);
 const Kds = lazy(loadKds);
+const Points = lazy(loadPoints);
 const Mep = lazy(loadMep);
 const Messages = lazy(loadMessages);
 const Parametres = lazy(loadParametres);
@@ -223,6 +227,13 @@ export default function LegacyModuleHost({
       // Garde dure par rôle, miroir de la RLS de journal_activite.
       return peutOuvrirPage('journal', user, permissions)
         ? wrap("Journal d'activité", <Journal user={user} etablissement={etablissement} />)
+        : accessDenied;
+    }
+    case 'points': {
+      // Le module ferme lui-même son écran à qui ne le verrait pas dans le menu
+      // (système éteint ou personne qui n'y participe pas, entreeMenuVisible).
+      return peutOuvrirPage('points', user, permissions)
+        ? wrap('Points & boutique', <Points user={user} etablissement={etablissement} />)
         : accessDenied;
     }
     case 'comptabilite': {

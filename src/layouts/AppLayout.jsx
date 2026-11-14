@@ -5,6 +5,7 @@ import { useTheme } from '../hooks/useTheme.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { useAlertInstances } from '../hooks/useAlertInstances.js';
 import { useVisibleNav } from '../hooks/useVisibleNav.js';
+import { usePointsRetour } from '../modules/points/usePointsRetour.js';
 import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
 import SamperMark from '../components/brand/SamperMark.jsx';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
@@ -193,7 +194,10 @@ export default function AppLayout({
   // Modules visibles, rangés par rubrique, avec leurs badges : useVisibleNav
   // (filtres de rôle et d'établissement, ordre du consultant). La page
   // d'accueil tactile lit la même liste par ShellContext.
-  const { visibleNav, groupedNav, navOrder, saveNavOrder, badges } = useVisibleNav({ user, etablissement, perms });
+  const { visibleNav, groupedNav, navOrder, saveNavOrder, badges, points } = useVisibleNav({ user, etablissement, perms });
+  // Retour immédiat « +N points » : un seul abonnement, posé ici, seulement
+  // quand le système est allumé et que la personne y participe.
+  usePointsRetour({ etabId: etablissement?.id, userId: user?.id, actif: points.actif && points.participant });
   const [organizing, setOrganizing] = React.useState(false);
   const isConsultant = user.role === 'consultant';
   // ─── Alertes configurables - Supabase (remplace DEMO_DATA) ──────
