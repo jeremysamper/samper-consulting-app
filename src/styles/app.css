@@ -2351,14 +2351,6 @@ button[style*="border-color: var(--btn-bord)"]:not(.ui-btn):disabled {
   color: var(--text3) !important;
   border-color: var(--rule-soft) !important;
 }
-/* Un bouton à fond doux sans bord (grille de la caisse, tuiles posées dans un
-   module) prend le même contour : --surface2 vaut la surface, sans lui il
-   n'aurait plus ni fond ni limite. Les tuiles d'accueil (.accueil-tuile)
-   écrivent ce contour elles-mêmes. */
-button[style*="background: var(--surface2)"][style*="border-style: none"] {
-  box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
-}
-
 /* Cases d'ajout en pointillés : le « + » suffit. */
 div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   border-color: transparent !important;
@@ -2554,15 +2546,10 @@ span:is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="b
   }
 }
 
-/* Contraste des encres atténuées par une opacité (direction Galet).
-   - Le compteur d'un onglet (.fv-onglet-nombre, opacité 0,7) garde l'encre
-     pleine sur l'onglet choisi : sur l'aplat, en thème sombre, l'encre à 0,7
-     tombait à 3,86.
-   - Deux éléments éteints par une opacité en ligne passaient sous 4,5, l'un
-     sur le fond de page gris (carte d'une réservation close, 0,6), l'autre
-     sur la surface sombre (ligne d'un contrôle retiré des réglages du HACCP,
-     0,5). Le cran remonte juste assez ; l'élément reste visiblement éteint.
-     Béquilles : elles tombent quand ces deux écrans seront repris. */
+/* Contraste des encres atténuées par une opacité (direction Galet) : le
+   compteur d'un onglet (.fv-onglet-nombre, opacité 0,7) garde l'encre pleine
+   sur l'onglet choisi ; sur l'aplat, en thème sombre, l'encre à 0,7 tombait à
+   3,86. (Les deux crans d'opacité des éléments éteints, carte d'une
+   réservation close et ligne d'un contrôle retiré du HACCP, sont tombés à la
+   clôture du 14.11.2026 : plus aucun élément ne les atteignait.) */
 .segmented-tab.is-active .fv-onglet-nombre { opacity: 1; }
-[style*="background: var(--surface); opacity: 0.6;"]:not(.pdf-render-root *) { opacity: 0.66 !important; }
-[style*="transition: background 0.12s; opacity: 0.5;"]:not(.pdf-render-root *) { opacity: 0.56 !important; }
