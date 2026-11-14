@@ -79,6 +79,14 @@ export function CarteSemaine({ couverts, aujourdhui, onOuvrir }) {
     const rel = jourRelatif(d, aujourdhui);
     return rel === "aujourd'hui" ? 'Auj.' : rel === 'demain' ? 'Dem.' : `${rel.charAt(0).toUpperCase()}${rel.slice(1, 3)}.`;
   });
+  // Sous 280 px de large (widget petit à la tablette), les abréviations se
+  // touchent : le jour du mois prend leur place (tableau.css, .tdb-jour-court).
+  const libelles = jours.map((d, i) => (
+    <React.Fragment key={d}>
+      <span className="tdb-jour-long">{abreges[i]}</span>
+      <span className="tdb-jour-court" data-no-translate>{Number(d.slice(8, 10))}</span>
+    </React.Fragment>
+  ));
   return (
     <CarteAvant ton="soleil" data-carte="semaine">
       <div style={s.tete}>
@@ -94,7 +102,7 @@ export function CarteSemaine({ couverts, aujourdhui, onOuvrir }) {
       </p>
       {/* La barre du jour en aplat sombre ; les totaux jour par jour sont dits
           par les nombres posés sous chaque barre. */}
-      <Barres valeurs={totaux} libelles={abreges} fort={0} encre="var(--carte-soleil-texte)" />
+      <Barres valeurs={totaux} libelles={libelles} fort={0} encre="var(--carte-soleil-texte)" />
     </CarteAvant>
   );
 }
@@ -105,7 +113,9 @@ const SERVICES = [
   { id: 'soir', mot: 'le soir', couleur: 'var(--svc-soir)' },
 ];
 
-export function CarteCouverts({ couverts, aujourdhui, onOuvrir }) {
+// compacte (widget moyen, une rangée) : l'arc et les services côte à côte,
+// la légende passe dessous quand la carte est trop étroite.
+export function CarteCouverts({ couverts, aujourdhui, onOuvrir, compacte = false }) {
   const st = carteAvantStyles('ciel');
   const c = couvertsDu(couverts, aujourdhui);
   const total = c.total || 0;
@@ -119,6 +129,8 @@ export function CarteCouverts({ couverts, aujourdhui, onOuvrir }) {
         </div>
         <BoutonFleche onClick={onOuvrir} libelle="Voir les réservations" ton="ciel" />
       </div>
+      <div style={compacte ? s.corpsCompact : s.corps}>
+      <div style={compacte ? s.arcCompact : null}>
       <Arc parts={parts.map((x) => ({ valeur: c[x.id], couleur: x.couleur }))} total={total} piste="var(--surface)">
         {total > 0 ? (
           <>
@@ -129,8 +141,9 @@ export function CarteCouverts({ couverts, aujourdhui, onOuvrir }) {
           <span style={{ ...st.libelle, display: 'block' }}>Aucune réservation aujourd&apos;hui</span>
         )}
       </Arc>
+      </div>
       {parts.length > 0 && (
-        <div style={s.services}>
+        <div style={compacte ? { ...s.services, ...s.servicesCompact } : s.services}>
           {parts.map((x) => (
             <span key={x.id} style={s.service}>
               <span style={{ ...st.chiffre, fontSize: 'var(--t5)' }} data-no-translate>{c[x.id]}</span>
@@ -142,6 +155,7 @@ export function CarteCouverts({ couverts, aujourdhui, onOuvrir }) {
           ))}
         </div>
       )}
+      </div>
     </CarteAvant>
   );
 }
@@ -158,4 +172,8 @@ const s = {
   service: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, minWidth: 0 },
   serviceMot: { display: 'inline-flex', alignItems: 'center', gap: 6 },
   point: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
+  corps: { display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 },
+  corpsCompact: { display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '12px 20px', minWidth: 0 },
+  arcCompact: { flex: '1 1 200px', minWidth: 0, maxWidth: 240 },
+  servicesCompact: { flex: '1 1 140px', justifyContent: 'flex-start', gap: 20 },
 };

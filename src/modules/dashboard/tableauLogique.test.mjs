@@ -2,7 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  aFaire, chiffresGestion, equipeParService, etatDuService, jourIso, minutesEcoulees, reperesDuJour, serviceDuShift,
+  aFaire, chiffresGestion, equipeParService, etatDuService, jourIso, minutesEcoulees, pertesParSemaine, relevesDuJour,
+  relevesParCreneau, reperesDuJour, serviceDuShift,
 } from './tableauLogique.js';
 
 const JOUR = '2026-10-30'; // un vendredi
@@ -210,4 +211,39 @@ test('aFaire et chiffresGestion : inchangés', () => {
     aujourdhui: JOUR,
   });
   assert.deepEqual(c, { valeurPertes: 15, aValider: 1, heures: 9, couvertsSemaine: 199 });
+});
+
+test('relevés du jour : un relevé compte pour la tournée la plus proche, zones et tournées inactives écartées', () => {
+  const haccp = {
+    zones: [{ id: 'z1', actif: true }, { id: 'z2', actif: true }, { id: 'z3', actif: false }],
+    creneaux: [{ id: 'soir', heure: '17:00', actif: true }, { id: 'matin', heure: '07:00', actif: true }, { id: 'nuit', heure: '23:00', actif: false }],
+    releves: [
+      { date: JOUR, zoneId: 'z1', heure: '07:20' },
+      { date: JOUR, zoneId: 'z2', heure: '08:40' },
+      { date: JOUR, zoneId: 'z1', heure: '07:50' },
+      { date: JOUR, zoneId: 'z3', heure: '07:10' },
+      { date: DEMAIN, zoneId: 'z2', heure: '17:00' },
+    ],
+  };
+  const r = relevesParCreneau(haccp, JOUR);
+  assert.deepEqual(r.creneaux.map((c) => c.id), ['matin', 'soir']);
+  assert.deepEqual([...r.parCreneau.get('matin')].sort(), ['z1', 'z2']);
+  assert.equal(r.parCreneau.get('soir').size, 0);
+  assert.deepEqual(relevesDuJour(haccp, JOUR, h('12:00')), { faits: 2, attendus: 4, prochain: '17:00' });
+  assert.deepEqual(relevesDuJour(haccp, JOUR, h('18:00')), { faits: 2, attendus: 4, prochain: null });
+  assert.deepEqual(relevesDuJour({ zones: [], creneaux: [], releves: [] }, JOUR, h('12:00')), { faits: 0, attendus: 0, prochain: null });
+  // À faire garde sa règle : la tournée du matin est complète, celle du soir pas encore passée.
+  assert.equal(aFaire({ aujourdhui: JOUR, maintenant: h('12:00'), haccp, avecHaccp: true, direction: false, nomDe: (x) => x }).length, 0);
+  assert.equal(aFaire({ aujourdhui: JOUR, maintenant: h('17:45'), haccp, avecHaccp: true, direction: false, nomDe: (x) => x })[0].detail, '0 zone sur 2');
+});
+
+test("pertes par semaine : tranches de sept jours du mois, jusqu'à la tranche du jour", () => {
+  const pertes = [
+    { date: '2026-10-02', valide: true }, { date: '2026-10-07', valide: false }, { date: '2026-10-08', valide: true },
+    { date: '2026-10-29', valide: true }, { date: '2026-10-31', valide: true }, { date: '2026-09-30', valide: false },
+    { date: '2026-10-30T10:00:00Z', valide: true },
+  ];
+  assert.deepEqual(pertesParSemaine(pertes, JOUR), { nombres: [2, 1, 0, 0, 2], total: 5, aValider: 2 });
+  assert.deepEqual(pertesParSemaine(pertes, '2026-10-03'), { nombres: [1], total: 1, aValider: 2 });
+  assert.deepEqual(pertesParSemaine([], '2026-10-15'), { nombres: [0, 0, 0], total: 0, aValider: 0 });
 });

@@ -1,16 +1,13 @@
 import React from 'react';
-import { useRegulariteEquipe } from '../planning/contratsService.js';
 import { formatSolde } from '../planning/soldesHeures.js';
 import { userDisplay } from '../../utils/userDisplay.js';
-import { getModuleIcon } from '../moduleIcons.js';
-import { Chiffre, Section } from './tableauBriques.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Les chiffres de la semaine et du mois : réservés à la direction (consultant,
 // patron). La brigade n'en a pas l'usage pendant le service. Un chiffre en
-// grand par bloc, d'un geste vers son module ; les couverts du jour sont dans
-// l'en-tête, pour tout le monde. Rien à compter : une phrase à la place du
-// chiffre (« Aucune perte ce mois-ci »), jamais « CHF 0 » ni « 0 h ». Lecture
+// grand par widget, d'un geste vers son module (widgets/Widgets.jsx, brique
+// Chiffre) ; les couverts du jour sont un repère, pour tout le monde. Rien à
+// compter : une phrase à la place du chiffre (« Aucune perte ce mois-ci »), jamais « CHF 0 » ni « 0 h ». Lecture
 // en échec jamais aboutie : « Indisponible pour l'instant ».
 // Nombres et mots dans des nœuds séparés : la phrase reste une entrée du
 // glossaire au lieu de partir au traducteur à chaque valeur.
@@ -20,14 +17,12 @@ const nombre = (v) => Math.round(v || 0).toLocaleString('fr-CH');
 const Chf = ({ v }) => <><span data-no-translate>CHF</span>{' '}<span data-no-translate>{nombre(v)}</span></>;
 const INDISPONIBLE = "Indisponible pour l'instant";
 
-export default function ChiffresGestion({
-  chiffres, stock, avecPertes, avecStock, avecCouverts, avecPlanning, nonLu = () => false, peutOuvrir, ouvrir,
+// Les blocs permis, dans l'ordre d'avant : couverts, heures, pertes, stock.
+export function blocsDeGestion({
+  chiffres, stock, avecPertes, avecStock, avecCouverts, avecPlanning, nonLu = () => false, peutOuvrir,
 }) {
-  // Régularité de l'équipe : une ligne sous les chiffres, seulement si
-  // l'établissement a au moins un contrat (aucun bloc de plus).
-  const regularite = useRegulariteEquipe(avecPlanning);
   const heures = chiffres.heures;
-  const blocs = [
+  return [
     avecCouverts && {
       id: 'couverts', page: 'previsions', label: 'Couverts réservés',
       ...(nonLu('couverts') ? { texte: INDISPONIBLE }
@@ -65,34 +60,11 @@ export default function ChiffresGestion({
           }),
     },
   ].filter(Boolean);
-
-  if (!blocs.length) return null;
-
-  return (
-    <Section id="tdb-chiffres" titre="Les chiffres de la semaine et du mois" sousTitre="Visible par la direction seulement" panneau={false}>
-      <div className="tdb-chiffres">
-        {blocs.map((c) => (
-          <Chiffre
-            key={c.id}
-            id={c.id}
-            label={c.label}
-            valeur={c.valeur}
-            texte={c.texte}
-            detail={c.detail}
-            couleurDetail={c.couleurDetail}
-            icone={getModuleIcon(c.page)}
-            onClick={peutOuvrir(c.page) ? () => ouvrir(c.page) : null}
-          />
-        ))}
-      </div>
-      {avecPlanning && regularite.avecContrats && <Regularite r={regularite} />}
-    </Section>
-  );
 }
 
 // « Retards aujourd'hui 2  Léa 7 min, Hugo 12 min » et « Soldes négatifs du
 // mois -12 h 30  3 personnes ». Chaque nom et chaque nombre dans son nœud.
-function Regularite({ r }) {
+export function Regularite({ r }) {
   const prenom = (id) => userDisplay(id).prenom || userDisplay(id).name;
   return (
     <div className="tdb-panneau" style={s.regularite} data-chiffre="regularite">
@@ -136,7 +108,7 @@ const s = {
   service: { display: 'inline-flex', alignItems: 'baseline', gap: 5 },
   nombre: { fontWeight: 'var(--g3)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   regularite: {
-    display: 'flex', flexDirection: 'column', gap: 10, marginTop: 12,
+    display: 'flex', flexDirection: 'column', gap: 10,
   },
   regLigne: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '4px 12px', minWidth: 0 },
   regValeur: { fontFamily: 'var(--font-num)', fontSize: 'var(--t4)', lineHeight: 1.1, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
