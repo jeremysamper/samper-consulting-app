@@ -559,6 +559,7 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
   // Qui peut dupliquer ? consultant + patron + responsable cuisine
   // (cuisinier/serveur cachés ; chef de production peut être un alias de resp_cuisine)
   const canDuplicate = ['consultant', 'patron', 'resp_cuisine'].includes(user?.role);
+  const gereLaFiche = canFiches || canDuplicate;
 
   // Données fiche pour l'export jsPDF natif (helper module buildRecettePdfData).
   // On reflète les portions affichées (quantités mises à l'échelle).
@@ -624,32 +625,33 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
       )}
       <div className="module-actions no-print" style={{ marginBottom: 16 }}>
         <button style={rs.backBtn} onClick={onBack}>Retour</button>
-        {canFiches && recette.statut === 'archivée' && (
-          <button style={rs.etiquetteBtn} onClick={onDesarchiver}>Désarchiver</button>
-        )}
         {canFiches && (
           <button style={rs.printBtn} onClick={onModifier}>Modifier</button>
-        )}
-        {canFiches && (
-          <button style={rs.printBtn} onClick={onDupliquer}>Dupliquer</button>
         )}
         {canEtiqueter && (
           <button style={rs.etiquetteBtn} onClick={() => setShowEtiquette(true)}>Étiquette DLC</button>
         )}
+        {/* Un seul menu pour le reste de l'en-tête : l'export pour tous, et
+            pour qui gère la fiche, désarchiver et dupliquer. Sans ces droits,
+            le menu garde son nom d'export. */}
         <BoutonActions
           id="fiche-exporter"
-          label="Exporter"
+          label={gereLaFiche ? 'Actions' : 'Exporter'}
           style={rs.printBtn}
-          titre="Exporter la fiche"
+          titre={gereLaFiche ? 'Actions sur la fiche' : 'Exporter la fiche'}
           sousTitre={recette.nom}
-          sections={[{ items: [
-            { titre: 'Télécharger le PDF', detail: 'La fiche technique sur une page.', onClick: exportRecipePdf },
-            { titre: 'Imprimer', detail: 'La même fiche, envoyée à l\'imprimante.', onClick: printRecipe },
-          ] }]}
+          sections={[
+            { items: [
+              { titre: 'Télécharger le PDF', detail: 'La fiche technique sur une page.', onClick: exportRecipePdf },
+              { titre: 'Imprimer', detail: 'La même fiche, envoyée à l\'imprimante.', onClick: printRecipe },
+            ] },
+            { items: [
+              canFiches && recette.statut === 'archivée' && { titre: 'Désarchiver', onClick: onDesarchiver },
+              canFiches && { titre: 'Dupliquer', onClick: onDupliquer },
+              canDuplicate && { titre: 'Dupliquer vers…', onClick: () => setShowDuplicate(true) },
+            ] },
+          ]}
         />
-        {canDuplicate && (
-          <button style={rs.printBtn} onClick={() => setShowDuplicate(true)}>Dupliquer vers…</button>
-        )}
       </div>
       <div id='fiche-recette-print' className={`fv fv-fiche${tactile ? ' fv-fiche--tactile' : ''}`}>
       {/* Bandeau héros, toujours : la photo (ou le visuel de remplacement de
@@ -2431,10 +2433,6 @@ const Recettes = ({ user, etablissement }) => {
                       {isExpanded && platRecettes.length === 0 && (
                         <div style={rs.sousListeVide}>
                           Aucune recette rattachée à ce plat.
-                          {/* Ouvre la fenêtre du plat, section « Recettes du plat ». */}
-                          {canFiches && (
-                            <>{' '}<button type="button" style={rs.lienAction} onClick={() => setPlatEdite({ plat })}>Rattacher une recette</button></>
-                          )}
                         </div>
                       )}
                     </div>
@@ -2502,7 +2500,6 @@ const rs = {
   // vignettes (VitrineCarte, VitrineFiches) : leur forme vit dans
   // src/components/fiches/fiches.css, hors de portée de la règle « Plus de
   // carrés » qui aplatissait les tuiles posées en style inline.
-  lienAction: {background:'none',border:'none',padding:0,color: 'var(--lien)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',fontSize:'inherit',textDecoration:'underline'},
   // Allergènes en texte simple, noms complets séparés par des virgules.
   allergenesTexte: {fontSize: 'var(--t1)',fontWeight: 'var(--g1)',color:'var(--text2)',lineHeight:1.4},
   // Dans une ligne de liste : une seule ligne, le reste au survol (title).
