@@ -5,7 +5,7 @@ import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { Btn } from '../../components/ui/index.jsx';
-import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import EnTeteSection from '../../components/parcours/EnTeteSection.jsx';
 import { ouvrirCompte } from '../../services/navigationService.js';
@@ -251,10 +251,26 @@ export default function Passations({ user, etablissement, ecranReglage = null })
         </div>
         <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }} data-no-translate>{p.contenu}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {!lue && p.createdBy !== moi && <Btn variant="primary" onClick={() => marquerLue(p)}>J'ai lu</Btn>}
+          {!lue && p.createdBy !== moi && <Btn onClick={() => marquerLue(p)}>J'ai lu</Btn>}
           {lue && <Puce ton="success">Lu</Puce>}
-          {(p.createdBy === moi || peutGerer) && <Btn onClick={() => setForm({ passation: p })}>Modifier</Btn>}
-          {(p.createdBy === moi || peutGerer) && <Btn onClick={async () => { const r = await passations.supprimer(p.id); if (r.error) notify(r.error, 'error'); else notify('Passation supprimée.', 'success'); }}>Supprimer</Btn>}
+          {/* Trois contrôles (J'ai lu, Modifier, Supprimer) : J'ai lu reste visible, les deux autres passent dans « Gérer ». */}
+          {(p.createdBy === moi || peutGerer) && (!lue && p.createdBy !== moi ? (
+            <BoutonActions
+              id={`passation-gerer-${p.id}`}
+              label="Gérer"
+              style={st.secondaire}
+              titre="Gérer"
+              sections={[{ items: [
+                { titre: 'Modifier', onClick: () => setForm({ passation: p }) },
+                { titre: 'Supprimer', danger: true, onClick: async () => { const r = await passations.supprimer(p.id); if (r.error) notify(r.error, 'error'); else notify('Passation supprimée.', 'success'); } },
+              ] }]}
+            />
+          ) : (
+            <>
+              <Btn onClick={() => setForm({ passation: p })}>Modifier</Btn>
+              <Btn onClick={async () => { const r = await passations.supprimer(p.id); if (r.error) notify(r.error, 'error'); else notify('Passation supprimée.', 'success'); }}>Supprimer</Btn>
+            </>
+          ))}
         </div>
       </div>
     );

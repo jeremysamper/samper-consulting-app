@@ -41,7 +41,7 @@ function Ligne({ user, etablissement, onPlusTard }) {
       </div>
       <span style={st.actions}>
         {quoi === 'activer' && (
-          <Btn variant="primary" onClick={activer} disabled={enCours} style={st.btn}>{enCours ? 'Activation…' : 'Activer'}</Btn>
+          <Btn onClick={activer} disabled={enCours} style={st.btn}>{enCours ? 'Activation…' : 'Activer'}</Btn>
         )}
         <Btn variant="ghost" onClick={onPlusTard} disabled={enCours} style={st.btn}>Plus tard</Btn>
       </span>
