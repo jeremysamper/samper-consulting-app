@@ -569,6 +569,8 @@ export const UI_GLOSSARY = {
   "J'ai compris": 'Got it',
   'Gestion culinaire professionnelle': 'Professional culinary management',
   'Gestion culinaire, par Samper Consulting': 'Culinary management, by Samper Consulting',
+  'Hôtellerie et restauration': 'Hotels & restaurants',
+  'Hôtellerie et restauration, par Samper Consulting': 'Hotels & restaurants, by Samper Consulting',
   'Enregistrement': 'Saving',
   'Génération': 'Generating',
   'Traitement': 'Processing',
@@ -4944,7 +4946,7 @@ export const UI_GLOSSARY = {
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
 // Le moteur les laisse telles quelles, quelle que soit la langue affichée.
 export const DO_NOT_TRANSLATE = new Set([
-  'Samper Consulting', 'Ritmo', 'Lightspeed', 'Supabase', 'Vercel', 'PDF', 'CSV', 'Excel',
+  'Samper Consulting', 'Jouanet', 'Lightspeed', 'Supabase', 'Vercel', 'PDF', 'CSV', 'Excel',
   'HACCP', 'DLC', 'DLU', 'SOP', 'SOPs', 'POS', 'KDS', 'MEP', 'CHF', 'TVA', 'IA', 'AI',
   'g', 'kg', 'ml', 'L', 'cl', 'pcs', 'cs', 'cc', '°C', '%', 'min', 'h',
 ]);
