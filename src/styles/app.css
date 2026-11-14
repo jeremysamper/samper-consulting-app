@@ -570,60 +570,125 @@ html[data-theme="dark"] {
   .lang-seg-code { display: inline; }
 }
 
-/* ─── Écran de chargement « Bienvenue » (src/components/brand/BootScreen.jsx)
-   La photo dérive très lentement (.bv-drift : micro-zoom, translation et
-   rotation infimes), comme filmée caméra à la main. Transform seul, animé par
-   le GPU, aucun repeint. Texte en fondu à l'arrivée, fondu de sortie. */
+/* ─── Écran de chargement (src/components/brand/BootScreen.jsx)
+   Le logo Jouanet sur le bleu le plus sombre : le contour se trace en traits
+   fins, l'aplat monte du gris au crème, le logo respire à peine, deux lueurs
+   très faibles dérivent dans les coins. Puis le logo s'efface, et l'écran.
+   Couleurs : BRAND_COLORS de markGeometry.js (crème #EFE8DD, sable #C9BCA3,
+   bleu des pales #175C82), écrites ici en dur parce que des images clés ne
+   lisent pas toutes une variable CSS. Transform, opacité, fill et trait. */
 
-@keyframes bvDrift {
-  0%   { transform: scale(1.06) translate(0, 0) rotate(0deg); }
-  25%  { transform: scale(1.07) translate(-0.6%, 0.4%) rotate(-0.25deg); }
-  50%  { transform: scale(1.08) translate(0.4%, -0.5%) rotate(0.2deg); }
-  75%  { transform: scale(1.07) translate(0.6%, 0.3%) rotate(-0.15deg); }
-  100% { transform: scale(1.06) translate(0, 0) rotate(0deg); }
+.jl-piece {
+  fill: #EFE8DD;
+  stroke: #C9BCA3;
+  stroke-width: 0.3;
+  stroke-linejoin: round;
+  stroke-opacity: 0;
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 0;
 }
 
-.bv-drift {
-  will-change: transform;
-  transform: scale(1.06);
-  animation: bvDrift 9s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+.jl-lueur {
+  position: absolute;
+  width: 110vmax;
+  height: 110vmax;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.jl-lueur-chaude {
+  left: -60vmax;
+  top: -62vmax;
+  background: radial-gradient(closest-side, rgba(201, 188, 163, 0.075), rgba(201, 188, 163, 0));
+}
+.jl-lueur-froide {
+  right: -58vmax;
+  bottom: -60vmax;
+  background: radial-gradient(closest-side, rgba(23, 92, 130, 0.17), rgba(23, 92, 130, 0));
 }
 
-/* La photo n'apparaît qu'entièrement chargée, en fondu court. */
-.bv-photo    { opacity: 0; transition: opacity 350ms ease; }
-.bv-photo-in { opacity: 1; }
+/* Contour : chaque pièce se dessine de son point de départ (pathLength = 1),
+   le trait tient le temps que l'aplat arrive, puis s'éteint. */
+@keyframes jlTrace {
+  0%   { stroke-dashoffset: 1; stroke-opacity: 0; }
+  8%   { stroke-opacity: 0.85; }
+  55%  { stroke-dashoffset: 0; }
+  78%  { stroke-opacity: 0.85; }
+  100% { stroke-dashoffset: 0; stroke-opacity: 0; }
+}
 
-@keyframes bvFadeIn {
+/* Aplat : un gris bleuté presque éteint, puis le crème. */
+@keyframes jlAplat {
+  0%   { fill: #1E2D35; fill-opacity: 0; }
+  28%  { fill: #2A3A43; fill-opacity: 1; }
+  100% { fill: #EFE8DD; fill-opacity: 1; }
+}
+
+/* Respiration : le logo gonfle à peine quand il devient clair, puis se pose. */
+@keyframes jlSouffle {
+  0%   { transform: scale(0.97); }
+  45%  { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+
+@keyframes jlLueur {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
 
-@keyframes bvLeave {
-  from { opacity: 1; }
-  to   { opacity: 0; }
+@keyframes jlDerive {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(4vmax, 3vmax) scale(1.06); }
 }
 
-@keyframes bvSweep {
+.jl-play .jl-piece {
+  animation:
+    jlTrace 1150ms cubic-bezier(0.55, 0, 0.35, 1) 120ms both,
+    jlAplat 600ms ease-out 600ms both;
+}
+.jl-play .jl-logo { animation: jlSouffle 560ms cubic-bezier(0.3, 0, 0.2, 1) 800ms both; }
+.jl-play .jl-lueur {
+  animation:
+    jlLueur 1600ms ease 300ms forwards,
+    jlDerive 9s ease-in-out 300ms infinite alternate;
+}
+.jl-static .jl-lueur {
+  opacity: 1;
+  animation: jlDerive 9s ease-in-out infinite alternate;
+}
+
+@keyframes jlApparait {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes jlBalayage {
   from { transform: translateX(-110%); }
   to   { transform: translateX(260%); }
 }
 
-/* Le texte arrive en fondu avec la première photo, puis reste fixe. */
-.bv-play .bv-text { animation: bvFadeIn 500ms ease 150ms both; }
+/* État du chargement : n'apparaît que s'il dure bien au-delà de l'intro. */
+.jl-status { opacity: 0; animation: jlApparait 400ms ease 3000ms forwards; }
+.jl-sweep  { animation: jlBalayage 1.35s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
 
-/* État du chargement : n'apparaît que s'il dure au-delà de l'intro. */
-.bv-status { opacity: 0; animation: bvFadeIn 400ms ease 2700ms forwards; }
-.bv-sweep  { animation: bvSweep 1.35s cubic-bezier(0.5, 0, 0.5, 1) infinite; }
-
-.bv-leaving {
-  animation: bvLeave 380ms ease forwards;
-  pointer-events: none;
+/* Sortie : le logo s'efface en reculant un peu, l'écran suit. La fin de
+   jlSortie (280 + 340 ms) est EXIT_MS de BootScreen.jsx. */
+@keyframes jlLogoSortie {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0.92); }
 }
+@keyframes jlSortie {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.jl-leaving { animation: jlSortie 340ms ease 280ms forwards; pointer-events: none; }
+.jl-leaving .jl-logo { animation: jlLogoSortie 320ms ease-in forwards; }
 
 @media (prefers-reduced-motion: reduce) {
-  .bv-text,
-  .bv-drift { animation: none !important; }
-  .bv-sweep { animation: scLangPulse 1.8s ease-in-out infinite; transform: none; width: 100% !important; }
+  .jl-lueur { animation: none !important; opacity: 1; }
+  .jl-leaving .jl-logo { animation: none; }
+  .jl-sweep { animation: scLangPulse 1.8s ease-in-out infinite; transform: none; width: 100% !important; }
 }
 
 /* ─── Transition entre modules ──────────────────────────────────────────────

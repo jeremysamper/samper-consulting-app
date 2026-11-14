@@ -55,7 +55,8 @@ createRoot(document.getElementById('root')).render(
 );
 
 // Pré-splash de vite-index.html : fondu puis retrait dès que React a peint son
-// premier cadre (le BootScreen partage le même fond, la transition est invisible).
+// premier cadre (le BootScreen partage le même fond et la même taille de logo,
+// la transition est invisible).
 // Double rAF : le premier se cale sur le cadre en cours, le second garantit que
 // le rendu React est bien à l'écran avant de retirer le voile. Un onglet ouvert
 // en arrière-plan ne déclenche aucun rAF tant qu'il n'est pas affiché : la
