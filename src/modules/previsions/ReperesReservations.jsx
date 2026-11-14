@@ -1,6 +1,6 @@
 import React from 'react';
 import { CalendarCheck, Moon, Sun } from 'lucide-react';
-import { Anneau, BoutonFleche, CarteAvant, CarteRepere, carteAvantStyles } from '../../components/ui/index.jsx';
+import { Anneau, CarteAvant, CarteRepere, carteAvantStyles } from '../../components/ui/index.jsx';
 import { SERVICE_META, SERVICES_AFFICHES } from './statutsReservation.js';
 import './reservations.css';
 
@@ -17,7 +17,8 @@ import './reservations.css';
 //   carte nuit   les couverts du jour, une tuile par service (couverts, à
 //                table, anneau des couverts arrivés)
 //
-// La flèche de la carte ouvre le service du jour, comme la tuile « Ce soir ».
+// La carte se lit sans toucher : le service du jour s'ouvre par la tuile
+// « Ce soir », rendue même sans réservation aujourd'hui.
 // Au téléphone (reservations.css), les repères du midi et du soir ne sont pas
 // rendus : la carte les dit déjà. Sans réservation aujourd'hui, la carte n'est
 // pas rendue. Nombres dans leurs propres nœuds : la phrase autour reste une
@@ -62,14 +63,13 @@ export default function ReperesReservations({ chiffres }) {
 
 const cs = carteAvantStyles('nuit');
 
-export function CarteServiceDuJour({ chiffres, onOuvrir }) {
+export function CarteServiceDuJour({ chiffres }) {
   if (!chiffres || !chiffres.jour.reservations) return null;
   const { jour, services } = chiffres;
   return (
     <CarteAvant ton="nuit" className="resa-carte-nuit" data-resa-carte="">
       <div style={st.tete}>
         <h2 style={{ ...cs.titre, ...st.titre }}>Aujourd&apos;hui</h2>
-        <BoutonFleche ton="nuit" onClick={onOuvrir} libelle="Ouvrir le service du jour" />
       </div>
       <span style={st.total}>
         <span style={{ ...cs.chiffre, ...st.totalChiffre }} data-no-translate="">{jour.couverts}</span>
