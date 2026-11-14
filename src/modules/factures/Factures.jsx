@@ -673,7 +673,7 @@ const Factures = ({ user, etablissement }) => {
                     onClick={() => setSelectedEtabId(et.id)}
                     type="button"
                   >
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: et.couleur || 'var(--accent)' }} />
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: et.couleur || 'var(--accent)', outline: sel ? '2px solid var(--on-accent)' : 'none' }} />
                     {et.nom}
                   </button>
                 );
@@ -797,10 +797,6 @@ const Factures = ({ user, etablissement }) => {
                 )}
               </>
             )}
-
-            <button style={{ ...fac.smallBtn, marginTop: 10 }} onClick={openTextsEditor}>
-              Modifier les données de paiement
-            </button>
           </div>
 
           <div style={fac.section}>
@@ -1258,17 +1254,18 @@ function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
 const fac = {
   root: { display: 'flex', flexDirection: 'column', gap: 16 },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
-  title: { fontSize: 'var(--t5)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)', margin: 0 },
+  title: { fontSize: 'var(--t6)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', color: 'var(--text)', margin: 0, lineHeight: 1.15 },
   sub: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 4 },
 
   // min(380px, 100%) : 2 colonnes sur desktop, empilement naturel sur mobile
   layout: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(380px, 100%), 1fr))', gap: 18 },
 
-  formCol: { display: 'flex', flexDirection: 'column', gap: 26 },
+  formCol: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 },
   previewCol: { display: 'flex', flexDirection: 'column', gap: 8 },
   previewLabel: { fontSize: 'var(--t1)', color: 'var(--text2)', fontWeight: 'var(--g3)' },
 
-  section: { padding: 0 },
+  // Direction Galet : chaque bloc du formulaire est une carte blanche.
+  section: { padding: '16px 18px', borderRadius: 'var(--r-lg)', background: 'var(--zone)', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)' },
   sectionTitle: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', marginBottom: 8 },
 
   label: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 4, marginTop: 10 },
@@ -1281,34 +1278,34 @@ const fac = {
   datesRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 },
 
   actions: { display: 'flex', gap: 10, flexWrap: 'wrap' },
-  primaryBtn: { flex: 1, padding: '12px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 200 },
-  ghostBtn: { flex: 1, padding: '12px 18px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 180 },
+  primaryBtn: { flex: 1, padding: '12px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 200 },
+  ghostBtn: { flex: 1, padding: '12px 18px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minWidth: 180 },
 
   successBanner: { background: 'var(--success-bg)', border: '1px solid var(--success-bd)', color: 'var(--success-text)', padding: '10px 14px', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)' },
 
-  smallBtn: { padding: '7px 12px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor: 'pointer', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontWeight: 'var(--g2)' },
+  smallBtn: { padding: '7px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', cursor: 'pointer', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontWeight: 'var(--g2)' },
 
   badge: {
-    padding: '2px 8px', borderRadius: 'var(--r)', background: 'var(--info-bg-soft)',
+    padding: '2px 10px', borderRadius: 'var(--r-full)', background: 'var(--info-bg-soft)',
     border: '1px solid var(--info-bd)', color: 'var(--info-text)',
     fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
     fontFamily: 'var(--font)', whiteSpace: 'nowrap',
   },
 
   badgeOk: {
-    padding: '2px 8px', borderRadius: 'var(--r)', background: 'var(--success-bg-soft)',
+    padding: '2px 10px', borderRadius: 'var(--r-full)', background: 'var(--success-bg-soft)',
     border: '1px solid var(--success-bd)', color: 'var(--success-text)',
     fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
     fontFamily: 'var(--font)', whiteSpace: 'nowrap',
   },
   badgeWarn: {
-    padding: '2px 8px', borderRadius: 'var(--r)', background: 'var(--warning-bg)',
+    padding: '2px 10px', borderRadius: 'var(--r-full)', background: 'var(--warning-bg)',
     border: '1px solid var(--warning-bd)', color: 'var(--warning-text)',
     fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
     fontFamily: 'var(--font)', whiteSpace: 'nowrap',
   },
 
-  recentRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 8px', background: 'var(--bg)', borderRadius: 'var(--r)' },
+  recentRow: { display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', background: 'var(--piste)', borderRadius: 'var(--r)' },
 
   // ─── QR-facture ───
   qrLignes: { display: 'flex', flexDirection: 'column', gap: 6 },
@@ -1319,22 +1316,22 @@ const fac = {
   qrLigneVal: { fontSize: 'var(--t1)', color: 'var(--text)', wordBreak: 'break-word' },
   qrCard: {
     display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap',
-    background: 'var(--surface)', border: '1px solid var(--border)',
-    borderRadius: 'var(--r)', boxShadow: 'var(--sh-xs)', padding: 14,
+    borderRadius: 'var(--r-lg)', background: 'var(--zone)', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)', padding: '14px 16px',
   },
 
   etabPicker: { display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 4 },
   etabChip: {
     display: 'inline-flex', alignItems: 'center', gap: 7,
-    padding: '7px 12px', borderRadius: 18,
-    background: 'var(--bg)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+    padding: '7px 12px', borderRadius: 'var(--r-full)',
+    background: 'var(--btn-fond)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
     color: 'var(--text)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
     cursor: 'pointer', fontFamily: 'var(--font)',
     transition: 'all 0.15s',
   },
+  // Direction Galet : l'établissement choisi est un aplat sombre.
   etabChipActive: {
-    background: 'var(--selection)', borderColor: 'var(--onglet)', color: 'var(--text)',
+    background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)',
   },
 
   // ─── Modales email ───

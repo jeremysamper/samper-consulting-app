@@ -1,16 +1,16 @@
 import React from 'react';
-import { BellRing, Croissant, Plus } from 'lucide-react';
+import { BellRing, Croissant, Moon, Plus, Sun } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { Btn } from '../../components/ui/index.jsx';
-import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
 import { zurichAjouterJours, zurichToday } from '../../utils/zurichTime.js';
-import { Carte, Puce } from '../dashboard/tableauUi.jsx';
-import { Champ, Liste, Vide, h } from '../hebergement/hotelUi.jsx';
+import { Puce } from '../dashboard/tableauUi.jsx';
+import { CarteHotel, Champ, Liste, PageHotel, ReperesHotel, Vide, h } from '../hebergement/hotelUi.jsx';
 import {
   PENSIONS, REPAS, STATUTS_ROOM_SERVICE, chf, commandeOuverte, couvertsRepas, dateCourte, heureZurich, isoZurich, libelleDe, nomPersonne, personnes,
   sejoursActifs, tonDe, totalArticles, useChambres, useHotes, useLignesSejour, useRoomService, useSejours,
@@ -97,11 +97,11 @@ function CommandeForm({ commande, sejours, chambres, roomService, aujourdhui, on
             <input style={{ ...h.saisie, flex: '2 1 180px' }} value={a.libelle} onChange={(ev) => majArticle(i, 'libelle', ev.target.value)} placeholder="Club sandwich, bouteille d'eau…" />
             <input type="number" min="1" inputMode="numeric" style={{ ...h.saisie, flex: '0 0 72px' }} value={a.quantite} onChange={(ev) => majArticle(i, 'quantite', ev.target.value)} aria-label="Quantité" />
             <input type="number" min="0" step="0.05" inputMode="decimal" style={{ ...h.saisie, flex: '0 0 96px' }} value={a.prix} onChange={(ev) => majArticle(i, 'prix', ev.target.value)} placeholder="CHF" aria-label="Prix" />
-            {f.articles.length > 1 && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 44, padding: '4px 10px' }} onClick={() => setF((p) => ({ ...p, articles: p.articles.filter((_, j) => j !== i) }))} aria-label="Retirer l'article">×</button>}
+            {f.articles.length > 1 && <Btn onClick={() => setF((p) => ({ ...p, articles: p.articles.filter((_, j) => j !== i) }))} aria-label="Retirer l'article">×</Btn>}
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
-          <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setF((p) => ({ ...p, articles: [...p.articles, articleVide()] }))}>Ajouter un article</button>
+          <Btn onClick={() => setF((p) => ({ ...p, articles: [...p.articles, articleVide()] }))}>Ajouter un article</Btn>
           <span style={{ fontSize: 14, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}><span>Total</span> <span data-no-translate>CHF {chf(total)}</span></span>
         </div>
       </div>
@@ -169,10 +169,16 @@ export default function Repas({ user, etablissement }) {
     <section className="repas" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' }}>
       {!etabId && <Vide>Aucun établissement sélectionné.</Vide>}
       {etabId && ecran === ECRAN_ACCUEIL && (
-        <>
+        <PageHotel>
           <AccueilModule tuiles={tuiles} />
+          {sejours.status === 'ready' && (
+            <ReperesHotel reperes={[
+              ...REPAS.map((r, i) => ({ id: r.id, Icone: [Croissant, Sun, Moon][i] || Croissant, valeur: nb(couvertsRepas(sejours.rows, aujourdhui, r.id)), libelle: r.label.toLowerCase(), detail: 'Couverts du jour' })),
+              { id: 'room-service', Icone: BellRing, valeur: ouvertes.length, libelle: ouvertes.length === 1 ? 'commande à préparer' : 'commandes à préparer', detail: 'Room service' },
+            ]} />
+          )}
           {etatLecture && <Vide>{etatLecture}</Vide>}
-        </>
+        </PageHotel>
       )}
       {etabId && ecran !== ECRAN_ACCUEIL && (
         <EcranTache
@@ -192,13 +198,13 @@ export default function Repas({ user, etablissement }) {
           <SegmentedTabs tabs={[{ id: 'aujourdhui', label: 'Aujourd\'hui' }, { id: 'demain', label: 'Demain' }]} active={jour} onChange={setJour} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 12 }}>
             {REPAS.map((r) => (
-              <Carte key={r.id} titre={r.label} sousTitre={<><span>{nb(parRepas[r.id])}</span> <span>{nb(parRepas[r.id]) === 1 ? 'couvert' : 'couverts'}</span>, <span>{parRepas[r.id].length}</span> <span>{parRepas[r.id].length === 1 ? 'séjour' : 'séjours'}</span></>}>
+              <CarteHotel key={r.id} titre={r.label} sousTitre={<><span>{nb(parRepas[r.id])}</span> <span>{nb(parRepas[r.id]) === 1 ? 'couvert' : 'couverts'}</span>, <span>{parRepas[r.id].length}</span> <span>{parRepas[r.id].length === 1 ? 'séjour' : 'séjours'}</span></>}>
                 {!parRepas[r.id].length && <div style={h.detail}>Personne pour ce repas.</div>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {parRepas[r.id].map((s) => {
                     const ho = hoteDe(s);
                     return (
-                      <div key={s.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', padding: '4px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)' }}>
+                      <div key={s.id} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', padding: '4px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)' }}>
                         <span style={{ fontSize: 14, color: 'var(--text)' }} data-no-translate>{s.nomHote}</span>
                         <span style={h.detail}>{numero(s) && <><span>ch.</span> <span data-no-translate>{numero(s)}</span>, </>}<span data-no-translate>{personnes(s)}</span> <span>{personnes(s) > 1 ? 'personnes' : 'personne'}</span>, <span>{libelleDe(PENSIONS, s.pension)}</span></span>
                         {ho?.allergies && <span style={{ ...h.detail, color: 'var(--danger-text)' }} data-no-translate>{ho.allergies}</span>}
@@ -207,7 +213,7 @@ export default function Repas({ user, etablissement }) {
                     );
                   })}
                 </div>
-              </Carte>
+              </CarteHotel>
             ))}
           </div>
         </>
@@ -220,6 +226,18 @@ export default function Repas({ user, etablissement }) {
           <Liste>
             {commandes.map((c) => {
               const s = sejourDe(c.sejourId);
+              // Les contrôles de la ligne, dans l'ordre de l'écran. Dès trois, le premier
+              // (l'étape suivante de la commande) reste visible et le reste passe dans « Gérer ».
+              const actions = [
+                c.statut === 'recue' && { titre: 'En cuisine', onClick: () => changer(c, { statut: 'en_cuisine' }, 'Commande en cuisine.') },
+                commandeOuverte(c) && { titre: 'Livrée', onClick: () => changer(c, { statut: 'livree' }, 'Commande livrée.') },
+                commandeOuverte(c) && { titre: 'Annuler', onClick: () => changer(c, { statut: 'annulee' }, 'Commande annulée.') },
+                c.statut === 'livree' && !c.porteeSurNote && peutNoter && c.total > 0 && { titre: 'Porter sur la note', onClick: () => porterSurNote(c) },
+                peutGerer && commandeOuverte(c) && { titre: 'Modifier', onClick: () => setForm({ commande: c }) },
+                peutGerer && !commandeOuverte(c) && !c.porteeSurNote && { titre: 'Supprimer', danger: true, onClick: async () => { const r = await roomService.supprimer(c.id); if (r.error) setErreur(r.error); else notify('Commande supprimée.', 'success'); } },
+              ].filter(Boolean);
+              const visibles = actions.length >= 3 ? actions.slice(0, 1) : actions;
+              const auMenu = actions.length >= 3 ? actions.slice(1) : [];
               return (
                 <div key={c.id} style={{ ...h.ligne, cursor: 'default', flexDirection: 'column', alignItems: 'stretch', gap: 6 }}>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -236,12 +254,10 @@ export default function Repas({ user, etablissement }) {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <span style={h.detail}><span>Prise par</span> <span data-no-translate>{nomPersonne(c.createdBy)}</span>{c.livreePar && <>, <span>livrée par</span> <span data-no-translate>{nomPersonne(c.livreePar)}</span></>}</span>
                     <span style={{ flex: 1 }} />
-                    {c.statut === 'recue' && <Btn variant="primary" onClick={() => changer(c, { statut: 'en_cuisine' }, 'Commande en cuisine.')} style={{ minHeight: 40, fontSize: 13 }}>En cuisine</Btn>}
-                    {commandeOuverte(c) && <Btn variant="primary" onClick={() => changer(c, { statut: 'livree' }, 'Commande livrée.')} style={{ minHeight: 40, fontSize: 13 }}>Livrée</Btn>}
-                    {commandeOuverte(c) && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => changer(c, { statut: 'annulee' }, 'Commande annulée.')}>Annuler</button>}
-                    {c.statut === 'livree' && !c.porteeSurNote && peutNoter && c.total > 0 && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => porterSurNote(c)}>Porter sur la note</button>}
-                    {peutGerer && commandeOuverte(c) && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setForm({ commande: c })}>Modifier</button>}
-                    {peutGerer && !commandeOuverte(c) && !c.porteeSurNote && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={async () => { const r = await roomService.supprimer(c.id); if (r.error) setErreur(r.error); else notify('Commande supprimée.', 'success'); }}>Supprimer</button>}
+                    {visibles.map((a) => <Btn key={a.titre} onClick={a.onClick}>{a.titre}</Btn>)}
+                    {auMenu.length > 0 && (
+                      <BoutonActions id={`repas-gerer-${c.id}`} label="Gérer" style={st.secondaire} titre="Gérer" sections={[{ items: auMenu }]} />
+                    )}
                   </div>
                 </div>
               );

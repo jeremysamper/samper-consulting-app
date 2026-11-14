@@ -1,5 +1,5 @@
 import React from 'react';
-import { BedDouble, BookOpen, DoorOpen, LogIn, LogOut, Plus, Tag, Users } from 'lucide-react';
+import { BedDouble, BookOpen, Croissant, DoorOpen, LogIn, LogOut, Plus, Tag, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -12,7 +12,7 @@ import {
   useChambres, useDemandes, useForfaits, useGroupesLegers, useHotes, useLignesSejour, useOccupants, useReglagesHotel, useResaClients, useReservationsLegeres,
   useSejourLiens, useSejours, useSpaClients, useTarifs,
 } from './hotelData.js';
-import { LigneSejour, Liste, Vide, h } from './hotelUi.jsx';
+import { LigneSejour, Liste, PageHotel, ReperesHotel, Vide, h } from './hotelUi.jsx';
 import SejourForm from './SejourForm.jsx';
 import SejourFiche from './SejourFiche.jsx';
 import HotesGestion, { HoteForm } from './HotesGestion.jsx';
@@ -199,10 +199,18 @@ export default function Hebergement({ user, etablissement }) {
       {!etabId && <Vide>Aucun établissement sélectionné.</Vide>}
 
       {etabId && ecran === ECRAN_ACCUEIL && (
-        <>
+        <PageHotel>
           <AccueilModule tuiles={tuiles} />
+          {sejours.status === 'ready' && (
+            <ReperesHotel reperes={[
+              { id: 'arrivees', Icone: LogIn, valeur: arrivees.length, libelle: arrivees.length === 1 ? 'arrivée' : 'arrivées', detail: 'Arrivées du jour' },
+              { id: 'departs', Icone: LogOut, valeur: departs.length, libelle: departs.length === 1 ? 'départ' : 'départs', detail: 'Départs du jour' },
+              { id: 'en-maison', Icone: BedDouble, valeur: presents.length, libelle: presents.length === 1 ? 'séjour' : 'séjours', detail: 'En maison' },
+              { id: 'couverts', Icone: Croissant, valeur: couverts, libelle: couverts === 1 ? 'couvert petit-déjeuner demain' : 'couverts petit-déjeuner demain' },
+            ]} />
+          )}
           {etatLecture && <Vide>{etatLecture}</Vide>}
-        </>
+        </PageHotel>
       )}
 
       {etabId && ecran !== ECRAN_ACCUEIL && (

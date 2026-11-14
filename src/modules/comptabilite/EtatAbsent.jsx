@@ -27,6 +27,6 @@ const st = {
     padding: '10px 12px', borderRadius: 8,
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)',
     background: 'var(--warning-bg-soft)', color: 'var(--warning-text)',
-    fontSize: 13, lineHeight: 1.5, fontFamily: 'var(--font)',
+    fontSize: 'var(--t2)', lineHeight: 1.5, fontFamily: 'var(--font)',
   },
 };

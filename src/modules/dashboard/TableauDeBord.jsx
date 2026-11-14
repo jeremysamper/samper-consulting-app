@@ -1,52 +1,55 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // TABLEAU DE BORD (restaurants et hôtels) : ce que l'équipe doit savoir en
-// arrivant, lisible en trois secondes.
+// arrivant, lisible en trois secondes, composé par chacun comme l'écran
+// d'accueil d'un téléphone.
 //
-//   En-tête du jour   bonjour, état du service, trois repères (couverts,
-//                     groupes, équipe), le seul aplat de la page
-//   Maintenant        Votre service aujourd'hui (pointage de l'équipier) et
-//                     À faire maintenant | Qui travaille aujourd'hui
-//   Aujourd'hui à l'hôtel (établissement hôtelier)
-//   Le mot du consultant
-//   Ce qui vous attend  aujourd'hui, demain, cette semaine
-//   Les chiffres de la semaine et du mois  direction seulement
+//   En-tête du jour   la date, bonjour, l'état du service, « Personnaliser »
+//   Grille de widgets la disposition de la personne (widgets/), ou à défaut
+//                     la disposition d'origine : les cartes d'aujourd'hui,
+//                     dans le même ordre de lecture, selon les gardes
+//
+// Ce fichier lit les données (useDonneesTableau, absences, messages,
+// téléphones), pose les gardes (inchangées : module activé pour
+// l'établissement, droit du rôle, direction, donnée lue), pointe et publie le
+// mot du consultant. Il ne nomme aucune carte : chaque widget passe par le
+// registre (widgets/registre.js). Les lectures restent décidées par les
+// gardes, pas par la disposition.
 //
 // Les établissements spa gardent leur tableau de bord d'origine
-// (LegacyModuleHost). Chaque bloc n'apparaît que si son module est activé
-// pour l'établissement ; un lien vers un module n'est proposé qu'au rôle qui
-// y a accès. Une lecture en échec jamais aboutie le dit (nonLu), au lieu
-// d'afficher une liste vide.
+// (LegacyModuleHost). Une lecture en échec jamais aboutie le dit (nonLu), au
+// lieu d'afficher une liste vide.
 // ═══════════════════════════════════════════════════════════════════════════
 
 import React from 'react';
 import './tableau.css';
-import { getPermissionsForRole } from '../../data/demoData.js';
-import { estEtablissementHotel, isPageActiveForEtab } from '../moduleConfig.js';
+import { getDemoData, getPermissionsForRole } from '../../data/demoData.js';
+import { estEtablissementHotel, isModuleActiveForEtab, isPageActiveForEtab, navItems } from '../moduleConfig.js';
+import { applyNavOrder, parseNavOrder } from '../../hooks/useNavOrder.js';
+import { readJson } from '../../utils/storage.js';
 import { dbService } from '../../services/dbService.js';
 import { notify } from '../../components/toast/index.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { useShellMode } from '../../hooks/useShellMode.js';
 import { useAbsences } from '../../hooks/useAbsences.js';
 import { useUnreadPrivateMessages } from '../../hooks/useUnreadPrivateMessages.js';
 import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { zurichClock, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import { envoyerHorsPlanning, horaireHorsPlanning } from '../planning/pointageDuJour.js';
+import { useRegulariteEquipe } from '../planning/contratsService.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { derniersParPerimetre, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
 import { useDonneesTableau } from './useDonneesTableau.js';
 import {
   aFaire, absencesDuJour, chiffresGestion, couvertsDu, dateLongue, decaler, equipeDu, etatDuService, groupesDu,
-  prochainShift, reperesDuJour, shiftsDu,
+  prochainShift, relevesDuJour, reperesDuJour, shiftsDu,
 } from './tableauLogique.js';
 import { EnTete } from './EnTeteJour.jsx';
-import CartePointage from './CartePointage.jsx';
-import MotConsultant from './MotConsultant.jsx';
-import AFaire from './AFaire.jsx';
-import QuiTravaille from './QuiTravaille.jsx';
-import CeQuiVousAttend from './CeQuiVousAttend.jsx';
-import ChiffresGestion from './ChiffresGestion.jsx';
-import CarteHotel from './CarteHotel.jsx';
+import { blocsDeGestion } from './ChiffresGestion.jsx';
+import GrilleWidgets from './widgets/GrilleWidgets.jsx';
+import { useDisposition } from './widgets/useDisposition.js';
+import { modulesDuMenu as filtrerMenu, raccourcisAffiches } from './widgets/dispositionLogique.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 
 // Heure de Zurich, rafraîchie toutes les 30 s (durée en poste, retards) et au
@@ -70,6 +73,7 @@ function useMaintenant() {
 export default function TableauDeBord({ user, etablissement, setPage }) {
   const { jour: aujourdhui, minutes: maintenant } = useMaintenant();
   const mobile = useIsMobile();
+  const poste = useShellMode();
   const etabId = etablissement?.id || null;
   const role = user?.role;
   const consultant = role === 'consultant';
@@ -100,6 +104,11 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   const nbMessages = useUnreadPrivateMessages(actif('messages') ? user?.id : null);
   // Téléphones de l'équipe sous les noms (consultant et patron, même règle que le planning).
   const telephones = useTeamPhones(role);
+  // Régularité de l'équipe (direction, planning activé) : une ligne de plus
+  // seulement si l'établissement a au moins un contrat.
+  const regularite = useRegulariteEquipe(direction && avecPlanning);
+  const { disposition, enregistrer } = useDisposition(user?.id || null);
+  const [personnaliser, setPersonnaliser] = React.useState(false);
 
   // ── Pointage ──
   const [enCours, setEnCours] = React.useState(null);
@@ -227,31 +236,63 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
       : derniers.length > 1 ? `${derniers.length} zones, la plus ancienne au ${new Date(`${plusAncien.date}T12:00:00`).toLocaleDateString('fr-CH')}`
         : `Au ${new Date(`${plusAncien.date}T12:00:00`).toLocaleDateString('fr-CH')}`,
   };
+  const blocsGestion = direction
+    ? blocsDeGestion({ chiffres, stock, avecPertes, avecStock, avecCouverts: avecCouvertsLus, avecPlanning, nonLu, peutOuvrir })
+    : [];
   const enEchec = Object.entries(d.statuts).some(([source, statut]) => statut === 'error' && source !== 'parametres');
-
-  // « Votre service » : le pointage individuel de l'équipe, toujours là quand
-  // le planning est activé, horaire prévu ou non (arrivée hors planning). Pas
-  // pour la direction (consultant, patron), qui ne pointe pas.
-  const montrerPointage = avecPlanning && !direction;
   const salutation = maintenant >= 18 * 60 ? 'Bonsoir' : 'Bonjour';
 
-  // L'équipe du jour : section à part sur tablette et ordinateur, en tête de
-  // l'onglet Aujourd'hui de « Ce qui vous attend » sur téléphone.
-  const quiTravaille = (dansOnglet) => (avecPlanning ? (
-    <QuiTravaille
-      dansOnglet={dansOnglet}
-      aujourdhui={aujourdhui}
-      maintenant={maintenant}
-      shifts={d.shifts}
-      absences={absences}
-      telephones={telephones}
-      avecAbsences={absencesLues}
-      echec={nonLu('shifts')}
-      peutOuvrir={peutOuvrir}
-      ouvrir={ouvrir}
-    />
-  ) : null);
-  const equipeAPart = avecPlanning && !mobile;
+  // Modules du menu de la personne (raccourcis) : le filtre du menu, sur
+  // l'ordre gardé en copie locale, sans lecture de plus.
+  const menu = React.useMemo(() => filtrerMenu({
+    items: navItems,
+    ordre: applyNavOrder(navItems, parseNavOrder(readJson('sc_nav_order', null))),
+    role,
+    perms,
+    defautsRole: (getDemoData().permissions || {})[role] || {},
+    actif: (permKey) => isModuleActiveForEtab(etablissement, permKey),
+  }), [role, perms, etablissement]);
+
+  // Gardes des widgets : celles d'avant, une par brique, rassemblées.
+  const releves = avecHaccp && d.statuts.haccp === 'ready' ? relevesDuJour(d.haccp, aujourdhui, maintenant) : null;
+  const ctx = {
+    poste,
+    direction,
+    reperes: reperes.map((r) => r.id),
+    // « Votre service » : le pointage de l'équipe, toujours là quand le
+    // planning est activé, horaire prévu ou non. Pas pour la direction.
+    montrerPointage: avecPlanning && !direction,
+    // Cartes de mise en avant : seulement avec leur donnée (module activé,
+    // lecture aboutie). Aucune n'est simulée.
+    carteEquipe: avecPlanning && !nonLu('shifts'),
+    cartesCouverts: avecCouvertsLus && !nonLu('couverts'),
+    // L'équipe du jour : section à part sur tablette et ordinateur, en tête de
+    // l'onglet Aujourd'hui de « Ce qui vous attend » sur téléphone.
+    equipeAPart: avecPlanning && !mobile,
+    avecHotel,
+    motVisible: consultant || Boolean(d.message?.message),
+    avecCouvertsLus,
+    avecPlanning,
+    avecPertes,
+    avecStock,
+    avecRegularite: direction && avecPlanning && regularite.avecContrats,
+    avecReleves: Boolean(releves && releves.attendus > 0),
+    avecPertesLues: avecPertes && d.statuts.pertes !== 'absent' && !nonLu('pertes'),
+    avecGroupesListe: avecGroupesLus && !nonLu('groupes'),
+    avecAbsences: absencesLues,
+    avecMessages: actif('messages') && perms.messages !== false,
+    modulesDuMenu: menu,
+  };
+
+  const t = {
+    user, aujourdhui, maintenant, mobile, etabId, consultant, direction, d, absences, absencesLues, telephones, nbMessages,
+    nonLu, peutOuvrir, ouvrir, reperes, items, blocsGestion, regularite, publierMessage,
+    avecPlanning, avecGroupes, avecCouvertsLus, avecGroupesLus,
+    versPlanning: peutOuvrir('planning') ? () => ouvrir('planning') : null,
+    versReservations: peutOuvrir('previsions') ? () => ouvrir('previsions') : null,
+    pointage: { mesShifts, monProchain, pointer, enCours, erreur: erreurPointage, pointerHorsPlanning },
+    raccourcis: raccourcisAffiches(disposition?.raccourcis, menu),
+  };
 
   return (
     <div className="tdb" style={s.page}>
@@ -261,10 +302,8 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
         prenom={user?.prenom}
         pret={d.pret}
         service={service}
-        reperes={reperes}
-        peutOuvrir={peutOuvrir}
-        ouvrir={ouvrir}
         onAssistant={consultant && peutOuvrir('faq') ? () => ouvrir('faq') : null}
+        onPersonnaliser={d.pret && !personnaliser ? () => setPersonnaliser(true) : null}
       />
 
       {enEchec && <BandeauNonActualise onRetry={d.recharger} />}
@@ -272,64 +311,15 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
       {!d.pret ? (
         <p style={s.chargement} aria-live="polite">Chargement du tableau de bord…</p>
       ) : (
-        <>
-          <div className={equipeAPart ? 'tdb-haut' : 'tdb-haut tdb-haut--seul'}>
-            <div className="tdb-pile">
-              {montrerPointage && (
-                <CartePointage
-                  shifts={mesShifts}
-                  prochain={monProchain}
-                  aujourdhui={aujourdhui}
-                  maintenant={maintenant}
-                  onPointer={pointer}
-                  enCours={enCours}
-                  erreur={erreurPointage}
-                  prenom={user?.prenom}
-                  onPointerHorsPlanning={pointerHorsPlanning}
-                  onVoirPlanning={peutOuvrir('planning') ? () => ouvrir('planning') : null}
-                />
-              )}
-              <AFaire items={items} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />
-            </div>
-            {equipeAPart && quiTravaille(false)}
-          </div>
-
-          {avecHotel && <CarteHotel etabId={etabId} aujourdhui={aujourdhui} peutOuvrir={peutOuvrir} ouvrir={ouvrir} />}
-
-          <MotConsultant message={d.message} consultant={consultant} onPublier={publierMessage} />
-
-          <CeQuiVousAttend
-            mobile={mobile}
-            enTeteAujourdhui={mobile ? quiTravaille(true) : null}
-            aujourdhui={aujourdhui}
-            shifts={d.shifts}
-            couverts={d.couverts}
-            groupes={avecGroupes ? d.groupes : []}
-            absences={absences}
-            telephones={telephones}
-            avecCouverts={avecCouvertsLus}
-            avecGroupes={avecGroupesLus}
-            avecPlanning={avecPlanning}
-            avecAbsences={absencesLues}
-            nonLu={nonLu}
-            peutOuvrir={peutOuvrir}
-            ouvrir={ouvrir}
-          />
-
-          {direction && (
-            <ChiffresGestion
-              chiffres={chiffres}
-              stock={stock}
-              avecPertes={avecPertes}
-              avecStock={avecStock}
-              avecCouverts={avecCouvertsLus}
-              avecPlanning={avecPlanning}
-              nonLu={nonLu}
-              peutOuvrir={peutOuvrir}
-              ouvrir={ouvrir}
-            />
-          )}
-        </>
+        <GrilleWidgets
+          t={t}
+          poste={poste}
+          ctx={ctx}
+          disposition={disposition}
+          enregistrer={enregistrer}
+          mode={personnaliser}
+          onQuitterMode={() => setPersonnaliser(false)}
+        />
       )}
     </div>
   );

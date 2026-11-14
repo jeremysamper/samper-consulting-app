@@ -46,6 +46,6 @@ export default function LigneManques({ manques, onOuvrir }) {
 }
 
 const st = {
-  ligne: { margin: 0, fontSize: 13, lineHeight: 1.7, color: 'var(--text2)' },
-  titre: { color: 'var(--warning-text)', fontWeight: 500 },
+  ligne: { margin: 0, fontSize: 'var(--t2)', lineHeight: 1.7, color: 'var(--text2)' },
+  titre: { color: 'var(--warning-text)', fontWeight: 'var(--g2)' },
 };

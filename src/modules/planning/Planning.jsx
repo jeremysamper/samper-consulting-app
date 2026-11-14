@@ -14,7 +14,7 @@ import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useAbsences } from '../../hooks/useAbsences.js';
 import { absenceDe, absencesDuJour, metaMotif, resteAbsence } from '../../utils/absences.js';
-import { zurichClock, zurichToday } from '../../utils/zurichTime.js';
+import { zurichClock, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import AbsencesModal from './AbsencesModal.jsx';
 import SaisieRapide from './SaisieRapide.jsx';
 import DupliquerModal from './DupliquerModal.jsx';
@@ -36,6 +36,7 @@ import { messageErreur } from '../../utils/messageErreur.js';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import AccueilPlanning from './AccueilPlanning.jsx';
+import { equipeParEtat, heuresPrevues } from './accueilPlanning.js';
 import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
 import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
 import { ouvrirCompte } from '../../services/navigationService.js';
@@ -1235,6 +1236,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const equipeDuJour = { pointes: new Set(duJour.filter(s => s.pointageDebut).map(s => s.userId)).size, total: new Set(duJour.map(s => s.userId)).size };
   const lundiZ = ajouterJoursIso(aujourdhuiZ, -((new Date(aujourdhuiZ + 'T12:00:00').getDay() + 6) % 7));
   const horairesSemaine = planningVisible.filter(s => s.date >= lundiZ && s.date <= ajouterJoursIso(lundiZ, 6)).length;
+  // Repères et carte de l'accueil (direction Galet) : mêmes horaires que les
+  // tuiles, absences du jour sous la garde de la grille (absencesVisibles).
+  const etatsEquipe = equipeParEtat(duJour, zurichNowMinutes());
+  const heuresSemaine = dureeLisible(heuresPrevues(planningVisible.filter(s => s.date >= lundiZ && s.date <= ajouterJoursIso(lundiZ, 6))));
+  const absentsDuJour = absencesDuJour(absencesVisibles, aujourdhuiZ).map(a => nomDe(a.userId));
 
   // Un geste, une action : le départ en cours, l'arrivée prévue, ou l'arrivée
   // hors planning ; un second toucher dans la foulée est ignoré.
@@ -1286,6 +1292,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
           prochain={prochainService}
           equipe={equipeDuJour}
           semaine={horairesSemaine}
+          etats={etatsEquipe}
+          heures={heuresSemaine}
+          absents={absentsDuJour}
           canWrite={canWrite}
           gerer={[
             // Sur téléphone, les cartes du pointage n'ouvrent pas le détail : pas de correction.
@@ -1386,7 +1395,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 {m.nom}
               </button>
             ))}
-            <button type="button" style={pls.addBtn} onClick={() => setRemplissage(null)}>Terminer</button>
+            {/* Secondaire : l'aplat sombre reste à « Ajouter », action principale de l'écran. */}
+            <button type="button" style={pls.exportBtn} onClick={() => setRemplissage(null)}>Terminer</button>
           </div>
         </div>
       )}

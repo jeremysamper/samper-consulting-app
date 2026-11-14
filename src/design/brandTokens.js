@@ -184,6 +184,23 @@ export const THEME_VAR_OVERRIDES = `
     --toast-danger: ${BRAND.color.white};
     --toast-alerte: ${BRAND.color.white};
     --logo-fond: ${BRAND.color.primary};
+    /* Direction Galet : le fond d'un groupe de pilules sort en fond zébré ;
+       les cartes de mise en avant sortent en document de marque (aplat
+       pétrole et texte blanc pour la sombre, teinte de marque et encre pour
+       les deux pastel). */
+    --piste: ${BRAND.color.zebra};
+    --carte-nuit: ${BRAND.color.primary};
+    --carte-nuit-texte: ${BRAND.color.white};
+    --carte-nuit-doux: ${BRAND.color.white};
+    --carte-nuit-tuile: ${BRAND.color.accent};
+    --carte-nuit-danger: ${BRAND.color.white};
+    --carte-nuit-alerte: ${BRAND.color.white};
+    --carte-nuit-succes: ${BRAND.color.white};
+    --carte-nuit-info: ${BRAND.color.white};
+    --carte-soleil: ${BRAND.color.tint};
+    --carte-soleil-texte: ${BRAND.color.ink};
+    --carte-ciel: ${BRAND.color.tint};
+    --carte-ciel-texte: ${BRAND.color.ink};
   }
 `;
 

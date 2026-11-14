@@ -145,7 +145,7 @@ const st = {
   droite: { display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto', flexShrink: 0 },
   gerer: {
     minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)', flexShrink: 0,
-    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },
-  pied: { margin: '4px 0 0', fontSize: 12, color: 'var(--text3)', lineHeight: 1.5, maxWidth: 640 },
+  pied: { margin: '4px 0 0', fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5, maxWidth: 640 },
 };

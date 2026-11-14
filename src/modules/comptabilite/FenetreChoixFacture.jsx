@@ -92,10 +92,10 @@ const st = {
   choix: {
     display: 'flex', flexDirection: 'column', gap: 4, width: '100%', minHeight: 52, padding: '10px 12px', textAlign: 'left',
     borderRadius: 10, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)',
-    color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14, cursor: 'pointer', boxSizing: 'border-box',
+    color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', cursor: 'pointer', boxSizing: 'border-box',
   },
   choixActif: { borderColor: 'var(--accent)', background: 'var(--accent-light)' },
   haut: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, minWidth: 0 },
-  bas: { fontSize: 12, color: 'var(--text2)' },
-  lien: { background: 'none', border: 'none', padding: '8px 0', minHeight: 44, color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 13, textAlign: 'left' },
+  bas: { fontSize: 'var(--t1)', color: 'var(--text2)' },
+  lien: { background: 'none', border: 'none', padding: '8px 0', minHeight: 44, color: 'var(--accent)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', textAlign: 'left' },
 };

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Cake, HeartPulse, History, MailCheck, Search, UserRound, Users } from 'lucide-react';
+import { Cake, HeartPulse, History, MailCheck, Search, Users } from 'lucide-react';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import {
   Avatar, EtatVide, Puce, jourMois, nomClient, prochainAnniversaire, st,
@@ -61,11 +61,6 @@ export default function ClientsSpa({
             autoComplete="off"
           />
         </div>
-        {onNouveau && (
-          <button type="button" onClick={onNouveau} style={st.secondaire}>
-            <UserRound size={17} strokeWidth={1.8} aria-hidden="true" /> Nouveau client
-          </button>
-        )}
       </div>
 
       <div className="spa-defile" style={{ display: 'flex', gap: 8, paddingBottom: 4, marginBottom: 16 }}>
@@ -86,7 +81,7 @@ export default function ClientsSpa({
           titre="Premier client"
           texte="Les fiches se créent ici, ou directement en prenant un rendez-vous."
           action={onNouveau && (
-            <button type="button" onClick={onNouveau} style={{ ...st.principal, marginTop: 6 }}>Accueillir un client</button>
+            <button type="button" onClick={onNouveau} style={{ ...st.secondaire, marginTop: 6 }}>Accueillir un client</button>
           )}
         />
       )}

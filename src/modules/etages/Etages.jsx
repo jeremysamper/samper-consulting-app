@@ -1,6 +1,7 @@
 import React from 'react';
 import { History, Moon, Package, Shirt } from 'lucide-react';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
+import { Btn } from '../../components/ui/index.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
@@ -222,7 +223,7 @@ function CarteChambre({ chambre: c, sejour: s, aujourdhui, equipe, peutGerer, pe
   ) : <span style={h.detail}>Libre</span>;
 
   return (
-    <div style={{ ...e.carte, ...(arrivee ? e.carteArrivee : null) }} data-chambre={c.numero} data-statut={c.statutMenage}>
+    <div style={{ ...h.carte, ...(arrivee ? e.carteArrivee : null) }} data-cadre="" data-chambre={c.numero} data-statut={c.statutMenage}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <span style={e.numero} data-no-translate>{c.numero}</span>
         <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
@@ -276,24 +277,26 @@ function CarteChambre({ chambre: c, sejour: s, aujourdhui, equipe, peutGerer, pe
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {peutGerer && (
           <>
-            <button type="button" className="ui-btn ui-btn--ghost" style={e.action} onClick={() => onMinibar(c)} disabled={enCours}>
+            <Btn onClick={() => onMinibar(c)} disabled={enCours}>
               <Package size={16} strokeWidth={1.75} aria-hidden="true" />
               <span>Minibar</span>
-            </button>
-            <button type="button" className="ui-btn ui-btn--ghost" style={e.action} onClick={() => onLinge(c)} disabled={enCours}>
+            </Btn>
+            <Btn onClick={() => onLinge(c)} disabled={enCours}>
               <Shirt size={16} strokeWidth={1.75} aria-hidden="true" />
               <span>Linge</span>
-            </button>
+            </Btn>
+            {/* Bouton à bascule : Btn ne transmet pas aria-pressed, la pilule
+                est écrite ici avec les jetons du secondaire. */}
             <button type="button" className="ui-btn ui-btn--ghost" style={{ ...e.action, ...(turndownFait ? e.actionActive : null) }} onClick={() => onTurndown(c)} disabled={enCours} aria-pressed={turndownFait}>
               <Moon size={16} strokeWidth={1.75} aria-hidden="true" />
               <span>{turndownFait ? 'Couverture faite' : 'Couverture du soir'}</span>
             </button>
           </>
         )}
-        <button type="button" className="ui-btn ui-btn--ghost" style={e.action} onClick={() => onHistorique(c)} aria-label={`Historique de la chambre ${c.numero}`}>
+        <Btn onClick={() => onHistorique(c)} ariaLabel={`Historique de la chambre ${c.numero}`}>
           <History size={16} strokeWidth={1.75} aria-hidden="true" />
           <span>Historique</span>
-        </button>
+        </Btn>
       </div>
     </div>
   );
@@ -389,9 +392,9 @@ function MinibarChambre({ chambre, sejour, minibar, peutGerer, user, onClose }) 
               <span style={{ ...h.detail, fontVariantNumeric: 'tabular-nums' }} data-no-translate>{dateHeureZurich(m.createdAt)}</span>
               <span style={h.detail}><span data-no-translate>{nomPersonne(m.par)}</span></span>
               {peutGerer && (
-                <button type="button" className="ui-btn ui-btn--ghost" style={{ ...e.action, minHeight: 36 }} onClick={async () => { const r = await minibar.supprimer(m.id); if (r.error) notify(r.error, 'error'); }}>
+                <Btn small onClick={async () => { const r = await minibar.supprimer(m.id); if (r.error) notify(r.error, 'error'); }}>
                   Retirer
-                </button>
+                </Btn>
               )}
             </div>
           ))}
@@ -464,15 +467,15 @@ function LingeDuJour({ linge, chambres, aujourdhui, peutGerer, onAjouter }) {
     <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {peutGerer && (
         <div className="module-actions">
-          <button type="button" className="ui-btn ui-btn--primary" style={{ ...e.action, minHeight: 48, padding: '10px 16px', fontSize: 14 }} onClick={onAjouter}>
+          <Btn variant="primary" onClick={onAjouter} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
             <Shirt size={18} strokeWidth={1.75} aria-hidden="true" />
             <span>Noter du linge</span>
-          </button>
+          </Btn>
         </div>
       )}
       <div style={e.grille}>
         {TYPES_LINGE.map((t) => (
-          <div key={t.id} style={e.carte} data-linge={t.id}>
+          <div key={t.id} style={h.carte} data-cadre="" data-linge={t.id}>
             <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text2)' }}>{t.label}</span>
             <span style={h.detail}><span>Sale sorti</span> <span style={e.nombre}>{totaux[t.id]?.sale || 0}</span></span>
             <span style={h.detail}><span>Propre entré</span> <span style={e.nombre}>{totaux[t.id]?.propre || 0}</span></span>
@@ -494,9 +497,9 @@ function LingeDuJour({ linge, chambres, aujourdhui, peutGerer, onAjouter }) {
               <span style={h.ligneDroite}>
                 <span style={h.detail} data-no-translate>{nomPersonne(m.par)}</span>
                 {peutGerer && (
-                  <button type="button" className="ui-btn ui-btn--ghost" style={{ ...e.action, minHeight: 36 }} onClick={async () => { const r = await linge.supprimer(m.id); if (r.error) notify(r.error, 'error'); }}>
+                  <Btn small onClick={async () => { const r = await linge.supprimer(m.id); if (r.error) notify(r.error, 'error'); }}>
                     Retirer
-                  </button>
+                  </Btn>
                 )}
               </span>
             </div>
@@ -516,10 +519,10 @@ function ObjetsTrouves({ objets, chambres, sejours, peutGerer, onDeclarer, onOuv
     <section style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="module-actions">
         {peutGerer && (
-          <button type="button" className="ui-btn ui-btn--primary" style={{ ...e.action, minHeight: 48, padding: '10px 16px', fontSize: 14 }} onClick={onDeclarer}>
+          <Btn variant="primary" onClick={onDeclarer} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
             <Package size={18} strokeWidth={1.75} aria-hidden="true" />
             <span>Déclarer un objet</span>
-          </button>
+          </Btn>
         )}
         <SegmentedTabs size="sm" tabs={[{ id: 'trouve', label: 'À rendre' }, { id: 'rendu', label: 'Rendus' }, { id: 'tous', label: 'Tous' }]} active={filtre} onChange={setFiltre} />
       </div>
@@ -627,26 +630,25 @@ function ObjetForm({ objet, chambres, sejours, objets, peutGerer, user, aujourdh
 
 const e = {
   grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 12 },
-  carte: {
-    display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, padding: '14px 16px', boxSizing: 'border-box',
-    background: 'var(--surface)', color: 'var(--text)', borderRadius: 'var(--r)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-  },
+  // La carte de la chambre est h.carte (hotelUi.jsx) ; une arrivée du jour
+  // garde son bord d'accent.
   carteArrivee: { borderColor: 'var(--accent)' },
-  numero: { fontFamily: 'var(--font-num)', fontSize: 26, lineHeight: 1.05, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
-  nombre: { fontFamily: 'var(--font-num)', fontSize: 20, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  numero: { fontFamily: 'var(--font-num)', fontSize: 'var(--t5)', fontWeight: 'var(--g-chiffre)', lineHeight: 1.05, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  nombre: { fontFamily: 'var(--font-num)', fontSize: 'var(--t4)', fontWeight: 'var(--g-chiffre)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   statuts: { display: 'flex', flexWrap: 'wrap', gap: 6 },
+  // Statuts de ménage : un groupe de pilules sur la piste, le statut choisi
+  // en aplat sombre. Taille et retrait de la primitive Btn.
   bouton: {
-    minHeight: 44, padding: '8px 12px', fontSize: 13, fontFamily: 'var(--font)', fontWeight: 500, cursor: 'pointer',
-    background: 'var(--surface2)', color: 'var(--text)', borderRadius: 'var(--r-sm)',
+    minHeight: 44, padding: '8px 14px', fontSize: 13, fontFamily: 'var(--font)', fontWeight: 'var(--g2)', cursor: 'pointer',
+    background: 'var(--piste)', color: 'var(--text)', borderRadius: 'var(--r-full)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'transparent', flex: '1 1 auto',
   },
-  boutonActif: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)', fontWeight: 700 },
+  boutonActif: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)', fontWeight: 'var(--g3)' },
   action: {
-    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '8px 12px', fontSize: 13, fontFamily: 'var(--font)',
-    background: 'var(--surface)', color: 'var(--text)', borderRadius: 'var(--r-sm)', cursor: 'pointer',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', flexShrink: 0,
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 38, padding: '8px 14px', fontSize: 13, fontFamily: 'var(--font)', fontWeight: 'var(--g2)',
+    background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderRadius: 'var(--r-full)', cursor: 'pointer',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', flexShrink: 0, whiteSpace: 'nowrap',
   },
   actionActive: { borderColor: 'var(--accent)', color: 'var(--accent)' },
-  ligneJournal: { display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', padding: '6px 0', borderBottom: '1px solid var(--border)' },
+  ligneJournal: { display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', padding: '6px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)' },
 };

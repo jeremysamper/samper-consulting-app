@@ -651,7 +651,7 @@ function LigneFacture({
               {f.regleMode ? `, ${libelleMode(f.regleMode).toLowerCase()}` : ''}
             </span>
           ) : canRegler && !selectionActive ? (
-            <Btn variant="primary" onClick={onRegler}>Marquer réglée</Btn>
+            <Btn variant="ghost" onClick={onRegler}>Marquer réglée</Btn>
           ) : (
             <span style={{ ...st.pastille, ...(statut === 'en_retard' ? st.pastilleRetard : st.pastilleARegler) }}>
               {statut === 'en_retard' ? 'En retard' : 'À régler'}

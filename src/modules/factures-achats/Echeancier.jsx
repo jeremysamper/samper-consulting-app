@@ -76,19 +76,25 @@ export default function Echeancier({ docs, aujourdhui, onRegler }) {
   );
 }
 
+// Direction Galet : l'en-tête posé sur la page (le compte à gauche, l'action
+// principale à droite), l'échéancier et la liste chacun dans une carte
+// blanche, lignes séparées par le filet doux.
 const st = {
-  page: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
-  enTete: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10, paddingBottom: 8 },
-  total: { fontSize: 13, color: 'var(--text2)' },
-  section: { display: 'flex', flexDirection: 'column', gap: 6, padding: '16px 0 12px', borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)', minWidth: 0 },
-  titre: { fontFamily: 'var(--font-serif)', fontSize: 17, color: 'var(--text)', lineHeight: 1.2 },
-  calcul: { fontSize: 12, color: 'var(--text3)', lineHeight: 1.5 },
+  page: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 },
+  enTete: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  total: { fontSize: 'var(--t2)', color: 'var(--text2)' },
+  section: {
+    display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, padding: '16px 18px',
+    borderRadius: 'var(--r-lg)', background: 'var(--zone)', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)',
+  },
+  titre: { fontFamily: 'var(--font)', fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', lineHeight: 1.25 },
+  calcul: { fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5 },
   liste: { display: 'flex', flexDirection: 'column' },
-  ligne: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '2px 12px', padding: '8px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', fontSize: 13 },
-  nom: { color: 'var(--text)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  numero: { color: 'var(--text3)', fontSize: 12 },
-  detail: { gridColumn: 1, color: 'var(--text2)', fontSize: 12 },
+  ligne: { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', alignItems: 'center', gap: '2px 12px', minHeight: 'var(--ligne)', padding: '6px 0', boxSizing: 'border-box', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', fontSize: 'var(--t2)' },
+  nom: { color: 'var(--text)', fontWeight: 'var(--g2)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  numero: { color: 'var(--text3)', fontWeight: 'var(--g1)', fontSize: 'var(--t1)' },
+  detail: { gridColumn: 1, color: 'var(--text2)', fontSize: 'var(--t1)' },
   retard: { color: 'var(--danger-text)' },
   montant: { gridColumn: 2, gridRow: '1 / span 2', alignSelf: 'center', textAlign: 'right', fontFamily: 'var(--font-num)', color: 'var(--text)', whiteSpace: 'nowrap' },
-  manque: { color: 'var(--warning-text)', fontFamily: 'var(--font)', fontSize: 12 },
+  manque: { color: 'var(--warning-text)', fontFamily: 'var(--font)', fontSize: 'var(--t1)' },
 };

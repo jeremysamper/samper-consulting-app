@@ -86,10 +86,12 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
   if (!config) return null;
 
   return (
-    <div style={{
-      background:    'var(--surface)',
-      border:        '1px solid var(--border)',
-      borderRadius:  'var(--r)', boxShadow: 'var(--sh-xs)',
+    // Direction Galet : l'état vide est une carte blanche (M11), texte doux,
+    // le picto gardé.
+    <div data-cadre="" style={{
+      background:    'var(--zone)',
+      borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+      borderRadius:  'var(--r-lg)', boxShadow: 'var(--sh)',
       padding:       '40px 32px',
       display:       'flex',
       flexDirection: 'column',
@@ -99,14 +101,14 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
     }}>
       <div style={{ fontSize: 36, opacity: 0.15 }}>{config.icon}</div>
       <div style={{
-        fontSize:   15,
-        fontWeight: 700,
-        fontFamily: 'var(--font-serif)',
+        fontSize:   'var(--t3)',
+        fontWeight: 'var(--g3)',
+        fontFamily: 'var(--font)',
         color:      'var(--text)',
       }}>
         {config.title}
       </div>
-      <div style={{ fontSize: 13, color: 'var(--text2)', maxWidth: 400, lineHeight: 1.6 }}>
+      <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', maxWidth: 400, lineHeight: 1.6 }}>
         {config.desc}
       </div>
       {config.action && (
@@ -114,13 +116,15 @@ export function PosEmptyState({ type, message, onNavigateToMapping, onRetry }) {
           onClick={config.action.onClick}
           style={{
             marginTop:  4,
-            padding:    '8px 20px',
-            background: 'var(--accent)',
-            color:      'var(--on-accent)',
-            border:     'none',
-            borderRadius: 8,
-            fontSize:   13,
-            fontWeight: 500,
+            padding:    '10px 20px',
+            background: 'var(--btn-fond)',
+            color:      'var(--btn-texte)',
+            borderWidth: 1,
+            borderStyle: 'solid',
+            borderColor: 'var(--btn-bord)',
+            borderRadius: 'var(--r-full)',
+            fontSize:   'var(--t2)',
+            fontWeight: 'var(--g2)',
             cursor:     'pointer',
             fontFamily: 'var(--font)',
           }}

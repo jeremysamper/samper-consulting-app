@@ -85,7 +85,7 @@ function CarteEtat({ user, etabId, onPlusTard, bas }) {
       <Cadre bas={bas} titre="Alertes sur cet appareil">
         <p style={st.texte}>Recevez en notification les alertes de l&apos;établissement et les nouvelles réservations en ligne, même app fermée.</p>
         <div style={st.boutons}>
-          <Btn variant="primary" onClick={activer} disabled={enCours} style={st.bouton}>{enCours ? 'Activation…' : 'Activer'}</Btn>
+          <Btn variant="ghost" onClick={activer} disabled={enCours} style={st.bouton}>{enCours ? 'Activation…' : 'Activer'}</Btn>
           <Btn variant="ghost" onClick={onPlusTard} disabled={enCours} style={st.bouton}>Plus tard</Btn>
         </div>
       </Cadre>

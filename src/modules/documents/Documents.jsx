@@ -10,8 +10,10 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { Fenetre } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { pictoCercleStyle } from '../../components/ui/index.jsx';
+import './documents.css';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // MODULE DOCUMENTS - dossiers et fichiers de l'établissement
@@ -28,6 +30,9 @@ import { useBackLayer } from '../../hooks/useBackLayer.js';
 //
 // Lecture STRICTE : une lecture ratée (réveil de tablette, réseau) est
 // annoncée et réessayée, jamais affichée comme « Aucun document ».
+//
+// Direction Galet (lot 6) : les dossiers du niveau ouvert en cartes, les
+// fichiers en liste dans une carte ; une recherche rend une seule liste.
 // ═════════════════════════════════════════════════════════════════════════════
 
 const TAILLE_MAX = 50 * 1024 * 1024; // limite du bucket
@@ -216,6 +221,11 @@ const Documents = ({ user, etablissement }) => {
     return allDocs.filter(d => match(d.nom)).sort(trier);
   }, [recherche, allDocs, enfants, currentFolder]);
 
+  // Niveau ouvert : les dossiers en cartes, les fichiers en liste. Une
+  // recherche rend une seule liste (chaque résultat dit où il se trouve).
+  const dossiers = recherche ? [] : liste.filter(d => d.type === 'folder');
+  const fichiers = recherche ? liste : liste.filter(d => d.type !== 'folder');
+
   const filAriane = chemin(currentFolder);
   const dossierCourant = currentFolder ? parId.get(currentFolder) : null;
 
@@ -260,6 +270,9 @@ const Documents = ({ user, etablissement }) => {
   };
 
   // ═══ Ouvrir, télécharger ═══
+  // Le toucher de la ligne ouvre : le menu d'actions ne le redit pas. Sans
+  // droit d'écriture, un dossier n'a plus d'action à offrir, et pas de menu.
+  const aDesActions = (doc) => canWrite || doc.type === 'file';
   const ouvrir = async (doc) => {
     if (doc.type === 'folder') { setSearch(''); setCurrentFolder(doc.id); return; }
     if (!legacySB) return;
@@ -412,9 +425,52 @@ const Documents = ({ user, etablissement }) => {
     const nature = natureDe(doc);
     const Comp = nature === 'folder' ? Folder : nature === 'pdf' ? FileText : nature === 'image' ? ImageIcon : FileIcon;
     return (
-      <span style={{ ...ds.icone, ...(nature === 'folder' ? ds.iconeDossier : null) }} aria-hidden="true">
+      <span style={{ ...pictoCercleStyle(40), ...(nature === 'folder' ? ds.iconeDossier : null) }} aria-hidden="true">
         <Comp size={20} strokeWidth={1.8} />
       </span>
+    );
+  };
+
+  // Un dossier du niveau ouvert : une carte, mêmes gestes que la ligne
+  // (toucher pour ouvrir, case en sélection, menu d'actions).
+  const carteDossier = (doc) => {
+    const selectionne = sel.active && sel.isSelected(doc.id);
+    return (
+      <div
+        key={doc.id}
+        role="button"
+        tabIndex={0}
+        data-cadre=""
+        className="docs-dossier"
+        style={{ ...ds.dossier, ...(selectionne ? ds.dossierSel : null) }}
+        onClick={() => (sel.active ? sel.toggle(doc.id) : ouvrir(doc))}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); sel.active ? sel.toggle(doc.id) : ouvrir(doc); } }}
+        aria-label={`Ouvrir le dossier ${doc.nom}`}
+      >
+        <div style={ds.dossierHaut}>
+          {sel.active && (
+            <label style={ds.caseCible} onClick={e => e.stopPropagation()}>
+              <input type="checkbox" checked={selectionne} onChange={() => sel.toggle(doc.id)} style={ds.case} aria-label={`Sélectionner ${doc.nom}`} />
+            </label>
+          )}
+          {icone(doc)}
+          {!sel.active && aDesActions(doc) && (
+            <button
+              type="button"
+              style={{ ...ds.menuBtn, marginLeft: 'auto' }}
+              aria-label={`Actions pour ${doc.nom}`}
+              onClick={(e) => { e.stopPropagation(); setActions(doc); }}
+              onKeyDown={e => e.stopPropagation()}
+            >
+              <MoreVertical size={18} />
+            </button>
+          )}
+        </div>
+        <div style={ds.ligneInfo}>
+          <div style={ds.ligneNom}>{doc.nom}</div>
+          <div style={ds.ligneMeta}>{metaDe(doc)}</div>
+        </div>
+      </div>
     );
   };
 
@@ -442,7 +498,7 @@ const Documents = ({ user, etablissement }) => {
           <div style={ds.ligneNom}>{doc.nom}</div>
           <div style={ds.ligneMeta}>{ou ? `Dans ${ou}, ${metaDe(doc)}` : metaDe(doc)}</div>
         </div>
-        {!sel.active && (
+        {!sel.active && aDesActions(doc) && (
           <button
             type="button"
             style={ds.menuBtn}
@@ -468,15 +524,23 @@ const Documents = ({ user, etablissement }) => {
       {/* ── Chemin + actions ── */}
       <div style={ds.entete}>
         <nav style={ds.fil} aria-label="Emplacement">
-          <button type="button" style={{ ...ds.filBtn, ...(currentFolder ? null : ds.filBtnActif) }} onClick={() => setCurrentFolder(null)}>Documents</button>
+          {/* L'emplacement ouvert se lit, il ne se touche pas : y revenir ne
+              faisait rien. Les dossiers au-dessus restent des boutons. */}
+          {currentFolder
+            ? <button type="button" style={ds.filBtn} onClick={() => setCurrentFolder(null)}>Documents</button>
+            : <span style={{ ...ds.filBtn, ...ds.filBtnActif }} aria-current="location">Documents</span>}
           {filAriane.map((f, i) => (
             <React.Fragment key={f.id}>
               <span style={ds.filSep} aria-hidden="true">/</span>
-              <button
-                type="button"
-                style={{ ...ds.filBtn, ...(i === filAriane.length - 1 ? ds.filBtnActif : null) }}
-                onClick={() => setCurrentFolder(f.id)}
-              >{f.nom}</button>
+              {i === filAriane.length - 1
+                ? <span style={{ ...ds.filBtn, ...ds.filBtnActif }} aria-current="location">{f.nom}</span>
+                : (
+                  <button
+                    type="button"
+                    style={ds.filBtn}
+                    onClick={() => setCurrentFolder(f.id)}
+                  >{f.nom}</button>
+                )}
             </React.Fragment>
           ))}
         </nav>
@@ -487,7 +551,16 @@ const Documents = ({ user, etablissement }) => {
           )}
           {canWrite && (
             <>
-              <button type="button" style={ds.btnGhost} onClick={() => setNouveauDossier('')}>Nouveau dossier</button>
+              {/* En-tête : l'action principale et deux secondaires (la loupe,
+                  « Sélectionner ») ; le reste dans un seul menu. La rangée
+                  tient au téléphone sans couper « Ajouter ». */}
+              <BoutonActions
+                id="documents-gerer"
+                label="Gérer"
+                style={ds.btnGhost}
+                titre="Documents"
+                sections={[{ items: [{ titre: 'Nouveau dossier', onClick: () => setNouveauDossier('') }] }]}
+              />
               {/* Un vrai bouton (clavier, lecteur d'écran) ; le champ fichier
                   reste masqué et s'ouvre par lui. Les actions restent dans
                   l'en-tête : une rangée de gros boutons repoussait le dernier
@@ -556,10 +629,19 @@ const Documents = ({ user, etablissement }) => {
           )}
         </div>
       ) : (
-        <div style={ds.liste}>
-          {recherche && <div style={ds.listeTitre}>{pluriel(liste.length, 'résultat')} dans tous les dossiers</div>}
-          {liste.map(ligne)}
-        </div>
+        <>
+          {dossiers.length > 0 && (
+            <div className="docs-dossiers-zone">
+              <div className="docs-dossiers">{dossiers.map(carteDossier)}</div>
+            </div>
+          )}
+          {fichiers.length > 0 && (
+            <div style={ds.liste} data-cadre="">
+              {recherche && <div style={ds.listeTitre}>{pluriel(liste.length, 'résultat')} dans tous les dossiers</div>}
+              {fichiers.map(ligne)}
+            </div>
+          )}
+        </>
       )}
 
       {/* ── Menu d'actions d'un élément ── */}
@@ -568,7 +650,6 @@ const Documents = ({ user, etablissement }) => {
       {actions && (
         <Fenetre id="documents-actions" titre={actions.nom} onClose={() => setActions(null)} largeur={420}>
             <div style={ds.menuListe}>
-              <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); ouvrir(d); }}>Ouvrir</button>
               {actions.type === 'file' && (
                 <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); telecharger(d); }}>Télécharger</button>
               )}
@@ -695,25 +776,34 @@ const Documents = ({ user, etablissement }) => {
 };
 
 const ds = {
-  root: { display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 },
+  root: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 },
   entete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
   fil: { display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', minWidth: 0 },
   filBtn: { background: 'none', border: 'none', color: 'var(--lien)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '6px 8px', borderRadius: 'var(--r)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  filBtnActif: { color: 'var(--text)' },
+  filBtnActif: { color: 'var(--text)', cursor: 'default', display: 'inline-block', lineHeight: 'normal' },
   filSep: { color: 'var(--text3)', fontSize: 'var(--t2)' },
-  btnPrimaire: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  btnGhost: { padding: '8px 14px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
+  btnPrimaire: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  btnGhost: { padding: '8px 14px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
 
   banniere: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '11px 0 11px 12px',  borderLeft: '2px solid var(--warning-bd)',  color: 'var(--warning-text)', fontSize: 'var(--t1)', lineHeight: 1.5 },
-  depot: { padding: '18px 16px', textAlign: 'center', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--lien)', background: 'var(--bg)', border: '2px dashed var(--accent)', borderRadius: 'var(--r)' },
+  depot: { padding: '18px 16px', textAlign: 'center', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--lien)', background: 'var(--bg)', border: '2px dashed var(--accent)', borderRadius: 'var(--r-lg)' },
 
-  liste: { background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)', overflow: 'hidden' },
-  listeTitre: { padding: '10px 14px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', borderBottom: '1px solid var(--border)' },
+  // Fichiers : une carte blanche (fond --zone, filet --rule-soft, rayon
+  // --r-lg, ombre --sh), lignes séparées par un filet doux.
+  liste: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)', overflow: 'hidden' },
+  listeTitre: { padding: '12px 16px', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', borderBottom: '1px solid var(--rule-soft)' },
+  // Dossiers : une carte chacun, le picto dans son cercle, le menu à droite,
+  // le nom et le contenu dessous (grille : documents.css).
+  dossier: {
+    display: 'flex', flexDirection: 'column', gap: 10, padding: '12px 12px 14px 14px', minWidth: 0, boxSizing: 'border-box', cursor: 'pointer',
+    background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
+  },
+  dossierSel: { background: 'var(--selection)', borderColor: 'var(--accent)' },
+  dossierHaut: { display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, minWidth: 0 },
   // Base de bordure en borderWidth/Style/Color : la sélection ne surcharge
   // que borderColor (cf. npm run lint:borders).
-  ligne: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 10px 10px 14px', minHeight: 60, cursor: 'pointer', borderWidth: '0 0 1px 0', borderStyle: 'solid', borderColor: 'var(--border)', background: 'transparent', outline: 'none' },
-  ligneSel: { background: 'var(--bg)', borderColor: 'var(--accent)' },
-  icone: { width: 28, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: 'var(--text2)' },
+  ligne: { display: 'flex', alignItems: 'center', gap: 12, padding: '10px 10px 10px 14px', minHeight: 60, cursor: 'pointer', borderWidth: '0 0 1px 0', borderStyle: 'solid', borderColor: 'var(--rule-soft)', background: 'transparent', outline: 'none' },
+  ligneSel: { background: 'var(--selection)', borderColor: 'var(--accent)' },
   iconeDossier: { color: 'var(--lien)' },
   ligneInfo: { flex: 1, minWidth: 0 },
   ligneNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', lineHeight: 1.3, overflowWrap: 'anywhere', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' },
@@ -723,9 +813,10 @@ const ds = {
   caseCible: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, margin: '-4px -6px -4px -8px', flexShrink: 0 },
   case: { width: 20, height: 20, margin: 0, accentColor: 'var(--accent)' },
 
-  vide: { padding: '48px 20px', textAlign: 'center', background: 'var(--surface)', border: '1px dashed var(--border)', borderRadius: 'var(--r)' },
+  // Vide et chargement : dans une carte, texte en --text3 (M11).
+  vide: { padding: '48px 20px', textAlign: 'center', background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)' },
   videTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' },
-  videTexte: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 6 },
+  videTexte: { fontSize: 'var(--t2)', color: 'var(--text3)', marginTop: 6 },
 
   // Corps des fenêtres : Fenetre porte le cadre, le titre et le rembourrage.
   fenetreCorps: { display: 'flex', flexDirection: 'column', gap: 10 },

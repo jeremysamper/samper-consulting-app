@@ -1,0 +1,98 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Module Planning : mise en page de l'accueil et des écrans (direction
+   Galet). Les couleurs passent par les jetons d'app.css, jamais par une
+   fonction de couleur.
+   Le relevé CCNT (#ccnt-print, gabarit en JSX de Planning.jsx, zone cachée
+   que l'export photographie) n'est visé par aucune règle de cette feuille.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Accueil ──────────────────────────────────────────────────────────────────
+   Par la largeur réellement disponible (rail ou menu déplié), pas par celle de
+   la fenêtre : requêtes de conteneur, paliers 560, 760 et 1080 px comme le
+   tableau de bord. Le conteneur (.pl-page) ne porte aucune fenêtre du module
+   (Fenetre passe par un portail) ; la grille vit sur son enfant (.pl-grille).
+   Ordre au téléphone et à la tablette étroite : les tuiles d'abord (« J'arrive »
+   ou « Je pars » reste la première, visible sans défiler), la carte de
+   l'équipe, puis les repères. Dès 760 px : les tuiles et la
+   carte côte à côte ; dès 1080 px, les repères passent en tête. */
+.pl-page {
+  container-type: inline-size;
+  container-name: pl;
+  min-width: 0;
+}
+.pl-grille {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.pl-grille > .accueil-grille { order: 20; grid-auto-rows: 1fr; }
+.pl-carte-nuit { order: 30; }
+.pl-reperes {
+  order: 40;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* Repères : primitive CarteRepere ; seuls son retrait et son picto suivent la
+   largeur (!important : le cercle pose son display en style inline). */
+.pl-page .ui-repere { padding: 12px; }
+.pl-page .ui-repere-icone { display: none !important; }
+
+/* Carte de l'équipe : une tuile par état de pointage. */
+.pl-tuiles {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+.pl-page [data-carte-avant="nuit"] button:focus-visible {
+  outline: 2px solid var(--carte-nuit-texte);
+  outline-offset: 2px;
+}
+
+@media (min-width: 600px) {
+  .pl-grille { gap: 24px; }
+}
+/* Téléphone : le repère des personnes pointées répète la carte (!important :
+   la carte pose son display en style inline). */
+@container pl (max-width: 559.98px) {
+  .pl-grille:has(> .pl-carte-nuit) .pl-reperes > [data-repere="pointes"] { display: none !important; }
+}
+@container pl (min-width: 560px) {
+  .pl-page .ui-repere { padding: 14px 16px; }
+  .pl-page .ui-repere-icone { display: inline-flex !important; }
+  .pl-reperes { gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* Tablette : les tuiles d'abord (« J'arrive » ou « Je pars » en tête), la
+   carte à côté, les repères dessous. */
+@container pl (min-width: 760px) {
+  .pl-grille {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .pl-grille > .accueil-grille {
+    order: 10;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pl-carte-nuit { order: 20; }
+  .pl-reperes { order: 30; grid-column: 1 / -1; }
+  /* Sans horaire aujourd'hui, pas de carte : les tuiles prennent toute la
+     largeur. */
+  .pl-grille:not(:has(> .pl-carte-nuit)) > .accueil-grille {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+/* Ordinateur : repères en tête, puis la carte et les tuiles côte à côte. Les
+   tuiles gardent leur hauteur (pas étirées à celle de la carte). */
+@container pl (min-width: 1080px) {
+  .pl-grille { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  .pl-reperes { order: 10; }
+  .pl-carte-nuit { order: 20; }
+  .pl-grille > .accueil-grille { order: 30; }
+}

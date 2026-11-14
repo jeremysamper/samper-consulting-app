@@ -2013,9 +2013,11 @@ export default function PlanSalle({
             : 'Un responsable doit le dessiner depuis « Dessiner la salle ».'}
         </div>
         {canEdit && (
+          // Secondaire : une seule pilule sombre par écran (règle des boutons, P2).
           <button type="button" onClick={() => ouvrirDessin(true)} style={{
-            padding: '9px 18px', borderRadius: 'var(--r)', border: 'none',
-            background: 'var(--accent)', color: 'var(--on-accent)',
+            padding: '9px 18px', borderRadius: 'var(--r)',
+            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+            background: 'var(--btn-fond)', color: 'var(--btn-texte)',
             fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
           }}>
             Ajouter une table
@@ -2207,10 +2209,11 @@ export default function PlanSalle({
               }}>
                 Ajouter
               </span>
+              {/* Puce comme les autres ajouts : l'aplat sombre dit un choix, pas un ajout (P2). */}
               <button
                 type="button"
                 onClick={ajouterTable}
-                style={{ ...puce, borderColor: 'var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)' }}
+                style={puce}
               >
                 Table
               </button>

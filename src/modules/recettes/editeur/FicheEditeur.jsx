@@ -583,7 +583,7 @@ export default function FicheEditeur({
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               <button type="button" style={es.bouton} onClick={() => setColler(true)}>Coller une liste</button>
               {catalogue.length > 0 && <button type="button" style={es.bouton} onClick={() => { setRechercheCatalogue(''); setPicker('multi'); }}>Depuis le catalogue</button>}
-              <button type="button" style={es.boutonPrincipal} onClick={ajouterLigne}>Ajouter un ingrédient</button>
+              <button type="button" style={es.bouton} onClick={ajouterLigne}>Ajouter un ingrédient</button>
             </div>
           </div>
           <div style={{ padding: '4px 14px 14px' }}>
@@ -609,9 +609,10 @@ export default function FicheEditeur({
                           </button>
                         )}
                         {!lie && ing.needsReview && (
-                          <button type="button" style={{ ...es.pastille, background: 'var(--warning-bg)', color: 'var(--warning-text)' }} title="Correspondance incertaine : choisir le produit" aria-label={`Choisir le produit de ${ing.nom || 'la ligne'}`} onClick={() => { setRechercheCatalogue(ing.nom || ''); setPicker(ing.id); }}>
+                          // Signal seul : la loupe de la ligne ouvre le même choix du catalogue.
+                          <span role="img" style={{ ...es.pastille, background: 'var(--warning-bg)', color: 'var(--warning-text)', cursor: 'default' }} title="Correspondance incertaine : choisir le produit" aria-label="Correspondance incertaine : choisir le produit">
                             <AlertTriangle size={13} aria-hidden="true" />
-                          </button>
+                          </span>
                         )}
                         <DebouncedField
                           key={`${ing.id}:${ing.produitId || ''}:${ing.needsReview ? 'r' : ''}`}
@@ -939,7 +940,6 @@ const es = {
   petit: { width: 32, height: 28, minHeight: 0, border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t1)', cursor: 'pointer', flexShrink: 0 },
   numero: { width: 28, height: 28, flexShrink: 0, borderRadius: '50%', background: 'var(--selection)', color: 'var(--lien)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', marginTop: 8 },
   bouton: { padding: '9px 14px', minHeight: 44, background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', color: 'var(--text)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
-  boutonPrincipal: { padding: '9px 14px', minHeight: 44, background: 'var(--accent)', border: 'none', color: 'var(--on-accent)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
   lien: { border: 'none', background: 'none', color: 'var(--warning-text)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '0 4px' },
   etat: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--t1)', color: 'var(--text2)' },
   vide: { padding: '10px 0', fontSize: 'var(--t2)', color: 'var(--text2)', fontStyle: 'italic' },

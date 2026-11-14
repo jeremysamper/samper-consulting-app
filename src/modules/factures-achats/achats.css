@@ -1,0 +1,99 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Factures & achats : mise en page de l'accueil (direction Galet). Les
+   couleurs passent par les jetons d'app.css ; cette feuille ne règle que la
+   grille, par la largeur réellement disponible (requêtes de conteneur, paliers
+   560, 760 et 1080 px comme le tableau de bord).
+   .ach-page est le conteneur (les fenêtres de l'accueil passent par un
+   portail) ; la grille vit sur son enfant .ach-grille.
+   Téléphone : l'en-tête, le bandeau des documents à compléter, les tuiles (la
+   première reste visible sans défiler), les repères deux par ligne, puis une
+   seule carte de mise en avant (les six mois). La liste des échéances, la
+   carte des fournisseurs et le repère des dépenses n'y sont pas rendus.
+   Dès 760 px : repères sous le bandeau, tuiles et échéances côte à côte, les
+   deux cartes pastel dessous.
+   ───────────────────────────────────────────────────────────────────────────── */
+.ach-page { container-type: inline-size; container-name: ach; min-width: 0; }
+.ach-grille { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.ach-grille > * { order: 10; }
+.ach-grille > [data-bandeau-a-completer] { order: 12; }
+.ach-grille > .accueil-grille { order: 20; }
+.ach-reperes {
+  order: 40;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+.ach-grille > .ach-echeances { order: 45; }
+.ach-grille > .ach-cartes { order: 50; }
+
+/* Repères : primitive CarteRepere ; seuls son retrait et son picto suivent la
+   largeur (!important : le cercle pose son display en style inline). */
+.ach-page .ui-repere { padding: 12px; }
+.ach-page .ui-repere-icone { display: none !important; }
+
+.ach-cartes {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+  min-width: 0;
+}
+.ach-cartes:empty { display: none; }
+.ach-cartes > :only-child { grid-column: 1 / -1; }
+/* Les barres gardent la proportion de celles du tableau de bord : sur une
+   carte large, elles ne s'étirent pas en pilules. */
+.ach-barres { width: 100%; max-width: 420px; min-width: 0; }
+.ach-repartition {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+}
+
+/* Téléphone (!important : les cartes posent leur display en style inline). */
+@container ach (max-width: 559.98px) {
+  .ach-reperes > [data-repere="depenses"],
+  .ach-page .ach-ciel,
+  .ach-grille > .ach-echeances { display: none !important; }
+  .ach-reperes:not(:has(> :not([data-repere="depenses"]))) { display: none; }
+}
+@container ach (min-width: 560px) {
+  .ach-grille { gap: 24px; }
+  .ach-page .ui-repere { padding: 14px 16px; }
+  .ach-page .ui-repere-icone { display: inline-flex !important; }
+  /* Trois colonnes fixes : un repère seul (sans le droit de régler) garde la
+     largeur d'un tiers. */
+  .ach-reperes { gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .ach-cartes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+}
+@container ach (min-width: 760px) {
+  .ach-grille {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .ach-grille > * { grid-column: 1 / -1; }
+  .ach-reperes { order: 15; }
+  /* Les tuiles gardent leur hauteur ; les échéances à côté. */
+  .ach-grille > .accueil-grille {
+    order: 20;
+    grid-column: 1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ach-grille > .ach-echeances { order: 25; grid-column: 2; }
+  .ach-grille > .ach-cartes { order: 30; }
+  /* Sans le droit de régler, pas de liste : les tuiles prennent la largeur. */
+  .ach-grille:not(:has(> .ach-echeances)) > .accueil-grille {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@container ach (min-width: 1080px) {
+  .ach-grille { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  /* L'arc à gauche, sa légende à droite. */
+  .ach-cartes { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  .ach-repartition { grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 20px; }
+}

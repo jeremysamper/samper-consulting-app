@@ -240,14 +240,7 @@ export default function ClientFiche({
 
         {/* ── Parcours des séances ── */}
         <section>
-          <TitreSection action={(
-            <button type="button" onClick={() => setSeanceOuverte({})} style={st.lien}>
-              <NotebookPen size={15} strokeWidth={1.8} aria-hidden="true" /> Ajouter
-            </button>
-          )}
-          >
-            Parcours des séances
-          </TitreSection>
+          <TitreSection>Parcours des séances</TitreSection>
           {seances.status === 'error' && <div style={st.encartDanger}>L'historique ne s'est pas chargé. Vérifiez la connexion internet.</div>}
           {seances.status === 'ready' && !historique.length && (
             <EtatVide icone={Sprout} texte="Aucune séance pour l'instant. À la fin de chaque soin, remplissez le compte rendu : il s'affichera ici." />
@@ -313,14 +306,7 @@ export default function ClientFiche({
 
         {/* ── Bons cadeaux ── */}
         <section>
-          <TitreSection action={peutOffrir && (
-            <button type="button" onClick={() => onOffrirBon(client)} style={st.lien}>
-              <Gift size={15} strokeWidth={1.8} aria-hidden="true" /> Offrir
-            </button>
-          )}
-          >
-            Bons cadeaux
-          </TitreSection>
+          <TitreSection>Bons cadeaux</TitreSection>
           {bons.status === 'ready' && !bonsTries.length && <div style={{ fontSize: 14, color: 'var(--spa-ink2)' }}>Aucun bon émis.</div>}
           <div style={{ display: 'grid', gap: 12 }}>
             {bonsTries.map((b) => (

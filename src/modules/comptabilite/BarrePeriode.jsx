@@ -56,11 +56,11 @@ const st = {
   },
   inactif: { opacity: 0.3, cursor: 'default' },
   libelle: {
-    fontSize: 17, fontFamily: 'var(--font-serif)', color: 'var(--text)', minWidth: 0, textAlign: 'center',
+    fontSize: 'var(--t3)', fontFamily: 'var(--font)', color: 'var(--text)', minWidth: 0, textAlign: 'center',
     overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', padding: '0 2px',
   },
   gerer: {
     minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r-sm)', border: '1px solid var(--border)',
-    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 13, fontWeight: 500, cursor: 'pointer',
+    background: 'var(--surface)', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },
 };

@@ -46,21 +46,24 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
   return (
     <section
       aria-label="Demandes en ligne à confirmer"
+      data-cadre=""
       style={{
-        marginTop: 14, padding: '12px 0 12px 12px',   borderLeft: '2px solid var(--warning-bd)',
+        marginTop: 14, padding: '16px 20px', borderRadius: 'var(--r-lg)',
+        background: 'var(--zone)', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)',
         ...style,
       }}
     >
-      <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--warning-text)', marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--warning-text)', marginBottom: 8 }}>
+        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--warning-strong)', flexShrink: 0 }} />
         {demandes.length === 1 ? '1 demande en ligne à confirmer' : `${demandes.length} demandes en ligne à confirmer`}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {demandes.map((r) => (
           <div
             key={r.id}
             style={{
               display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
-              padding: '10px 12px', borderRadius: 'var(--r)', background: 'var(--surface)', border: '1px solid var(--border)',
+              padding: '12px 0', borderTop: '1px solid var(--rule-soft)',
             }}
           >
             <div style={{ flex: '1 1 220px', minWidth: 0 }}>
@@ -92,7 +95,7 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
                 disabled={enCours === r.id}
                 onClick={() => traiter(r, 'refus')}
                 style={{
-                  padding: '8px 14px', minHeight: 40, borderRadius: 'var(--r)', cursor: 'pointer',
+                  padding: '8px 16px', minHeight: 40, borderRadius: 'var(--r-full)', cursor: 'pointer',
                   borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
                   background: 'var(--btn-fond)', color: 'var(--btn-texte)',
                   fontSize: 'var(--t1)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
@@ -105,7 +108,7 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
                 disabled={enCours === r.id}
                 onClick={() => traiter(r, 'confirmation')}
                 style={{
-                  padding: '8px 14px', minHeight: 40, borderRadius: 'var(--r)', cursor: 'pointer',
+                  padding: '8px 16px', minHeight: 40, borderRadius: 'var(--r-full)', cursor: 'pointer',
                   borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--success-bd)',
                   background: 'var(--success-bg-soft)', color: 'var(--success-text)',
                   fontSize: 'var(--t1)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)',

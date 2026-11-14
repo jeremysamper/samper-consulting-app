@@ -1,9 +1,9 @@
 import React from 'react';
-import { Building2, ChevronLeft, ChevronRight, Download } from 'lucide-react';
-import { etablissementService, supabase } from '../../services/supabase.js';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { supabase } from '../../services/supabase.js';
 import { roles } from '../moduleConfig.js';
 import { zurichAjouterJours, zurichDateHeure, zurichLundi, zurichMinuitIso } from '../../utils/zurichTime.js';
-import { Btn, SectionHeader } from '../../components/ui/index.jsx';
+import { Btn, Panneau, SectionHeader } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import { MODULES_JOURNAL, OPERATIONS_JOURNAL } from './serieJournal.js';
@@ -13,8 +13,8 @@ import { MODULES_JOURNAL, OPERATIONS_JOURNAL } from './serieJournal.js';
 // Alimenté par le déclencheur journal_activite_log (migration 20261015) ;
 // lecture réservée au consultant et au patron par la RLS.
 // La semaine en cours d'office ; semaine précédente, suivante et « Exporter »
-// en gros boutons ; un autre établissement, s'il y en a plusieurs, derrière
-// un bouton nommé puis une tuile (le cas rare ne pousse pas la liste).
+// en gros boutons ; l'établissement se change par la coque, comme partout
+// (le sélecteur de la barre du haut), le journal le suit.
 
 // Libellés des actions et des modules : ceux du journal dans les Statistiques
 // (serieJournal.js), écrits une seule fois (D3).
@@ -119,32 +119,20 @@ function telechargerCsv(lignes, nomFichier) {
 const slug = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
   .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-// Gros boutons : 48 px au doigt, texte lisible.
-const gros = { minHeight: 48, padding: '10px 16px', fontSize: 14 };
+// Gros boutons : 48 px au doigt, texte lisible ; des pilules (Btn).
+const gros = { minHeight: 48, padding: '10px 16px', fontSize: 'var(--t2)' };
 
-export default function Journal({ user, etablissement }) {
+export default function Journal({ etablissement }) {
   const lundiCourant = zurichLundi();
-  const [etabs, setEtabs] = React.useState([]);
-  const [etabId, setEtabId] = React.useState(etablissement?.id || '');
+  // L'établissement est celui de la coque : son sélecteur, dans la barre du
+  // haut, change aussi le journal affiché.
+  const etabId = etablissement?.id || '';
   const [lundi, setLundi] = React.useState(lundiCourant);
   const [lignes, setLignes] = React.useState([]);
   const [etat, setEtat] = React.useState('chargement');
   const [essai, setEssai] = React.useState(0);
   const [enExport, setEnExport] = React.useState(false);
-  const [choixEtab, setChoixEtab] = React.useState(false);
   const estCourante = lundi === lundiCourant;
-
-  React.useEffect(() => {
-    if (etablissement?.id) setEtabId(etablissement.id);
-  }, [etablissement?.id]);
-
-  React.useEffect(() => {
-    let actif = true;
-    etablissementService.listForUser(user)
-      .then((rows) => { if (actif) setEtabs(rows || []); })
-      .catch(() => {});
-    return () => { actif = false; };
-  }, [user]);
 
   React.useEffect(() => {
     if (!etabId) return undefined;
@@ -166,7 +154,7 @@ export default function Journal({ user, etablissement }) {
     return groupes;
   }, [lignes]);
 
-  const nomEtab = etabs.find((e) => e.id === etabId)?.nom || etablissement?.nom || etabId;
+  const nomEtab = etablissement?.nom || etabId;
 
   const exporter = async () => {
     if (!etabId || enExport) return;
@@ -186,23 +174,19 @@ export default function Journal({ user, etablissement }) {
   };
 
   return (
-    <section style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' }}>
+    <section style={js.page}>
       <SectionHeader
         sub="Créations, modifications et suppressions dans les recettes, produits, pertes et inventaires, et corrections de réservation faites depuis la caisse."
         style={{ marginBottom: 0 }}
       />
 
-      {/* Une seule rangée qui passe à la ligne : la liste commence à la même
-          hauteur qu'avec l'ancienne barre, aucun défilement de plus. */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, minWidth: 0 }}>
-        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }} data-no-translate>{nomEtab}</span>
-        {etabs.length > 1 && (
-          <Btn onClick={() => setChoixEtab((v) => !v)} style={gros}>
-            <Building2 size={18} strokeWidth={1.75} aria-hidden="true" />
-            <span>Un autre établissement</span>
-          </Btn>
-        )}
-        <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)', fontFamily: 'var(--font-num)' }}>{libelleSemaine(lundi)}</span>
+      {/* Direction Galet : la semaine et l'établissement en pilules posées sur
+          la page, « Exporter » en pilule sombre à droite ; le registre dans
+          une carte. Une seule rangée qui passe à la ligne : la liste commence
+          à la même hauteur qu'avant, aucun défilement de plus. */}
+      <div style={js.rangee}>
+        <span style={js.contexte} data-no-translate>{nomEtab}</span>
+        <span style={{ ...js.contexte, fontFamily: 'var(--font-num)' }}>{libelleSemaine(lundi)}</span>
         <Btn onClick={() => setLundi(zurichAjouterJours(lundi, -7))} ariaLabel="Semaine précédente" style={gros}>
           <ChevronLeft size={18} strokeWidth={1.75} aria-hidden="true" />
           <span>Semaine précédente</span>
@@ -221,50 +205,72 @@ export default function Journal({ user, etablissement }) {
           </Btn>
         </div>
       </div>
-      {choixEtab && etabs.length > 1 && (
-        <AccueilModule tuiles={etabs.map((e) => ({
-          id: e.id, libelle: e.nom, brut: true, Icone: Building2, etat: e.id === etabId ? 'Affiché' : null,
-          onClick: () => { setEtabId(e.id); setChoixEtab(false); },
-        }))} />
-      )}
 
-      {etat === 'chargement' && <div style={{ fontSize: 13, color: 'var(--text2)' }}>Chargement…</div>}
+      {etat === 'chargement' && <Panneau><div style={js.note}>Chargement…</div></Panneau>}
 
       {etat === 'erreur' && (
-        <div className="form-alert error" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          Le journal n'a pas pu être chargé.
-          <Btn variant="primary" small onClick={() => setEssai((n) => n + 1)}>Réessayer</Btn>
-        </div>
+        <Panneau>
+          <div className="form-alert error" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            Le journal n'a pas pu être chargé.
+            <Btn small onClick={() => setEssai((n) => n + 1)}>Réessayer</Btn>
+          </div>
+        </Panneau>
       )}
 
       {etat === 'pret' && lignes.length === 0 && (
-        <div style={{ fontSize: 13, color: 'var(--text2)' }}>Aucune activité enregistrée cette semaine.</div>
+        <Panneau><div style={js.note}>Aucune activité enregistrée cette semaine.</div></Panneau>
       )}
 
-      {etat === 'pret' && parJour.map((g) => (
-        <div key={g.jour} style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text2)', padding: '6px 0', borderBottom: '1px solid var(--border)' }}>
-            {libelleJour(g.jour)}
-          </div>
-          {g.items.map((l) => (
-            <div key={l.id} style={{ display: 'flex', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)', minWidth: 0 }}>
-              <div style={{ fontFamily: 'var(--font-num)', fontSize: 13, color: 'var(--text2)', flexShrink: 0, width: 44 }}>{l.heure}</div>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 14, color: 'var(--text)', overflowWrap: 'anywhere' }}>
-                  <span style={{ fontWeight: 500 }}>{l.libelle || 'Sans nom'}</span>
-                  <span style={{ fontSize: 12, color: 'var(--text3)', marginLeft: 8 }}>{MODULES[l.module] || l.module}</span>
-                </div>
-                <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' }}>
-                  <span style={{ color: COULEUR_ACTION[l.operation], fontWeight: 500 }}>{ACTIONS[l.operation] || l.operation}</span>
-                  {' par '}{libelleActeur(l)}
-                  {l.acteur_role ? ` (${libelleRole(l.acteur_role)})` : ''}
-                  {libelleChamps(l) ? <>, champs : {libelleChamps(l)}</> : ''}
-                </div>
+      {etat === 'pret' && parJour.length > 0 && (
+        <Panneau style={js.registre}>
+          {parJour.map((g, i) => (
+            <div key={g.jour} style={js.jour}>
+              <div style={{ ...js.jourTitre, ...(i === 0 ? { paddingTop: 4 } : null) }}>
+                {libelleJour(g.jour)}
               </div>
+              {g.items.map((l, j) => (
+                <div key={l.id} style={{ ...js.ligne, ...(i === parJour.length - 1 && j === g.items.length - 1 ? js.derniere : null) }}>
+                  <div style={js.heure}>{l.heure}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={js.titreLigne}>
+                      <span style={{ fontWeight: 'var(--g2)' }}>{l.libelle || 'Sans nom'}</span>
+                      <span style={js.module}>{MODULES[l.module] || l.module}</span>
+                    </div>
+                    <div style={js.detail}>
+                      <span style={{ color: COULEUR_ACTION[l.operation], fontWeight: 'var(--g2)' }}>{ACTIONS[l.operation] || l.operation}</span>
+                      {' par '}{libelleActeur(l)}
+                      {l.acteur_role ? ` (${libelleRole(l.acteur_role)})` : ''}
+                      {libelleChamps(l) ? <>, champs : {libelleChamps(l)}</> : ''}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           ))}
-        </div>
-      ))}
+        </Panneau>
+      )}
     </section>
   );
 }
+
+// Direction Galet : le registre est une carte blanche (Panneau), un titre par
+// jour en --g3, les lignes séparées par un filet --rule-soft ; le module de
+// chaque ligne en étiquette sur la piste.
+const js = {
+  page: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' },
+  rangee: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, minWidth: 0 },
+  contexte: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' },
+  note: { fontSize: 'var(--t2)', color: 'var(--text3)' },
+  registre: { padding: '8px 20px 4px' },
+  jour: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  jourTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', padding: '16px 0 6px' },
+  ligne: {
+    display: 'flex', gap: 12, padding: '10px 0', minWidth: 0,
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
+  },
+  derniere: { borderBottomWidth: 0 },
+  heure: { fontFamily: 'var(--font-num)', fontSize: 'var(--t2)', color: 'var(--text2)', flexShrink: 0, width: 48 },
+  titreLigne: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '4px 8px', fontSize: 'var(--t2)', color: 'var(--text)', overflowWrap: 'anywhere' },
+  module: { fontSize: 'var(--t1)', color: 'var(--text2)', background: 'var(--piste)', borderRadius: 'var(--r-full)', padding: '2px 10px', whiteSpace: 'nowrap' },
+  detail: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4, overflowWrap: 'anywhere', lineHeight: 1.45 },
+};

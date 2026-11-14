@@ -1,7 +1,7 @@
 import React from 'react';
 import { confirmLegacy } from '../../legacy/legacyApi.js';
 import { Pencil } from 'lucide-react';
-import { Fenetre } from '../ui/Fenetres.jsx';
+import { Fenetre, Choix, st as stFenetre } from '../ui/Fenetres.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CarteTabBar - barre d'onglets « cartes » (menus) partagée par Cartes & Recettes
@@ -55,11 +55,18 @@ export default function CarteTabBar({
   // Optionnel : (orderedIds) => Promise<boolean> - enregistre l'ordre des
   // onglets. Absent → pas de bouton « Ordre ».
   onReorderCartes,
+  // Optionnel : entrées d'un menu « Actions » posé après « Ordre des cartes »
+  // ([{ titre, detail, onClick }], les fausses ignorées). Fourni, il reçoit
+  // aussi « Archives (n) » : l'en-tête garde « Ajouter une carte » et « Ordre
+  // des cartes », le reste va au menu. Absent (Fiches salle), « Archives »
+  // reste un bouton.
+  actionsMenu,
 }) {
   // modal: null | { mode: 'create' } | { mode: 'edit', carte }
   const [modal, setModal] = React.useState(null);
   const [form, setForm] = React.useState({ nom: '', dateDebut: '', dateFin: '' });
   const [showArchives, setShowArchives] = React.useState(false);
+  const [menuOuvert, setMenuOuvert] = React.useState(false);
   // Brouillon d'ordre : liste d'ids en cours de réagencement (null = fermé).
   const [ordreDraft, setOrdreDraft] = React.useState(null);
   const [ordreBusy, setOrdreBusy] = React.useState(false);
@@ -70,6 +77,12 @@ export default function CarteTabBar({
     setModal({ mode: 'edit', carte });
   };
   const close = () => setModal(null);
+  // Menu de l'en-tête (seulement si l'appelant le demande) : les archives
+  // d'abord, puis les entrées de l'appelant.
+  const menuEntrees = actionsMenu ? [
+    onArchiveCarte && archivedCartes.length > 0 && { cle: 'archives', titre: <>Archives ({archivedCartes.length})</>, detail: 'Cartes archivées : cliquez pour restaurer', onClick: () => setShowArchives(true) },
+    ...actionsMenu,
+  ].filter(Boolean) : [];
 
   const submit = async () => {
     const nom = form.nom.trim();
@@ -211,7 +224,27 @@ export default function CarteTabBar({
         >Ordre des cartes</button>
       )}
 
-      {canManage && onArchiveCarte && archivedCartes.length > 0 && (
+      {canManage && menuEntrees.length > 0 && (
+        <button
+          type="button"
+          className="segmented-tab"
+          style={s.archivesBtn}
+          onClick={() => setMenuOuvert(true)}
+          aria-haspopup="dialog"
+          aria-expanded={menuOuvert}
+        >Actions</button>
+      )}
+      {menuOuvert && (
+        <Fenetre id="cartes-actions" titre="Gérer les cartes" onClose={() => setMenuOuvert(false)}>
+          <div style={stFenetre.section}>
+            {menuEntrees.map((it) => (
+              <Choix key={it.cle || it.titre} titre={it.titre} detail={it.detail} onClick={() => { setMenuOuvert(false); it.onClick(); }} />
+            ))}
+          </div>
+        </Fenetre>
+      )}
+
+      {canManage && onArchiveCarte && archivedCartes.length > 0 && !actionsMenu && (
         <button
           className="segmented-tab"
           style={s.archivesBtn}

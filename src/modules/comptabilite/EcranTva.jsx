@@ -23,15 +23,15 @@ const COLONNES_ACHATS = [['tva26', 2.6], ['tva81', 8.1], ['tva38', 3.8], ['tvaAu
 function Puce({ actif, onClick, titre, detail, id }) {
   return (
     <button type="button" role="radio" aria-checked={actif} data-cadre="" data-decompte={id} onClick={onClick} style={{ ...st.puce, ...(actif ? st.puceActive : null) }}>
-      <span style={{ fontSize: 14, fontWeight: 500 }}>{titre}</span>
-      <span style={{ fontSize: 12, color: 'var(--text2)' }}>{detail}</span>
+      <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>{titre}</span>
+      <span style={{ fontSize: 'var(--t1)', color: actif ? 'var(--on-accent)' : 'var(--text2)' }}>{detail}</span>
     </button>
   );
 }
 
 function Ligne({ libelle, base, tva, fort, id }) {
-  const style = fort ? { ...st.td, fontWeight: 500 } : st.td;
-  const num = fort ? { ...st.tdNum, fontWeight: 500 } : st.tdNum;
+  const style = fort ? { ...st.td, fontWeight: 'var(--g2)' } : st.td;
+  const num = fort ? { ...st.tdNum, fontWeight: 'var(--g2)' } : st.tdNum;
   return (
     <tr data-ligne-tva={id}>
       <td style={style}>{libelle}</td>
@@ -144,7 +144,7 @@ export default function EcranTva({ decomptes, defaut, etat, chargesAbsentes, cha
 
       {/* Trop peu de jours de ventes : la TVA due (et un crédit) n'est pas à prendre telle quelle. */}
       {incomplete && (
-        <p style={{ ...st.note, color: 'var(--warning-text)', fontWeight: 500 }} data-tva-incomplete="">
+        <p style={{ ...st.note, color: 'var(--warning-text)', fontWeight: 'var(--g2)' }} data-tva-incomplete="">
           <span>Chiffre d'affaires connu</span> <span>{cv.avec}</span> <span>{pluriel(cv.avec, 'jour sur', 'jours sur')}</span> <span>{cv.attendus}</span> <span>: TVA incomplète.</span>
         </p>
       )}
@@ -195,16 +195,17 @@ const st = {
   puces: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   puce: {
     display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2, minHeight: 44, padding: '8px 14px',
-    borderRadius: 10, cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', color: 'var(--text)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', background: 'var(--bg)',
+    borderRadius: 'var(--r)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', color: 'var(--text)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)',
   },
-  puceActive: { borderColor: 'var(--accent)', background: 'var(--accent-light)' },
+  // Direction Galet : la période choisie est un aplat sombre.
+  puceActive: { borderColor: 'var(--accent)', background: 'var(--accent)', color: 'var(--on-accent)' },
   defile: { overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' },
-  table: { borderCollapse: 'collapse', minWidth: 320, width: '100%', fontSize: 14, color: 'var(--text)' },
-  th: { textAlign: 'left', fontWeight: 500, fontSize: 12, color: 'var(--text2)', padding: '6px 8px 6px 0', borderBottom: '1px solid var(--border)' },
-  thNum: { textAlign: 'right', fontWeight: 500, fontSize: 12, color: 'var(--text2)', padding: '6px 0 6px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
-  td: { padding: '10px 8px 10px 0', borderBottom: '1px solid var(--border)' },
-  tdNum: { padding: '10px 0 10px 8px', borderBottom: '1px solid var(--border)', textAlign: 'right', whiteSpace: 'nowrap' },
-  total: { fontSize: 17, fontWeight: 500, color: 'var(--text)', fontFamily: 'var(--font-serif)', padding: '4px 0' },
-  note: { margin: 0, fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 },
+  table: { borderCollapse: 'collapse', minWidth: 320, width: '100%', fontSize: 'var(--t2)', color: 'var(--text)' },
+  th: { textAlign: 'left', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', color: 'var(--text2)', padding: '6px 8px 6px 0', borderBottom: '1px solid var(--rule-soft)' },
+  thNum: { textAlign: 'right', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', color: 'var(--text2)', padding: '6px 0 6px 8px', borderBottom: '1px solid var(--rule-soft)', whiteSpace: 'nowrap' },
+  td: { padding: '10px 8px 10px 0', borderBottom: '1px solid var(--rule-soft)' },
+  tdNum: { padding: '10px 0 10px 8px', borderBottom: '1px solid var(--rule-soft)', textAlign: 'right', whiteSpace: 'nowrap' },
+  total: { fontSize: 'var(--t3)', fontWeight: 'var(--g2)', color: 'var(--text)', fontFamily: 'var(--font)', padding: '4px 0' },
+  note: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.5 },
 };

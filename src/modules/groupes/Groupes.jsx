@@ -16,6 +16,8 @@ import { choixEstVide } from './choixMenu.js';
 import CalendrierMois from './CalendrierMois.jsx';
 import GroupeFiche from './GroupeFiche.jsx';
 import GroupeForm from './GroupeForm.jsx';
+import ReperesGroupes from './ReperesGroupes.jsx';
+import { reperesGroupes } from './accueilGroupes.js';
 import MenusGroupe from './MenusGroupe.jsx';
 import { dateComplete } from './pdfGroupe.js';
 import {
@@ -173,6 +175,8 @@ export default function Groupes({ user, etablissement }) {
 
   const actifs = useMemo(() => groupes.filter((g) => !g.annule), [groupes]);
   const aAnticiper = useMemo(() => groupesAAnticiper(groupes, aujourdhui), [groupes, aujourdhui]);
+  // Repères de l'accueil (direction Galet, ReperesGroupes.jsx).
+  const reperes = useMemo(() => reperesGroupes(groupes, aujourdhui), [groupes, aujourdhui]);
 
   const prefixeMois = `${vue.annee}-${String(vue.mois + 1).padStart(2, '0')}-`;
   const duMois = useMemo(
@@ -337,8 +341,13 @@ export default function Groupes({ user, etablissement }) {
 
       {onglet === 'calendrier' && status !== 'absent' && (
         <>
+          {/* Direction Galet : repères, bandeau d'anticipation, puis le mois
+                 dans une carte blanche (groupes.css). */}
+          <div className="grp-page">
+          {status === 'ready' && <ReperesGroupes reperes={reperes} />}
           <AlerteAnticipation groupes={aAnticiper} aujourdhui={aujourdhui} compact={compact} onOuvrir={ouvrirFiche} />
 
+          <div className="grp-carte" data-cadre="">
           {/* ── Navigation du mois ── */}
           <div style={st.barreMois}>
             <button type="button" onClick={() => changerMois(-1)} aria-label="Mois précédent" style={st.fleche}>‹</button>
@@ -374,6 +383,8 @@ export default function Groupes({ user, etablissement }) {
                 </span>
               );
             })}
+          </div>
+          </div>
           </div>
 
           {/* ── Le mois en liste : le détail que les cases ne peuvent pas porter
@@ -553,10 +564,10 @@ function CorpsLigneGroupe({ groupe, onClick, enRangee }) {
 }
 
 const st = {
-  page: { padding: '20px 24px', position: 'relative', minHeight: '100%', minWidth: 0 },
+  page: { position: 'relative', minHeight: '100%', minWidth: 0 },
   nouveau: {
-    minHeight: 38, padding: '9px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
+    minHeight: 40, padding: '9px 18px', borderRadius: 'var(--r-full)', border: 'none', cursor: 'pointer',
+    background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
   },
   encartAttention: {
     marginBottom: 14, padding: '10px 0 10px 12px',  fontSize: 13, lineHeight: 1.5,  borderLeft: '2px solid var(--warning-bd)', color: 'var(--warning-text)',
@@ -566,28 +577,28 @@ const st = {
   },
   lien: {
     background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
-    color: 'var(--accent)', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
+    color: 'var(--lien)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
     textDecoration: 'underline',
   },
   barreMois: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 },
   titreMois: {
     flex: '1 1 auto', minWidth: 0, textAlign: 'center',
-    fontSize: 19, fontWeight: 700, fontFamily: 'var(--font-serif)', color: 'var(--text)',
+    fontSize: 'var(--t4)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)',
   },
   fleche: {
-    width: 44, minHeight: 44, flexShrink: 0, borderRadius: 10, cursor: 'pointer',
-    border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
-    fontSize: 22, lineHeight: 1, fontFamily: 'var(--font)',
+    width: 44, minHeight: 44, flexShrink: 0, borderRadius: '50%', cursor: 'pointer',
+    border: '1px solid var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+    fontSize: 'var(--t5)', lineHeight: 1, fontFamily: 'var(--font)',
   },
   aujourdhui: {
-    minHeight: 44, flexShrink: 0, padding: '0 14px', borderRadius: 10, cursor: 'pointer',
-    border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text)',
-    fontSize: 13, fontWeight: 500, fontFamily: 'var(--font)',
+    minHeight: 44, flexShrink: 0, padding: '0 16px', borderRadius: 'var(--r-full)', cursor: 'pointer',
+    border: '1px solid var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+    fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
   },
   legende: { display: 'flex', flexWrap: 'wrap', gap: '6px 16px', marginTop: 10 },
-  legendeItem: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text2)' },
+  legendeItem: { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--t1)', color: 'var(--text2)' },
   pastille: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  titreListe: { fontSize: 13, fontWeight: 700, color: 'var(--text2)', marginBottom: 8 },
+  titreListe: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 8 },
   liste: { display: 'flex', flexDirection: 'column', gap: 6 },
   ligne: {
     display: 'flex', alignItems: 'center', gap: 12, width: '100%', minWidth: 0,

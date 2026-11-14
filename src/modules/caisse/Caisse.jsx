@@ -24,6 +24,9 @@ import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
 import { useMaintenant } from './mesures.js';
+import { resumeService } from './resumeService.js';
+import { CarteTablesOuvertes, ReperesCaisse } from './CartesCaisse.jsx';
+import './caisse.css';
 
 // Rapports (v8) : chargés à la demande, ils ne pèsent pas sur la prise de commande.
 const Rapports = React.lazy(() => import('./rapports/Rapports.jsx'));
@@ -565,7 +568,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
               Les tickets de test restent en base jusqu'à leur purge automatique, sous 24 heures. Vous pouvez les vider maintenant.
             </p>
             <span style={st.propositionActions}>
-              <Btn variant="primary" disabled={testEnCours} onClick={viderLesTests} style={st.btn44}>Vider les tickets de test</Btn>
+              <Btn disabled={testEnCours} onClick={viderLesTests} style={st.btn44}>Vider les tickets de test</Btn>
               <Btn variant="ghost" onClick={() => setProposerVider(false)} style={st.btn44}>Plus tard</Btn>
             </span>
           </div>
@@ -573,7 +576,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         {erreurTickets && (
           <div style={st.erreur}>
             <p style={{ margin: 0 }}>{erreurTickets}</p>
-            <Btn variant="primary" onClick={rechargerTickets} style={st.btn44}>Réessayer</Btn>
+            <Btn onClick={rechargerTickets} style={st.btn44}>Réessayer</Btn>
           </div>
         )}
         {enRetard.length > 0 && (
@@ -583,13 +586,33 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
               {enRetard.length > 1 && <>{' '}<span style={st.num}>{enRetard.length}</span> <span>jours attendent leur clôture.</span></>}
             </p>
             <span style={st.propositionActions}>
-              <Btn variant="primary" onClick={() => setEcran('cloture')} style={st.btn44}>Clôturer</Btn>
+              <Btn onClick={() => setEcran('cloture')} style={st.btn44}>Clôturer</Btn>
             </span>
           </div>
         )}
         {/* Hors mode test : un poste en essai ne s'abonne à rien. */}
         {!modeTest && <InvitationAvisPret user={user} etablissement={etablissement} />}
-        <AccueilModule tuiles={tuiles} />
+        {/* Direction Galet : repères et carte « Tables ouvertes » autour des
+            tuiles, par largeur de conteneur (caisse.css). Ils redisent ce que
+            l'accueil lit déjà ; au téléphone, ni l'un ni l'autre. */}
+        <div className="caisse-page">
+          <div className="caisse-grille">
+            <div className="caisse-haut">
+              <div className="caisse-tuiles"><AccueilModule tuiles={tuiles} /></div>
+              {(tables.some((t) => t.actif !== false) || tickets.length > 0) && (
+                <CarteTablesOuvertes resume={resumeService(tickets, tables, (t) => etatTicket(t, maintenant))} />
+              )}
+            </div>
+            <ReperesCaisse
+              ouverts={tickets.length}
+              totalOuvert={tickets.reduce((s, t) => s + totalTicket(t), 0)}
+              sansTicket={sansTicket.length}
+              etatJour={etatJour}
+              montrerSansTicket={!modeTest}
+              montrerCloture={!modeTest && peutHabiller}
+            />
+          </div>
+        </div>
         {(peutHabiller || (peutActiverTest && !modeTest)) && (
           <div style={st.reglagesAccueil}>
             {peutHabiller && (
@@ -629,7 +652,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         ) : (
           <div style={st.videBloc}>
             <p style={st.vide}>Aucune table dans le plan de salle. Dessinez la salle dans Réservations, ou vendez sans table.</p>
-            <Btn variant="primary" onClick={venteDirecte} style={st.btn44}>Vente directe</Btn>
+            <Btn onClick={venteDirecte} style={st.btn44}>Vente directe</Btn>
           </div>
         )}
         {quiTable && !deplacement && (
@@ -659,12 +682,13 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         onRetour={retourAccueil}
       >
         {!sansTicket.length && <p style={st.vide}>Aucune réservation en retard. Rien n'est marqué no-show sans vous.</p>}
-        <div style={st.listeTickets}>
+        {sansTicket.length > 0 && (
+        <div className="caisse-liste" data-cadre="" style={st.listeTickets}>
           {sansTicket.map((r) => {
             const retard = maintenantMin - minutesDe(r.heure_arrivee);
             const occupe = statutEnCours === r.id;
             return (
-              <div key={r.id} data-cadre="" data-sans-ticket={r.id} style={st.sansTicketRang}>
+              <div key={r.id} data-sans-ticket={r.id} style={st.sansTicketRang}>
                 <span style={st.sansTicketInfos}>
                   <span style={st.sansTicketNom}>
                     <span style={st.num}>{heureCourte(r.heure_arrivee)}</span> <span data-no-translate>{r.nom}</span>
@@ -682,6 +706,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             );
           })}
         </div>
+        )}
       </EcranTache>
     );
   }
@@ -727,12 +752,13 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       {bandeauTest}
       <EcranTache titre={modeTest ? 'Tickets de test ouverts' : 'Tickets ouverts'} onRetour={retourAccueil}>
         {!tickets.length && <p style={st.vide}>Aucun ticket ouvert.</p>}
-        <div style={st.listeTickets}>
+        {tickets.length > 0 && (
+        <div className="caisse-liste" data-cadre="" style={st.listeTickets}>
           {tickets.map((t) => {
             const nom = nomTable(t);
             const e = etatTicket(t, maintenant);
             return (
-              <button key={t.id} type="button" data-cadre="" style={st.ticketRow} onClick={() => { setTicketId(t.id); setEcran('ticket'); }}>
+              <button key={t.id} type="button" style={st.ticketRow} onClick={() => { setTicketId(t.id); setEcran('ticket'); }}>
                 <span style={st.ticketTable}>
                   {nom ? <span data-no-translate>{nom}</span> : <span>Direct</span>}
                 </span>
@@ -763,6 +789,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             );
           })}
         </div>
+        )}
       </EcranTache>
       </>
     );
@@ -819,38 +846,49 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
 
 const st = {
   erreur: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12, color: 'var(--text)' },
-  vide: { color: 'var(--text2)', fontSize: 14 },
+  vide: { color: 'var(--text3)', fontSize: 'var(--t2)' },
   videBloc: { display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start', marginTop: 12 },
   btn44: { minHeight: 44, flexShrink: 0 },
-  listeTickets: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12, maxWidth: 640 },
-  ticketRow: {
-    display: 'flex', alignItems: 'baseline', gap: 12, minHeight: 56, padding: '10px 14px',
-    borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--text)', border: 'none',
-    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, textAlign: 'left', width: '100%',
+  // Liste dans une carte blanche (direction Galet) : les lignes se séparent
+  // par leur filet doux, la dernière n'en porte pas (caisse.css).
+  listeTickets: {
+    display: 'flex', flexDirection: 'column', marginTop: 12, maxWidth: 640, minWidth: 0, padding: '4px 18px', boxSizing: 'border-box',
+    background: 'var(--zone)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   },
-  ticketTable: { fontWeight: 600, flexShrink: 0, minWidth: 70 },
-  ticketInfos: { color: 'var(--text2)', fontSize: 13, flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 },
-  ticketSuivre: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text)', fontWeight: 600 },
-  ticketClient: { color: 'var(--text)', fontWeight: 600, fontSize: 14, overflowWrap: 'anywhere' },
-  ticketInfosLigne: { display: 'flex', flexWrap: 'wrap', gap: '2px 12px', color: 'var(--text2)', fontSize: 13 },
+  ticketRow: {
+    display: 'flex', alignItems: 'baseline', gap: 12, minHeight: 56, padding: '10px 0', boxSizing: 'border-box',
+    borderRadius: 0, background: 'transparent', color: 'var(--text)',
+    borderWidth: 0, borderBottomWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', textAlign: 'left', width: '100%',
+  },
+  ticketTable: { fontWeight: 'var(--g3)', flexShrink: 0, minWidth: 70 },
+  ticketInfos: { color: 'var(--text2)', fontSize: 'var(--t1)', flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 },
+  ticketSuivre: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text)', fontWeight: 'var(--g3)' },
+  ticketClient: { color: 'var(--text)', fontWeight: 'var(--g3)', fontSize: 'var(--t2)', overflowWrap: 'anywhere' },
+  ticketInfosLigne: { display: 'flex', flexWrap: 'wrap', gap: '2px 12px', color: 'var(--text2)', fontSize: 'var(--t1)' },
   // Une réservation sans ticket : son heure, son nom, et deux gestes.
   sansTicketRang: {
-    display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, minHeight: 60, padding: '10px 14px',
-    borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--text)', minWidth: 0,
+    display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, minHeight: 60, padding: '10px 0', boxSizing: 'border-box',
+    color: 'var(--text)', minWidth: 0,
+    borderWidth: 0, borderBottomWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   },
   sansTicketInfos: { display: 'flex', flexDirection: 'column', gap: 3, flex: '1 1 200px', minWidth: 0 },
-  sansTicketNom: { fontSize: 16, fontWeight: 600, overflowWrap: 'anywhere' },
+  sansTicketNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', overflowWrap: 'anywhere' },
   sansTicketActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   num: { fontFamily: 'var(--font-num)' },
   reglagesAccueil: { display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 16 },
-  ticketPret: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--success-text)', fontWeight: 600 },
+  ticketPret: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--success-text)', fontWeight: 'var(--g3)' },
   // Après la sortie du mode test : proposition de vider, pour un responsable.
+  // Bandeau en carte blanche (direction Galet) : jour non clôturé, tickets
+  // de test à vider.
   propositionVider: {
-    display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '12px 14px', marginBottom: 12, minWidth: 0,
-    borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--text)',
+    display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, padding: '12px 14px 12px 18px', marginBottom: 12, minWidth: 0,
+    boxSizing: 'border-box', borderRadius: 'var(--r-lg)', background: 'var(--zone)', boxShadow: 'var(--sh)', color: 'var(--text)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   },
-  propositionTexte: { margin: 0, fontSize: 14, lineHeight: 1.4, flex: '1 1 260px', minWidth: 0 },
+  propositionTexte: { margin: 0, fontSize: 'var(--t2)', lineHeight: 1.4, flex: '1 1 260px', minWidth: 0 },
   propositionActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  ticketHeure: { color: 'var(--text2)', fontSize: 13, fontFamily: 'var(--font-num)' },
-  ticketTotal: { fontFamily: 'var(--font-num)', fontWeight: 600 },
+  ticketHeure: { color: 'var(--text2)', fontSize: 'var(--t1)', fontFamily: 'var(--font-num)' },
+  ticketTotal: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)' },
 };

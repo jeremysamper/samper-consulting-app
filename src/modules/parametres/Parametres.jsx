@@ -460,7 +460,7 @@ const Parametres = ({ user, etablissement }) => {
       const selected = Array.isArray(valeur) ? valeur : defaultEtabModuleKeys;
       ecranModules = (
         <div style={ps.listCard}>
-          <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border)', fontSize: 'var(--t2)', color:'var(--text2)', lineHeight:1.5 }}>
+          <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--rule-soft)', fontSize: 'var(--t2)', color:'var(--text2)', lineHeight:1.5 }}>
             L'équipe ne voit que les modules ouverts, en plus des droits de son rôle. Chaque interrupteur s'enregistre tout de suite.
             {estTypeSpa(etabModules.type) ? ' Vos outils consultant restent toujours affichés.' : ' Le tableau de bord et vos outils consultant restent toujours affichés.'}
           </div>
@@ -620,7 +620,7 @@ const Parametres = ({ user, etablissement }) => {
             return (
               <div key={item.id} style={{
                 display:'flex', alignItems:'center', gap:12, padding:'12px 20px',
-                borderBottom:'1px solid var(--border)', flexWrap:'wrap',
+                borderBottom:'1px solid var(--rule-soft)', flexWrap:'wrap',
               }}>
                 <div style={{ flex:1, minWidth:160 }}>
                   {isEditing ? (
@@ -633,7 +633,7 @@ const Parametres = ({ user, etablissement }) => {
                         autoFocus
                         style={{ ...ps.fInput, maxWidth:240, padding:'6px 10px' }}
                       />
-                      <button style={{ ...ps.saveBtn, padding:'6px 14px', fontSize: 'var(--t1)' }} onClick={saveLabelEdit} disabled={labelSaving}>
+                      <button style={{ ...ps.cancelBtn, padding:'6px 14px', fontSize: 'var(--t1)' }} onClick={saveLabelEdit} disabled={labelSaving}>
                         {labelSaving ? '…' : 'Enregistrer'}
                       </button>
                       <button style={{ ...ps.cancelBtn, padding:'6px 12px', fontSize: 'var(--t1)' }} onClick={() => setEditingLabelKey(null)}>
@@ -733,23 +733,26 @@ const Parametres = ({ user, etablissement }) => {
   );
 };
 
+// Direction Galet (lot 6) : listes en cartes blanches (fond --zone, filet
+// --rule-soft, rayon --r-lg, ombre --sh), en-têtes de carte sans fond, boutons
+// en pilules, fenêtres en --r-xl et --sh-lg.
 const ps = {
   root: { display:'flex', flexDirection:'column', gap:16 },
   banner: { display:'flex', alignItems:'center', justifyContent:'space-between', gap:16, padding:'4px 0', flexWrap:'wrap' },
-  bannerTitle: { fontSize: 'var(--t4)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color:'var(--text)' },
+  bannerTitle: { fontSize: 'var(--t5)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', color:'var(--text)' },
   bannerSub: { fontSize: 'var(--t2)', color:'var(--text2)', marginTop:4 },
-  addBtn: { padding:'10px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor:'pointer', fontFamily:'var(--font)' },
-  listCard: { background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius:'var(--r)', overflow:'hidden' },
-  listHeader: { padding:'14px 20px', borderBottom:'1px solid var(--border)', background:'var(--bg)' },
+  addBtn: { minHeight:44, padding:'10px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor:'pointer', fontFamily:'var(--font)' },
+  listCard: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius:'var(--r-lg)', boxShadow: 'var(--sh)', overflow:'hidden' },
+  listHeader: { padding:'16px 20px 12px', borderBottom:'1px solid var(--rule-soft)' },
   compte: { fontFamily:'var(--font-num)', fontWeight: 'var(--g-chiffre)', color:'var(--text)' },
   listTitle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color:'var(--text)' },
-  etabRow: { display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:'1px solid var(--border)', flexWrap:'wrap' },
-  etabColor: { width:6, height:38, borderRadius:3, flexShrink:0 },
+  etabRow: { display:'flex', alignItems:'center', gap:14, padding:'14px 20px', borderBottom:'1px solid var(--rule-soft)', flexWrap:'wrap' },
+  etabColor: { width:6, height:38, borderRadius:'var(--r-full)', flexShrink:0 },
   etabInfo: { flex:1, minWidth:200 },
   etabNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color:'var(--text)', display:'flex', alignItems:'center', gap:8 },
   etabMeta: { fontSize: 'var(--t1)', color:'var(--text2)', marginTop:2 },
-  inactifBadge: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding:'2px 8px', borderRadius: 'var(--r)', background:'var(--selection)', color:'var(--text2)' },
-  ghostBtn: { padding:'7px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', cursor:'pointer', fontFamily:'var(--font)' },
+  inactifBadge: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', padding:'2px 10px', borderRadius: 'var(--r-full)', background:'var(--selection)', color:'var(--text2)' },
+  ghostBtn: { padding:'7px 14px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', cursor:'pointer', fontFamily:'var(--font)' },
   field: { display:'flex', flexDirection:'column', gap:4 },
   fLabel: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color:'var(--text2)' },
   fInput: { padding:'9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color:'var(--text)', background: 'var(--surface)', fontFamily:'var(--font)', boxSizing:'border-box', outline:'none', width:'100%' },
@@ -757,12 +760,12 @@ const ps = {
   toggle: { width:40, height:22, borderRadius:11, position:'relative', cursor:'pointer', transition:'background .15s' },
   toggleThumb: { position:'absolute', top:2, width:18, height:18, background:'#fff', borderRadius:'50%', transition:'left .15s', boxShadow:'0 1px 3px rgba(0,0,0,0.2)' },
   overlay: { position:'fixed', inset:0, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000, padding:12 },
-  modal: { background:'var(--surface)', borderRadius: 'var(--r)', width:560, maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', boxShadow:'0 20px 60px rgba(0,0,0,0.2)' },
-  modalHeader: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 22px', borderBottom:'1px solid var(--border)' },
+  modal: { background:'var(--surface)', borderRadius: 'var(--r-xl)', width:560, maxWidth:'100%', maxHeight:'90vh', overflowY:'auto', boxShadow:'var(--sh-lg)' },
+  modalHeader: { display:'flex', alignItems:'center', justifyContent:'space-between', padding:'16px 22px', borderBottom:'1px solid var(--rule-soft)' },
   modalTitle: { fontWeight: 'var(--g3)', fontSize: 'var(--t3)', fontFamily: 'var(--font)' },
   closeBtn: { background:'none', border:'none', fontSize: 'var(--t3)', cursor:'pointer', color:'var(--text2)' },
   modalBody: { padding:'22px' },
-  cancelBtn: { padding:'9px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', cursor:'pointer', fontFamily:'var(--font)' },
+  cancelBtn: { padding:'9px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', cursor:'pointer', fontFamily:'var(--font)' },
   linkBtn: { padding:'6px 10px', background:'none', border:'none', color: 'var(--lien)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor:'pointer', fontFamily:'var(--font)' },
   moduleGrid: { display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(190px, 1fr))', gap:8 },
   // Base en borderWidth/Style/Color : l'état coché ne surcharge que borderColor.
@@ -770,8 +773,8 @@ const ps = {
   moduleChipOn: { borderColor:'var(--accent)', background:'var(--surface)', color:'var(--text)' },
   // Modules d'un établissement : un groupe, puis une ligne par module (nom, interrupteur).
   groupeModules: { padding:'12px 20px 4px', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color:'var(--text2)' },
-  moduleLigne: { display:'flex', alignItems:'center', gap:12, padding:'2px 12px 2px 20px', borderBottom:'1px solid var(--border)', minHeight:48 },
-  saveBtn: { padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor:'pointer', fontFamily:'var(--font)' },
+  moduleLigne: { display:'flex', alignItems:'center', gap:12, padding:'2px 12px 2px 20px', borderBottom:'1px solid var(--rule-soft)', minHeight:48 },
+  saveBtn: { padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor:'pointer', fontFamily:'var(--font)' },
 };
 
 export default Parametres;

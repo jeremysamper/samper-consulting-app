@@ -97,9 +97,10 @@ export default function Historique({ etablissementId, reglages, peutAnnuler = fa
         </p>
       )}
 
-      <div style={st.liste}>
+      {tickets.length > 0 && (
+      <div className="caisse-liste" data-cadre="" style={st.liste}>
         {tickets.map((t) => (
-          <button key={t.id} type="button" data-cadre="" style={st.rang} onClick={() => setOuvert(t.id)}>
+          <button key={t.id} type="button" style={st.rang} onClick={() => setOuvert(t.id)}>
             <span style={st.rangNumero} data-no-translate>{numeroTicket(t)}</span>
             <span style={st.rangInfos}>
               <span><span style={st.num}>{dateCH(t.jour_exploitation)}</span> <span style={st.num}>{t.closed_at ? zurichDateHeure(t.closed_at).heure : ''}</span></span>
@@ -114,6 +115,7 @@ export default function Historique({ etablissementId, reglages, peutAnnuler = fa
           </button>
         ))}
       </div>
+      )}
 
       {peutControler && (
         <div style={st.controle}>
@@ -318,34 +320,45 @@ const st = {
   racine: { display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12, maxWidth: 720, minWidth: 0 },
   barre: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' },
   champLabel: { display: 'flex', flexDirection: 'column', gap: 4, flex: '1 1 200px', minWidth: 0 },
-  petit: { fontSize: 12, color: 'var(--text2)' },
+  petit: { fontSize: 'var(--t1)', color: 'var(--text2)' },
   champ: { minHeight: 44, minWidth: 0, width: '100%', boxSizing: 'border-box' },
   date: {
-    minHeight: 44, minWidth: 0, width: '100%', boxSizing: 'border-box', padding: '0 10px', fontFamily: 'var(--font)', fontSize: 15,
-    color: 'var(--text)', background: 'var(--surface)', borderRadius: 'var(--r-md)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+    minHeight: 44, minWidth: 0, width: '100%', boxSizing: 'border-box', padding: '0 10px', fontFamily: 'var(--font)', fontSize: 'var(--t2)',
+    color: 'var(--text)', background: 'var(--surface)', borderRadius: 'var(--r)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',
   },
   btn44: { minHeight: 44, flexShrink: 0 },
   erreur: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', color: 'var(--text)' },
-  vide: { color: 'var(--text2)', fontSize: 14, margin: 0, lineHeight: 1.4 },
-  resume: { color: 'var(--text)', fontSize: 15, margin: 0 },
+  vide: { color: 'var(--text3)', fontSize: 'var(--t2)', margin: 0, lineHeight: 1.4 },
+  resume: { color: 'var(--text)', fontSize: 'var(--t2)', margin: 0 },
   num: { fontFamily: 'var(--font-num)' },
-  liste: { display: 'flex', flexDirection: 'column', gap: 8 },
-  rang: {
-    display: 'flex', alignItems: 'baseline', gap: 12, minHeight: 56, padding: '10px 14px', width: '100%',
-    borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--text)', border: 'none',
-    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, textAlign: 'left',
+  // Liste dans une carte blanche (direction Galet) : une ligne par ticket,
+  // séparée par son filet doux ; la dernière n'en porte pas (caisse.css).
+  liste: {
+    display: 'flex', flexDirection: 'column', minWidth: 0, padding: '4px 18px', boxSizing: 'border-box',
+    background: 'var(--zone)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   },
-  rangNumero: { fontFamily: 'var(--font-num)', fontWeight: 600, flexShrink: 0 },
-  rangInfos: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0, fontSize: 13, color: 'var(--text2)' },
-  rangTotal: { fontFamily: 'var(--font-num)', fontWeight: 600, flexShrink: 0 },
+  rang: {
+    display: 'flex', alignItems: 'baseline', gap: 12, minHeight: 56, padding: '10px 0', width: '100%', boxSizing: 'border-box',
+    borderRadius: 0, background: 'transparent', color: 'var(--text)',
+    borderWidth: 0, borderBottomWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+    cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', textAlign: 'left',
+  },
+  rangNumero: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g2)', flexShrink: 0 },
+  rangInfos: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0, fontSize: 'var(--t1)', color: 'var(--text2)' },
+  rangTotal: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', flexShrink: 0 },
   barre2: { textDecoration: 'line-through', color: 'var(--text2)' },
-  annule: { color: 'var(--danger-text, var(--text))', fontWeight: 600 },
+  annule: { color: 'var(--danger-text, var(--text))', fontWeight: 'var(--g3)' },
   controle: { display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start', marginTop: 8 },
   carteReliee: { display: 'flex', flexDirection: 'column', gap: 4, paddingLeft: 12, borderLeftWidth: 2, borderLeftStyle: 'solid', borderLeftColor: 'var(--border)' },
-  controleCorps: { padding: '10px 12px', borderRadius: 'var(--r-lg)', background: 'var(--surface2)', display: 'flex', flexDirection: 'column', gap: 4, alignSelf: 'stretch' },
-  ligneForte: { fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 },
-  defaut: { fontSize: 13, color: 'var(--text)', margin: 0, overflowWrap: 'anywhere' },
+  controleCorps: {
+    padding: '14px 18px', boxSizing: 'border-box', borderRadius: 'var(--r-lg)', background: 'var(--zone)', boxShadow: 'var(--sh)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+    display: 'flex', flexDirection: 'column', gap: 4, alignSelf: 'stretch',
+  },
+  ligneForte: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', margin: 0 },
+  defaut: { fontSize: 'var(--t1)', color: 'var(--text)', margin: 0, overflowWrap: 'anywhere' },
   overlay: {
     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)',
     display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16,

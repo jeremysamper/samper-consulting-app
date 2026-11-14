@@ -9,6 +9,10 @@ import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
+import { Btn, Panneau } from '../../components/ui/index.jsx';
+import { CarteRepartition, CarteSeptJours, ReperesPertes } from './CartesPertes.jsx';
+import { zurichToday } from '../../utils/zurichTime.js';
+import './pertes.css';
 import { Choix, Fenetre, st as stFenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
@@ -18,7 +22,9 @@ import { Printer, Trash2 } from 'lucide-react';
 
 // Choix exclusif en tuiles (motif, unité) : un toucher au lieu des deux d'une
 // liste déroulante, même valeur écrite. data-cadre : chaque tuile garde son
-// cadre (un bouton se voit) ; data-choix-<nom> : crochet du banc.
+// cadre (un bouton se voit) ; data-choix-<nom> : crochet du banc. Le choix en
+// cours est un aplat sombre ; un libellé peut tenir sur deux lignes, le
+// bouton prend donc le rayon --r, pas la pilule.
 function ChoixTuiles({ nom, libelle, valeur, options, onChange }) {
   const idLibelle = `pertes-${nom}`;
   return (
@@ -30,8 +36,8 @@ function ChoixTuiles({ nom, libelle, valeur, options, onChange }) {
           return (
             <button key={o} type="button" role="radio" aria-checked={choisi} data-cadre="" {...{ [`data-choix-${nom}`]: o }}
               onClick={() => onChange(o)}
-              style={{ ...stFenetre.choix, ...pts.tuileChoix, ...(choisi ? pts.tuileChoisie : null) }}>
-              <span style={{ ...stFenetre.choixTitre, fontSize: 'var(--t2)', lineHeight: 1.25 }}>{o}</span>
+              style={{ ...pts.tuileChoix, ...(choisi ? pts.tuileChoisie : null) }}>
+              <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.25 }}>{o}</span>
             </button>
           );
         })}
@@ -45,6 +51,11 @@ function ChoixTuiles({ nom, libelle, valeur, options, onChange }) {
 // boutons : « Je jette » (le formulaire de déclaration, même droit qu'avant)
 // et « Exporter » (même fenêtre de choix que l'ancien bouton). Valider,
 // supprimer et sélectionner restent au droit « gérer ».
+// Direction Galet : les quatre chiffres en repères, les gros boutons gardés,
+// les filtres en pilules au-dessus du registre, le registre dans une carte
+// (la zone capturée par l'export, à l'intérieur, ne change pas), puis deux
+// cartes de mise en avant : les sept derniers jours et la répartition par
+// catégorie (pertes.css pour la grille, CartesPertes.jsx pour les cartes).
 const Pertes = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -223,7 +234,27 @@ const Pertes = ({ user, etablissement }) => {
 
   return (
     <div style={pts.root}>
-      {/* Header */}
+      <div className="pertes-page">
+      <div className="pertes-grille">
+      <div className="pertes-haut">
+      {/* Les tâches, en gros boutons (hors impression). */}
+      <div className="pertes-tuiles no-print">
+        <AccueilModule tuiles={[
+          { id: 'jette', Icone: Trash2, libelle: 'Je jette', etat: <>produit, quantité, motif</>, visible: Boolean(perms.pertes), onClick: () => setShowForm(true) },
+          { id: 'exporter', Icone: Printer, libelle: 'Exporter', etat: <>PDF ou imprimante</>, onClick: () => setFenetreExport(true) },
+        ]} />
+      </div>
+
+      {/* Repères : les chiffres de l'ensemble affiché. */}
+      <ReperesPertes
+        totalValeur={totalValeur}
+        declarations={filtered.length}
+        nonValidees={pertesEtab.filter(p=>!p.valide).length}
+        parCategorie={parCategorie}
+      />
+      </div>
+
+      {/* Filtres du registre : la loupe et les motifs en pilules. */}
       <div style={pts.header}>
         <div style={pts.headerLeft}>
           <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
@@ -236,17 +267,9 @@ const Pertes = ({ user, etablissement }) => {
         </div>
         {canManage && !sel.active && (
           <div className="module-actions">
-            <button style={pts.exportBtn} onClick={sel.enter}>Sélectionner</button>
+            <Btn variant="ghost" onClick={sel.enter}>Sélectionner</Btn>
           </div>
         )}
-      </div>
-
-      {/* Les tâches, en gros boutons au-dessus du registre (hors impression). */}
-      <div className="no-print">
-        <AccueilModule tuiles={[
-          { id: 'jette', Icone: Trash2, libelle: 'Je jette', etat: <>produit, quantité, motif</>, visible: Boolean(perms.pertes), onClick: () => setShowForm(true) },
-          { id: 'exporter', Icone: Printer, libelle: 'Exporter', etat: <>PDF ou imprimante</>, onClick: () => setFenetreExport(true) },
-        ]} />
       </div>
       {fenetreExport && (
         <Fenetre id="pertes-exporter" titre="Exporter le registre des pertes" onClose={() => setFenetreExport(false)}>
@@ -256,30 +279,6 @@ const Pertes = ({ user, etablissement }) => {
           </div>
         </Fenetre>
       )}
-
-      {/* KPI bar */}
-      <div style={pts.kpiBar}>
-        <div style={pts.kpiCard}>
-          <div style={pts.kpiLabel}>Valeur totale pertes (période)</div>
-          <div style={{...pts.kpiVal, color:'var(--danger-strong)'}}>−CHF {totalValeur.toFixed(2)}</div>
-        </div>
-        <div style={pts.kpiCard}>
-          <div style={pts.kpiLabel}>Déclarations</div>
-          <div style={pts.kpiVal}>{filtered.length}</div>
-        </div>
-        <div style={pts.kpiCard}>
-          <div style={pts.kpiLabel}>Non validées</div>
-          <div style={{...pts.kpiVal, color:'var(--warning-strong)'}}>{pertesEtab.filter(p=>!p.valide).length}</div>
-        </div>
-        {/* Top catégorie */}
-        {Object.entries(parCategorie).sort((a,b)=>b[1]-a[1]).slice(0,1).map(([k,v]) => (
-          <div key={k} style={pts.kpiCard}>
-            <div style={pts.kpiLabel}>Première catégorie de perte</div>
-            <div style={pts.kpiVal}>{k}</div>
-            <div style={{fontSize: 'var(--t1)',color:'var(--danger-strong)',fontWeight: 'var(--g2)',marginTop:2}}>CHF {v.toFixed(2)}</div>
-          </div>
-        ))}
-      </div>
 
       {/* Barre d'outils du mode sélection */}
       {sel.active && (
@@ -296,7 +295,9 @@ const Pertes = ({ user, etablissement }) => {
         />
       )}
 
-      {/* Liste */}
+      {/* Registre : une carte blanche autour de la zone capturée par l'export,
+          dont le contenu et les styles en ligne ne changent pas. */}
+      <Panneau style={pts.registre}>
       <div style={pts.tableWrap} id="pertes-print" className="grid-table-scroll">
         {/* Colonnes dynamiques : les 2 colonnes d'action n'existent que pour les
             rôles gestionnaires, sinon les cellules débordent sur une ligne implicite. */}
@@ -370,27 +371,19 @@ const Pertes = ({ user, etablissement }) => {
         })}
       </div>
 
-      {/* Répartition par catégorie : rien à répartir sans perte valorisée. */}
+      </Panneau>
+
+      {/* Les sept derniers jours (carte soleil) et la répartition par
+          catégorie (carte ciel), sur le même ensemble que les repères. Sans
+          perte valorisée, rien n'est rendu. */}
       {totalValeur > 0 && (
-        <div style={pts.chartCard}>
-          <div style={pts.chartTitle}>Répartition par catégorie</div>
-          <div style={pts.chartBars}>
-            {Object.entries(parCategorie).sort((a,b)=>b[1]-a[1]).map(([cat,val]) => {
-              const pct = Math.round(val / totalValeur * 100);
-              return (
-                <div key={cat} style={pts.barRow}>
-                  <span style={pts.barLabel}>{cat}</span>
-                  <div style={pts.barTrack}>
-                    <div style={{...pts.barFill, width:`${pct}%`}}/>
-                  </div>
-                  <span style={pts.barVal}>CHF {val.toFixed(2)}</span>
-                  <span style={pts.barPct}>{pct}%</span>
-                </div>
-              );
-            })}
-          </div>
+        <div className="pertes-cartes">
+          <CarteSeptJours pertes={filtered} aujourdhui={zurichToday()} />
+          <CarteRepartition parCategorie={parCategorie} totalValeur={totalValeur} />
         </div>
       )}
+      </div>
+      </div>
 
       {/* Modal saisie perte */}
       {showForm && (
@@ -467,7 +460,7 @@ const Pertes = ({ user, etablissement }) => {
                         position: 'absolute', top: '100%', left: 0, right: 0,
                         background: 'var(--surface)', border: '1px solid var(--border)',
                         borderRadius: 'var(--r)', maxHeight: 280, overflowY: 'auto',
-                        boxShadow: '0 4px 16px rgba(0,0,0,0.1)', zIndex: 10,
+                        boxShadow: 'var(--sh-lg)', zIndex: 10,
                         marginTop: 2,
                       }}>
                         {matches.map((p, i) => (
@@ -548,8 +541,8 @@ const Pertes = ({ user, etablissement }) => {
               )}
             </div>
             <div style={pts.barreForm}>
-              <button style={pts.exportBtn} onClick={()=>setShowForm(false)}>Annuler</button>
-              <button style={pts.addBtn} onClick={handleSubmit}>Enregistrer la perte</button>
+              <Btn variant="ghost" onClick={()=>setShowForm(false)}>Annuler</Btn>
+              <Btn variant="primary" onClick={handleSubmit}>Enregistrer la perte</Btn>
             </div>
           </div>
         </div>
@@ -560,6 +553,8 @@ const Pertes = ({ user, etablissement }) => {
 
 const pts = {
   root:{display:'flex',flexDirection:'column',gap:16},
+  // Carte du registre (Panneau) : sans retrait, le tableau défile dedans.
+  registre:{padding:0,overflow:'hidden',minWidth:0},
   header:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},
   // Une seule ligne : loupe + onglets de motifs qui coulissent (pas d'empilement).
   headerLeft:{display:'flex',alignItems:'center',gap:8,minWidth:0,maxWidth:'100%'},
@@ -580,8 +575,8 @@ const pts = {
   badge:{display:'inline-block',padding:'3px 9px',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)'},
   motifTag:{fontSize: 'var(--t1)',background:'var(--selection)',color:'var(--text2)',padding:'2px 8px',borderRadius: 'var(--r)',fontWeight: 'var(--g2)'},
   empDot:{width:22,height:22,borderRadius: 'var(--r)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight: 'var(--g3)',fontSize: 'var(--t1)',flexShrink:0},
-  valBtn:{background: 'var(--success-bg-soft)',border: '1px solid transparent',color:'var(--success-text)',borderRadius: 'var(--r)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{background: 'var(--danger-bg-soft)',border: '1px solid transparent',color:'var(--danger-strong)',borderRadius: 'var(--r)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  valBtn:{background: 'var(--success-bg-soft)',border: '1px solid transparent',color:'var(--success-text)',borderRadius: 'var(--r-full)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  deleteBtn:{background: 'var(--danger-bg-soft)',border: '1px solid transparent',color:'var(--danger-strong)',borderRadius: 'var(--r-full)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   chartCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'18px 20px'},
   chartTitle:{fontSize: 'var(--t1)',fontWeight: 'var(--g3)',color:'var(--text)',marginBottom:14},
   chartBars:{display:'flex',flexDirection:'column',gap:10},
@@ -595,7 +590,7 @@ const pts = {
   // Les champs défilent, la barre d'action reste au bas de la fenêtre (les
   // tuiles allongent le formulaire) ; sur téléphone, .modal-full la passe en
   // plein écran.
-  modal:{background:'var(--surface)',borderRadius: 'var(--r)',width:520,maxWidth:'90vw',maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'var(--sh-lg)'},
+  modal:{background:'var(--surface)',borderRadius: 'var(--r-xl)',width:520,maxWidth:'90vw',maxHeight:'90vh',display:'flex',flexDirection:'column',overflow:'hidden',boxShadow:'var(--sh-lg)'},
   barreForm:{display:'flex',gap:10,justifyContent:'flex-end',padding:'12px 22px',borderTop:'1px solid var(--border)',flexShrink:0},
   modalHeader:{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'18px 22px',borderBottom:'1px solid var(--border)',flexShrink:0},
   closeBtn:{background:'none',border:'none',fontSize: 'var(--t3)',cursor:'pointer',color:'var(--text2)'},
@@ -611,8 +606,8 @@ const pts = {
   fieldInput:{padding:'9px 12px',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',color:'var(--text)',background:'var(--surface)',fontFamily:'var(--font)',outline:'none'},
   // Tuiles du motif et de l'unité : celles du rôle dans Rôles & accès (44 px).
   tuilesChoix:{display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(min(100%, 104px), 1fr))',gap:6},
-  tuileChoix:{minHeight:44,padding:'6px 8px',justifyContent:'center'},
-  tuileChoisie:{borderColor:'var(--onglet)',background:'var(--selection)'},
+  tuileChoix:{display:'flex',alignItems:'center',justifyContent:'center',width:'100%',minHeight:44,padding:'6px 8px',borderWidth:1,borderStyle:'solid',borderColor:'var(--btn-bord)',borderRadius:'var(--r)',background:'var(--btn-fond)',color:'var(--btn-texte)',fontFamily:'var(--font)',textAlign:'center',cursor:'pointer'},
+  tuileChoisie:{borderColor:'var(--accent)',background:'var(--accent)',color:'var(--on-accent)'},
   previewVal:{ borderLeft: '2px solid var(--danger-bd)', padding: '10px 0 10px 12px',fontSize: 'var(--t2)',color:'var(--text)',marginTop:8},
 };
 

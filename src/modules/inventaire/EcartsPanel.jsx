@@ -85,7 +85,7 @@ export default function EcartsPanel({
         {/* Chaque carte dit en clair ce qu'elle compte : un chiffre seul sous
             « Écarts positifs » ne disait ni par rapport à quoi, ni en quoi. */}
         <div style={st.kpiBar}>
-          <div style={st.kpiCard}>
+          <div style={st.kpiCard} className="inv-kpi" data-cadre="">
             <div style={st.kpiLabel}>Valeur du stock ({perimetreActif})</div>
             <div style={st.kpiVal}>CHF {(Number(inv.valeurTotale) || 0).toLocaleString('fr-CH', {minimumFractionDigits:2})}</div>
             <div style={st.kpiNote}>
@@ -97,7 +97,7 @@ export default function EcartsPanel({
           {/* Consolidé : dernier inventaire de CHAQUE périmètre. Additionner
               toute la liste compterait plusieurs fois le même stock. */}
           {perimetres.length > 1 && (
-            <div style={st.kpiCard}>
+            <div style={st.kpiCard} className="inv-kpi" data-cadre="">
               <div style={st.kpiLabel}>Stock total ({perimetres.length} périmètres)</div>
               <div style={st.kpiVal}>CHF {valeurTousPerimetres.toLocaleString('fr-CH', {minimumFractionDigits:2})}</div>
               <div style={st.kpiNote}>Le dernier inventaire de chaque périmètre, additionnés.</div>
@@ -105,7 +105,7 @@ export default function EcartsPanel({
           )}
           {/* Évolution vs inventaire précédent du même périmètre */}
           {previousInv && deltaValeur != null && (
-            <div style={st.kpiCard}>
+            <div style={st.kpiCard} className="inv-kpi" data-cadre="">
               <div style={st.kpiLabel}>Depuis le {dateCH(previousInv.date)}</div>
               <div style={{
                 ...st.kpiVal,
@@ -127,21 +127,21 @@ export default function EcartsPanel({
               </div>
             </div>
           )}
-          <div style={st.kpiCard}>
+          <div style={st.kpiCard} className="inv-kpi" data-cadre="">
             <div style={st.kpiLabel}>Écarts en moins</div>
             <div style={{...st.kpiVal, color: totNegatif ? 'var(--danger-strong)' : 'var(--text2)'}}>
               {valeurEcartsMoins < 0 ? '−' : ''}CHF {chfKpi(Math.abs(valeurEcartsMoins))}
             </div>
             <div style={st.kpiNote}>{nbProduits(totNegatif)} compté{totNegatif > 1 ? 's' : ''} sous le stock théorique.</div>
           </div>
-          <div style={st.kpiCard}>
+          <div style={st.kpiCard} className="inv-kpi" data-cadre="">
             <div style={st.kpiLabel}>Écarts en plus</div>
             <div style={{...st.kpiVal, color: totPositif ? 'var(--success-strong)' : 'var(--text2)'}}>
               {valeurEcartsPlus > 0 ? '+' : ''}CHF {chfKpi(valeurEcartsPlus)}
             </div>
             <div style={st.kpiNote}>{nbProduits(totPositif)} compté{totPositif > 1 ? 's' : ''} au-dessus du stock théorique.</div>
           </div>
-          <div style={st.kpiCard}>
+          <div style={st.kpiCard} className="inv-kpi" data-cadre="">
             <div style={st.kpiLabel}>Sans écart</div>
             <div style={{...st.kpiVal, color:'var(--success-text)'}}>{totNul} / {(inv.lignes || []).length}</div>
             <div style={st.kpiNote}>Produits comptés exactement au stock théorique.</div>
@@ -208,7 +208,7 @@ export default function EcartsPanel({
           </div>
         )}
 
-        <div style={st.tableWrap} className="grid-table-scroll">
+        <div style={st.tableWrap} className="grid-table-scroll inv-tableau" data-cadre="">
           <div className="grid-table-row" style={{...st.tableHead, gridTemplateColumns: colonnesTableau}}>
             {sel.active && <span className="no-print"/>}
             <span>Produit</span><span>Catégorie</span><span style={{textAlign:'right'}}>Stock théorique</span><span style={{textAlign:'right'}}>Stock réel</span><span style={{textAlign:'right'}}>Écart</span><span style={{textAlign:'right'}}>Valeur (CHF)</span><span style={{textAlign:'right'}}>Écart valeur</span>{canManage && <span className="no-print"/>}

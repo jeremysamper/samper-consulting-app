@@ -41,21 +41,23 @@ export function Montant({ v }) {
 }
 
 export const st = {
-  page: { display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0, maxWidth: '100%' },
-  section: { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
-  sectionTitre: { fontSize: 15, fontWeight: 500, color: 'var(--text)', fontFamily: 'var(--font-serif)' },
-  remarque: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.5 },
-  texte: { fontSize: 14, color: 'var(--text)', lineHeight: 1.5 },
-  ligne: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)', minWidth: 0, flexWrap: 'wrap' },
+  page: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' },
+  // Direction Galet : une section est une carte blanche (fond --zone, rayon
+  // --r-lg, filet doux et ombre --sh), son titre en titre de carte.
+  section: { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0, padding: '16px 18px', borderRadius: 'var(--r-lg)', background: 'var(--zone)', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)' },
+  sectionTitre: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', lineHeight: 1.25 },
+  remarque: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.5 },
+  texte: { fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.5 },
+  ligne: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--rule-soft)', minWidth: 0, flexWrap: 'wrap' },
   ligneGauche: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: '1 1 200px' },
-  ligneTitre: { fontSize: 14, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis' },
-  ligneDetail: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 },
-  num: { fontFamily: 'var(--font-num)', fontSize: 14, color: 'var(--text)', whiteSpace: 'nowrap' },
+  ligneTitre: { fontSize: 'var(--t2)', color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis' },
+  ligneDetail: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 },
+  num: { fontFamily: 'var(--font-num)', fontSize: 'var(--t2)', color: 'var(--text)', whiteSpace: 'nowrap' },
   primaire: { minHeight: 44 },
   // Cible tactile de 44 px ; le texte du lien dans un seul <span> (une espace
   // entre deux enfants d'un inline-flex disparaîtrait).
   lien: {
-    display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: '0', minHeight: 44, color: 'var(--accent)',
+    display: 'inline-flex', alignItems: 'center', background: 'none', border: 'none', padding: '0', minHeight: 44, color: 'var(--lien)',
     textDecoration: 'underline', textUnderlineOffset: 3, cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'inherit', textAlign: 'left',
   },
 };

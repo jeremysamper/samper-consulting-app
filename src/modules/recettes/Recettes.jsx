@@ -95,7 +95,7 @@ const PanneauEtat = ({ titre, texte, onRetry }) => (
     <div style={{fontSize: 'var(--t2)', color:'var(--text2)', marginTop:8}}>{texte}</div>
     {onRetry && (
       <button
-        style={{marginTop:16, padding:'9px 18px', background:'var(--accent)', color:'var(--on-accent)', border:'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor:'pointer', fontFamily:'var(--font)'}}
+        style={{ ...rs.printBtn, marginTop: 16 }}
         onClick={onRetry}
       >
         Réessayer
@@ -559,6 +559,7 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
   // Qui peut dupliquer ? consultant + patron + responsable cuisine
   // (cuisinier/serveur cachés ; chef de production peut être un alias de resp_cuisine)
   const canDuplicate = ['consultant', 'patron', 'resp_cuisine'].includes(user?.role);
+  const gereLaFiche = canFiches || canDuplicate;
 
   // Données fiche pour l'export jsPDF natif (helper module buildRecettePdfData).
   // On reflète les portions affichées (quantités mises à l'échelle).
@@ -624,32 +625,33 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
       )}
       <div className="module-actions no-print" style={{ marginBottom: 16 }}>
         <button style={rs.backBtn} onClick={onBack}>Retour</button>
-        {canFiches && recette.statut === 'archivée' && (
-          <button style={rs.etiquetteBtn} onClick={onDesarchiver}>Désarchiver</button>
-        )}
         {canFiches && (
           <button style={rs.printBtn} onClick={onModifier}>Modifier</button>
-        )}
-        {canFiches && (
-          <button style={rs.printBtn} onClick={onDupliquer}>Dupliquer</button>
         )}
         {canEtiqueter && (
           <button style={rs.etiquetteBtn} onClick={() => setShowEtiquette(true)}>Étiquette DLC</button>
         )}
+        {/* Un seul menu pour le reste de l'en-tête : l'export pour tous, et
+            pour qui gère la fiche, désarchiver et dupliquer. Sans ces droits,
+            le menu garde son nom d'export. */}
         <BoutonActions
           id="fiche-exporter"
-          label="Exporter"
+          label={gereLaFiche ? 'Actions' : 'Exporter'}
           style={rs.printBtn}
-          titre="Exporter la fiche"
+          titre={gereLaFiche ? 'Actions sur la fiche' : 'Exporter la fiche'}
           sousTitre={recette.nom}
-          sections={[{ items: [
-            { titre: 'Télécharger le PDF', detail: 'La fiche technique sur une page.', onClick: exportRecipePdf },
-            { titre: 'Imprimer', detail: 'La même fiche, envoyée à l\'imprimante.', onClick: printRecipe },
-          ] }]}
+          sections={[
+            { items: [
+              { titre: 'Télécharger le PDF', detail: 'La fiche technique sur une page.', onClick: exportRecipePdf },
+              { titre: 'Imprimer', detail: 'La même fiche, envoyée à l\'imprimante.', onClick: printRecipe },
+            ] },
+            { items: [
+              canFiches && recette.statut === 'archivée' && { titre: 'Désarchiver', onClick: onDesarchiver },
+              canFiches && { titre: 'Dupliquer', onClick: onDupliquer },
+              canDuplicate && { titre: 'Dupliquer vers…', onClick: () => setShowDuplicate(true) },
+            ] },
+          ]}
         />
-        {canDuplicate && (
-          <button style={rs.printBtn} onClick={() => setShowDuplicate(true)}>Dupliquer vers…</button>
-        )}
       </div>
       <div id='fiche-recette-print' className={`fv fv-fiche${tactile ? ' fv-fiche--tactile' : ''}`}>
       {/* Bandeau héros, toujours : la photo (ou le visuel de remplacement de
@@ -2034,6 +2036,10 @@ const Recettes = ({ user, etablissement }) => {
   // Je cherche une fiche ouvre la bibliothèque sous un champ toujours ouvert.
   const gerer = ecran === 'gerer';
   const vueBiblio = ecran === 'chercher' || (gerer && isLibrary);
+  // Gérer les cartes, pour qui gère les cartes : l'en-tête garde « Ajouter une
+  // carte » et « Ordre des cartes » ; Allergènes, Exporter, Sélectionner (et
+  // les archives) passent au menu « Actions » de la barre des cartes.
+  const actionsAuMenu = gerer && canManageCartes;
   // La loupe : dans l'en-tête de la carte du moment, dans la barre de Gérer.
   const loupe = <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />;
   return (
@@ -2079,21 +2085,30 @@ const Recettes = ({ user, etablissement }) => {
               onHideCarte={masquerCarte}
               homeId={defaultCarteId}
               onReorderCartes={reorderCartes}
+              actionsMenu={actionsAuMenu ? [
+                { titre: 'Allergènes', detail: 'Trouver dans quelles recettes un ingrédient ou allergène apparaît', onClick: () => setShowIngredientSearch(true) },
+                { titre: 'Exporter', detail: 'Exporter une carte entière, des plats ou des recettes dans un seul PDF', onClick: () => setShowExportModal(true) },
+                isLibrary && canFiches && !selection.active && { titre: 'Sélectionner', onClick: selection.enter },
+              ] : undefined}
             />
           </div>
           {gerer && (
             <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">
               {loupe}
-              {/* Toujours libellé + teinte "warning" (langage visuel allergènes de l'app) :
-                  en icône seule (une loupe), il se confondait avec la loupe de recherche. */}
-              <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
-              <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</button>
+              {/* Toujours libellé (en icône seule, une loupe, il se confondait avec
+                  la loupe de recherche). Au menu « Actions » pour qui gère les cartes. */}
+              {!actionsAuMenu && (
+                <>
+                  <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
+                  <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</button>
+                </>
+              )}
               {/* Bibliothèque, droit « fiches » : un plat sans carte, la
                   sélection de fiches ; IA en lot pour le consultant. */}
               {isLibrary && canFiches && (
                 <>
                   <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: null })}>Ajouter un plat</button>
-                  {!selection.active && <button style={rs.printBtn} onClick={selection.enter}>Sélectionner</button>}
+                  {!selection.active && !actionsAuMenu && <button style={rs.printBtn} onClick={selection.enter}>Sélectionner</button>}
                 </>
               )}
               {isLibrary && isConsultant && (
@@ -2146,7 +2161,7 @@ const Recettes = ({ user, etablissement }) => {
                 texte={canFiches ? 'Ajoutez le premier plat de cette carte.' : 'Aucun plat sur cette carte pour le moment.'}
               />
               {canFiches && (
-                <button style={{ ...rs.etiquetteBtn, alignSelf: 'center' }} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
+                <button style={{ ...rs.printBtn, alignSelf: 'center' }} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
               )}
             </>
           )
@@ -2165,7 +2180,7 @@ const Recettes = ({ user, etablissement }) => {
               {/* Le plat neuf naît sur la carte affichée ; décocher la carte
                   dans sa fenêtre retire ce seul lien. */}
               {canFiches && (
-                <button style={rs.etiquetteBtn} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
+                <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
               )}
               {canManageCartes && (
                 <button
@@ -2431,10 +2446,6 @@ const Recettes = ({ user, etablissement }) => {
                       {isExpanded && platRecettes.length === 0 && (
                         <div style={rs.sousListeVide}>
                           Aucune recette rattachée à ce plat.
-                          {/* Ouvre la fenêtre du plat, section « Recettes du plat ». */}
-                          {canFiches && (
-                            <>{' '}<button type="button" style={rs.lienAction} onClick={() => setPlatEdite({ plat })}>Rattacher une recette</button></>
-                          )}
                         </div>
                       )}
                     </div>
@@ -2495,22 +2506,21 @@ const rs = {
   // vertical : la place rendue va aux vignettes des plats.
   carteHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},
   carteHeaderRight: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
-  homeBtn: {padding:'6px 12px',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',borderRadius: 'var(--r)',background: 'var(--btn-fond)',color: 'var(--btn-texte)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
+  homeBtn: {padding:'6px 14px',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',borderRadius: 'var(--r-full)',background: 'var(--btn-fond)',color: 'var(--btn-texte)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   homeBtnActive: {borderColor:'var(--onglet)',color:'var(--text)',background:'var(--selection)'},
   carteName: {fontSize: 'var(--t3)',fontWeight: 'var(--g3)',fontFamily:'var(--font)',color:'var(--text)'},
   // Les plats de la carte et les fiches de Je cherche une fiche sont des
   // vignettes (VitrineCarte, VitrineFiches) : leur forme vit dans
   // src/components/fiches/fiches.css, hors de portée de la règle « Plus de
   // carrés » qui aplatissait les tuiles posées en style inline.
-  lienAction: {background:'none',border:'none',padding:0,color: 'var(--lien)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',fontSize:'inherit',textDecoration:'underline'},
   // Allergènes en texte simple, noms complets séparés par des virgules.
   allergenesTexte: {fontSize: 'var(--t1)',fontWeight: 'var(--g1)',color:'var(--text2)',lineHeight:1.4},
   // Dans une ligne de liste : une seule ligne, le reste au survol (title).
   allergenesLigne: {minWidth:0,maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'},
   // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
   // et fait se chevaucher les boutons d'une rangée sur mobile.
-  etiquetteBtn:{flexShrink:0,padding:'8px 14px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
-  printBtn:{padding:'8px 14px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)', fontWeight: 'var(--g2)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)'},
+  etiquetteBtn:{flexShrink:0,padding:'8px 16px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius: 'var(--r-full)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  printBtn:{padding:'8px 16px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)', fontWeight: 'var(--g2)',borderRadius: 'var(--r-full)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)'},
   badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)'},
   congBtn: {padding:'7px 14px',background: 'var(--btn-fond)',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   congBtnActive: {background:'var(--selection)',borderColor:'var(--onglet)',color:'var(--text)'},

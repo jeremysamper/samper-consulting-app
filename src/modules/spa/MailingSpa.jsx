@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { History, Mail, MailCheck, Send, Users } from 'lucide-react';
 import { notify } from '../../components/toast/index.js';
 import { zurichToday } from '../../utils/zurichTime.js';
-import { ouvrirCompte } from '../../services/navigationService.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { appelerMailer, useSpaParametres, useSpaTable } from './spaData.js';
 import {
@@ -101,15 +100,15 @@ export default function MailingSpa({ etablissement, clients }) {
 
   return (
     <div>
-      {/* Boîte d'envoi et bons d'anniversaire : dans la page des réglages. */}
-      <div style={s.raccourci} data-spa-raccourci-emails="">
-        <span style={{ flex: '1 1 220px', minWidth: 0, fontSize: 14 }}>
-          {adresseEnvoi
-            ? <><span>Les e-mails partent de</span> <strong data-no-translate>{adresseEnvoi}</strong></>
-            : <span>Boîte d'envoi et bons d'anniversaire</span>}
-        </span>
-        <button type="button" style={st.secondaire} onClick={() => ouvrirCompte('spa_emails')}>Régler les e-mails</button>
-      </div>
+      {/* Boîte d'envoi et bons d'anniversaire : dans la page des réglages,
+          ouverte par l'onglet « Réglages e-mails ». Ici, l'adresse d'envoi seule. */}
+      {adresseEnvoi && (
+        <div style={s.raccourci} data-spa-raccourci-emails="">
+          <span style={{ flex: '1 1 220px', minWidth: 0, fontSize: 14 }}>
+            <span>Les e-mails partent de</span> <strong data-no-translate>{adresseEnvoi}</strong>
+          </span>
+        </div>
+      )}
 
       {/* ── Audience ── */}
       <div style={s.audience}>

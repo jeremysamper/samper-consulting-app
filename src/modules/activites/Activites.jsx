@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarDays, Plus, ScanLine, Ticket } from 'lucide-react';
+import { CalendarDays, Plus, ScanLine, Ticket, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -10,7 +10,7 @@ import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
 import { zurichAjouterJours, zurichToday } from '../../utils/zurichTime.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
-import { Champ, Liste, Vide, h } from '../hebergement/hotelUi.jsx';
+import { Champ, Liste, PageHotel, ReperesHotel, Vide, h } from '../hebergement/hotelUi.jsx';
 import {
   CATEGORIES_DROIT, STATUTS_INSCRIPTION, activitesDuJour, chf, dateCourte, droitsRestants, equipeDe, heureZurich, inscriptionsActives,
   isoZurich, jourZurich, libelleDe, nomPersonne, placesPrises, placesRestantes, sejoursActifs, tonDe, trouverSejour,
@@ -168,9 +168,9 @@ function ActiviteFiche({ activite: a, sejours, inscriptions, chambres, peutGerer
               <span style={h.detail}> {numero(i.sejourId) && <><span>ch.</span> <span data-no-translate>{numero(i.sejourId)}</span>, </>}<span data-no-translate>{i.nbPersonnes}</span> <span>{i.nbPersonnes > 1 ? 'personnes' : 'personne'}</span></span>
             </span>
             <Puce ton={tonDe(STATUTS_INSCRIPTION, i.statut)}>{libelleDe(STATUTS_INSCRIPTION, i.statut)}</Puce>
-            {i.statut === 'inscrit' && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 36, padding: '4px 10px', fontSize: 12 }} onClick={() => lancer(() => inscriptions.modifier(i.id, { statut: 'present' }), 'Présence notée.')} disabled={enCours}>Présent</button>}
-            {i.statut !== 'annule' && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 36, padding: '4px 10px', fontSize: 12 }} onClick={() => lancer(() => inscriptions.modifier(i.id, { statut: 'annule' }), 'Inscription annulée.')} disabled={enCours}>Annuler</button>}
-            {i.statut === 'annule' && peutGerer && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 36, padding: '4px 10px', fontSize: 12 }} onClick={() => lancer(() => inscriptions.supprimer(i.id), 'Inscription supprimée.')} disabled={enCours}>Supprimer</button>}
+            {i.statut === 'inscrit' && <Btn small onClick={() => lancer(() => inscriptions.modifier(i.id, { statut: 'present' }), 'Présence notée.')} disabled={enCours}>Présent</Btn>}
+            {i.statut !== 'annule' && <Btn small onClick={() => lancer(() => inscriptions.modifier(i.id, { statut: 'annule' }), 'Inscription annulée.')} disabled={enCours}>Annuler</Btn>}
+            {i.statut === 'annule' && peutGerer && <Btn small onClick={() => lancer(() => inscriptions.supprimer(i.id), 'Inscription supprimée.')} disabled={enCours}>Supprimer</Btn>}
           </div>
         ))}
       </div>
@@ -239,7 +239,7 @@ function Pointage({ sejours, chambres, forfaits, droits, consommations, activite
       {sejour && (
         <>
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', fontFamily: 'var(--font-serif)' }} data-no-translate>{sejour.nomHote}</span>
+            <span style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' }} data-no-translate>{sejour.nomHote}</span>
             {sejour.identifiant && <Puce ton="info"><span data-no-translate>{sejour.identifiant}</span></Puce>}
             {numero(sejour) && <span style={h.detail}><span>Chambre</span> <span data-no-translate>{numero(sejour)}</span></span>}
             <span style={h.detail} data-no-translate>{dateCourte(sejour.arrivee)} - {dateCourte(sejour.depart)}</span>
@@ -260,7 +260,7 @@ function Pointage({ sejours, chambres, forfaits, droits, consommations, activite
                       {e.droit.quantiteParSejour == null && e.droit.quantiteParJour == null && <>, <span>sans limite</span>{e.surJour ? <>, <span data-no-translate>{e.surJour}</span> <span>aujourd'hui</span></> : null}</>}
                     </span>
                   </span>
-                  {e.epuise ? <Puce ton="danger">Épuisé</Puce> : <Btn variant="primary" onClick={() => pointer(e)} disabled={enCours} style={{ minHeight: 44 }}>Pointer</Btn>}
+                  {e.epuise ? <Puce ton="danger">Épuisé</Puce> : <Btn onClick={() => pointer(e)} disabled={enCours}>Pointer</Btn>}
                 </div>
               ))}
             </div>
@@ -289,7 +289,7 @@ function Pointage({ sejours, chambres, forfaits, droits, consommations, activite
                 <span style={h.detail} data-no-translate>{heureZurich(c.at)}</span>
                 <span style={{ flex: '1 1 120px' }} data-no-translate>{c.libelle}{c.quantite !== 1 ? ` x ${c.quantite}` : ''}</span>
                 <span style={h.detail} data-no-translate>{nomPersonne(c.par)}</span>
-                {peutGerer && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 32, padding: '4px 8px', fontSize: 12 }} onClick={async () => { const r = await consommations.supprimer(c.id); if (r.error) setErreur(r.error); else notify('Consommation retirée.', 'success'); }}>Retirer</button>}
+                {peutGerer && <Btn small onClick={async () => { const r = await consommations.supprimer(c.id); if (r.error) setErreur(r.error); else notify('Consommation retirée.', 'success'); }}>Retirer</Btn>}
               </div>
             ))}
           </div>
@@ -330,12 +330,13 @@ export default function Activites({ user, etablissement }) {
   const choisies = activitesDuJour(activites.rows, jour).filter((a) => !recherche || a.titre.toLowerCase().includes(recherche.toLowerCase()) || (a.lieu || '').toLowerCase().includes(recherche.toLowerCase()));
   const fiche = ficheId ? activites.rows.find((a) => a.id === ficheId) || null : null;
   const inscritsDuJour = duJour.reduce((n, a) => n + placesPrises(a, inscriptions.rows), 0);
+  const pointagesDuJour = consommations.rows.filter((c) => c.jour === aujourdhui).length;
 
   const etat = (n, un, plusieurs) => <><span>{n}</span> <span>{n === 1 ? un : plusieurs}</span></>;
   const tuiles = [
     { id: 'programme', libelle: 'Programme', Icone: CalendarDays, etat: <>{etat(duJour.length, 'activité aujourd\'hui', 'activités aujourd\'hui')}<span aria-hidden="true"> </span>{etat(inscritsDuJour, 'inscrit', 'inscrits')}</>, onClick: () => { setJour(aujourdhui); setEcran('programme'); } },
     { id: 'nouvelle', libelle: 'Nouvelle activité', Icone: Plus, visible: peutGerer, onClick: () => setForm({ activite: null }) },
-    { id: 'pointage', libelle: 'Pointer une consommation', Icone: ScanLine, etat: etat(consommations.rows.filter((c) => c.jour === aujourdhui).length, 'pointage aujourd\'hui', 'pointages aujourd\'hui'), onClick: () => setEcran('pointage') },
+    { id: 'pointage', libelle: 'Pointer une consommation', Icone: ScanLine, etat: etat(pointagesDuJour, 'pointage aujourd\'hui', 'pointages aujourd\'hui'), onClick: () => setEcran('pointage') },
     { id: 'forfaits', libelle: 'Forfaits', Icone: Ticket, visible: direction, etat: etat(forfaits.rows.filter((f) => f.actif).length, 'forfait actif', 'forfaits actifs'), onClick: () => ouvrirCompte('activites_forfaits') },
   ];
 
@@ -365,10 +366,17 @@ export default function Activites({ user, etablissement }) {
     <section className="activites" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' }}>
       {!etabId && <Vide>Aucun établissement sélectionné.</Vide>}
       {etabId && ecran === ECRAN_ACCUEIL && (
-        <>
+        <PageHotel>
           <AccueilModule tuiles={tuiles} />
+          {activites.status === 'ready' && (
+            <ReperesHotel reperes={[
+              { id: 'activites', Icone: CalendarDays, valeur: duJour.length, libelle: duJour.length === 1 ? 'activité aujourd\'hui' : 'activités aujourd\'hui', detail: 'Programme' },
+              { id: 'inscrits', Icone: Users, valeur: inscritsDuJour, libelle: inscritsDuJour === 1 ? 'inscrit' : 'inscrits', detail: 'Programme' },
+              { id: 'pointages', Icone: ScanLine, valeur: pointagesDuJour, libelle: pointagesDuJour === 1 ? 'pointage aujourd\'hui' : 'pointages aujourd\'hui', detail: 'Pointer une consommation' },
+            ]} />
+          )}
           {etatLecture && <Vide>{etatLecture}</Vide>}
-        </>
+        </PageHotel>
       )}
       {etabId && ecran !== ECRAN_ACCUEIL && (
         <EcranTache
@@ -390,7 +398,7 @@ export default function Activites({ user, etablissement }) {
               <span>Jour</span>
               <input type="date" style={{ ...h.saisie, width: 'auto' }} value={jour} onChange={(ev) => ev.target.value && setJour(ev.target.value)} />
             </label>
-            <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 44 }} onClick={() => setJour(aujourdhui)}>Aujourd'hui</button>
+            <Btn onClick={() => setJour(aujourdhui)}>Aujourd'hui</Btn>
             <SearchToggle value={recherche} onChange={setRecherche} placeholder="Titre, lieu…" />
           </div>
           {choisies.length ? <Liste>{choisies.map(ligneActivite)}</Liste> : <Vide>Aucune activité ce jour.</Vide>}

@@ -31,14 +31,14 @@ const ICONES_SERVICES = { midi: Sun, soir: Moon };
 
 export default function QuiTravaille({
   dansOnglet = false, aujourdhui, maintenant, shifts, absences, telephones = {},
-  avecAbsences, echec, peutOuvrir, ouvrir,
+  avecAbsences, echec, peutOuvrir, ouvrir, lignesMax = LIGNES_MAX,
 }) {
   const [tout, setTout] = React.useState(false);
   const groupes = equipeParService(shifts, aujourdhui);
   const auPlanning = new Set(groupes.flatMap((g) => g.personnes.map((p) => p.userId)));
   const absentsJour = (absences || []).filter((a) => a.dateDebut <= aujourdhui && a.dateFin >= aujourdhui);
   const absentsHorsListe = absentsJour.filter((a) => !auPlanning.has(a.userId));
-  const masquees = groupes.reduce((n, g) => n + Math.max(0, g.personnes.length - LIGNES_MAX), 0);
+  const masquees = groupes.reduce((n, g) => n + Math.max(0, g.personnes.length - lignesMax), 0);
   const deuxColonnes = !dansOnglet && groupes.length > 1;
   const lien = dansOnglet ? null : <LienModule onClick={peutOuvrir('planning') ? () => ouvrir('planning') : null}>Ouvrir le planning</LienModule>;
 
@@ -52,7 +52,7 @@ export default function QuiTravaille({
     return (
       <Personne
         key={userId}
-        className={!tout && rangGroupe >= LIGNES_MAX ? 'tdb-hors-groupe' : ''}
+        className={!tout && rangGroupe >= lignesMax ? 'tdb-hors-groupe' : ''}
         userId={userId}
         tel={telephones[userId]}
         detail={(

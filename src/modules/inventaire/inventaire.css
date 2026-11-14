@@ -1,0 +1,122 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Module Inventaire : mise en page de l'accueil et des écrans (direction
+   Galet). Les couleurs passent par les jetons d'app.css, jamais par une
+   fonction de couleur.
+   Le tableau des écarts (#inventaire-print) est aussi le document imprimé :
+   la fenêtre d'impression ne charge pas cette feuille et rend la zone telle
+   qu'avant. Ce qui l'habille à l'écran est écrit ici, sur une classe exclue
+   de .pdf-render-root ; ses styles en ligne ne changent pas.
+   La vue « achats » (Factures & achats) partage le composant d'accueil : elle
+   ne porte aucune de ces classes (sa grille est dans factures-achats/achats.css).
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Accueil ──────────────────────────────────────────────────────────────────
+   Par la largeur réellement disponible (rail ou menu déplié), pas par celle de
+   la fenêtre : requêtes de conteneur, paliers 560, 760 et 1080 px comme le
+   tableau de bord. Le conteneur (.inv-page) ne porte aucune fenêtre du module
+   (Fenetre passe par un portail) ; la grille vit sur son enfant (.inv-grille).
+   Ordre au téléphone : l'en-tête, les tuiles (la première reste visible sans
+   défiler), la carte de l'inventaire, puis les repères. Dès 760 px : repères
+   sous l'en-tête, la carte et les tuiles côte à côte. */
+.inv-page {
+  container-type: inline-size;
+  container-name: inv;
+  min-width: 0;
+}
+.inv-grille {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.inv-entete { order: 10; }
+.inv-grille > .accueil-grille { order: 20; grid-auto-rows: 1fr; }
+.inv-carte-nuit { order: 30; }
+.inv-reperes {
+  order: 40;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* Repères : primitive CarteRepere ; seuls son retrait et son picto suivent la
+   largeur (!important : le cercle pose son display en style inline). */
+.inv-page .ui-repere { padding: 12px; }
+.inv-page .ui-repere-icone { display: none !important; }
+
+/* Carte de l'inventaire : une tuile par zone. */
+.inv-zones {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+.inv-zones.inv-zones--une { grid-template-columns: minmax(0, 1fr); }
+.inv-page [data-carte-avant="nuit"] button:focus-visible {
+  outline: 2px solid var(--carte-nuit-texte);
+  outline-offset: 2px;
+}
+
+@media (min-width: 600px) {
+  .inv-grille { gap: 24px; }
+}
+/* Téléphone : le repère des produits comptés répète la carte (!important : la
+   carte pose son display en style inline). */
+@container inv (max-width: 559.98px) {
+  .inv-reperes > [data-repere="comptes"] { display: none !important; }
+}
+@container inv (min-width: 560px) {
+  .inv-page .ui-repere { padding: 14px 16px; }
+  .inv-page .ui-repere-icone { display: inline-flex !important; }
+  .inv-reperes { gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .inv-zones { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+}
+@container inv (min-width: 760px) {
+  .inv-grille {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+  .inv-entete { grid-column: 1 / -1; }
+  .inv-reperes { order: 15; grid-column: 1 / -1; }
+  .inv-carte-nuit { order: 20; }
+  /* Les tuiles gardent leur hauteur (pas étirées à celle de la carte) : la
+     dernière reste visible sans défiler à la tablette. */
+  .inv-grille > .accueil-grille {
+    order: 30;
+    align-self: start;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Sans inventaire, pas de carte : les tuiles prennent toute la largeur. */
+  .inv-grille:not(:has(> .inv-carte-nuit)) > .accueil-grille {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@container inv (min-width: 1080px) {
+  .inv-grille { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+}
+
+/* ── Écarts et documents : cartes blanches à l'écran, hors impression ────── */
+.inv-kpi:not(.pdf-render-root *),
+.inv-tableau:not(.pdf-render-root *) {
+  background: var(--zone) !important;
+  border-color: transparent !important;
+  border-radius: var(--r-lg) !important;
+  box-shadow: inset 0 0 0 1px var(--rule-soft), var(--sh);
+}
+/* Entre la ligne d'identité, les chiffres, les filtres et le tableau :
+   l'écart des cartes, à l'écran seulement (la zone imprimée ne lit pas
+   cette feuille). */
+#inventaire-print:not(.pdf-render-root *) {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+/* La variation en pour cent est éteinte en style inline (0,85) : sur le
+   blanc d'une carte du thème sombre, elle passait sous le seuil de lecture.
+   À l'écran, elle reprend l'encre pleine de son chiffre. */
+.inv-kpi:not(.pdf-render-root *) span[style*="opacity: 0.85"] { opacity: 1 !important; }

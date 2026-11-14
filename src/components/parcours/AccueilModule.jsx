@@ -3,7 +3,8 @@ import React from 'react';
 // ─────────────────────────────────────────────────────────────────────────────
 // Accueil d'un module : une tuile par tâche, dans l'ordre où l'équipe s'en
 // sert. Même tuile que la page d'accueil tactile de l'app (AccueilTactile.jsx :
-// bouton data-cadre, 72 px au moins, pictogramme au trait, libellé court),
+// carte blanche data-cadre, 72 px au moins, pictogramme au trait dans un
+// cercle --piste, libellé court),
 // même grille (.accueil-grille : 2, 3 ou 4 colonnes par CSS), sur les trois
 // coques : un module ne lit ni useShellMode ni useIsMobile pour son accueil.
 // La ligne d'état vit dans la tuile, sous le libellé : une seule cible au
@@ -27,7 +28,7 @@ export default function AccueilModule({ tuiles }) {
     <div className="accueil-grille">
       {tuiles.filter(t => t && (!('visible' in t) || Boolean(t.visible))).map(t => (
         <button key={t.id} type="button" className="accueil-tuile" data-cadre="" data-tuile={t.id} style={st.tuile} onClick={t.onClick}>
-          <t.Icone size={28} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+          <span className="accueil-tuile-picto" aria-hidden="true"><t.Icone size={24} strokeWidth={1.75} /></span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={st.libelle} data-no-translate={t.brut ? true : undefined}>{t.libelle}</span>
             {t.etat != null && <span style={st.etat}>{t.etat}</span>}
@@ -40,13 +41,14 @@ export default function AccueilModule({ tuiles }) {
 
 const st = {
   // Tuile de la page d'accueil tactile (AccueilTactile.jsx) : hauteur minimale
-  // en inline, fond et rayon, aucune couleur en dur, aucun filter ni transform
-  // (l'affordance au tap est globale).
+  // en inline, carte blanche (rayon --r-lg, ombre --sh, filet --rule-soft),
+  // aucune couleur en dur, aucun filter ni transform (l'affordance au tap est
+  // globale).
   tuile: {
-    position: 'relative', display: 'flex', alignItems: 'center', gap: 12, minHeight: 72, width: '100%',
-    padding: '22px 14px', borderRadius: 'var(--r)', background: 'var(--btn-fond)', color: 'var(--lien)',
-    border: 'none', boxShadow: 'inset 0 0 0 1px var(--btn-bord)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 'var(--g2)', lineHeight: 1.2, textAlign: 'left', cursor: 'pointer',
+    position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minHeight: 72, width: '100%',
+    padding: '22px 10px', borderRadius: 'var(--r-lg)', background: 'var(--surface)', color: 'var(--lien)',
+    border: 'none', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 'var(--g3)', lineHeight: 1.2, textAlign: 'left', cursor: 'pointer',
   },
   libelle: { display: 'block' },
-  etat: { display: 'block', marginTop: 4, fontSize: 12, fontWeight: 400, color: 'var(--text2)', lineHeight: 1.35 },
+  etat: { display: 'block', marginTop: 4, fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text3)', lineHeight: 1.35 },
 };

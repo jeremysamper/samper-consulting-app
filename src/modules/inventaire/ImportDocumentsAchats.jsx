@@ -188,14 +188,14 @@ export default function ImportDocumentsAchats({
 
       <div className="accueil-grille">
         <button type="button" className="accueil-tuile" data-cadre="" data-tuile-import="photo" style={st.tuile} disabled={tableAbsente} onClick={() => cameraRef.current?.click()}>
-          <ScanLine size={28} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+          <span className="accueil-tuile-picto" aria-hidden="true"><ScanLine size={24} strokeWidth={1.75} /></span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={st.libelle}>Photographier</span>
             <span style={st.etat}>une page après l’autre, avec l’appareil photo</span>
           </span>
         </button>
         <button type="button" className="accueil-tuile" data-cadre="" data-tuile-import="fichier" style={st.tuile} disabled={tableAbsente} onClick={() => fileRef.current?.click()}>
-          <FolderOpen size={28} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+          <span className="accueil-tuile-picto" aria-hidden="true"><FolderOpen size={24} strokeWidth={1.75} /></span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={st.libelle}>Choisir un PDF ou une photo</span>
             <span style={st.etat}>reçus par mail ou déjà sur l’appareil, plusieurs à la fois</span>
@@ -253,9 +253,9 @@ const st = {
   root: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
   // Tuile de l'accueil du module (AccueilInventaire.jsx) : même hauteur, même fond.
   tuile: {
-    position: 'relative', display: 'flex', alignItems: 'center', gap: 12, minHeight: 72, width: '100%',
-    padding: '22px 14px', borderRadius: 'var(--r)', background: 'var(--btn-fond)', color: 'var(--lien)',
-    border: 'none', boxShadow: 'inset 0 0 0 1px var(--btn-bord)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 'var(--g2)', lineHeight: 1.2, textAlign: 'left', cursor: 'pointer',
+    position: 'relative', display: 'flex', alignItems: 'center', gap: 8, minHeight: 72, width: '100%',
+    padding: '22px 10px', borderRadius: 'var(--r-lg)', background: 'var(--surface)', color: 'var(--lien)',
+    border: 'none', boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)', fontFamily: 'var(--font)', fontSize: 15, fontWeight: 'var(--g3)', lineHeight: 1.2, textAlign: 'left', cursor: 'pointer',
   },
   libelle: { display: 'block' },
   etat: { display: 'block', marginTop: 4, fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text2)', lineHeight: 1.35 },

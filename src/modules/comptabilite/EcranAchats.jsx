@@ -75,5 +75,5 @@ export default function EcranAchats({ s, etat }) {
 }
 
 const st = {
-  point: { margin: 0, fontSize: 14, color: 'var(--text)', lineHeight: 1.5 },
+  point: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text)', lineHeight: 1.5 },
 };

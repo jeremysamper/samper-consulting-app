@@ -318,8 +318,9 @@ export const st = {
   // Gros boutons des trois choix.
   choix: {
     display: 'flex', alignItems: 'center', gap: 14, minHeight: 68, width: '100%', padding: '12px 16px',
-    borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--accent)', border: 'none',
+    borderRadius: 'var(--r-lg)', background: 'var(--surface)', color: 'var(--accent)', border: 'none',
     cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', boxSizing: 'border-box',
+    boxShadow: 'inset 0 0 0 1px var(--btn-bord)',
   },
   choixCorps: { display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 },
   choixNom: { fontSize: 17, fontWeight: 500, lineHeight: 1.2 },
@@ -327,10 +328,11 @@ export const st = {
   // Une réservation en rang tappable.
   rang: {
     display: 'flex', alignItems: 'center', gap: 14, minHeight: 60, width: '100%', padding: '10px 14px',
-    borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--text)', border: 'none',
+    borderRadius: 'var(--r-lg)', background: 'var(--surface)', color: 'var(--text)', border: 'none',
     cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 15, textAlign: 'left', boxSizing: 'border-box',
+    boxShadow: 'inset 0 0 0 1px var(--btn-bord)',
   },
-  rangPrincipal: { background: 'var(--accent)', color: 'var(--on-accent)', minHeight: 72 },
+  rangPrincipal: { background: 'var(--accent)', color: 'var(--on-accent)', minHeight: 72, boxShadow: 'none' },
   rangHeure: { fontFamily: 'var(--font-num)', fontSize: 18, fontWeight: 600, flexShrink: 0, minWidth: 52 },
   rangCorps: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
   rangNom: { fontSize: 16, fontWeight: 600, lineHeight: 1.2, overflowWrap: 'anywhere' },
@@ -339,8 +341,9 @@ export const st = {
   // Cases de couverts : 1 à 8, puis « + ».
   cases: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 },
   case: {
-    minHeight: 60, borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--text)', border: 'none',
+    minHeight: 60, borderRadius: 'var(--r-lg)', background: 'var(--surface)', color: 'var(--text)', border: 'none',
     cursor: 'pointer', fontFamily: 'var(--font-num)', fontSize: 22, fontWeight: 600,
+    boxShadow: 'inset 0 0 0 1px var(--btn-bord)',
   },
-  caseActive: { background: 'var(--accent)', color: 'var(--on-accent)' },
+  caseActive: { background: 'var(--accent)', color: 'var(--on-accent)', boxShadow: 'none' },
 };

@@ -198,6 +198,6 @@ export default function AccueilCompta({
 
 const st = {
   reserve: { color: 'var(--warning-text)' },
-  phrase: { margin: 0, fontSize: 14, color: 'var(--text2)', lineHeight: 1.5 },
-  pied: { margin: '4px 0 0', fontSize: 12, color: 'var(--text3)', lineHeight: 1.5, maxWidth: 640 },
+  phrase: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.5 },
+  pied: { margin: '4px 0 0', fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5, maxWidth: 640 },
 };

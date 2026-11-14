@@ -9,7 +9,7 @@ import { Check, ChevronDown } from 'lucide-react';
 // Sur téléphone, il n'apparaissait qu'en ouvrant le tiroir.
 //
 //   ligne 1 : titre du module
-//   ligne 2 : ● établissement ⌄
+//   ligne 2 : ● établissement ⌄, dans une pilule à la couleur des cartes
 //
 //   - un seul établissement : simple repère, rien à choisir ;
 //   - plusieurs : le bloc entier est un bouton qui ouvre la liste (même modèle
@@ -64,9 +64,9 @@ export default function EtabSwitcher({ etabs = [], current, onSelect, title, var
 
   const body = (
     <>
-      <span style={{ ...s.title, ...(mobile ? s.titleMobile : null) }}>{title}</span>
+      <span style={{ ...s.title, ...(mobile ? s.titleMobile : s.titleDesktop) }}>{title}</span>
       {current && (
-        <span style={{ ...s.line, ...(mobile ? s.lineMobile : null) }}>
+        <span data-cadre="" style={{ ...s.line, ...(mobile ? s.lineMobile : null) }}>
           {dot(current)}
           <span style={s.etabName} data-no-translate="">{current.nom}</span>
           {multiple && <ChevronDown size={13} aria-hidden="true" style={s.chevron} />}
@@ -158,11 +158,18 @@ const s = {
     color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: 1.25,
   },
   titleMobile: { textAlign: 'center' },
+  // À l'ordinateur, le titre de page est en grand, en graisse moyenne.
+  titleDesktop: { fontSize: 'var(--t4)', fontWeight: 'var(--g2)' },
   line: {
-    display: 'flex', alignItems: 'center', gap: 5, maxWidth: '100%', minWidth: 0,
+    display: 'flex', alignItems: 'center', gap: 5, minWidth: 0,
     fontSize: 12, fontWeight: 500, color: 'var(--text2)', lineHeight: 1.35, whiteSpace: 'nowrap',
+    // L'établissement en pilule : data-cadre la garde (règle « Pastilles en
+    // texte » d'app.css). Les marges négatives et la largeur maximale laissent
+    // la pilule déborder dans le retrait du bloc : le nom garde la largeur
+    // qu'il avait sans pilule, et reste aligné sur le titre.
+    padding: '1px 8px 1px 6px', margin: '0 -8px 0 -6px', maxWidth: 'calc(100% + 14px)', borderRadius: 'var(--r-full)', background: 'var(--surface)',
   },
-  lineMobile: { fontSize: 12, justifyContent: 'center' },
+  lineMobile: { fontSize: 12, justifyContent: 'center', padding: '1px 8px', margin: '0 -8px', maxWidth: 'calc(100% + 16px)' },
   etabName: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   dot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
   chevron: { flexShrink: 0, opacity: 0.8 },
@@ -170,7 +177,7 @@ const s = {
   menu: {
     position: 'absolute', top: 'calc(100% + 6px)', left: 0, minWidth: 220, maxWidth: 320,
     maxHeight: '60vh', overflowY: 'auto', padding: 4,
-    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)',
+    background: 'var(--surface)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-lg)',
     boxShadow: 'var(--sh-lg)', zIndex: 210, display: 'flex', flexDirection: 'column',
   },
   // Sous le header, pleine largeur avec une marge, centrée au-delà de 420 px.
@@ -181,7 +188,7 @@ const s = {
   // flexShrink 0 : colonne flex défilante + min-height tactile = lignes écrasées sinon.
   item: {
     display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 40, flexShrink: 0,
-    padding: '0 10px', background: 'transparent', border: 'none', borderRadius: 'var(--r-sm)',
+    padding: '0 10px', background: 'transparent', border: 'none', borderRadius: 'var(--r)',
     color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 'var(--g2)',
     textAlign: 'left', cursor: 'pointer',
   },

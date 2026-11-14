@@ -941,13 +941,13 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   </div>
                   <div style={cts.kpiItem}>
                     <span style={cts.kpiLabel}>Food cost %</span>
-                    <strong style={{ color: foodCost == null ? 'var(--text2)' : foodCost < 30 ? 'var(--success-strong)' : foodCost < 35 ? 'var(--warning-strong)' : 'var(--danger-strong)' }}>
+                    <strong style={{ color: foodCost == null ? 'var(--text2)' : foodCost < 30 ? 'var(--success-text)' : foodCost < 35 ? 'var(--warning-text)' : 'var(--danger-text)' }}>
                       {foodCost == null ? '-' : foodCost.toFixed(1) + ' %'}
                     </strong>
                   </div>
                   <div style={cts.kpiItem}>
                     <span style={cts.kpiLabel}>Marge brute / portion</span>
-                    <strong style={{ color: margeBrute >= 0 ? 'var(--success-strong)' : 'var(--danger-strong)' }}>CHF {margeBrute.toFixed(2)}</strong>
+                    <strong style={{ color: margeBrute >= 0 ? 'var(--success-text)' : 'var(--danger-text)' }}>CHF {margeBrute.toFixed(2)}</strong>
                   </div>
                 </div>
               </div>

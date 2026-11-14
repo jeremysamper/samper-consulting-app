@@ -1,6 +1,6 @@
 import React from 'react';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
-import { Panneau, ligneStyle } from '../../components/ui/index.jsx';
+import { Anneau, Panneau, ligneStyle } from '../../components/ui/index.jsx';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { estCompte, UNITES_INVENTAIRE } from './inventaireLignes.js';
 import { zoneOf, zonesOf, estMultiZone, quantiteZone, zonesDesLignes, zoneSuggeree, SANS_ZONE } from './zones.js';
@@ -62,7 +62,6 @@ export default function ComptageRapide({
   const total = lignes.length;
   const nbComptes = lignes.filter(estCompte).length;
   const restants = total - nbComptes;
-  const pct = total ? Math.round((nbComptes / total) * 100) : 0;
 
   const toutes = React.useMemo(() => lignes.flatMap(cartesDe), [lignes]);
   const zones = zonesDesLignes(lignes);
@@ -268,10 +267,11 @@ export default function ComptageRapide({
           onClose={() => setEdition(null)}
         />
       )}
-      <div style={st.progression}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+      <Panneau style={st.progression}>
+        <Anneau part={total ? nbComptes / total : 0} couleur="var(--success-strong)" />
+        <div style={st.progressionTexte}>
           <span style={{ fontSize: 'var(--t2)', color: 'var(--text)' }}>
-            <strong style={{ fontSize: 'var(--t3)', fontFamily: 'var(--font-num)' }}>{nbComptes}</strong> / {total} produit{total > 1 ? 's' : ''} compté{total > 1 ? 's' : ''}
+            <span style={st.progressionChiffre}>{nbComptes}</span> / {total} produit{total > 1 ? 's' : ''} compté{total > 1 ? 's' : ''}
           </span>
           {canEdit && restants > 0 && nbComptes > 0 && lignes.some(l => !estCompte(l) && l.precedent != null) && (
             <button type="button" style={st.lienBtn} onClick={onReprendreRestants}>
@@ -281,8 +281,7 @@ export default function ComptageRapide({
             </button>
           )}
         </div>
-        <div style={st.barre}><div style={{ ...st.barreRemplie, width: `${pct}%` }} /></div>
-      </div>
+      </Panneau>
 
       {canEdit && (
         <div style={st.ajoutBloc}>
@@ -435,13 +434,13 @@ export default function ComptageRapide({
 
 const st = {
   root: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
-  // Posés sur la page, sans cadre : le compteur et sa jauge.
-  progression: { display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 0' },
-  barre: { height: 8, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden' },
-  barreRemplie: { height: '100%', background: 'var(--success-strong, var(--accent))', transition: 'width .2s ease' },
+  // Le compteur dans une carte : la part comptée en anneau, son compte écrit à côté.
+  progression: { display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 14, padding: '12px 16px' },
+  progressionTexte: { flex: '1 1 200px', minWidth: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
+  progressionChiffre: { fontSize: 'var(--t5)', fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)' },
   lienBtn: { background: 'none', border: 'none', padding: '6px 0', color: 'var(--lien)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', minHeight: 36 },
   outils: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', minWidth: 0 },
-  recherche: { flex: '1 1 180px', minWidth: 0, maxWidth: 320, padding: '9px 12px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
+  recherche: { flex: '1 1 180px', minWidth: 0, maxWidth: 320, padding: '9px 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
   ajoutBloc: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 },
   ajoutRapide: { display: 'flex', gap: 8, minWidth: 0 },
   ajoutInput: { flex: 1, minWidth: 0, padding: '11px 14px', border: '1px dashed var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', color: 'var(--text)', background: 'var(--surface)', fontFamily: 'var(--font)', boxSizing: 'border-box' },
@@ -449,7 +448,7 @@ const st = {
   // Même hauteur que le champ d'ajout qu'il prolonge (44 px). Bouton
   // secondaire : l'action principale de l'écran est « Terminer le comptage ».
   // Son état éteint (rien à ajouter) est dans app.css.
-  ajoutBtn: { flexShrink: 0, padding: '0 16px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
+  ajoutBtn: { flexShrink: 0, padding: '0 18px', borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 44 },
   vide: { padding: '30px 0', textAlign: 'center', color: 'var(--text2)', fontSize: 'var(--t2)', lineHeight: 1.5 },
   // Une zone = un panneau (Panneau de ui) : sa limite se voit, les zones se
   // séparent par l'espace. Retrait latéral resserré au téléphone, pour que le
@@ -458,7 +457,7 @@ const st = {
   zone: { display: 'flex', flexDirection: 'column', gap: 4, padding: '12px clamp(8px, 2vw, 16px)', minWidth: 0 },
   zoneTitre: { display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' },
   // Gabarit du bouton secondaire de Btn (38 px), écrit par les jetons --btn-*.
-  rangerBtn: { padding: '8px 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 38, whiteSpace: 'nowrap' },
+  rangerBtn: { padding: '8px 16px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 38, whiteSpace: 'nowrap' },
   // Rangement en cours : fond de sélection et trait d'encre, pas d'accent.
   rangerBtnActif: { borderColor: 'var(--onglet)', background: 'var(--selection)', fontWeight: 'var(--g3)' },
   astuceZones: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 'var(--t1)', color: 'var(--text2)', padding: '8px 0', lineHeight: 1.45 },

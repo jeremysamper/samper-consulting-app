@@ -17,6 +17,7 @@ import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import AccueilHaccp from './AccueilHaccp.jsx';
+import ReperesHaccp from './ReperesHaccp.jsx';
 import MaintenantHaccp, { useTicMinute } from './MaintenantHaccp.jsx';
 import AideHaccp, { useAideHaccp } from './AideHaccp.jsx';
 import ProgrammeDuJour from './ProgrammeDuJour.jsx';
@@ -351,6 +352,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   const recent = (d) => d === todayStr || d === hier;
   const horsPlageRecents = releves.filter(r => !r.conforme && recent(r.date));
   const problemesCtrlRecents = controls.filter(c => c.statut !== 'conforme' && recent(c.date));
+  const aSurveiller = horsPlageRecents.length + problemesCtrlRecents.length > 0;
 
   // ─── Périodes d'export des relevés : jour sélectionné / mois du jour sélectionné ───
   const todayReleves = releves.filter(r=>r.date===dateFilter);
@@ -890,23 +892,16 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
       {enEchecRelecture && <BandeauNonActualise onRetry={relire} />}
 
       {ecran === ECRAN_ACCUEIL ? (
-        <>
-          <MaintenantHaccp
-            lecture={lecture}
-            enEchecRelecture={enEchecRelecture}
-            derniereMaj={derniereMaj}
-            etat={etatJour}
-            maintenant={maintenant}
-            canWrite={canWrite}
-            isConsultant={isConsultant}
-            onReleve={ouvrirReleveGuide}
-            onReglages={() => ouvrirCompte('haccp')}
-            onReessayer={relire}
-          />
-          {aide.visible && <AideHaccp onFermer={aide.fermer} />}
-          <AccueilHaccp controles={compte} canWrite={canWrite} onOuvrir={ouvrirEcran} />
-          {(pret || isConsultant) && (
-            <div className="module-toolbar">
+        // Accueil (direction Galet) : l'en-tête posé sur la page (le jour,
+        // puis Exporter et Réglages), les repères du jour, la carte nuit
+        // « Maintenant » à côté des tuiles, puis les frigos et « À surveiller »
+        // en cartes blanches. L'ordre par largeur est dans haccp.css : au
+        // téléphone, la carte « Maintenant » et les tuiles passent avant les
+        // repères.
+        <div className="haccp-page">
+          <div className="haccp-entete">
+            <div style={hs.contexte} data-no-translate="">{capitalize(fmtJour(todayStr, false))}</div>
+            {(pret || isConsultant) && (
               <div className="module-actions">
                 {pret && boutonExporter('haccp-dashboard-print')}
                 {/* Réglages du consultant : un bouton discret plutôt qu'une
@@ -916,54 +911,83 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                   <button type="button" data-tuile="config" style={hs.exportBtn} onClick={() => ouvrirCompte('haccp')}>Réglages</button>
                 )}
               </div>
+            )}
+          </div>
+          <ReperesHaccp etat={etatJour} relevesDuJour={relevesDuJour} controles={compte} />
+          <div className="haccp-haut">
+            <MaintenantHaccp
+              lecture={lecture}
+              enEchecRelecture={enEchecRelecture}
+              derniereMaj={derniereMaj}
+              etat={etatJour}
+              maintenant={maintenant}
+              canWrite={canWrite}
+              isConsultant={isConsultant}
+              onReleve={ouvrirReleveGuide}
+              onReessayer={relire}
+            />
+            <AccueilHaccp controles={compte} canWrite={canWrite} onOuvrir={ouvrirEcran} />
+          </div>
+          {aide.visible && <AideHaccp onFermer={aide.fermer} />}
+
+          {/* Le jour : frigos (avec « Relever ») et à surveiller. La zone est
+              celle de l'export : ses styles en ligne ne changent pas, les
+              cartes viennent de classes que la capture ne lit pas (haccp.css),
+              et le programme du jour, masqué à l'écran, y reste pour l'export. */}
+          {pret && (
+            <div
+              id="haccp-dashboard-print"
+              className={`haccp-jour${activeZones.length > 0 && aSurveiller ? ' haccp-jour--deux' : ''}`}
+              style={{display:'flex',flexDirection:'column',gap:18}}
+            >
+              <ProgrammeDuJour tournees={etatJour.tournees} titre="Le programme du jour" className="haccp-impression" />
+              {activeZones.length > 0 && (
+                <section className="haccp-carte" style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                  <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>Frigos et appareils</div>
+                  <div style={hs.zoneGrid}>
+                    {activeZones.map(z => (
+                      <ZoneTile
+                        key={z.id} zone={z} last={latestByZone[z.id]} today={todayStr} trend={trendByZone[z.id]}
+                        canWrite={canWrite} actif={inlineReleve === z.id} valeur={inlineTempInput} choix={inlineChoix}
+                        enCours={inlineEnCours && inlineReleve === z.id}
+                        onOuvrir={() => ouvrirInline(z.id)}
+                        onFermer={() => setInlineReleve(null)}
+                        onValeur={setInlineTempInput}
+                        onChoix={setInlineChoix}
+                        onEnregistrer={() => submitInlineReleve(z)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+              {/* Une section, pas un div : la feuille d'export donne une marge
+                  basse à tout div enfant direct de la zone capturée. */}
+              {aSurveiller && (
+                <section className="haccp-carte">
+                  <ProblemesHaccp
+                    titre="À surveiller"
+                    releves={horsPlageRecents}
+                    controles={problemesCtrlRecents}
+                    zones={zones}
+                    tpls={ctrlTpls}
+                    today={todayStr}
+                  />
+                </section>
+              )}
             </div>
           )}
-        </>
+          {!aide.visible && (
+            <div className="haccp-pied">
+              <button type="button" style={hs.lienAide} onClick={aide.revoir}>Revoir l'aide</button>
+            </div>
+          )}
+        </div>
       ) : enReglage ? (
         // Dans la page des réglages : la ligne d'état et les actions de
         // l'écran, sans « Retour » ni titre (la page les porte).
         <EnTeteSection etat={etatsEcran.config} actions={actions} />
       ) : (
         <EcranTache titre={titresEcran[ecran] || ECRANS_HACCP[ecran]} etat={etatsEcran[ecran]} onRetour={retourAccueil} actions={actions} />
-      )}
-
-      {/* ── LE JOUR (sur l'accueil) : programme, zones, à surveiller ── */}
-      {activeTab==='tableau' && pret && (
-        <div style={{display:'flex',flexDirection:'column',gap:18}} id="haccp-dashboard-print">
-          <ProgrammeDuJour tournees={etatJour.tournees} titre="Le programme du jour" />
-          {activeZones.length > 0 && (
-            <section style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>Frigos et appareils</div>
-              <div style={hs.zoneGrid}>
-                {activeZones.map(z => (
-                  <ZoneTile
-                    key={z.id} zone={z} last={latestByZone[z.id]} today={todayStr} trend={trendByZone[z.id]}
-                    canWrite={canWrite} actif={inlineReleve === z.id} valeur={inlineTempInput} choix={inlineChoix}
-                    enCours={inlineEnCours && inlineReleve === z.id}
-                    onOuvrir={() => ouvrirInline(z.id)}
-                    onFermer={() => setInlineReleve(null)}
-                    onValeur={setInlineTempInput}
-                    onChoix={setInlineChoix}
-                    onEnregistrer={() => submitInlineReleve(z)}
-                  />
-                ))}
-              </div>
-            </section>
-          )}
-          <ProblemesHaccp
-            titre="À surveiller"
-            releves={horsPlageRecents}
-            controles={problemesCtrlRecents}
-            zones={zones}
-            tpls={ctrlTpls}
-            today={todayStr}
-          />
-        </div>
-      )}
-      {activeTab==='tableau' && !aide.visible && (
-        <div>
-          <button type="button" style={hs.lienAide} onClick={aide.revoir}>Revoir l'aide</button>
-        </div>
       )}
 
       {/* ── RELEVÉ GUIDÉ ── */}
@@ -1099,7 +1123,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontSize: 'var(--t2)',fontWeight: 'var(--g2)',color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                         {c.label}
-                        {!c.actif && <span style={{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',background:'var(--selection)',color:'var(--text2)',padding:'2px 7px',borderRadius: 'var(--r)'}}>Inactif</span>}
+                        {!c.actif && <span style={{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',background:'var(--selection)',color:'var(--text2)',padding:'2px 7px',borderRadius: 'var(--r-full)'}}>Inactif</span>}
                       </div>
                       <div style={{fontSize: 'var(--t1)',color:'var(--text2)',marginTop:2}}>
                         Relevé de <N>{activeZones.length}</N> {activeZones.length>1?'frigos et appareils':'frigo ou appareil'}
@@ -1108,8 +1132,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                     <div style={{...hcfg.toggle,background:c.actif?'var(--accent)':'var(--border)'}} onClick={()=>toggleCreneau(c)}>
                       <div style={{...hcfg.toggleThumb,left:c.actif?'calc(100% - 20px)':'2px'}}/>
                     </div>
-                    <button style={hcfg.editBtn} onClick={()=>setCreneauModal(c)}>Modifier</button>
-                    <button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteCreneau(c.id)}>Supprimer</button>
+                    <BoutonActions id={`haccp-creneau-${c.id}`} label="Gérer" style={hcfg.gererBtn} titre="Gérer" sousTitre={<span data-no-translate="">{c.heure}, {c.label}</span>} sections={[{ items: [
+                      { titre: 'Modifier', onClick: () => setCreneauModal(c) },
+                      { titre: 'Supprimer', danger: true, onClick: () => deleteCreneau(c.id) },
+                    ] }]} />
                   </div>
                 ))}
               </div>
@@ -1123,7 +1149,6 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                 <div style={hcfg.sectionTitle}>Frigos et appareils à relever</div>
                 <div style={hcfg.sectionSub}><N>{zones.length}</N> {zones.length>1?'frigos et appareils':'frigo ou appareil'}, <N>{activeZones.length}</N> à relever</div>
               </div>
-              <button style={hs.exportBtn} onClick={()=>setZoneModal('new')}>Ajouter un frigo ou appareil</button>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {zones.map(z=>(
@@ -1131,7 +1156,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize: 'var(--t2)',fontWeight: 'var(--g2)',color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                       {z.nom}
-                      {!z.actif && <span style={{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',background:'var(--selection)',color:'var(--text2)',padding:'2px 7px',borderRadius: 'var(--r)'}}>Inactif</span>}
+                      {!z.actif && <span style={{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',background:'var(--selection)',color:'var(--text2)',padding:'2px 7px',borderRadius: 'var(--r-full)'}}>Inactif</span>}
                     </div>
                     <div style={{fontSize: 'var(--t1)',color:'var(--text2)',marginTop:2,lineHeight:1.4}}>
                       {ZONE_TYPES.find(t=>t.id===z.type)?.label}. <PlageTexte zone={z} />.
@@ -1143,8 +1168,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                     onClick={()=>toggleZone(z)}>
                     <div style={{...hcfg.toggleThumb,left:z.actif?'calc(100% - 20px)':'2px'}}/>
                   </div>
-                  <button style={hcfg.editBtn} onClick={()=>setZoneModal(z)}>Modifier</button>
-                  <button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteZone(z.id)}>Supprimer</button>
+                  <BoutonActions id={`haccp-zone-${z.id}`} label="Gérer" style={hcfg.gererBtn} titre="Gérer" sousTitre={<span data-no-translate="">{z.nom}</span>} sections={[{ items: [
+                    { titre: 'Modifier', onClick: () => setZoneModal(z) },
+                    { titre: 'Supprimer', danger: true, onClick: () => deleteZone(z.id) },
+                  ] }]} />
                 </div>
               ))}
             </div>
@@ -1157,7 +1184,6 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                 <div style={hcfg.sectionTitle}>Contrôles d'hygiène</div>
                 <div style={hcfg.sectionSub}>{ctrlTpls.length} contrôle{ctrlTpls.length>1?'s':''} configuré{ctrlTpls.length>1?'s':''}, {activeTpls.length} actif{activeTpls.length>1?'s':''}</div>
               </div>
-              <button style={hs.exportBtn} onClick={()=>setCtrlModal('new')}>Ajouter un contrôle</button>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {ctrlTpls.map(c=>(
@@ -1166,7 +1192,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontSize: 'var(--t2)',fontWeight: 'var(--g2)',color:'var(--text)',display:'flex',alignItems:'center',gap:8}}>
                       {c.label}
-                      {!c.actif&&<span style={{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',background:'var(--selection)',color:'var(--text2)',padding:'2px 7px',borderRadius: 'var(--r)'}}>Inactif</span>}
+                      {!c.actif&&<span style={{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',background:'var(--selection)',color:'var(--text2)',padding:'2px 7px',borderRadius: 'var(--r-full)'}}>Inactif</span>}
                     </div>
                     <div style={{fontSize: 'var(--t1)',color:'var(--text2)',marginTop:2}}>
                       {CTRL_TYPES.find(t=>t.id===c.type)?.label}, {c.frequence}
@@ -1177,8 +1203,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                     onClick={()=>toggleCtrl(c)}>
                     <div style={{...hcfg.toggleThumb,left:c.actif?'calc(100% - 20px)':'2px'}}/>
                   </div>
-                  <button style={hcfg.editBtn} onClick={()=>setCtrlModal(c)}>Modifier</button>
-                  <button className="btn-suppr-discret" style={hcfg.deleteBtn} onClick={()=>deleteCtrl(c.id)}>Supprimer</button>
+                  <BoutonActions id={`haccp-controle-${c.id}`} label="Gérer" style={hcfg.gererBtn} titre="Gérer" sousTitre={<span data-no-translate="">{c.label}</span>} sections={[{ items: [
+                    { titre: 'Modifier', onClick: () => setCtrlModal(c) },
+                    { titre: 'Supprimer', danger: true, onClick: () => deleteCtrl(c.id) },
+                  ] }]} />
                 </div>
               ))}
             </div>
@@ -1266,7 +1294,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                   <label style={hs.fLabel}>Résultat</label>
                   <div style={{display:'flex',gap:8}}>
                     {['conforme','non-conforme'].map(s=>(
-                      <button key={s} onClick={()=>setFormCtrl({...formCtrl,statut:s})} style={{flex:1,minHeight:44,padding:'10px',borderWidth:2,borderStyle:'solid',borderColor:formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--btn-bord)',borderRadius: 'var(--r)',background:formCtrl.statut===s?(s==='conforme'?'var(--success-bg)':'var(--danger-bg)'):'var(--btn-fond)',color:formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--btn-texte)',fontWeight: 'var(--g3)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)'}}>
+                      <button key={s} onClick={()=>setFormCtrl({...formCtrl,statut:s})} style={{flex:1,minHeight:44,padding:'10px',borderWidth:2,borderStyle:'solid',borderColor:formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--btn-bord)',borderRadius: 'var(--r-full)',background:formCtrl.statut===s?(s==='conforme'?'var(--success-bg)':'var(--danger-bg)'):'var(--btn-fond)',color:formCtrl.statut===s?(s==='conforme'?'var(--success-text)':'var(--danger-strong)'):'var(--btn-texte)',fontWeight: 'var(--g3)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)'}}>
                         {s==='conforme'?'Bon':'Un problème'}
                       </button>
                     ))}

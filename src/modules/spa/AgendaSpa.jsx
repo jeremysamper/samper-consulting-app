@@ -312,7 +312,7 @@ function FilDuJour({ date, estAujourdhui, maintenant, actifs, status, clientsPar
         titre="Journée calme"
         texte={`Aucun soin prévu ${estAujourdhui ? 'aujourd\'hui' : `le ${jourComplet(date)}`}.`}
         action={peutCreer && (
-          <button type="button" onClick={() => onNouveau({ date })} style={{ ...st.principal, marginTop: 6 }}>
+          <button type="button" onClick={() => onNouveau({ date })} style={{ ...st.secondaire, marginTop: 6 }}>
             <Plus size={18} strokeWidth={2} aria-hidden="true" /> Réserver un soin
           </button>
         )}

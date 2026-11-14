@@ -43,7 +43,7 @@ export default function SoinsSpa({ soins, status, peutGerer, onInserer, onModifi
             ? 'Ajoute les soins proposés : leur durée sera proposée à chaque réservation.'
             : 'La direction ou la réception peut la composer.'}
           action={peutGerer && (
-            <button type="button" onClick={() => setEdition({})} style={{ ...st.principal, marginTop: 6 }}>
+            <button type="button" onClick={() => setEdition({})} style={{ ...st.secondaire, marginTop: 6 }}>
               <Plus size={17} strokeWidth={2} aria-hidden="true" /> Premier soin
             </button>
           )}

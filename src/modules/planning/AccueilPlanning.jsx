@@ -2,6 +2,7 @@ import React from 'react';
 import { CalendarClock, CalendarDays, LogIn, LogOut, Settings2, Users } from 'lucide-react';
 import { Choix, Fenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
+import ReperesPlanning, { CartePlanningEquipe } from './ReperesPlanning.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Accueil du module Planning : une tuile par tâche, sur la grille partagée
@@ -13,6 +14,10 @@ import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 // partagé) ; sinon { action: 'arrivee' | 'depart' | 'horsPlanning', shift,
 // termine, duree } (pointageDuJour.js). Nombres, heures et dates dans leurs
 // propres nœuds : la phrase autour reste une entrée du glossaire.
+//
+// Direction Galet : repères et carte de l'équipe du jour autour des tuiles
+// (ReperesPlanning.jsx, planning.css). etats, heures et absents viennent des
+// horaires et des absences que Planning.jsx a déjà chargés.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const jourCH = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
@@ -25,7 +30,7 @@ function etatDuJour(jour) {
   return <>hors planning, ajouté au planning à votre nom</>;
 }
 
-export default function AccueilPlanning({ jour, prochain, equipe, semaine, canWrite, gerer, onPointer, onHoraires, onEquipe, onPlanning }) {
+export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats, heures, absents, canWrite, gerer, onPointer, onHoraires, onEquipe, onPlanning }) {
   const [gererOuvert, setGererOuvert] = React.useState(false);
   const fermer = React.useCallback(() => setGererOuvert(false), []);
   const choix = gerer.filter(Boolean);
@@ -55,7 +60,13 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, canWr
 
   return (
     <>
-      <AccueilModule tuiles={tuiles} />
+      <div className="pl-page">
+        <div className="pl-grille">
+          <ReperesPlanning equipe={equipe} heures={heures} absents={absents} />
+          <CartePlanningEquipe etats={etats} />
+          <AccueilModule tuiles={tuiles} />
+        </div>
+      </div>
       {gererOuvert && (
         <Fenetre id="planning-gerer-accueil" titre="Gérer le planning" onClose={fermer}>
           <div style={st.choix}>

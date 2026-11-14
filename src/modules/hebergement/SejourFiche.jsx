@@ -1,4 +1,5 @@
 import React from 'react';
+import { Btn } from '../../components/ui/index.jsx';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { Puce } from '../dashboard/tableauUi.jsx';
 import { Champ, h } from './hotelUi.jsx';
@@ -104,7 +105,7 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tar
               <span data-no-translate>{`${ho.prenom} ${ho.nom}`.trim()}</span>
               {ho.preferences && <> <span style={h.detail} data-no-translate>{ho.preferences}</span></>}
               {ho.allergies && <> <span style={{ ...h.detail, color: 'var(--danger-text)' }} data-no-translate>{ho.allergies}</span></>}
-              {peutGerer && onLierHote && <> <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 32, padding: '4px 10px', fontSize: 12 }} onClick={() => onLierHote(s, null)}>Détacher</button></>}
+              {peutGerer && onLierHote && <> <Btn small onClick={() => onLierHote(s, null)}>Détacher</Btn></>}
             </>);
           }
           if (!peutGerer) return ligne('Fiche hôte', 'Aucune');
@@ -114,7 +115,7 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tar
               <option value="">Relier à une fiche…</option>
               {candidats.map((x) => <option key={x.id} value={x.id}>{`${x.prenom} ${x.nom}`.trim()}{x.email ? ` (${x.email})` : ''}</option>)}
             </select>
-            <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 36, padding: '4px 10px', fontSize: 12 }} onClick={() => onCreerHote?.(s)}>Créer la fiche</button>
+            <Btn small onClick={() => onCreerHote?.(s)}>Créer la fiche</Btn>
           </span>, false);
         })()}
         {ligne('Chambre', chambre ? chambre.numero : 'Pas encore affectée', !!chambre)}
@@ -140,7 +141,7 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tar
           {restaurant.liens.map((l) => (
             <div key={l.id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <span style={{ fontSize: 14, color: 'var(--text)' }}><span>{l.type === 'groupe' ? 'Groupe' : 'Table'}</span> <span data-no-translate>{l.libelle}</span></span>
-              {peutGerer && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 32, padding: '4px 8px', fontSize: 12 }} onClick={() => restaurant.onDetacher(l)}>Détacher</button>}
+              {peutGerer && <Btn small onClick={() => restaurant.onDetacher(l)}>Détacher</Btn>}
             </div>
           ))}
           {peutGerer && (
