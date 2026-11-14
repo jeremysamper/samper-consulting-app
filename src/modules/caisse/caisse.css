@@ -1,0 +1,52 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Module Caisse : mise en page (direction Galet). Les couleurs passent par les
+   jetons d'app.css ; cette feuille ne règle que la grille de l'accueil et les
+   listes en carte, par la largeur réellement disponible (requêtes de
+   conteneur, paliers 560, 760 et 1080 px).
+   .caisse-page est le conteneur (aucune fenêtre du module dedans) ; la grille
+   vit sur .caisse-grille, son enfant. Les bandeaux (jour non clôturé, avis des
+   plats prêts) restent au-dessus, hors de la grille.
+   Téléphone : les tuiles seules. Les repères redisent les nombres des tuiles
+   et la carte « Tables ouvertes » allongerait la page (M15) : ni l'un ni
+   l'autre n'est rendu. Dès 560 px : les repères sous les tuiles ; dès 760 px,
+   les repères en tête, tous de front, puis les tuiles et la carte nuit
+   dessous, ses trois tuiles côte à côte ; dès 1080 px, les tuiles et la carte
+   nuit côte à côte (8 et 4 colonnes), ses tuiles l'une sous l'autre.
+   La grille des produits, le ticket et la barre de modes ne sont pas réglés
+   ici : ils gardent leur place.
+   ───────────────────────────────────────────────────────────────────────────── */
+.caisse-page { container-type: inline-size; container-name: caisse; min-width: 0; }
+.caisse-grille { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.caisse-haut { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.caisse-reperes {
+  display: none;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+.caisse-page .ui-repere { padding: 14px 16px; }
+/* !important : la carte de mise en avant pose son display en style inline. */
+.caisse-page .caisse-nuit { display: none !important; }
+.caisse-nuit-tuiles { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+
+@container caisse (min-width: 560px) {
+  .caisse-grille { gap: 24px; }
+  .caisse-reperes { display: grid; }
+}
+@container caisse (min-width: 760px) {
+  .caisse-reperes { order: -1; grid-template-columns: repeat(var(--caisse-n, 3), minmax(0, 1fr)); }
+  .caisse-page .caisse-nuit { display: flex !important; }
+  .caisse-nuit-tuiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@container caisse (min-width: 1080px) {
+  .caisse-haut { display: grid; grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); gap: 24px; align-items: start; }
+  .caisse-haut .accueil-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .caisse-nuit-tuiles { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Liste dans une carte blanche (tickets ouverts, réservations sans ticket,
+   historique, tables ouvertes du plan) : les lignes sont séparées par leur
+   filet (style en ligne de la ligne) ; la dernière n'en porte pas.
+   !important : le filet est posé en style en ligne. */
+.caisse-liste > :last-child { border-bottom-width: 0 !important; }

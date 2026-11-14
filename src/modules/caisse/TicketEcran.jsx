@@ -332,7 +332,7 @@ export default function TicketEcran({
         style={{
           ...st.article,
           ...(dense ? st.articleDense : null),
-          ...(couleur ? { background: `var(--caisse-${couleur})` } : null),
+          ...(couleur ? { background: `var(--caisse-${couleur})`, boxShadow: 'none' } : null),
         }}
         onClick={() => {
           if (appuiLong.current.declenche) { appuiLong.current.declenche = false; return; }
@@ -776,8 +776,11 @@ const st = {
   grille: { display: 'grid', gap: 8 },
   article: {
     minHeight: 68, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center',
-    gap: 4, padding: '10px 12px', borderRadius: 'var(--r-lg)', background: 'var(--surface2)', color: 'var(--text)',
+    gap: 4, padding: '10px 12px', borderRadius: 'var(--r-lg)', background: 'var(--surface)', color: 'var(--text)',
     border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, textAlign: 'left', minWidth: 0,
+    // Contour du bouton secondaire, en ombre intérieure : --surface2 vaut la
+    // surface, sans lui le bouton n'aurait plus de limite.
+    boxShadow: 'inset 0 0 0 1px var(--btn-bord)',
   },
   articleDense: { minHeight: 56, padding: '8px 10px', fontSize: 13 },
   articleNomRang: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, maxWidth: '100%' },
