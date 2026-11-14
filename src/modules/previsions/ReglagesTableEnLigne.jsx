@@ -226,7 +226,7 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
           {publie ? (
             <button type="button" onClick={() => sauver(false)} disabled={enCours} style={s.secondaire}>Fermer la réservation</button>
           ) : (
-            <button type="button" onClick={() => sauver(true)} disabled={enCours || !pret} style={{ ...s.principal, opacity: enCours || !pret ? 0.55 : 1 }}>
+            <button type="button" onClick={() => sauver(true)} disabled={enCours || !pret} style={{ ...s.secondaire, opacity: enCours || !pret ? 0.55 : 1 }}>
               Ouvrir la réservation
             </button>
           )}
@@ -492,7 +492,7 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
               </div>
               <div style={s.lienDirect} data-no-translate>{lienPage.replace('https://', '')}</div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" onClick={() => copier(lienPage, 'Lien copié.')} style={s.principal}>Copier le lien</button>
+                <button type="button" onClick={() => copier(lienPage, 'Lien copié.')} style={s.secondaire}>Copier le lien</button>
                 <a href={apercu} target="_blank" rel="noreferrer" style={{ ...s.secondaire, textDecoration: 'none', boxSizing: 'border-box' }}>Voir la page</a>
               </div>
             </div>
