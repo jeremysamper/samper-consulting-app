@@ -16,7 +16,7 @@ test('par service : no-shows exclus, brunch avec le midi', () => {
   assert.deepEqual(jour, { couverts: 14, arrives: 6, attables: 4, reservations: 4, groupes: 1 });
 });
 
-test('le total du jour est celui de la tuile « Ce soir »', () => {
+test('le total du jour compte tous les couverts sauf les no-shows', () => {
   const resas = [
     { service: 'midi', nb_couverts: 5, statut: 'confirme' },
     { service: 'soir', nb_couverts: 2, statut: 'no_show' },

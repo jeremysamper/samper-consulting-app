@@ -1617,6 +1617,8 @@ export const UI_GLOSSARY = {
   'Le planning': 'The schedule',
   'la semaine, jour par jour': 'the week, day by day',
   'Le plan de salle': 'The floor plan',
+  'Organiser mes réservations': 'Organise my bookings',
+  'chaque réservation sur sa table': 'each booking on its table',
   "les tables d'aujourd'hui": "today's tables",
   'Je cherche une réservation': "I'm looking for a reservation",
   'par le nom ou le téléphone': 'by name or phone',

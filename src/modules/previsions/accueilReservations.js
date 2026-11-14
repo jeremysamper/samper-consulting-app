@@ -1,8 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Chiffres de l'accueil des Réservations (direction Galet), fonction pure
 // testée par accueilReservations.test.mjs. Elle ne lit que les réservations du
-// jour déjà chargées par l'accueil (useReservationsJour, la ligne d'état de la
-// tuile « Ce soir »).
+// jour déjà chargées par l'accueil (useReservationsJour).
 //
 // Mêmes règles que la vue jour (VueJour.jsx) : un no-show n'est pas un
 // couvert ; le brunch se compte avec le midi (serviceAffiche). Par service :

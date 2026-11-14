@@ -8,8 +8,7 @@ import './reservations.css';
 // Accueil des Réservations (direction Galet) : la rangée de repères et la
 // carte du service du jour, posées par AccueilReservations autour des tuiles.
 // Rien n'est lu en plus : tout vient des réservations du jour que l'accueil
-// charge déjà pour la tuile « Ce soir » (chiffresDuJour,
-// accueilReservations.js). Tant que la lecture n'a pas abouti, rien n'est
+// charge déjà (chiffresDuJour, accueilReservations.js). Tant que la lecture n'a pas abouti, rien n'est
 // rendu.
 //
 //   repères      couverts à midi ; couverts le soir ; réservations du jour,
@@ -17,8 +16,7 @@ import './reservations.css';
 //   carte nuit   les couverts du jour, une tuile par service (couverts, à
 //                table, anneau des couverts arrivés)
 //
-// La carte se lit sans toucher : le service du jour s'ouvre par la tuile
-// « Ce soir », rendue même sans réservation aujourd'hui.
+// La carte se lit sans toucher : le service se joue ensuite dans la Caisse.
 // Au téléphone (reservations.css), les repères du midi et du soir ne sont pas
 // rendus : la carte les dit déjà. Sans réservation aujourd'hui, la carte n'est
 // pas rendue. Nombres dans leurs propres nœuds : la phrase autour reste une

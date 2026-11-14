@@ -40,7 +40,7 @@ const ROLES_FINANCIALS = ['consultant', 'patron', 'resp_cuisine'];
 // Écrans du parcours (l'accueil a ses tuiles, sans en-tête de tâche).
 const TITRES_ECRAN = {
   planning: 'Le planning',
-  plan: 'Le plan de salle',
+  plan: 'Organiser mes réservations',
   chercher: 'Je cherche une réservation',
   clients: 'Les clients',
 };
@@ -104,12 +104,9 @@ export default function Previsions({ user, etablissement }) {
   const surAccueil = ecran === ECRAN_ACCUEIL;
   const aujourdhui = zurichToday();
 
-  // Ligne d'état de la tuile Ce soir : couverts du jour (no-shows exclus,
-  // comme la vue jour). Lecture seule, à l'accueil.
+  // Réservations du jour pour les repères et la carte de l'accueil. Lecture
+  // seule, à l'accueil.
   const jourAccueil = useReservationsJour(etabId, surAccueil ? aujourdhui : null, { refreshKey });
-  const couvertsDuJour = jourAccueil.resas && !jourAccueil.error
-    ? jourAccueil.resas.filter((r) => r.statut !== 'no_show').reduce((s, r) => s + (r.nb_couverts || 0), 0)
-    : null;
 
 
   // Échap sur un écran de tâche ramène à l'accueil du module (useEcranModule),
@@ -192,11 +189,9 @@ export default function Previsions({ user, etablissement }) {
 
       {etabId && surAccueil && (
         <AccueilReservations
-          couverts={couvertsDuJour}
           resasDuJour={jourAccueil.resas && !jourAccueil.error ? jourAccueil.resas : null}
           canEdit={canEdit}
           onReserver={() => setShowForm(true)}
-          onService={() => ouvrirModeService(zurichToday())}
           onPlanning={() => setEcran('planning')}
           onPlan={() => setEcran('plan')}
           onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
@@ -244,7 +239,8 @@ export default function Previsions({ user, etablissement }) {
         </>
       )}
 
-      {/* ── Le plan de salle : le jour d'aujourd'hui, ouvert sur le plan. ── */}
+      {/* ── Organiser mes réservations : le jour d'aujourd'hui, ouvert sur
+             le plan, pour poser chaque réservation sur sa table. ── */}
       {etabId && ecran === 'plan' && (
         <VueJour
           etablissementId={etabId}

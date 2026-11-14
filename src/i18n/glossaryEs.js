@@ -1598,6 +1598,8 @@ export const UI_GLOSSARY_ES = {
   'Le planning': 'El calendario',
   'la semaine, jour par jour': 'la semana, día a día',
   'Le plan de salle': 'El plano de sala',
+  'Organiser mes réservations': 'Organizar mis reservas',
+  'chaque réservation sur sa table': 'cada reserva en su mesa',
   "les tables d'aujourd'hui": 'las mesas de hoy',
   'Je cherche une réservation': 'Busco una reserva',
   'par le nom ou le téléphone': 'por nombre o teléfono',
