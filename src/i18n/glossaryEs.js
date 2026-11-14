@@ -3560,6 +3560,12 @@ export const UI_GLOSSARY_ES = {
   'Cette commande est portée sur la note : elle ne change plus. La note se corrige avec le droit Modifier d\'Hébergement.': 'Este pedido está cargado en la cuenta: ya no cambia. La cuenta se corrige con el derecho Modificar de Alojamiento.',
   'La dernière fois ne peut pas être dans le futur.': 'La última vez no puede estar en el futuro.',
   'Cet élément n\'appartient pas à l\'établissement.': 'Este elemento no pertenece al establecimiento.',
+  // Direction Galet, lot 3 (stock et fiches)
+  "produits comptés sur": "productos contados de",
+  "produit compté sur": "producto contado de",
+  "Aucun inventaire validé": "Ningún inventario validado",
+  "périmètre": "área",
+  "Ouvrir le comptage": "Abrir el recuento",
   // Lot LC : TVA des pièces d'achat et export fiduciaire.
   'Export fiduciaire': 'Exportación para la gestoría',
   'Taux de TVA': 'Tipo de IVA',

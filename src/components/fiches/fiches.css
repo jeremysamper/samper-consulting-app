@@ -178,7 +178,7 @@
   overflow: hidden;
   isolation: isolate;
   background: var(--grad-brand);
-  box-shadow: var(--sh-sm);
+  box-shadow: var(--sh);
   transition: transform 300ms ease, box-shadow 300ms ease;
 }
 /* iPad en paysage et ordinateur : la hauteur d'écran est comptée, le cadre
@@ -256,7 +256,7 @@
   font-size: var(--t1);
   font-weight: var(--g2);
   line-height: 1.3;
-  box-shadow: var(--sh-sm);
+  box-shadow: var(--sh);
 }
 
 .fv-texte {
@@ -437,7 +437,7 @@
   margin: 0;
   padding: 6px 12px;
   border: 1px solid var(--btn-bord);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-full);
   background: var(--btn-fond);
   color: var(--btn-texte);
   font: inherit;
@@ -689,7 +689,7 @@
   height: 24px;
   margin-top: 1px;
   border-radius: 50%;
-  background: var(--selection);
+  background: var(--piste);
   color: var(--text);
   font-family: var(--font-num);
   font-size: var(--t1);
@@ -850,4 +850,38 @@
   .fv-ouvrir:not(.fv-ouvrir--inerte):hover .fv-photo {
     transform: none;
   }
+}
+
+/* ── Direction Galet ─────────────────────────────────────────────────────────
+   Une fiche est une carte blanche, sa photo dedans (ou le visuel de
+   remplacement quand la fiche n'en a pas) ; la carte ouverte pose chaque
+   section dans sa carte (ingrédients, étapes, dressage, conservation, notes)
+   et les allergènes dans la leur. Une sous-section (congélation, durées de
+   vie) reste à plat dans sa carte. La fiche ouverte des Fiches salle
+   (.fv-fiche-cols--salle) garde sa page : le serveur la lit sans défiler.
+   Rien ici n'est lu par un export : les fiches en PDF sont dessinées depuis
+   les données. */
+.fv-vignette {
+  padding: 10px 10px 14px;
+  border-radius: var(--r-lg);
+  background: var(--zone);
+  box-shadow: inset 0 0 0 1px var(--rule-soft), var(--sh);
+}
+.fv-vignette .fv-cadre-photo {
+  border-radius: var(--r);
+  box-shadow: none;
+}
+.fv-vignette .fv-texte,
+.fv-vignette .fv-actions { padding: 0 4px; }
+.fv-fiche:not(:has(.fv-fiche-cols--salle)) section.fv-bloc,
+.fv-fiche:not(:has(.fv-fiche-cols--salle)) .fv-bandeau-allergenes {
+  padding: 18px 20px;
+  border-radius: var(--r-lg);
+  background: var(--zone);
+  box-shadow: inset 0 0 0 1px var(--rule-soft), var(--sh);
+}
+.fv-fiche:not(:has(.fv-fiche-cols--salle)) .fv-bandeau-allergenes { border-bottom: 0; }
+@container fvfiche (max-width: 559.98px) {
+  .fv-fiche:not(:has(.fv-fiche-cols--salle)) section.fv-bloc,
+  .fv-fiche:not(:has(.fv-fiche-cols--salle)) .fv-bandeau-allergenes { padding: 14px; }
 }

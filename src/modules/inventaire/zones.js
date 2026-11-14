@@ -118,3 +118,24 @@ export const zonesDesLignes = (lignes) => ordreZones((lignes || []).flatMap(zone
 
 // Options d'une liste de choix : zones déjà utilisées, puis zones du tour.
 export const optionsZones = (lignes) => ordreZones([...zonesDesLignes(lignes), ...ZONES_PRINCIPALES]);
+
+// Avancement du comptage, zone par zone, dans l'ordre du tour : pour chaque
+// zone, les produits qu'elle porte et ceux qui y sont comptés (une ligne à
+// plusieurs zones compte dans chacune, avec la quantité de la zone), puis les
+// produits sans zone. Mêmes comptes que les onglets de zone du comptage
+// (ComptageRapide). Sans aucune zone : une seule entrée, de zone ''.
+// Sert à la carte de l'inventaire de l'accueil.
+export const avancementZones = (lignes) => {
+  const liste = lignes || [];
+  const compte = (l) => l?.stockReel != null && l.stockReel !== '';
+  const compteDans = (l, z) => (estMultiZone(l) ? quantiteZone(l, z) != null : compte(l));
+  const zones = zonesDesLignes(liste);
+  if (!zones.length) return [{ zone: '', comptes: liste.filter(compte).length, total: liste.length }];
+  const parZone = zones.map((z) => {
+    const dans = liste.filter(l => dansLaZone(l, z));
+    return { zone: z, comptes: dans.filter(l => compteDans(l, z)).length, total: dans.length };
+  });
+  const sans = liste.filter(l => !zonesOf(l).length);
+  if (sans.length) parZone.push({ zone: SANS_ZONE, comptes: sans.filter(compte).length, total: sans.length });
+  return parZone;
+};

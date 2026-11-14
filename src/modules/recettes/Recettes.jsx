@@ -2495,7 +2495,7 @@ const rs = {
   // vertical : la place rendue va aux vignettes des plats.
   carteHeader: {display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'},
   carteHeaderRight: {display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'},
-  homeBtn: {padding:'6px 12px',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',borderRadius: 'var(--r)',background: 'var(--btn-fond)',color: 'var(--btn-texte)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
+  homeBtn: {padding:'6px 14px',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',borderRadius: 'var(--r-full)',background: 'var(--btn-fond)',color: 'var(--btn-texte)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)',whiteSpace:'nowrap'},
   homeBtnActive: {borderColor:'var(--onglet)',color:'var(--text)',background:'var(--selection)'},
   carteName: {fontSize: 'var(--t3)',fontWeight: 'var(--g3)',fontFamily:'var(--font)',color:'var(--text)'},
   // Les plats de la carte et les fiches de Je cherche une fiche sont des
@@ -2509,8 +2509,8 @@ const rs = {
   allergenesLigne: {minWidth:0,maxWidth:220,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'},
   // flexShrink 0 : le min-height global de 44px sur les <button> écrase le flex
   // et fait se chevaucher les boutons d'une rangée sur mobile.
-  etiquetteBtn:{flexShrink:0,padding:'8px 14px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
-  printBtn:{padding:'8px 14px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)', fontWeight: 'var(--g2)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)'},
+  etiquetteBtn:{flexShrink:0,padding:'8px 16px',background:'var(--accent)',border:'none',color:'var(--on-accent)',borderRadius: 'var(--r-full)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  printBtn:{padding:'8px 16px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)', fontWeight: 'var(--g2)',borderRadius: 'var(--r-full)',fontSize: 'var(--t2)',cursor:'pointer',fontFamily:'var(--font)'},
   badge: {display:'inline-flex',alignItems:'center',padding:'3px 10px',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)'},
   congBtn: {padding:'7px 14px',background: 'var(--btn-fond)',borderWidth:1,borderStyle:'solid',borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   congBtnActive: {background:'var(--selection)',borderColor:'var(--onglet)',color:'var(--text)'},

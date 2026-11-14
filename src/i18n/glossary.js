@@ -3579,6 +3579,12 @@ export const UI_GLOSSARY = {
   'Cette commande est portée sur la note : elle ne change plus. La note se corrige avec le droit Modifier d\'Hébergement.': 'This order has been charged to the bill: it can no longer change. The bill is corrected with the Accommodation edit right.',
   'La dernière fois ne peut pas être dans le futur.': 'The last done date cannot be in the future.',
   'Cet élément n\'appartient pas à l\'établissement.': 'This item does not belong to the property.',
+  // Direction Galet, lot 3 (stock et fiches)
+  "produits comptés sur": "products counted out of",
+  "produit compté sur": "product counted out of",
+  "Aucun inventaire validé": "No approved inventory",
+  "périmètre": "scope",
+  "Ouvrir le comptage": "Open the count",
   // Lot LC : TVA des pièces d'achat et export fiduciaire.
   'Export fiduciaire': 'Accountant export',
   'Taux de TVA': 'VAT rate',
