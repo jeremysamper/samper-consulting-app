@@ -2161,7 +2161,7 @@ const Recettes = ({ user, etablissement }) => {
                 texte={canFiches ? 'Ajoutez le premier plat de cette carte.' : 'Aucun plat sur cette carte pour le moment.'}
               />
               {canFiches && (
-                <button style={{ ...rs.etiquetteBtn, alignSelf: 'center' }} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
+                <button style={{ ...rs.printBtn, alignSelf: 'center' }} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
               )}
             </>
           )
@@ -2180,7 +2180,7 @@ const Recettes = ({ user, etablissement }) => {
               {/* Le plat neuf naît sur la carte affichée ; décocher la carte
                   dans sa fenêtre retire ce seul lien. */}
               {canFiches && (
-                <button style={rs.etiquetteBtn} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
+                <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
               )}
               {canManageCartes && (
                 <button
