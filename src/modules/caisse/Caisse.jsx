@@ -600,7 +600,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             <div className="caisse-haut">
               <div className="caisse-tuiles"><AccueilModule tuiles={tuiles} /></div>
               {(tables.some((t) => t.actif !== false) || tickets.length > 0) && (
-                <CarteTablesOuvertes resume={resumeService(tickets, tables, (t) => etatTicket(t, maintenant))} onVoir={() => setEcran('tickets')} />
+                <CarteTablesOuvertes resume={resumeService(tickets, tables, (t) => etatTicket(t, maintenant))} />
               )}
             </div>
             <ReperesCaisse

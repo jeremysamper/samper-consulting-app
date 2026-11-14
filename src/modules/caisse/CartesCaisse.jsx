@@ -1,6 +1,6 @@
 import React from 'react';
 import { CalendarClock, ClipboardCheck, ReceiptText } from 'lucide-react';
-import { Anneau, BoutonFleche, CarteAvant, CarteRepere, carteAvantStyles } from '../../components/ui/index.jsx';
+import { Anneau, CarteAvant, CarteRepere, carteAvantStyles } from '../../components/ui/index.jsx';
 import { partServies } from './resumeService.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -40,8 +40,9 @@ export function ReperesCaisse({ ouverts, totalOuvert, sansTicket, etatJour, mont
 
 // La carte nuit : ce qui se passe maintenant à la caisse. Sa couleur ne dit
 // pas un état ; l'anneau dit la part des tables servies, son compte est écrit
-// à côté. Le bouton flèche mène aux tickets ouverts.
-export function CarteTablesOuvertes({ resume, onVoir }) {
+// à côté. Les tickets ouverts s'ouvrent par la tuile de l'accueil : la carte
+// ne porte pas de bouton.
+export function CarteTablesOuvertes({ resume }) {
   const cs = carteAvantStyles('nuit');
   const tuiles = [
     {
@@ -57,7 +58,6 @@ export function CarteTablesOuvertes({ resume, onVoir }) {
     <CarteAvant
       ton="nuit"
       titre="Tables ouvertes"
-      action={<BoutonFleche ton="nuit" onClick={onVoir} libelle="Tickets ouverts" />}
       className="caisse-nuit"
       data-caisse-service=""
     >
