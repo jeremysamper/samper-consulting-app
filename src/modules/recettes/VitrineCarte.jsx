@@ -51,7 +51,9 @@ export default function VitrineCarte({
         allergenes={allergenes}
         meta={[tempsMax > 0 && { cle: 'temps', Icone: Clock, contenu: <><span data-no-translate="">{tempsMax}</span> min</> }]}
         mention={premiere ? null : 'Fiche à venir'}
-        onOuvrir={premiere ? () => onOuvrirRecette(premiere, plat) : null}
+        // Plat à plusieurs fiches : chaque fiche s'ouvre par sa ligne, la
+        // vignette ne rouvre pas la première (une seule façon d'ouvrir).
+        onOuvrir={premiere && ouvrables.length < 2 ? () => onOuvrirRecette(premiere, plat) : null}
         liens={ouvrables.length > 1 ? {
           titre: 'Fiches du plat',
           items: ouvrables.map((r) => ({ cle: r.id, nom: r.nom, onOuvrir: () => onOuvrirRecette(r, plat) })),
