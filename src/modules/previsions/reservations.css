@@ -1,0 +1,95 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Module Réservations : mise en page de l'accueil (direction Galet). Les
+   couleurs passent par les jetons d'app.css, jamais par une fonction de
+   couleur. Le plan de salle garde sa géométrie et ses gestes : aucune règle
+   de cette feuille ne vise ses tables ni sa toile.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+/* ── Accueil ──────────────────────────────────────────────────────────────────
+   Par la largeur réellement disponible (rail ou menu déplié), pas par celle de
+   la fenêtre : requêtes de conteneur, paliers 560, 760 et 1080 px comme le
+   tableau de bord. Le conteneur (.resa-page) ne porte aucune fenêtre du module
+   (Fenetre passe par un portail) ; la grille vit sur son enfant (.resa-grille).
+   Les demandes venues du site restent au-dessus (Previsions.jsx). Ordre au
+   téléphone et à la tablette : les tuiles d'abord (la première reste visible
+   sans défiler), la carte du service, puis les repères. Dès 760 px : les
+   tuiles trois de front ; dès 1080 px, les repères en tête, puis la carte et
+   les tuiles côte à côte. */
+.resa-page {
+  container-type: inline-size;
+  container-name: resa;
+  min-width: 0;
+}
+.resa-grille {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.resa-grille > .accueil-grille { order: 20; grid-auto-rows: 1fr; }
+.resa-carte-nuit { order: 30; }
+.resa-reperes {
+  order: 40;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: stretch;
+  min-width: 0;
+}
+
+/* Repères : primitive CarteRepere ; seuls son retrait et son picto suivent la
+   largeur (!important : le cercle pose son display en style inline). */
+.resa-page .ui-repere { padding: 12px; }
+.resa-page .ui-repere-icone { display: none !important; }
+
+/* Carte du service : une tuile par service. */
+.resa-services {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+.resa-page [data-carte-avant="nuit"] button:focus-visible {
+  outline: 2px solid var(--carte-nuit-texte);
+  outline-offset: 2px;
+}
+
+@media (min-width: 600px) {
+  .resa-grille { gap: 24px; }
+}
+/* Téléphone : les repères du midi et du soir répètent la carte (!important :
+   la carte pose son display en style inline). */
+@container resa (max-width: 559.98px) {
+  .resa-grille:has(> .resa-carte-nuit) .resa-reperes > :is([data-repere="midi"], [data-repere="soir"]) { display: none !important; }
+  .resa-grille:has(> .resa-carte-nuit) .resa-reperes { grid-template-columns: minmax(0, 1fr); }
+}
+@container resa (min-width: 560px) {
+  .resa-page .ui-repere { padding: 14px 16px; }
+  .resa-page .ui-repere-icone { display: inline-flex !important; }
+  .resa-reperes { gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* Tablette : les tuiles d'abord, sur toute la largeur et trois de front
+   (neuf au plus : toutes visibles sans défiler), puis la carte et les repères. */
+@container resa (min-width: 760px) {
+  .resa-grille {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+  }
+  .resa-grille > .accueil-grille {
+    order: 10;
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .resa-carte-nuit { order: 20; grid-column: 1 / -1; }
+  .resa-reperes { order: 30; grid-column: 1 / -1; }
+}
+/* Ordinateur : repères en tête, puis la carte et les tuiles côte à côte. Les
+   tuiles gardent leur hauteur (pas étirées à celle de la carte). */
+@container resa (min-width: 1080px) {
+  .resa-grille { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
+  .resa-reperes { order: 10; }
+  .resa-carte-nuit { order: 20; grid-column: auto; }
+  /* Neuf tuiles au plus : trois de front, toutes visibles sans défiler. */
+  .resa-grille > .accueil-grille { order: 30; grid-column: auto; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
