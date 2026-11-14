@@ -5,6 +5,9 @@ import { getDemoData } from '../data/demoData.js';
 import { applyNavOrder, useNavOrder } from './useNavOrder.js';
 import { useUnreadPrivateMessages } from './useUnreadPrivateMessages.js';
 import { useGroupesAlerte } from './useGroupesAlerte.js';
+import { canManageModule } from '../data/demoData.js';
+import { usePointsEtat } from '../modules/points/pointsEtat.js';
+import { entreeMenuVisible } from '../modules/points/bareme.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Modules visibles par l'utilisateur dans l'établissement courant, rangés par
@@ -28,6 +31,14 @@ export function useVisibleNav({ user, etablissement, perms }) {
   // Défauts du rôle (DEMO_DATA, hydraté depuis Supabase) : même objet d'un
   // rendu à l'autre tant que rien n'est rechargé, la mémo tient.
   const defautsRole = (DEMO_DATA.permissions && DEMO_DATA.permissions[role]) || AUCUN_DEFAUT;
+  // Points & boutique : l'entrée suit l'état lu en base (actif, participant,
+  // gère), une lecture par personne et par établissement ; avant la réponse,
+  // seul qui gère (droit du front) la voit.
+  const points = usePointsEtat(etablissement?.id, user?.id, {
+    gereFront: canManageModule(role, 'points'),
+    enabled: perms.points !== false,
+  });
+  const voitPoints = entreeMenuVisible(points);
 
   const visibleNav = React.useMemo(() => applyNavOrder(NAV_ITEMS, navOrder).filter((item) => {
     // IA / assistant / outils consultant : réservés au consultant culinaire,
@@ -38,6 +49,9 @@ export function useVisibleNav({ user, etablissement, perms }) {
     if (item.id === 'kds' && !['consultant', 'resp_cuisine', 'cuisinier'].includes(role)) return false;
     // Journal d'activité : consultant et patron (miroir de la RLS journal_activite).
     if (item.id === 'journal' && !['consultant', 'patron'].includes(role)) return false;
+    // Points & boutique : qui gère toujours ; un employé seulement si le
+    // système est allumé pour l'établissement et qu'il y participe.
+    if (item.id === 'points' && !voitPoints) return false;
     // Statistiques : aussi pour qui voit une analyse venue d'un module (rapport
     // des réservations, analyses des dépenses, rapports de caisse). Ces
     // analyses n'ont plus d'entrée dans leur module : sans cette ligne, la
@@ -52,7 +66,7 @@ export function useVisibleNav({ user, etablissement, perms }) {
     // permVal undefined : fallback sur les défauts du rôle
     if (defautsRole[item.permKey] === false) return false;
     return true;
-  }), [perms, role, navOrder, etablissement, defautsRole]);
+  }), [perms, role, navOrder, etablissement, defautsRole, voitPoints]);
 
   const groupedNav = React.useMemo(() => visibleNav.reduce((groups, item) => {
     const groupName = item.group || 'Modules';
@@ -75,5 +89,5 @@ export function useVisibleNav({ user, etablissement, perms }) {
   });
   const badges = React.useMemo(() => ({ messages: unreadMessages, groupes: groupesAPreparer }), [unreadMessages, groupesAPreparer]);
 
-  return { visibleNav, groupedNav, navOrder, saveNavOrder, badges };
+  return { visibleNav, groupedNav, navOrder, saveNavOrder, badges, points };
 }

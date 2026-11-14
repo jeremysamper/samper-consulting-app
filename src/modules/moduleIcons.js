@@ -1,5 +1,5 @@
 import {
-  BedDouble, BookOpen, BrushCleaning, ChartLine, Croissant, NotebookPen, Ticket, CalendarCheck, CalendarClock, CircleQuestionMark, ConciergeBell, CookingPot, Flower2, FolderOpen,
+  BedDouble, BookOpen, Gift, BrushCleaning, ChartLine, Croissant, NotebookPen, Ticket, CalendarCheck, CalendarClock, CircleQuestionMark, ConciergeBell, CookingPot, Flower2, FolderOpen,
   LayoutDashboard, LayoutGrid, ListChecks, MessageSquare, Monitor, Package, Receipt, ReceiptSwissFranc, ScrollText,
   ShieldCheck, ShoppingCart, Tags, Trash2, Users, Utensils, Wallet, Wrench,
 } from 'lucide-react';
@@ -40,6 +40,7 @@ const ICONES = {
   repas: Croissant,
   technique: Wrench,
   faq: CircleQuestionMark,
+  points: Gift,
 };
 
 // Module sans pictogramme attitré (ajouté au code après cette table) : grille.

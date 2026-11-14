@@ -48,6 +48,9 @@ const AVANT = {
   commande: ouverte('commande'),
   mep: ouverte('mep'),
   kds: (u, p) => ['consultant', 'resp_cuisine', 'cuisinier'].includes(u.role) && p.kds !== false,
+  // Points & boutique (14.11.2026, page neuve) : ouverte sauf clé retirée ;
+  // le module ferme lui-même son écran à qui ne participe pas.
+  points: ouverte('points'),
 };
 
 const ROLES = Object.keys(roles);

@@ -1,0 +1,40 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Module Points & boutique : mise en page (direction Galet). Les couleurs
+   passent par les jetons d'app.css ; cette feuille ne règle que les grilles,
+   par la largeur réellement disponible (requêtes de conteneur, paliers 560,
+   760 et 1080 px). .points-page est le conteneur, la grille vit sur ses
+   enfants ; aucune fenêtre du module n'y est posée (elles vont dans <body>).
+   Téléphone : la carte du solde d'abord, deux repères sur une ligne (le
+   troisième revient dès 560 px), la boutique en une colonne.
+   ───────────────────────────────────────────────────────────────────────────── */
+.points-page { container-type: inline-size; container-name: points; min-width: 0; }
+.points-grille { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.points-titre { margin: 0; font-size: var(--t6); font-weight: var(--g2); color: var(--text); line-height: 1.15; }
+.points-haut { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.points-reperes { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; }
+.points-page .ui-repere { padding: 12px; }
+.points-page .ui-repere-icone { display: none !important; }
+/* Au téléphone, deux repères au plus sur une ligne. */
+.points-page .points-repere-3 { display: none !important; }
+.points-nuit-corps { display: flex; align-items: center; gap: 16px; min-width: 0; flex-wrap: wrap; }
+.points-boutique { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.points-bas { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); min-width: 0; align-items: start; }
+.points-liste > :last-child { border-bottom-width: 0 !important; }
+.points-section-titre { margin: 0 0 4px; font-size: var(--t3); font-weight: var(--g3); color: var(--text); }
+.points-aide { margin: 0; font-size: var(--t1); color: var(--text2); line-height: 1.5; }
+.points-bareme { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr) 84px 84px; align-items: center; min-width: 0; }
+
+@container points (min-width: 560px) {
+  .points-grille { gap: 24px; }
+  .points-page .ui-repere { padding: 14px 16px; }
+  .points-page .ui-repere-icone { display: inline-flex !important; }
+  .points-page .points-repere-3 { display: flex !important; }
+  .points-reperes { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .points-boutique { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+}
+@container points (min-width: 1080px) {
+  .points-haut { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 24px; align-items: stretch; }
+  .points-reperes { align-content: stretch; }
+  .points-boutique { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .points-bas { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+}
