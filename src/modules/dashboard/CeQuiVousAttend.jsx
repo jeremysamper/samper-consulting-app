@@ -125,14 +125,14 @@ function Jour({
   return (
     <div style={s.pile}>
       {avecCouverts && !sansCouverts && (
-        <SousSection titre="Réservations" niveau={4} action={sansLiens ? null : <LienModule onClick={vers('previsions')}>Voir les réservations</LienModule>}>
+        <SousSection titre="Réservations" niveau={4} teteHaute={sansLiens} action={sansLiens ? null : <LienModule onClick={vers('previsions')}>Voir les réservations</LienModule>}>
           {nonLu('couverts') ? <Vide>Réservations indisponibles pour l&apos;instant</Vide>
             : !c.total ? <Vide>Aucune réservation pour l&apos;instant.</Vide>
               : <CouvertsParService c={c} />}
         </SousSection>
       )}
       {avecGroupes && (
-        <SousSection titre="Groupes" niveau={4} action={sansLiens ? null : <LienModule onClick={vers('groupes')}>Voir les groupes</LienModule>}>
+        <SousSection titre="Groupes" niveau={4} teteHaute={sansLiens} action={sansLiens ? null : <LienModule onClick={vers('groupes')}>Voir les groupes</LienModule>}>
           {nonLu('groupes') ? <Vide>Groupes indisponibles pour l&apos;instant</Vide>
             : !gJour.length ? <Vide>{estDemain ? 'Aucun groupe demain.' : "Aucun groupe aujourd'hui."}</Vide>
               : gJour.map((g) => <LigneGroupe key={g.id} g={g} onClick={vers('groupes')} />)}
