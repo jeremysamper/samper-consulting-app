@@ -11,8 +11,9 @@ import { BRAND_COLORS, MARK_PATH } from './markGeometry.js';
  *  - le logo tient, deux lueurs très faibles dérivent dans les coins ;
  *  - l'intro finie ET l'app prête : le logo s'efface, puis l'écran.
  * Phase 'static' : le logo déjà plein. C'est le cas d'un rechargement dans le
- * même onglet (sessionStorage), du mouvement réduit, et d'un démarrage lent
- * où le pré-splash de vite-index.html montrait déjà le logo.
+ * même onglet (sessionStorage) et du mouvement réduit. Le pré-splash de
+ * vite-index.html ne montre que le fond : ce composant est le seul à dessiner
+ * le logo.
  *
  * Les animations vivent dans app.css (classes jl-*). Toucher l'écran passe
  * l'intro. L'app se monte dessous pendant ce temps.
@@ -28,9 +29,6 @@ const INTRO_MS = 1800;
 // Sortie : le logo s'efface (320 ms), l'écran suit à 280 ms (340 ms). Doit
 // rester égal à la fin de jlSortie dans app.css.
 const EXIT_MS = 620;
-// Délai d'apparition du logo du pré-splash (animation-delay de
-// vite-index.html) : au-delà, le logo est déjà à l'écran, on ne le retrace pas.
-const PRE_SPLASH_LOGO_MS = 900;
 const SEEN_KEY = 'sc_intro_logo_vue';
 
 // Les trois pièces du logo (crochet du haut, crochet du bas, losange), une par
@@ -72,17 +70,8 @@ function prefersReducedMotion() {
   }
 }
 
-function preSplashShowedLogo() {
-  if (preview) return false;
-  try {
-    return Boolean(document.getElementById('pre-splash')) && performance.now() >= PRE_SPLASH_LOGO_MS;
-  } catch {
-    return false;
-  }
-}
-
 function initialPhase() {
-  return introSeen() || prefersReducedMotion() || preSplashShowedLogo() ? 'static' : 'play';
+  return introSeen() || prefersReducedMotion() ? 'static' : 'play';
 }
 
 export default function BootScreen({ loading = true, title = 'Connexion à votre espace', onFinished }) {
@@ -145,8 +134,7 @@ export default function BootScreen({ loading = true, title = 'Connexion à votre
   );
 }
 
-// Même taille que le logo du pré-splash (vite-index.html) : le relais entre
-// les deux ne bouge pas d'un pixel.
+// Environ un cinquième de la largeur au téléphone, plafonné sur tablette.
 const LOGO_SIZE = 'clamp(76px, 21vw, 116px)';
 
 const s = {

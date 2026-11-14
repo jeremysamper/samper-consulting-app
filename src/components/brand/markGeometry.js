@@ -4,9 +4,9 @@
 // (src/components/brand/SamperMark.jsx, affiché dans l'app) et par le script de
 // génération des assets (scripts/gen-icons.mjs, qui fabrique les PNG du
 // manifest, le favicon.svg et le favicon.ico). Modifier le tracé ou une couleur
-// ici, relancer `npm run brand:icons`, et tout reste cohérent. Le pré-splash de
-// vite-index.html recopie le même tracé en dur (il s'affiche avant tout
-// JavaScript) : le mettre à jour à la main quand ce fichier change.
+// ici, relancer `npm run brand:icons`, et tout reste cohérent. L'écran de
+// chargement (BootScreen.jsx) lit aussi ce tracé ; le pré-splash de
+// vite-index.html n'en porte plus.
 //
 // Construction : un losange plein aux coins arrondis, tenu par deux crochets
 // pleins qui se répondent par une symétrie centrale. Chaque crochet a un grand

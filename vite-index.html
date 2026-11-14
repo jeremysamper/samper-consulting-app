@@ -72,21 +72,17 @@
     <link rel="preload" href="/fonts/ui/IBMPlexSans-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
 
     <!-- Pré-splash : le fond de l'écran de chargement (BRAND_COLORS.abysse,
-         comme le lancement natif du manifest) entre le premier affichage et
-         le premier rendu React (BootScreen, qui y trace le logo). Retiré par
-         src/main.jsx dès que React a peint. Si le JavaScript tarde, le logo
-         plein apparaît ici après 0,9 s, et BootScreen le reprend tel quel
-         sans le retracer (PRE_SPLASH_LOGO_MS). Le tracé est celui de
-         src/components/brand/markGeometry.js, à la taille du logo de
-         BootScreen. -->
+         comme les images de lancement iOS et le manifest) entre le premier
+         affichage et le premier rendu React. Retiré par src/main.jsx dès que
+         React a peint. Aucun logo ici : BootScreen est le seul à le dessiner,
+         au centre. Le logo que le pré-splash montrait quand le démarrage
+         tardait (iPad) se voyait une seconde en bas à droite à l'ouverture,
+         avant celui du centre (constaté le 14.11.2026). -->
     <style>
       #pre-splash {
         position: fixed;
         inset: 0;
         z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         background: #000D13;
         transition: opacity 0.3s ease;
       }
@@ -94,24 +90,10 @@
         opacity: 0;
         pointer-events: none;
       }
-      #pre-splash svg {
-        display: block;
-        width: clamp(76px, 21vw, 116px);
-        height: clamp(76px, 21vw, 116px);
-        opacity: 0;
-        animation: pre-splash-logo 0.4s ease 0.9s forwards;
-      }
-      @keyframes pre-splash-logo {
-        to { opacity: 1; }
-      }
     </style>
   </head>
   <body>
-    <div id="pre-splash" aria-hidden="true">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2.069 14.137L0.953 13.021A2.711 2.711 0 0 1 0.953 9.187L8.967 1.173A4.044 4.044 0 0 1 14.687 1.173L17.751 4.238A1.2 1.2 0 0 1 16.208 6.065L13.891 4.421C13.075 3.842 11.403 4.018 10.539 4.882L4.295 11.125A3.333 3.333 0 0 0 3.321 13.594A0.733 0.733 0 0 1 2.069 14.137ZM21.931 9.863L23.047 10.979A2.711 2.711 0 0 1 23.047 14.813L15.033 22.827A4.044 4.044 0 0 1 9.313 22.827L6.249 19.762A1.2 1.2 0 0 1 7.792 17.935L10.109 19.579C10.925 20.158 12.597 19.982 13.461 19.118L19.705 12.875A3.333 3.333 0 0 0 20.679 10.406A0.733 0.733 0 0 1 21.931 9.863ZM7.38 11.057L11.057 7.38A1.733 1.733 0 0 1 13.508 7.38L16.62 10.492A1.733 1.733 0 0 1 16.62 12.943L12.943 16.62A1.733 1.733 0 0 1 10.492 16.62L7.38 13.508A1.733 1.733 0 0 1 7.38 11.057Z" fill="#EFE8DD"/>
-      </svg>
-    </div>
+    <div id="pre-splash" aria-hidden="true"></div>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
