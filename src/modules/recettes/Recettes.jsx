@@ -2036,6 +2036,10 @@ const Recettes = ({ user, etablissement }) => {
   // Je cherche une fiche ouvre la bibliothèque sous un champ toujours ouvert.
   const gerer = ecran === 'gerer';
   const vueBiblio = ecran === 'chercher' || (gerer && isLibrary);
+  // Gérer les cartes, pour qui gère les cartes : l'en-tête garde « Ajouter une
+  // carte » et « Ordre des cartes » ; Allergènes, Exporter, Sélectionner (et
+  // les archives) passent au menu « Actions » de la barre des cartes.
+  const actionsAuMenu = gerer && canManageCartes;
   // La loupe : dans l'en-tête de la carte du moment, dans la barre de Gérer.
   const loupe = <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un plat, une recette…" />;
   return (
@@ -2081,21 +2085,30 @@ const Recettes = ({ user, etablissement }) => {
               onHideCarte={masquerCarte}
               homeId={defaultCarteId}
               onReorderCartes={reorderCartes}
+              actionsMenu={actionsAuMenu ? [
+                { titre: 'Allergènes', detail: 'Trouver dans quelles recettes un ingrédient ou allergène apparaît', onClick: () => setShowIngredientSearch(true) },
+                { titre: 'Exporter', detail: 'Exporter une carte entière, des plats ou des recettes dans un seul PDF', onClick: () => setShowExportModal(true) },
+                isLibrary && canFiches && !selection.active && { titre: 'Sélectionner', onClick: selection.enter },
+              ] : undefined}
             />
           </div>
           {gerer && (
             <div style={{ ...rs.toolbarActions, ...(isMobile ? rs.toolbarActionsMobile : {}) }} className="no-print">
               {loupe}
-              {/* Toujours libellé + teinte "warning" (langage visuel allergènes de l'app) :
-                  en icône seule (une loupe), il se confondait avec la loupe de recherche. */}
-              <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
-              <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</button>
+              {/* Toujours libellé (en icône seule, une loupe, il se confondait avec
+                  la loupe de recherche). Au menu « Actions » pour qui gère les cartes. */}
+              {!actionsAuMenu && (
+                <>
+                  <button style={rs.printBtn} onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</button>
+                  <button style={rs.printBtn} onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</button>
+                </>
+              )}
               {/* Bibliothèque, droit « fiches » : un plat sans carte, la
                   sélection de fiches ; IA en lot pour le consultant. */}
               {isLibrary && canFiches && (
                 <>
                   <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: null })}>Ajouter un plat</button>
-                  {!selection.active && <button style={rs.printBtn} onClick={selection.enter}>Sélectionner</button>}
+                  {!selection.active && !actionsAuMenu && <button style={rs.printBtn} onClick={selection.enter}>Sélectionner</button>}
                 </>
               )}
               {isLibrary && isConsultant && (
