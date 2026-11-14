@@ -12,7 +12,7 @@ import { ouvrirCompte } from '../../services/navigationService.js';
 import { peutGererPassations } from './gardesPassations.js';
 import { zurichAjouterJours, zurichToday } from '../../utils/zurichTime.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
-import { Champ, Liste, Vide, h } from '../hebergement/hotelUi.jsx';
+import { Champ, Liste, PageHotel, ReperesHotel, Vide, h } from '../hebergement/hotelUi.jsx';
 import {
   CANAL_TOUS, JOURS_SEMAINE, POLES, RECURRENCES, SERVICES_PASSATION, dateCourte, dateHeureZurich, equipeDe, libelleDe, libelleRecurrence,
   nomPersonne, passationsNonLues, poleDuRole, tacheDueLe, useMessagesCanaux, usePassationLectures, usePassations, useTachesFaites, useTachesRecurrentes,
@@ -240,7 +240,7 @@ export default function Passations({ user, etablissement, ecranReglage = null })
   const lignePassation = (p) => {
     const lue = estLue(p);
     return (
-      <div key={p.id} style={{ ...pz.carte, borderLeftColor: p.important ? 'var(--danger-text)' : 'var(--border)' }}>
+      <div key={p.id} data-cadre="" style={{ ...pz.carte, borderLeftColor: p.important ? 'var(--danger-text)' : 'var(--rule-soft)' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span style={h.detail} data-no-translate>{dateCourte(p.jour)}</span>
           <Puce ton="neutre">{libelleDe(SERVICES_PASSATION, p.service)}</Puce>
@@ -251,10 +251,10 @@ export default function Passations({ user, etablissement, ecranReglage = null })
         </div>
         <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }} data-no-translate>{p.contenu}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {!lue && p.createdBy !== moi && <Btn variant="primary" onClick={() => marquerLue(p)} style={{ minHeight: 40, fontSize: 13 }}>J'ai lu</Btn>}
+          {!lue && p.createdBy !== moi && <Btn variant="primary" onClick={() => marquerLue(p)}>J'ai lu</Btn>}
           {lue && <Puce ton="success">Lu</Puce>}
-          {(p.createdBy === moi || peutGerer) && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setForm({ passation: p })}>Modifier</button>}
-          {(p.createdBy === moi || peutGerer) && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={async () => { const r = await passations.supprimer(p.id); if (r.error) notify(r.error, 'error'); else notify('Passation supprimée.', 'success'); }}>Supprimer</button>}
+          {(p.createdBy === moi || peutGerer) && <Btn onClick={() => setForm({ passation: p })}>Modifier</Btn>}
+          {(p.createdBy === moi || peutGerer) && <Btn onClick={async () => { const r = await passations.supprimer(p.id); if (r.error) notify(r.error, 'error'); else notify('Passation supprimée.', 'success'); }}>Supprimer</Btn>}
         </div>
       </div>
     );
@@ -264,16 +264,23 @@ export default function Passations({ user, etablissement, ecranReglage = null })
     <section className="passations" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' }}>
       {!etabId && <Vide>Aucun établissement sélectionné.</Vide>}
       {etabId && ecran === ECRAN_ACCUEIL && (
-        <>
+        <PageHotel>
           <AccueilModule tuiles={tuiles} />
+          {passations.status === 'ready' && (
+            <ReperesHotel reperes={[
+              { id: 'a-lire', Icone: NotebookPen, valeur: nonLues.length, libelle: nonLues.length === 1 ? 'passation à lire' : 'passations à lire', detail: 'Cahier de passation' },
+              { id: 'taches', Icone: ListTodo, valeur: restantes.length, libelle: restantes.length === 1 ? 'tâche à faire' : 'tâches à faire', detail: 'Tâches du jour' },
+              { id: 'mentions', Icone: AtSign, valeur: mesMentions.length, libelle: mesMentions.length === 1 ? 'mention cette semaine' : 'mentions cette semaine', detail: 'Canaux' },
+            ]} />
+          )}
           {etatLecture && <Vide>{etatLecture}</Vide>}
           {nonLues.length > 0 && (
             <div>
               <div style={h.sousTitre}>À lire</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 6 }}>{nonLues.slice(0, 5).map(lignePassation)}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 8 }}>{nonLues.slice(0, 5).map(lignePassation)}</div>
             </div>
           )}
-        </>
+        </PageHotel>
       )}
       {etabId && enReglage && peutGerer && (
         <EnTeteSection actions={(
@@ -304,7 +311,7 @@ export default function Passations({ user, etablissement, ecranReglage = null })
       {etabId && ecran === 'cahier' && (
         <>
           <SegmentedTabs tabs={ongletsPoles} active={pole} onChange={setPole} retourLigne />
-          {cahier.length ? <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{cahier.map(lignePassation)}</div> : <Vide>Rien dans le cahier de ce pôle sur les quatorze derniers jours.</Vide>}
+          {cahier.length ? <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{cahier.map(lignePassation)}</div> : <Vide>Rien dans le cahier de ce pôle sur les quatorze derniers jours.</Vide>}
         </>
       )}
 
@@ -315,28 +322,28 @@ export default function Passations({ user, etablissement, ecranReglage = null })
             <textarea style={{ ...h.saisie, minHeight: 64 }} value={texte} onChange={(ev) => setTexte(ev.target.value)} placeholder="Un message pour ce canal…" />
             <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
               <AtSign size={16} strokeWidth={1.8} aria-hidden="true" style={{ color: 'var(--text2)' }} />
-              <select style={{ ...h.saisie, width: 'auto', minHeight: 40 }} value="" onChange={(ev) => { const id = ev.target.value; if (id && !mentions.includes(id)) setMentions([...mentions, id]); }} data-no-translate>
+              <select style={{ ...h.saisie, width: 'auto' }} value="" onChange={(ev) => { const id = ev.target.value; if (id && !mentions.includes(id)) setMentions([...mentions, id]); }} data-no-translate>
                 <option value="">{'Mentionner quelqu\'un…'}</option>
                 {equipe.filter((u) => !mentions.includes(u.id)).map((u) => <option key={u.id} value={u.id}>{u.nom}</option>)}
               </select>
               {mentions.map((id) => (
-                <button key={id} type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 36, fontSize: 13 }} onClick={() => setMentions(mentions.filter((x) => x !== id))} data-no-translate>@{nomPersonne(id)} ×</button>
+                <Btn key={id} small onClick={() => setMentions(mentions.filter((x) => x !== id))}><span data-no-translate>@{nomPersonne(id)} ×</span></Btn>
               ))}
               <span style={{ flex: 1 }} />
-              <Btn variant="primary" onClick={envoyer} disabled={!texte.trim()} style={{ minHeight: 44 }}>Envoyer</Btn>
+              <Btn variant="primary" onClick={envoyer} disabled={!texte.trim()}>Envoyer</Btn>
             </div>
             {erreur && <div style={h.erreur} role="alert">{erreur}</div>}
           </div>
           {!fil.length && <Vide>Aucun message sur ce canal.</Vide>}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {fil.map((m) => (
-              <div key={m.id} style={{ ...pz.carte, borderLeftColor: m.mentions.includes(moi) ? 'var(--accent)' : 'var(--border)' }}>
+              <div key={m.id} data-cadre="" style={{ ...pz.carte, borderLeftColor: m.mentions.includes(moi) ? 'var(--accent)' : 'var(--rule-soft)' }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }} data-no-translate>{nomPersonne(m.createdBy)}</span>
                   <span style={h.detail} data-no-translate>{dateHeureZurich(m.createdAt)}</span>
                   {m.mentions.map((id) => <Puce key={id} ton={id === moi ? 'info' : 'neutre'}><span data-no-translate>@{nomPersonne(id)}</span></Puce>)}
                   <span style={{ flex: 1 }} />
-                  {(m.createdBy === moi || peutGerer) && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 32, padding: '4px 8px', fontSize: 12 }} onClick={() => supprimerMessage(m)}>Supprimer</button>}
+                  {(m.createdBy === moi || peutGerer) && <Btn small onClick={() => supprimerMessage(m)}>Supprimer</Btn>}
                 </div>
                 <div style={{ fontSize: 14, color: 'var(--text)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }} data-no-translate>{m.contenu}</div>
               </div>
@@ -348,14 +355,14 @@ export default function Passations({ user, etablissement, ecranReglage = null })
       {etabId && ecran === 'taches' && (
         <>
           {!tachesDuJour.length && <Vide>Aucune tâche récurrente ne tombe aujourd'hui.</Vide>}
-          <Liste>
-            {POLES.filter((p) => tachesDuJour.some((t) => t.pole === p.id)).map((p) => (
-              <div key={p.id}>
-                <div style={h.sousTitre}>{p.label}</div>
+          {POLES.filter((p) => tachesDuJour.some((t) => t.pole === p.id)).map((p) => (
+            <div key={p.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={h.sousTitre}>{p.label}</div>
+              <Liste>
                 {tachesDuJour.filter((t) => t.pole === p.id).map((t) => {
                   const f = estFaite(t);
                   return (
-                    <label key={t.id} style={{ ...h.ligne, cursor: 'pointer', marginTop: 6 }}>
+                    <label key={t.id} style={{ ...h.ligne, cursor: 'pointer', justifyContent: 'flex-start' }}>
                       <input type="checkbox" checked={!!f} onChange={() => cocher(t)} style={{ width: 22, height: 22, accentColor: 'var(--accent)', flexShrink: 0 }} />
                       <span style={h.ligneGauche}>
                         <span style={{ ...h.nomHote, textDecoration: f ? 'line-through' : 'none' }} data-no-translate>{t.titre}</span>
@@ -365,9 +372,9 @@ export default function Passations({ user, etablissement, ecranReglage = null })
                     </label>
                   );
                 })}
-              </div>
-            ))}
-          </Liste>
+              </Liste>
+            </div>
+          ))}
         </>
       )}
 
@@ -394,9 +401,11 @@ export default function Passations({ user, etablissement, ecranReglage = null })
   );
 }
 
+// Une passation ou un message : une carte blanche ; le trait de gauche dit
+// l'important (rouge) ou la mention de la personne connectée (accent).
 const pz = {
   carte: {
-    display: 'flex', flexDirection: 'column', gap: 8, padding: '10px 14px', background: 'var(--surface)', borderRadius: 'var(--r)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderLeftWidth: 4, borderLeftStyle: 'solid', borderLeftColor: 'var(--border)',
+    ...h.carte, gap: 8, padding: '14px 18px',
+    borderLeftWidth: 4, borderLeftStyle: 'solid', borderLeftColor: 'var(--rule-soft)',
   },
 };
