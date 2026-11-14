@@ -40,9 +40,13 @@
 @container compta (min-width: 900px) {
   .compta-cartes { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 }
+/* Le picto de la grande carte se retire quand la carte est étroite
+   (!important : le cercle pose son display en style inline). */
+.compta-carte-picto { display: none !important; }
 .compta-carte-valeur { font-size: var(--t5); }
 @container compta (min-width: 600px) {
   .compta-carte-valeur { font-size: var(--t6); }
+  .compta-carte-picto { display: inline-flex !important; }
 }
 
 /* ── Tableau de la vue d'ensemble : 4 colonnes, 2 sur téléphone ───────────── */

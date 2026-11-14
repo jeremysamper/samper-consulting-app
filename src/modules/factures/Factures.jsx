@@ -673,7 +673,7 @@ const Factures = ({ user, etablissement }) => {
                     onClick={() => setSelectedEtabId(et.id)}
                     type="button"
                   >
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: et.couleur || 'var(--accent)' }} />
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: et.couleur || 'var(--accent)', outline: sel ? '2px solid var(--on-accent)' : 'none' }} />
                     {et.nom}
                   </button>
                 );

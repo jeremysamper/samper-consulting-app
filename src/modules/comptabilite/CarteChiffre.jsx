@@ -17,7 +17,7 @@ export default function CarteChiffre({ id, titre, Icone, valeur, lignes = [], on
   const contenu = (
     <>
       <span style={st.tete}>
-        {Icone && <span style={pictoCercleStyle(36)} aria-hidden="true"><Icone size={18} strokeWidth={1.8} /></span>}
+        {Icone && <span className="compta-carte-picto" style={pictoCercleStyle(36)} aria-hidden="true"><Icone size={18} strokeWidth={1.8} /></span>}
         <span>{titre}</span>
       </span>
       <span className="compta-carte-valeur" style={{ ...st.valeur, ...(ton === 'danger' ? { color: 'var(--danger-text)' } : null) }}>

@@ -64,7 +64,9 @@
   .ach-grille { gap: 24px; }
   .ach-page .ui-repere { padding: 14px 16px; }
   .ach-page .ui-repere-icone { display: inline-flex !important; }
-  .ach-reperes { gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  /* Trois colonnes fixes : un repère seul (sans le droit de régler) garde la
+     largeur d'un tiers. */
+  .ach-reperes { gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .ach-cartes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
 }
 @container ach (min-width: 760px) {
