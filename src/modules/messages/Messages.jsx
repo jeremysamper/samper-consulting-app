@@ -343,7 +343,8 @@ const ms = {
   // Deux onglets tiennent dans la colonne la plus étroite (187 px sur 301) :
   // la barre ne défile pas en largeur.
   vues: (cible) => ({ padding: 0, borderWidth: 0, gap: 8, alignItems: 'stretch', minHeight: cible, overflowX: 'visible' }),
-  droiteVide: { ...carte, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '44px 20px', minWidth: 0 },
+  // Vide : une carte à la hauteur de son contenu, pas étirée sur la rangée.
+  droiteVide: { ...carte, alignSelf: 'start', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '44px 20px', minWidth: 0 },
 };
 
 export default Messages;

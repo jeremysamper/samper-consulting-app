@@ -763,8 +763,8 @@ const ds = {
   filBtn: { background: 'none', border: 'none', color: 'var(--lien)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', padding: '6px 8px', borderRadius: 'var(--r)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   filBtnActif: { color: 'var(--text)' },
   filSep: { color: 'var(--text3)', fontSize: 'var(--t2)' },
-  btnPrimaire: { padding: '8px 18px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
-  btnGhost: { padding: '8px 16px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
+  btnPrimaire: { padding: '8px 16px', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
+  btnGhost: { padding: '8px 14px', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0 },
 
   banniere: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '11px 0 11px 12px',  borderLeft: '2px solid var(--warning-bd)',  color: 'var(--warning-text)', fontSize: 'var(--t1)', lineHeight: 1.5 },
   depot: { padding: '18px 16px', textAlign: 'center', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--lien)', background: 'var(--bg)', border: '2px dashed var(--accent)', borderRadius: 'var(--r-lg)' },
