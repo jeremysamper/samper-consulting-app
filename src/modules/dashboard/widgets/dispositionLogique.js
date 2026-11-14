@@ -60,7 +60,7 @@ export function origine(poste, ctx) {
   const liste = [];
   const pose = (id, taille) => { if (vu(id)) liste.push({ id, taille }); };
 
-  let reperes = ['repere-couverts', 'repere-groupes', 'repere-equipe'].filter(vu);
+  let reperes = ['repere-couverts', 'repere-groupes', 'repere-equipe', 'mes-points'].filter(vu);
   if (tel && vu('equipe')) reperes = reperes.filter((id) => id !== 'repere-equipe');
   taillesDeGroupe(reperes.length, poste).forEach((taille, i) => liste.push({ id: reperes[i], taille }));
 

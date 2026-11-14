@@ -22,7 +22,7 @@
 
 import React from 'react';
 import './tableau.css';
-import { getDemoData, getPermissionsForRole } from '../../data/demoData.js';
+import { canManageModule, getDemoData, getPermissionsForRole } from '../../data/demoData.js';
 import { estEtablissementHotel, isModuleActiveForEtab, isPageActiveForEtab, navItems } from '../moduleConfig.js';
 import { applyNavOrder, parseNavOrder } from '../../hooks/useNavOrder.js';
 import { readJson } from '../../utils/storage.js';
@@ -51,6 +51,8 @@ import GrilleWidgets from './widgets/GrilleWidgets.jsx';
 import { useDisposition } from './widgets/useDisposition.js';
 import { modulesDuMenu as filtrerMenu, raccourcisAffiches } from './widgets/dispositionLogique.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { usePointsEtat } from '../points/pointsEtat.js';
+import { useResumePoints } from '../points/useResumePoints.js';
 
 // Heure de Zurich, rafraîchie toutes les 30 s (durée en poste, retards) et au
 // retour sur l'app. Le jour suit : passé minuit, tout se relit sur le nouveau.
@@ -107,6 +109,11 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   // Régularité de l'équipe (direction, planning activé) : une ligne de plus
   // seulement si l'établissement a au moins un contrat.
   const regularite = useRegulariteEquipe(direction && avecPlanning);
+  // Points & boutique : l'état est celui du filtre du menu (même lecture en
+  // cache) ; le solde n'est lu que si le système est allumé et que la personne
+  // participe.
+  const pointsEtat = usePointsEtat(etabId, user?.id, { gereFront: canManageModule(role, 'points'), enabled: perms.points !== false });
+  const points = useResumePoints({ etabId, userId: user?.id, enabled: pointsEtat.actif && pointsEtat.participant });
   const { disposition, enregistrer } = useDisposition(user?.id || null);
   const [personnaliser, setPersonnaliser] = React.useState(false);
 
@@ -281,12 +288,13 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
     avecGroupesListe: avecGroupesLus && !nonLu('groupes'),
     avecAbsences: absencesLues,
     avecMessages: actif('messages') && perms.messages !== false,
+    avecPoints: pointsEtat.actif && pointsEtat.participant && points.lu,
     modulesDuMenu: menu,
   };
 
   const t = {
     user, aujourdhui, maintenant, mobile, etabId, consultant, direction, d, absences, absencesLues, telephones, nbMessages,
-    nonLu, peutOuvrir, ouvrir, reperes, items, blocsGestion, regularite, publierMessage,
+    nonLu, peutOuvrir, ouvrir, reperes, items, blocsGestion, regularite, publierMessage, points,
     avecPlanning, avecGroupes, avecCouvertsLus, avecGroupesLus,
     versPlanning: peutOuvrir('planning') ? () => ouvrir('planning') : null,
     versReservations: peutOuvrir('previsions') ? () => ouvrir('previsions') : null,

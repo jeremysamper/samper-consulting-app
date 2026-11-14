@@ -1,6 +1,6 @@
 import React from 'react';
 import { CircleCheck } from 'lucide-react';
-import { Anneau, Barres, pictoCercleStyle } from '../../../components/ui/index.jsx';
+import { Anneau, Barres, CarteRepere, ligneStyle, pictoCercleStyle } from '../../../components/ui/index.jsx';
 import { getModuleIcon } from '../../moduleIcons.js';
 import { metaMotif, periodeAbsence } from '../../../utils/absences.js';
 import { userDisplay } from '../../../utils/userDisplay.js';
@@ -15,6 +15,7 @@ import { CarteCouverts, CarteEquipe, CarteSemaine } from '../CartesModele.jsx';
 import { Chiffre, LienModule, Parties, Repere, Section, StatutGroupe, Vide } from '../tableauBriques.jsx';
 import { absencesAVenir, absencesDuJour, jourRelatif, heureParlee, pertesParSemaine, relevesDuJour } from '../tableauLogique.js';
 import { CAPACITE_RACCOURCIS } from './dispositionLogique.js';
+import { chiffresDuMois, formatPoints, libelleAction, prochainCadeau } from '../../points/bareme.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composants des widgets du tableau de bord. Chacun reçoit :
@@ -284,6 +285,79 @@ export function WidgetMessages({ t }) {
           <CircleCheck size={16} strokeWidth={2} aria-hidden="true" style={{ color: 'var(--success-strong)' }} />
           <span>Aucun message non lu</span>
         </p>
+      )}
+    </section>
+  );
+}
+
+// Mes points (Points & boutique) : le solde de la personne et le prochain
+// cadeau à portée ; en grand, les points gagnés ce mois et les derniers gestes
+// comptés. Aucun classement entre employés. Le nombre vit dans son nœud, le
+// mot à côté (traduction du DOM).
+const LIGNES_POINTS = 3;
+
+function Points({ n, signe = false }) {
+  const v = Number(n) || 0;
+  return (
+    <span style={{ whiteSpace: 'nowrap' }}>
+      <span data-no-translate style={{ fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' }}>{(signe && v > 0 ? '+' : '') + formatPoints(v)}</span>
+      {' '}<span>{Math.abs(v) > 1 ? 'points' : 'point'}</span>
+    </span>
+  );
+}
+
+export function WidgetMesPoints({ t, taille }) {
+  const p = t.points;
+  const proposes = p.cadeaux.filter((c) => c.actif);
+  const prochain = prochainCadeau(proposes, p.solde);
+  const ouvrir = t.peutOuvrir('points') ? () => t.ouvrir('points') : null;
+  if (taille === 'petit') {
+    return (
+      <CarteRepere
+        data-repere="points"
+        className={ouvrir ? 'tdb-lien tdb-repere tdb-repere-carte' : 'tdb-repere-carte'}
+        Icone={getModuleIcon('points')}
+        valeur={formatPoints(p.solde)}
+        libelle="Mes points"
+        detail={prochain ? <><span>Encore</span>{' '}<Points n={prochain.manque} /></> : null}
+        onClick={ouvrir}
+      />
+    );
+  }
+  const mois = taille === 'grand' ? chiffresDuMois(p.mouvements) : null;
+  const derniers = taille === 'grand' ? p.mouvements.slice(0, LIGNES_POINTS) : [];
+  return (
+    <section className="tdb-panneau tdb-widget-carte" aria-labelledby="tdb-w-points" style={w.carte}>
+      <h2 id="tdb-w-points" className="tdb-titre" style={w.titre}>Mes points</h2>
+      <div style={w.ligneAnneau}>
+        {prochain && <Anneau part={prochain.part} couleur="var(--success-strong)" taille={56} />}
+        <span style={{ minWidth: 0 }}>
+          <span style={w.grandChiffre} data-no-translate>{formatPoints(p.solde)}</span>
+          <span style={w.detail}>{p.solde > 1 || p.solde < -1 ? 'points à votre solde' : 'point à votre solde'}</span>
+        </span>
+      </div>
+      <p style={w.detail}>
+        {prochain ? (
+          <>
+            <span>Encore</span>{' '}<Points n={prochain.manque} />{' '}<span>pour</span>{' '}
+            <span data-no-translate style={{ overflowWrap: 'anywhere' }}>{prochain.cadeau.nom}</span>
+          </>
+        ) : (
+          <span>{proposes.length ? 'Tous les cadeaux de la boutique sont à votre portée.' : "La boutique n'a pas encore de cadeau."}</span>
+        )}
+      </p>
+      {mois && (
+        <div style={{ minWidth: 0 }}>
+          <p style={{ ...w.detail, marginBottom: 4 }}><span>Ce mois :</span>{' '}<Points n={mois.gagnes} signe /></p>
+          {derniers.length === 0 ? (
+            <p style={w.detail}>Aucun geste compté pour l&apos;instant.</p>
+          ) : derniers.map((m, i) => (
+            <div key={m.id} style={{ ...ligneStyle({ serree: true, derniere: i === derniers.length - 1 }), padding: '4px 0' }}>
+              <span style={{ ...w.ligneDetail, flex: 1, minWidth: 0, color: 'var(--text)', overflowWrap: 'anywhere' }}>{m.libelle || libelleAction(m.action)}</span>
+              <span style={{ ...w.etat, fontWeight: 'var(--g2)', color: m.points < 0 ? 'var(--text2)' : 'var(--text)' }}><Points n={m.points} signe /></span>
+            </div>
+          ))}
+        </div>
       )}
     </section>
   );
