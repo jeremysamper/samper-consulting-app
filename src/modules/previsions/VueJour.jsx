@@ -358,10 +358,12 @@ export default function VueJour({
           <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', marginBottom: 6 }}>
             Aucune réservation ce jour
           </div>
+          {/* Un seul « Nouvelle réservation » par écran : quand l'en-tête du
+              jour porte le sien, l'état vide n'en rend pas un second. */}
           <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>
-            {onNouvelle
-              ? <Btn variant="primary" onClick={onNouvelle} style={{ marginTop: 6 }}>Nouvelle réservation</Btn>
-              : 'Revenez à la semaine pour voir les autres jours.'}
+            {!onNouvelle
+              ? 'Revenez à la semaine pour voir les autres jours.'
+              : (compact || !canEdit) && <Btn variant="primary" onClick={onNouvelle} style={{ marginTop: 6 }}>Nouvelle réservation</Btn>}
           </div>
         </div>
       )}
