@@ -81,7 +81,7 @@ export default function ClientsSpa({
           titre="Premier client"
           texte="Les fiches se créent ici, ou directement en prenant un rendez-vous."
           action={onNouveau && (
-            <button type="button" onClick={onNouveau} style={{ ...st.principal, marginTop: 6 }}>Accueillir un client</button>
+            <button type="button" onClick={onNouveau} style={{ ...st.secondaire, marginTop: 6 }}>Accueillir un client</button>
           )}
         />
       )}
