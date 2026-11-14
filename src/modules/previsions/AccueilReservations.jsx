@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, CalendarDays, CalendarPlus, ChartColumn, ConciergeBell, LayoutGrid, Search, Settings2, Users } from 'lucide-react';
+import { Bell, CalendarDays, CalendarPlus, ConciergeBell, LayoutGrid, Search, Settings2, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import ReperesReservations, { CarteServiceDuJour } from './ReperesReservations.jsx';
 import { chiffresDuJour } from './accueilReservations.js';
@@ -24,8 +24,8 @@ import { chiffresDuJour } from './accueilReservations.js';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function AccueilReservations({
-  couverts, resasDuJour, notificationsActives, canEdit, voitRapport, voitReglages,
-  onReserver, onService, onPlanning, onPlan, onChercher, onClients, onRapport, onNotifications, onReglages,
+  couverts, resasDuJour, notificationsActives, canEdit, voitReglages,
+  onReserver, onService, onPlanning, onPlan, onChercher, onClients, onNotifications, onReglages,
 }) {
   const tuiles = [
     { id: 'reserver', Icone: CalendarPlus, libelle: 'Je réserve une table', onClick: onReserver, visible: canEdit, etat: <>au téléphone ou au comptoir</> },
@@ -39,7 +39,6 @@ export default function AccueilReservations({
     { id: 'plan', Icone: LayoutGrid, libelle: 'Le plan de salle', onClick: onPlan, etat: <>les tables d'aujourd'hui</> },
     { id: 'chercher', Icone: Search, libelle: 'Je cherche une réservation', onClick: onChercher, etat: <>par le nom ou le téléphone</> },
     { id: 'clients', Icone: Users, libelle: 'Les clients', onClick: onClients, etat: <>le fichier, rempli par les réservations</> },
-    { id: 'rapport', Icone: ChartColumn, libelle: 'Le rapport', onClick: onRapport, visible: voitRapport, etat: <>l'activité, en lecture seule</> },
     {
       id: 'notifications', Icone: Bell, libelle: 'Prévenir cet appareil', onClick: onNotifications,
       etat: notificationsActives ? <>activées sur cet appareil</> : <>à chaque réservation en ligne</>,

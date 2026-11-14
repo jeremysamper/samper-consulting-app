@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Input } from '../../components/ui/index.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
-import { ROLES_RAPPORT } from './rapport/gardeRapport.js';
 import AccueilReservations from './AccueilReservations.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
@@ -11,8 +10,7 @@ import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
 import { peutGererReservations, peutReglerEnLigne } from './gardeEnLigne.js';
-import { ouvrirCompte, ouvrirStatistiques } from '../../services/navigationService.js';
-import { demandeRaccourci } from '../statistiques/raccourcisStatistiques.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
 import { useNotificationsAppareil } from './NotificationsAppareil.jsx';
 import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
@@ -25,8 +23,8 @@ import { zurichToday } from '../../utils/zurichTime.js';
 // cuisine et le spa, même quand le module leur est ouvert (décision de Jérémy,
 // 15.10.2026). La base ne filtre que par établissement : c'est un choix
 // d'écran, pas une garde. La liste des rôles est dans rapport/gardeRapport.js.
-// Depuis S3, la tuile ouvre Statistiques préréglé (raccourcisStatistiques.js) ;
-// l'écran du rapport est parti.
+// Depuis le 14.11.2026 le rapport s'ouvre dans Statistiques (analyse
+// « Réservations », pour ces mêmes rôles) : la tuile a quitté cet accueil.
 
 // Mode service resté ouvert sur cet appareil (valeur : id de l'établissement).
 // L'iPad de l'entrée qui recharge en plein service (mise à jour, réveil)
@@ -102,7 +100,6 @@ export default function Previsions({ user, etablissement }) {
   // Créer / modifier / annuler des réservations : droit « gérer » du module
   // (Rôles & accès, case « Modifier » ; défaut consultant/patron/resp_cuisine/hôte).
   const canEdit        = peutGererReservations(user?.role);
-  const voitRapport    = ROLES_RAPPORT.includes(user?.role);
   const voitReglages   = peutReglerEnLigne(user?.role);
   // showFinancials réservé pour les futures sections KPIs CA
   // const showFinancials = ROLES_FINANCIALS.includes(user?.role);
@@ -203,7 +200,6 @@ export default function Previsions({ user, etablissement }) {
           resasDuJour={jourAccueil.resas && !jourAccueil.error ? jourAccueil.resas : null}
           notificationsActives={notifications.actif}
           canEdit={canEdit}
-          voitRapport={voitRapport}
           voitReglages={voitReglages}
           onReserver={() => setShowForm(true)}
           onService={() => ouvrirModeService(zurichToday())}
@@ -211,7 +207,6 @@ export default function Previsions({ user, etablissement }) {
           onPlan={() => setEcran('plan')}
           onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
           onClients={() => setEcran('clients')}
-          onRapport={() => ouvrirStatistiques(demandeRaccourci('reservations'))}
           onNotifications={() => ouvrirCompte('notifications')}
           onReglages={() => ouvrirCompte('reservation_en_ligne')}
         />

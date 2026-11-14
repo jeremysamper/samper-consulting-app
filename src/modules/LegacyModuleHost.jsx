@@ -1,6 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { estEnPause, isPageActiveForEtab, normalizePage, pageAccueil, peutOuvrirPage } from './moduleConfig.js';
-import { peutOuvrirStatistiques } from './statistiques/gardesStatistiques.js';
+import { peutOuvrirStatistiques, voitUneAnalyse } from './statistiques/gardesStatistiques.js';
 import SafeModule from '../legacy/SafeModule.jsx';
 import { PageActive } from '../components/parcours/pageActive.js';
 import { getPermissionsForRole } from '../data/demoData.js';
@@ -181,7 +181,11 @@ export default function LegacyModuleHost({
   // Module non activé pour cet établissement (Paramètres) : page mémorisée
   // d'une session précédente, lien d'un autre module ou changement
   // d'établissement. On le dit plutôt que d'ouvrir un module caché du menu.
-  if (!isPageActiveForEtab(etablissement, page)) {
+  // Exception : Statistiques reste ouvert à qui voit une analyse venue d'un
+  // module actif (rapport des réservations, analyses des dépenses, rapports de
+  // caisse), ces analyses n'ayant plus d'autre entrée.
+  const analysesSeules = normalizePage(page) === 'statistiques' && voitUneAnalyse(user, permissions, etablissement);
+  if (!isPageActiveForEtab(etablissement, page) && !analysesSeules) {
     // Accueil d'un établissement sans tableau de bord (spa) : App redirige
     // aussitôt vers sa page d'accueil, rien à afficher d'ici là.
     if (normalizePage(page) === 'dashboard') return null;

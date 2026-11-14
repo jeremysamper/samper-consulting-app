@@ -1,5 +1,5 @@
 import React from 'react';
-import { Banknote, CalendarClock, ChartColumn, ChartLine, ClipboardList, Receipt, Settings2, Truck } from 'lucide-react';
+import { Banknote, CalendarClock, ChartColumn, ClipboardList, Receipt, Settings2, Truck } from 'lucide-react';
 import { Btn } from '../../components/ui/index.jsx';
 import { Choix, Fenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
@@ -28,17 +28,16 @@ import { datesAVerifier, depensesParMois, echeancier, trierDocuments } from '../
 
 const TUILES_PAR_VUE = {
   inventaire: ['compte', 'ecarts', 'gerer'],
-  achats: ['livraison', 'facture', 'reglement', 'echeances', 'analyses'],
+  achats: ['livraison', 'facture', 'reglement', 'echeances'],
 };
 
-const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const plusRecent = (docs) => docs.slice().sort((a, b) => String(b.dateDocument || '').localeCompare(String(a.dateDocument || '')))[0];
 
 export default function AccueilInventaire({
   vue = 'inventaire', perimetreActif, perimetres, pilesParPerimetre, inv, docs,
   canManage, canRegler, canImportXlsx,
-  onJeCompte, onImport, onCompleter, onReglement, onEcheances, onAnalyses, onVerifierDates, onEcarts, onChoisirPerimetre, onNouveauPerimetre, gerer,
+  onJeCompte, onImport, onCompleter, onReglement, onEcheances, onVerifierDates, onEcarts, onChoisirPerimetre, onNouveauPerimetre, gerer,
 }) {
   const [fenetre, setFenetre] = React.useState(null); // 'perimetre' | 'gerer' | null
   const fermer = React.useCallback(() => setFenetre(null), []);
@@ -103,12 +102,6 @@ export default function AccueilInventaire({
         : prochaine ? <>prochaine le <span>{dateCH(prochaine)}</span></> : <>aucune échéance à venir</>,
     },
     {
-      id: 'analyses', Icone: ChartLine, libelle: 'Analyses des dépenses', onClick: onAnalyses,
-      etat: !depenses ? null : depenses.montant == null
-        ? <>aucune facture chiffrée sur 12 mois</>
-        : <><span>CHF</span> <span>{chf(depenses.montant)}</span> sur 12 mois</>,
-    },
-    {
       id: 'ecarts', Icone: ChartColumn, libelle: 'Écarts et documents', onClick: onEcarts,
       etat: !inv
         ? <>aucun inventaire</>
@@ -137,7 +130,7 @@ export default function AccueilInventaire({
       {!achatsVue && <ReperesInventaire dernier={dernier} perimetreActif={perimetreActif} perimetres={perimetres} pilesParPerimetre={pilesParPerimetre} />}
       {!achatsVue && <CarteInventaire dernier={dernier} perimetreActif={perimetreActif} />}
       {achatsVue && <ReperesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} depenses={depenses} />}
-      {achatsVue && <CartesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} onAnalyses={onAnalyses} onEcheances={onEcheances} />}
+      {achatsVue && <CartesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} onEcheances={onEcheances} />}
 
       {achatsVue && aCompleter > 0 && (
         <div style={st.bandeau} data-bandeau-a-completer="">

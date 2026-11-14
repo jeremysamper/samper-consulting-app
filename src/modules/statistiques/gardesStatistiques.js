@@ -47,7 +47,15 @@ export const FAMILLES_A_RACCOURCI = ['achats', 'comptabilite', 'reservations', '
 
 // La page Statistiques : la clé, ou un écran d'analyse parti vers elle.
 export function peutOuvrirStatistiques(user, permissions, etablissement) {
-  if (peutOuvrirPage('statistiques', user, permissions || {})) return true;
+  return peutOuvrirPage('statistiques', user, permissions || {}) || voitUneAnalyse(user, permissions, etablissement);
+}
+
+// La personne voit au moins une analyse venue d'un module : son écran
+// d'origine lui est ouvert (module actif pour la maison, droit, rôle). Depuis
+// le 14.11.2026 ces analyses n'ont plus d'entrée dans leur module : le menu
+// montre donc Statistiques à cette personne, et la page s'ouvre même si la
+// maison n'a pas mis Statistiques dans sa liste de modules.
+export function voitUneAnalyse(user, permissions, etablissement) {
   const contexte = { role: user?.role, permissions: permissions || {}, etablissement };
   return FAMILLES_A_RACCOURCI.some((f) => GARDES_ECRANS[f](contexte));
 }

@@ -3,8 +3,6 @@ import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/
 import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
-import { ouvrirStatistiques } from '../../services/navigationService.js';
-import { demandeRaccourci } from '../statistiques/raccourcisStatistiques.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { removeStorageKeys } from '../../utils/storage.js';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
@@ -1741,7 +1739,6 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire' }) => {
           onCompleter={ouvrirCompletion}
           onReglement={() => setEcran('reglement')}
           onEcheances={() => setEcran('echeances')}
-          onAnalyses={() => ouvrirStatistiques(demandeRaccourci('achats'))}
           onVerifierDates={(ids) => ouvrirVerification(ids, ECRAN_ACCUEIL)}
           onEcarts={() => setEcran('ecarts')}
           onChoisirPerimetre={setPerimetre}

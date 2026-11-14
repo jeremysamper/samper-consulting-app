@@ -4,8 +4,6 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import PosConnectionBar   from './components/PosConnectionBar.jsx';
 import MappingPlats       from './MappingPlats.jsx';
 import MiseEnPlace        from './views/MiseEnPlace.jsx';
-import { ouvrirStatistiques } from '../../services/navigationService.js';
-import { demandeRaccourci } from '../statistiques/raccourcisStatistiques.js';
 import ConsoIngredients   from './views/ConsoIngredients.jsx';
 
 // ─────────────────────────────────────────────────────────────────
@@ -19,7 +17,6 @@ import ConsoIngredients   from './views/ConsoIngredients.jsx';
 
 const ALL_TABS = [
   { id: 'mise_en_place', label: 'Mise en place J+1', icon: '◷' },
-  { id: 'top_flop',      label: 'Meilleures et moins bonnes ventes', icon: '↑↓' },
   { id: 'conso',         label: 'Conso ingrédients', icon: '◈' },
   { id: 'mapping',       label: 'Correspondance des plats', icon: '⇄' },
 ];
@@ -54,9 +51,9 @@ export default function VentesPos({ user, etablissement }) {
       />
 
       {/* Libellés seuls : pas de glyphe devant un onglet. */}
-      {/* « Meilleures et moins bonnes ventes » est parti dans Statistiques (S3) :
-          l'onglet ouvre le module préréglé sur 7 jours. */}
-      <SegmentedTabs tabs={TABS.map(({ id, label }) => ({ id, label }))} active={effectiveTab} onChange={(id) => (id === 'top_flop' ? ouvrirStatistiques(demandeRaccourci('pos')) : setTab(id))} />
+      {/* « Meilleures et moins bonnes ventes » s'ouvre dans Statistiques
+          (analyse « Ventes POS ») : l'onglet a quitté ce module. */}
+      <SegmentedTabs tabs={TABS.map(({ id, label }) => ({ id, label }))} active={effectiveTab} onChange={setTab} />
 
       {/* ── Mise en place J+1 ── */}
       {effectiveTab === 'mise_en_place' && (
