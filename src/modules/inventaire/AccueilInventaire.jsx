@@ -4,6 +4,7 @@ import { Btn } from '../../components/ui/index.jsx';
 import { Choix, Fenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import ReperesInventaire, { CarteInventaire } from './ReperesInventaire.jsx';
+import ReperesAchats, { CartesAchats } from '../factures-achats/ReperesAchats.jsx';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { dateCH, estCompte } from './inventaireLignes.js';
 import { estACompleter } from './achatsLogic.js';
@@ -118,10 +119,11 @@ export default function AccueilInventaire({
     },
   ];
 
-  // Inventaire (direction Galet) : repères et carte de l'inventaire autour des
-  // tuiles, sur la grille d'inventaire.css. La vue « achats » garde sa page.
+  // Direction Galet : repères et carte autour des tuiles. Inventaire : grille
+  // d'inventaire.css. Achats : repères, échéances et cartes pastel de
+  // ReperesAchats.jsx, grille d'achats.css.
   const page = (
-    <div style={achatsVue ? st.page : undefined} className={achatsVue ? undefined : 'inv-grille'}>
+    <div className={achatsVue ? 'ach-grille' : 'inv-grille'}>
       <div style={st.enTete} className={achatsVue ? undefined : 'inv-entete'}>
         <div style={{ minWidth: 0 }}>
           <div style={st.surTitre}>Périmètre</div>
@@ -131,6 +133,8 @@ export default function AccueilInventaire({
       </div>
       {!achatsVue && <ReperesInventaire dernier={dernier} perimetreActif={perimetreActif} perimetres={perimetres} pilesParPerimetre={pilesParPerimetre} />}
       {!achatsVue && <CarteInventaire dernier={dernier} perimetreActif={perimetreActif} onOuvrir={onJeCompte} />}
+      {achatsVue && <ReperesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} depenses={depenses} />}
+      {achatsVue && <CartesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} onAnalyses={onAnalyses} onEcheances={onEcheances} />}
 
       {achatsVue && aCompleter > 0 && (
         <div style={st.bandeau} data-bandeau-a-completer="">
@@ -213,11 +217,10 @@ export default function AccueilInventaire({
       )}
     </div>
   );
-  return achatsVue ? page : <div className="inv-page">{page}</div>;
+  return <div className={achatsVue ? 'ach-page' : 'inv-page'}>{page}</div>;
 }
 
 const st = {
-  page: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 },
   enTete: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
   surTitre: { fontSize: 'var(--t1)', color: 'var(--text2)' },
   perimetre: { fontFamily: 'var(--font)', fontWeight: 'var(--g3)', fontSize: 'var(--t4)', lineHeight: 1.15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
