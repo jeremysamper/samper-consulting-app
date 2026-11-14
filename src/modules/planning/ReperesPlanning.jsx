@@ -1,6 +1,6 @@
 import React from 'react';
 import { CalendarOff, Clock, UserCheck } from 'lucide-react';
-import { Anneau, BoutonFleche, CarteAvant, CarteRepere, carteAvantStyles } from '../../components/ui/index.jsx';
+import { Anneau, CarteAvant, CarteRepere, carteAvantStyles } from '../../components/ui/index.jsx';
 import './planning.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -16,7 +16,8 @@ import './planning.css';
 //   carte nuit   l'équipe du jour par état de pointage, une tuile et un
 //                anneau par état (equipeParEtat, accueilPlanning.js)
 //
-// La flèche de la carte ouvre « L'équipe aujourd'hui », comme sa tuile. Au
+// La carte se lit sans toucher : « L'équipe aujourd'hui » s'ouvre par sa
+// tuile, rendue même sans horaire du jour. Au
 // téléphone (planning.css), le repère des personnes pointées n'est pas rendu :
 // la carte le dit déjà. Sans horaire aujourd'hui, la carte n'est pas rendue.
 // Nombres, durées et noms dans leurs propres nœuds : la phrase autour reste
@@ -70,13 +71,12 @@ const ETATS = [
   { id: 'termine', label: 'Terminé', couleur: 'var(--carte-nuit-doux)' },
 ];
 
-export function CartePlanningEquipe({ etats, onOuvrir }) {
+export function CartePlanningEquipe({ etats }) {
   if (!etats.total) return null;
   return (
     <CarteAvant ton="nuit" className="pl-carte-nuit" data-planning-carte="">
       <div style={st.tete}>
         <h2 style={{ ...cs.titre, ...st.titre }}>L&apos;équipe aujourd&apos;hui</h2>
-        <BoutonFleche ton="nuit" onClick={onOuvrir} libelle="Ouvrir l'équipe du jour" />
       </div>
       <span style={st.total}>
         <span style={{ ...cs.chiffre, ...st.totalChiffre }} data-no-translate="">{etats.total}</span>
