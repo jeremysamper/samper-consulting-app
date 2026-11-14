@@ -1,5 +1,5 @@
 import React from 'react';
-import { BellRing, Croissant, Plus } from 'lucide-react';
+import { BellRing, Croissant, Moon, Plus, Sun } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -10,7 +10,7 @@ import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
 import { zurichAjouterJours, zurichToday } from '../../utils/zurichTime.js';
 import { Carte, Puce } from '../dashboard/tableauUi.jsx';
-import { Champ, Liste, Vide, h } from '../hebergement/hotelUi.jsx';
+import { Champ, Liste, PageHotel, ReperesHotel, Vide, h } from '../hebergement/hotelUi.jsx';
 import {
   PENSIONS, REPAS, STATUTS_ROOM_SERVICE, chf, commandeOuverte, couvertsRepas, dateCourte, heureZurich, isoZurich, libelleDe, nomPersonne, personnes,
   sejoursActifs, tonDe, totalArticles, useChambres, useHotes, useLignesSejour, useRoomService, useSejours,
@@ -97,11 +97,11 @@ function CommandeForm({ commande, sejours, chambres, roomService, aujourdhui, on
             <input style={{ ...h.saisie, flex: '2 1 180px' }} value={a.libelle} onChange={(ev) => majArticle(i, 'libelle', ev.target.value)} placeholder="Club sandwich, bouteille d'eau…" />
             <input type="number" min="1" inputMode="numeric" style={{ ...h.saisie, flex: '0 0 72px' }} value={a.quantite} onChange={(ev) => majArticle(i, 'quantite', ev.target.value)} aria-label="Quantité" />
             <input type="number" min="0" step="0.05" inputMode="decimal" style={{ ...h.saisie, flex: '0 0 96px' }} value={a.prix} onChange={(ev) => majArticle(i, 'prix', ev.target.value)} placeholder="CHF" aria-label="Prix" />
-            {f.articles.length > 1 && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 44, padding: '4px 10px' }} onClick={() => setF((p) => ({ ...p, articles: p.articles.filter((_, j) => j !== i) }))} aria-label="Retirer l'article">×</button>}
+            {f.articles.length > 1 && <Btn onClick={() => setF((p) => ({ ...p, articles: p.articles.filter((_, j) => j !== i) }))} aria-label="Retirer l'article">×</Btn>}
           </div>
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
-          <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setF((p) => ({ ...p, articles: [...p.articles, articleVide()] }))}>Ajouter un article</button>
+          <Btn onClick={() => setF((p) => ({ ...p, articles: [...p.articles, articleVide()] }))}>Ajouter un article</Btn>
           <span style={{ fontSize: 14, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}><span>Total</span> <span data-no-translate>CHF {chf(total)}</span></span>
         </div>
       </div>
@@ -169,10 +169,16 @@ export default function Repas({ user, etablissement }) {
     <section className="repas" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' }}>
       {!etabId && <Vide>Aucun établissement sélectionné.</Vide>}
       {etabId && ecran === ECRAN_ACCUEIL && (
-        <>
+        <PageHotel>
           <AccueilModule tuiles={tuiles} />
+          {sejours.status === 'ready' && (
+            <ReperesHotel reperes={[
+              ...REPAS.map((r, i) => ({ id: r.id, Icone: [Croissant, Sun, Moon][i] || Croissant, valeur: nb(couvertsRepas(sejours.rows, aujourdhui, r.id)), libelle: r.label.toLowerCase(), detail: 'Couverts du jour' })),
+              { id: 'room-service', Icone: BellRing, valeur: ouvertes.length, libelle: ouvertes.length === 1 ? 'commande à préparer' : 'commandes à préparer', detail: 'Room service' },
+            ]} />
+          )}
           {etatLecture && <Vide>{etatLecture}</Vide>}
-        </>
+        </PageHotel>
       )}
       {etabId && ecran !== ECRAN_ACCUEIL && (
         <EcranTache
@@ -236,12 +242,12 @@ export default function Repas({ user, etablissement }) {
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                     <span style={h.detail}><span>Prise par</span> <span data-no-translate>{nomPersonne(c.createdBy)}</span>{c.livreePar && <>, <span>livrée par</span> <span data-no-translate>{nomPersonne(c.livreePar)}</span></>}</span>
                     <span style={{ flex: 1 }} />
-                    {c.statut === 'recue' && <Btn variant="primary" onClick={() => changer(c, { statut: 'en_cuisine' }, 'Commande en cuisine.')} style={{ minHeight: 40, fontSize: 13 }}>En cuisine</Btn>}
-                    {commandeOuverte(c) && <Btn variant="primary" onClick={() => changer(c, { statut: 'livree' }, 'Commande livrée.')} style={{ minHeight: 40, fontSize: 13 }}>Livrée</Btn>}
-                    {commandeOuverte(c) && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => changer(c, { statut: 'annulee' }, 'Commande annulée.')}>Annuler</button>}
-                    {c.statut === 'livree' && !c.porteeSurNote && peutNoter && c.total > 0 && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => porterSurNote(c)}>Porter sur la note</button>}
-                    {peutGerer && commandeOuverte(c) && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={() => setForm({ commande: c })}>Modifier</button>}
-                    {peutGerer && !commandeOuverte(c) && !c.porteeSurNote && <button type="button" className="ui-btn ui-btn--ghost" style={{ minHeight: 40, fontSize: 13 }} onClick={async () => { const r = await roomService.supprimer(c.id); if (r.error) setErreur(r.error); else notify('Commande supprimée.', 'success'); }}>Supprimer</button>}
+                    {c.statut === 'recue' && <Btn variant="primary" onClick={() => changer(c, { statut: 'en_cuisine' }, 'Commande en cuisine.')}>En cuisine</Btn>}
+                    {commandeOuverte(c) && <Btn variant="primary" onClick={() => changer(c, { statut: 'livree' }, 'Commande livrée.')}>Livrée</Btn>}
+                    {commandeOuverte(c) && <Btn onClick={() => changer(c, { statut: 'annulee' }, 'Commande annulée.')}>Annuler</Btn>}
+                    {c.statut === 'livree' && !c.porteeSurNote && peutNoter && c.total > 0 && <Btn onClick={() => porterSurNote(c)}>Porter sur la note</Btn>}
+                    {peutGerer && commandeOuverte(c) && <Btn onClick={() => setForm({ commande: c })}>Modifier</Btn>}
+                    {peutGerer && !commandeOuverte(c) && !c.porteeSurNote && <Btn onClick={async () => { const r = await roomService.supprimer(c.id); if (r.error) setErreur(r.error); else notify('Commande supprimée.', 'success'); }}>Supprimer</Btn>}
                   </div>
                 </div>
               );
