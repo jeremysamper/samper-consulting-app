@@ -633,7 +633,7 @@ const Parametres = ({ user, etablissement }) => {
                         autoFocus
                         style={{ ...ps.fInput, maxWidth:240, padding:'6px 10px' }}
                       />
-                      <button style={{ ...ps.saveBtn, padding:'6px 14px', fontSize: 'var(--t1)' }} onClick={saveLabelEdit} disabled={labelSaving}>
+                      <button style={{ ...ps.cancelBtn, padding:'6px 14px', fontSize: 'var(--t1)' }} onClick={saveLabelEdit} disabled={labelSaving}>
                         {labelSaving ? '…' : 'Enregistrer'}
                       </button>
                       <button style={{ ...ps.cancelBtn, padding:'6px 12px', fontSize: 'var(--t1)' }} onClick={() => setEditingLabelKey(null)}>
