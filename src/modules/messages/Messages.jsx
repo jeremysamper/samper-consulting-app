@@ -321,24 +321,29 @@ const Messages = ({ user, isActive = true }) => {
   );
 };
 
+// Direction Galet (lot 6) : la liste, le fil et la fiche sont des cartes
+// blanches (fond --zone, filet --rule-soft, rayon --r-lg, ombre --sh), posées
+// côte à côte sur la page à l'ordinateur, une à la fois au téléphone.
+const carte = { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)' };
+
 const ms = {
   root: { display: 'flex', flexDirection: 'column', gap: 14 },
 
   // Cadre à hauteur de l'écran. Au-delà du téléphone : la liste (250 à
   // 330 px), puis le fil ou la fiche, bornés à 760 px de large.
   cadreTelephone: { display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 },
-  cadreBureau: { display: 'grid', gridTemplateColumns: 'minmax(250px, 330px) minmax(0, 760px)', gridTemplateRows: 'minmax(0, 1fr)', gap: 14, minHeight: 0 },
-  colonne: { display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minWidth: 0, minHeight: 0 },
-  // Deux colonnes posées sur la page, séparées par un filet vertical.
-  colonneListeBureau: { borderRightWidth: 1, borderRightStyle: 'solid', borderRightColor: 'var(--rule-soft)', paddingRight: 14 },
-  titreListe: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '2px 0', flexShrink: 0, minWidth: 0 },
+  cadreBureau: { display: 'grid', gridTemplateColumns: 'minmax(250px, 330px) minmax(0, 760px)', gridTemplateRows: 'minmax(0, 1fr)', gap: 24, minHeight: 0 },
+  colonne: { ...carte, display: 'flex', flexDirection: 'column', gap: 0, flex: 1, minWidth: 0, minHeight: 0, overflow: 'hidden' },
+  // La liste, à l'ordinateur : un retrait dans sa carte.
+  colonneListeBureau: { padding: 6 },
+  titreListe: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 8px 4px', flexShrink: 0, minWidth: 0 },
   // Onglets de vue à la hauteur d'une cible (40 px à l'ordinateur, où la
   // feuille ne les relève pas), 8 px entre eux : la barre ne garde ni sa
   // marge intérieure ni son contour transparent, et ses onglets s'étirent.
   // Deux onglets tiennent dans la colonne la plus étroite (187 px sur 301) :
   // la barre ne défile pas en largeur.
   vues: (cible) => ({ padding: 0, borderWidth: 0, gap: 8, alignItems: 'stretch', minHeight: cible, overflowX: 'visible' }),
-  droiteVide: { display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '44px 20px', minWidth: 0 },
+  droiteVide: { ...carte, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '44px 20px', minWidth: 0 },
 };
 
 export default Messages;
