@@ -62,10 +62,10 @@ export default function EcranVentes({ s, parJour, peutEcrire, couverturePrete, h
                 </tr>
               ))}
               <tr>
-                <td style={{ ...st.td, fontWeight: 500 }}>Total</td>
-                <td style={{ ...st.tdNum, fontWeight: 500 }}><Montant v={v.ttc} /></td>
-                <td style={{ ...st.tdNum, fontWeight: 500 }}><Montant v={v.ht} /></td>
-                <td style={{ ...st.tdNum, fontWeight: 500 }}><Montant v={v.tva} /></td>
+                <td style={{ ...st.td, fontWeight: 'var(--g2)' }}>Total</td>
+                <td style={{ ...st.tdNum, fontWeight: 'var(--g2)' }}><Montant v={v.ttc} /></td>
+                <td style={{ ...st.tdNum, fontWeight: 'var(--g2)' }}><Montant v={v.ht} /></td>
+                <td style={{ ...st.tdNum, fontWeight: 'var(--g2)' }}><Montant v={v.tva} /></td>
               </tr>
             </tbody>
           </table>
@@ -128,14 +128,14 @@ export default function EcranVentes({ s, parJour, peutEcrire, couverturePrete, h
 
 const st = {
   defile: { overflowX: 'auto', maxWidth: '100%', WebkitOverflowScrolling: 'touch' },
-  table: { borderCollapse: 'collapse', minWidth: 440, width: '100%', fontSize: 14, color: 'var(--text)' },
-  th: { textAlign: 'left', fontWeight: 500, fontSize: 12, color: 'var(--text2)', padding: '6px 8px 6px 0', borderBottom: '1px solid var(--border)' },
-  thNum: { textAlign: 'right', fontWeight: 500, fontSize: 12, color: 'var(--text2)', padding: '6px 0 6px 8px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap' },
-  td: { padding: '10px 8px 10px 0', borderBottom: '1px solid var(--border)' },
-  tdNum: { padding: '10px 0 10px 8px', borderBottom: '1px solid var(--border)', textAlign: 'right' },
+  table: { borderCollapse: 'collapse', minWidth: 440, width: '100%', fontSize: 'var(--t2)', color: 'var(--text)' },
+  th: { textAlign: 'left', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', color: 'var(--text2)', padding: '6px 8px 6px 0', borderBottom: '1px solid var(--rule-soft)' },
+  thNum: { textAlign: 'right', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', color: 'var(--text2)', padding: '6px 0 6px 8px', borderBottom: '1px solid var(--rule-soft)', whiteSpace: 'nowrap' },
+  td: { padding: '10px 8px 10px 0', borderBottom: '1px solid var(--rule-soft)' },
+  tdNum: { padding: '10px 0 10px 8px', borderBottom: '1px solid var(--rule-soft)', textAlign: 'right' },
   semaine: {
     display: 'flex', alignItems: 'center', gap: 8, width: '100%', minHeight: 44, padding: '8px 4px', border: 'none',
-    borderBottom: '1px solid var(--border)', background: 'transparent', color: 'var(--text)', fontFamily: 'var(--font)',
-    fontSize: 14, textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box', borderRadius: 0,
+    borderBottom: '1px solid var(--rule-soft)', background: 'transparent', color: 'var(--text)', fontFamily: 'var(--font)',
+    fontSize: 'var(--t2)', textAlign: 'left', cursor: 'pointer', boxSizing: 'border-box', borderRadius: 0,
   },
 };

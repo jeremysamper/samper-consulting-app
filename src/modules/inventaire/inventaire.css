@@ -7,7 +7,7 @@
    qu'avant. Ce qui l'habille à l'écran est écrit ici, sur une classe exclue
    de .pdf-render-root ; ses styles en ligne ne changent pas.
    La vue « achats » (Factures & achats) partage le composant d'accueil : elle
-   ne porte aucune de ces classes et reste telle qu'avant.
+   ne porte aucune de ces classes (sa grille est dans factures-achats/achats.css).
    ───────────────────────────────────────────────────────────────────────────── */
 
 /* ── Accueil ──────────────────────────────────────────────────────────────────

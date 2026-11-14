@@ -40,9 +40,13 @@
 @container compta (min-width: 900px) {
   .compta-cartes { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 }
-.compta-carte-valeur { font-size: 22px; }
+/* Le picto de la grande carte se retire quand la carte est étroite
+   (!important : le cercle pose son display en style inline). */
+.compta-carte-picto { display: none !important; }
+.compta-carte-valeur { font-size: var(--t5); }
 @container compta (min-width: 600px) {
-  .compta-carte-valeur { font-size: 28px; }
+  .compta-carte-valeur { font-size: var(--t6); }
+  .compta-carte-picto { display: inline-flex !important; }
 }
 
 /* ── Tableau de la vue d'ensemble : 4 colonnes, 2 sur téléphone ───────────── */
@@ -53,9 +57,9 @@
   align-items: baseline;
   gap: 4px 16px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--rule-soft);
 }
-.compta-rang--fort { font-weight: 500; }
+.compta-rang--fort { font-weight: var(--g2); }
 .compta-col-prec, .compta-col-ecart, .compta-rang-tete { display: none; }
 .compta-sous-prec { grid-column: 1 / -1; }
 @container compta (min-width: 600px) {
@@ -84,28 +88,28 @@
   align-items: baseline;
   gap: 4px 12px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--rule-soft);
 }
-.compta-marge-nom { font-size: 14px; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
-.compta-marge-chiffres { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 13px; color: var(--text); min-width: 0; }
+.compta-marge-nom { font-size: var(--t2); color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.compta-marge-chiffres { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: var(--t2); color: var(--text); min-width: 0; }
 .compta-marge-cell { white-space: nowrap; }
 .compta-marge-lib { color: var(--text2); }
 .compta-marge-tete { display: none; }
-.compta-marge--total { font-weight: 500; border-bottom: none; }
+.compta-marge--total { font-weight: var(--g2); border-bottom: none; }
 @container compta (min-width: 600px) {
   .compta-marge { grid-template-columns: minmax(0, 1fr) repeat(4, minmax(84px, 110px)); }
   .compta-marges--fiches .compta-marge { grid-template-columns: minmax(0, 1fr) repeat(3, minmax(96px, 130px)); }
   .compta-marge-chiffres { display: contents; }
-  .compta-marge-cell { text-align: right; font-size: 14px; }
+  .compta-marge-cell { text-align: right; font-size: var(--t2); }
   .compta-marge-lib { display: none; }
   .compta-marge-tete { display: grid; padding: 4px 0; }
-  .compta-marge-tete .compta-marge-cell { font-size: 12px; color: var(--text2); white-space: normal; }
+  .compta-marge-tete .compta-marge-cell { font-size: var(--t1); color: var(--text2); white-space: normal; }
 }
 
 /* ── Interactions ─────────────────────────────────────────────────────────── */
 .compta-carte { transition: background-color 150ms ease; }
 @media (hover: hover) {
-  .compta-carte[data-cliquable]:hover { background: var(--accent-light) !important; }
+  .compta-carte[data-cliquable]:hover { background: var(--selection) !important; }
   .compta-jour:hover { background: var(--selection); }
 }
 .compta button:focus-visible,

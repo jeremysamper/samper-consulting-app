@@ -147,18 +147,18 @@ export default function EcranTresorerie({
 }
 
 const st = {
-  semaine: { borderBottom: '1px solid var(--border)' },
+  semaine: { borderBottom: '1px solid var(--rule-soft)' },
   tete: {
     display: 'flex', alignItems: 'flex-start', gap: 8, width: '100%', minHeight: 44, padding: '10px 0', background: 'none',
     border: 'none', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left',
   },
   chevron: { flexShrink: 0, marginTop: 1, color: 'var(--text2)' },
   corps: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1 },
-  titre: { fontSize: 14, fontWeight: 500 },
-  chiffres: { display: 'flex', flexWrap: 'wrap', gap: '2px 16px', fontSize: 13, color: 'var(--text2)' },
+  titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)' },
+  chiffres: { display: 'flex', flexWrap: 'wrap', gap: '2px 16px', fontSize: 'var(--t2)', color: 'var(--text2)' },
   cell: { whiteSpace: 'nowrap' },
   detail: { display: 'flex', flexDirection: 'column', gap: 4, padding: '0 0 12px 26px' },
-  sousLigne: { display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 13, color: 'var(--text)', paddingTop: 4 },
-  item: { fontSize: 12, color: 'var(--text2)', paddingLeft: 10, overflowWrap: 'anywhere' },
-  note: { margin: 0, fontSize: 13, color: 'var(--text2)', lineHeight: 1.5 },
+  sousLigne: { display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 'var(--t2)', color: 'var(--text)', paddingTop: 4 },
+  item: { fontSize: 'var(--t1)', color: 'var(--text2)', paddingLeft: 10, overflowWrap: 'anywhere' },
+  note: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.5 },
 };

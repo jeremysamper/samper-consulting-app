@@ -42,5 +42,5 @@ export default function SectionReglagesCompta({ user, etablissement, signaler })
 }
 
 const st = {
-  attente: { margin: 0, fontSize: 13, color: 'var(--text2)' },
+  attente: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)' },
 };
