@@ -1147,7 +1147,6 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                 <div style={hcfg.sectionTitle}>Frigos et appareils à relever</div>
                 <div style={hcfg.sectionSub}><N>{zones.length}</N> {zones.length>1?'frigos et appareils':'frigo ou appareil'}, <N>{activeZones.length}</N> à relever</div>
               </div>
-              <button style={hs.exportBtn} onClick={()=>setZoneModal('new')}>Ajouter un frigo ou appareil</button>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {zones.map(z=>(
@@ -1181,7 +1180,6 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                 <div style={hcfg.sectionTitle}>Contrôles d'hygiène</div>
                 <div style={hcfg.sectionSub}>{ctrlTpls.length} contrôle{ctrlTpls.length>1?'s':''} configuré{ctrlTpls.length>1?'s':''}, {activeTpls.length} actif{activeTpls.length>1?'s':''}</div>
               </div>
-              <button style={hs.exportBtn} onClick={()=>setCtrlModal('new')}>Ajouter un contrôle</button>
             </div>
             <div style={{display:'flex',flexDirection:'column',gap:0}}>
               {ctrlTpls.map(c=>(
