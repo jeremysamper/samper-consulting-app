@@ -9,9 +9,7 @@ import RechercheResas from './RechercheResas.jsx';
 import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
-import { peutGererReservations, peutReglerEnLigne } from './gardeEnLigne.js';
-import { ouvrirCompte } from '../../services/navigationService.js';
-import { useNotificationsAppareil } from './NotificationsAppareil.jsx';
+import { peutGererReservations } from './gardeEnLigne.js';
 import ModeService from './ModeService.jsx';
 import ClientsResa from './ClientsResa.jsx';
 import { useReservationsJour } from './useReservationsJour.js';
@@ -100,7 +98,6 @@ export default function Previsions({ user, etablissement }) {
   // Créer / modifier / annuler des réservations : droit « gérer » du module
   // (Rôles & accès, case « Modifier » ; défaut consultant/patron/resp_cuisine/hôte).
   const canEdit        = peutGererReservations(user?.role);
-  const voitReglages   = peutReglerEnLigne(user?.role);
   // showFinancials réservé pour les futures sections KPIs CA
   // const showFinancials = ROLES_FINANCIALS.includes(user?.role);
 
@@ -114,7 +111,6 @@ export default function Previsions({ user, etablissement }) {
     ? jourAccueil.resas.filter((r) => r.statut !== 'no_show').reduce((s, r) => s + (r.nb_couverts || 0), 0)
     : null;
 
-  const notifications = useNotificationsAppareil(etabId, user);
 
   // Échap sur un écran de tâche ramène à l'accueil du module (useEcranModule),
   // sauf quand une fenêtre du module est ouverte par-dessus : formulaire,
@@ -198,17 +194,13 @@ export default function Previsions({ user, etablissement }) {
         <AccueilReservations
           couverts={couvertsDuJour}
           resasDuJour={jourAccueil.resas && !jourAccueil.error ? jourAccueil.resas : null}
-          notificationsActives={notifications.actif}
           canEdit={canEdit}
-          voitReglages={voitReglages}
           onReserver={() => setShowForm(true)}
           onService={() => ouvrirModeService(zurichToday())}
           onPlanning={() => setEcran('planning')}
           onPlan={() => setEcran('plan')}
           onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
           onClients={() => setEcran('clients')}
-          onNotifications={() => ouvrirCompte('notifications')}
-          onReglages={() => ouvrirCompte('reservation_en_ligne')}
         />
       )}
 

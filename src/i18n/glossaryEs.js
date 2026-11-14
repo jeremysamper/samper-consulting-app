@@ -4649,6 +4649,13 @@ export const UI_GLOSSARY_ES = {
   'Valeurs exactes': 'Valores exactos',
   'Chiffre': 'Facturación',
   "Les réglages de la caisse n'ont pas pu être lus.": "No se pudieron leer los ajustes de la caja.",
+  // Réglages, entrée unique (14.11.2026) : mode test de la caisse et gestion de l'inventaire.
+  'Ce poste': 'Este puesto',
+  'Passer ce poste en mode test': 'Poner este puesto en modo de prueba',
+  'En mode test, les tickets ouverts sur ce poste ne comptent dans aucun chiffre. Les autres postes continuent de vendre normalement.': 'En modo de prueba, los tickets abiertos en este puesto no cuentan en ninguna cifra. Los demás puestos siguen vendiendo con normalidad.',
+  "Ce poste est en mode test : rien de ce qui s'y vend ne compte dans les chiffres. Pour revenir aux vraies ventes, ouvrez la caisse et touchez « Quitter le mode test » dans le bandeau.": "Este puesto está en modo de prueba: nada de lo que se vende en él cuenta en las cifras. Para volver a las ventas reales, abra la caja y toque «Salir del modo de prueba» en la banda.",
+  'Aucun inventaire à gérer pour le moment.': 'Ningún inventario que gestionar por ahora.',
+  'Périmètres, réouverture, produits maison, import Excel, suppression': 'Áreas, reapertura, productos caseros, importación Excel, eliminación',
   "Exporter en PDF": "Exportar en PDF",
   "Rangez la vue affichée sous un nom pour la retrouver.": "Guarde la vista mostrada con un nombre para encontrarla de nuevo.",
   "Nom de la vue affichée": "Nombre de la vista mostrada",

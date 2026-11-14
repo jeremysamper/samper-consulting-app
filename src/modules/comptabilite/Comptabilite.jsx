@@ -3,7 +3,7 @@ import './compta.css';
 import { getPermissionsForRole } from '../../data/demoData.js';
 import { isPageActiveForEtab } from '../moduleConfig.js';
 import { dbService } from '../../services/dbService.js';
-import { navigateToPage, ouvrirCompte } from '../../services/navigationService.js';
+import { navigateToPage } from '../../services/navigationService.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { readJson, writeJson } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
@@ -164,8 +164,7 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
   const actions = peutEcrire
     ? [
       { id: 'exporter', label: 'Exporter', detail: 'Ventes, factures d\'achat, charges fixes et état TVA pour la fiduciaire.', onClick: () => ouvrirExport() },
-      // Les réglages vivent dans la page des réglages (section 'comptabilite').
-      { id: 'reglages', label: 'Réglages', detail: 'Méthode de TVA, charges sociales, coût horaire moyen.', onClick: () => ouvrirCompte('comptabilite') },
+      // Les réglages s'ouvrent par la page des réglages seule (section 'comptabilite').
     ]
     : [];
 

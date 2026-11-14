@@ -4668,6 +4668,13 @@ export const UI_GLOSSARY = {
   'Valeurs exactes': 'Exact values',
   'Chiffre': 'Revenue',
   "Les réglages de la caisse n'ont pas pu être lus.": "The register settings could not be read.",
+  // Réglages, entrée unique (14.11.2026) : mode test de la caisse et gestion de l'inventaire.
+  'Ce poste': 'This device',
+  'Passer ce poste en mode test': 'Put this device in test mode',
+  'En mode test, les tickets ouverts sur ce poste ne comptent dans aucun chiffre. Les autres postes continuent de vendre normalement.': 'In test mode, tickets opened on this device count in no figure. The other devices keep selling normally.',
+  "Ce poste est en mode test : rien de ce qui s'y vend ne compte dans les chiffres. Pour revenir aux vraies ventes, ouvrez la caisse et touchez « Quitter le mode test » dans le bandeau.": "This device is in test mode: nothing sold on it counts in the figures. To go back to real sales, open the register and tap \"Leave test mode\" in the banner.",
+  'Aucun inventaire à gérer pour le moment.': 'No inventory to manage for now.',
+  'Périmètres, réouverture, produits maison, import Excel, suppression': 'Scopes, reopening, house products, Excel import, deletion',
   "Exporter en PDF": "Export to PDF",
   "Rangez la vue affichée sous un nom pour la retrouver.": "Save the view shown under a name to find it again.",
   "Nom de la vue affichée": "Name of the view shown",

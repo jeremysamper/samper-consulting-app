@@ -1,5 +1,5 @@
 import React from 'react';
-import { CalendarDays, Plus, ScanLine, Ticket, Users } from 'lucide-react';
+import { CalendarDays, Plus, ScanLine, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -17,7 +17,6 @@ import {
   useActivites, useChambres, useConsommations, useForfaitDroits, useForfaits, useInscriptions, useSejours,
 } from '../hebergement/hotelData.js';
 import { estDirectionHotel } from '../hebergement/gardesHotel.js';
-import { ouvrirCompte } from '../../services/navigationService.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Activités (branche Hôtel, lot H5) : le programme (une activité, ses places,
@@ -337,7 +336,6 @@ export default function Activites({ user, etablissement }) {
     { id: 'programme', libelle: 'Programme', Icone: CalendarDays, etat: <>{etat(duJour.length, 'activité aujourd\'hui', 'activités aujourd\'hui')}<span aria-hidden="true"> </span>{etat(inscritsDuJour, 'inscrit', 'inscrits')}</>, onClick: () => { setJour(aujourdhui); setEcran('programme'); } },
     { id: 'nouvelle', libelle: 'Nouvelle activité', Icone: Plus, visible: peutGerer, onClick: () => setForm({ activite: null }) },
     { id: 'pointage', libelle: 'Pointer une consommation', Icone: ScanLine, etat: etat(pointagesDuJour, 'pointage aujourd\'hui', 'pointages aujourd\'hui'), onClick: () => setEcran('pointage') },
-    { id: 'forfaits', libelle: 'Forfaits', Icone: Ticket, visible: direction, etat: etat(forfaits.rows.filter((f) => f.actif).length, 'forfait actif', 'forfaits actifs'), onClick: () => ouvrirCompte('activites_forfaits') },
   ];
 
   const ligneActivite = (a) => {

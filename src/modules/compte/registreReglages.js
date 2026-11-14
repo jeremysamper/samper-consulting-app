@@ -3,6 +3,7 @@ import { peutChangerLogo, peutOrganiserMenu } from '../../components/nav/gardesC
 import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
 import { peutGererReservations, peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
 import { peutGererCartes } from '../recettes/gardesRecettes.js';
+import { peutGererInventaire } from '../inventaire/gardesInventaire.js';
 import { peutReglerFactures } from '../comptabilite/gardesCompta.js';
 import { peutConfigurerHaccp } from '../haccp/gardesHaccp.js';
 import { estDirectionSpa } from '../spa/gardesSpa.js';
@@ -123,6 +124,14 @@ export const SECTIONS = [
     groupe: 'modules', portee: 'maison', module: 'previsions',
     garde: (ctx) => ouvreLeModule('previsions')(ctx) && peutGererReservations(ctx.user?.role),
     charger: () => import('../previsions/SectionPlanSalle.jsx'),
+  },
+  // Gestion de l'inventaire (14.11.2026) : la fenêtre « Gérer » de l'accueil du
+  // module, avec sa garde (droit « Modifier » de l'Inventaire).
+  {
+    id: 'inventaire_gerer', libelle: 'Inventaire', detail: 'Périmètres, réouverture, produits maison, import Excel, suppression',
+    groupe: 'modules', portee: 'maison', module: 'inventaire',
+    garde: (ctx) => ouvreLeModule('inventaire')(ctx) && peutGererInventaire(ctx.user?.role, ctx.permissions),
+    charger: () => import('../inventaire/SectionGererInventaire.jsx'),
   },
   {
     id: 'comptabilite', libelle: 'Comptabilité', detail: 'Méthode de TVA, charges sociales, coût horaire moyen',
