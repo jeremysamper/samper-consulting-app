@@ -1,6 +1,8 @@
 import React from 'react';
 import ActionsCorrectives, { Mesure, PlageTexte } from './ActionsCorrectives.jsx';
 import { Panneau } from '../../components/ui/index.jsx';
+import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
+import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 import { creneauLePlusProche, parseHaccpNumber } from './HACCP.utils.js';
 import { verdictReleve } from './haccpJour.js';
 
@@ -37,6 +39,9 @@ export default function ReleveGuide({
   zones, creneaux, tournee, relevesDuJour, brouillon, etatLignes, enregistrement, onLigne, onEnregistrer,
 }) {
   const champs = React.useRef({});
+  // Pastille « +N » par zone : la zone déjà payée pour la demi-journée (par
+  // n'importe qui) n'en porte pas (lot P3).
+  const pastilles = usePastillesPoints();
   const boutonRef = React.useRef(null);
 
   const aEnregistrer = zones.filter(z => etatLignes[z.id] !== 'ok' && lisible(brouillon[z.id]?.valeur));
@@ -89,7 +94,10 @@ export default function ReleveGuide({
             <div key={z.id} data-haccp-ligne={z.id} style={i === zones.length - 1 ? st.ligneDerniere : st.ligne}>
               <div style={st.rangee}>
                 <div style={st.texte}>
-                  <div id={`haccp-nom-${z.id}`} style={st.nom}>{z.nom}</div>
+                  <div id={`haccp-nom-${z.id}`} style={{ ...st.nom, ...porteurPoints(pastilles.pastille('releve_haccp', { zoneId: z.id })) }}>
+                    {z.nom}
+                    <PastillePoints n={pastilles.pastille('releve_haccp', { zoneId: z.id })} />
+                  </div>
                   <div style={st.plage}>
                     <PlageTexte zone={z} />.
                     {z.cible != null && z.cible !== '' && <> Idéal : <Mesure valeur={z.cible} unite={z.unite || '°C'} />.</>}

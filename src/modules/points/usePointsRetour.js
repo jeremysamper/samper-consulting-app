@@ -8,8 +8,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import React from 'react';
 import { supabase } from '../../services/supabase.js';
-import { notify } from '../../components/toast/index.js';
-import { messageCredit } from './bareme.js';
+import { afficherPopupPoints } from './PopupPoints.jsx';
 
 let compteurCanal = 0;
 
@@ -35,7 +34,8 @@ export function usePointsRetour({ etabId, userId, actif }) {
           const m = payload?.new;
           if (!m || m.etablissement_id !== etabId) return;
           ecouteurs.forEach((fn) => { try { fn(m); } catch (e) { console.warn('[points] écouteur', e); } });
-          if (m.sens === 'credit') notify(messageCredit(m), 'success');
+          // Popup « +N points obtenus » (P3) à la place du toast : crédits seulement.
+          if (m.sens === 'credit') afficherPopupPoints(m);
         },
       )
       .subscribe();

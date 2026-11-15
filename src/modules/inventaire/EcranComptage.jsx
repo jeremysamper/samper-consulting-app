@@ -3,6 +3,8 @@ import { Btn } from '../../components/ui/index.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import ComptageRapide from './ComptageRapide.jsx';
 import { dateCH } from './inventaireLignes.js';
+import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
+import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Écran « Je compte » : l'en-tête du comptage (Retour, périmètre et date,
@@ -16,6 +18,8 @@ export default function EcranComptage({
   inv, perimetreActif, estValide, validateurNom, canManage, canEditLignes,
   onRetour, onAjouter, onTerminer, onRouvrir, comptage,
 }) {
+  const pastilles = usePastillesPoints();
+  const pointsValidation = estValide ? null : pastilles.pastille('inventaire_valide', { perimetre: perimetreActif });
   // Nombres et noms dans leurs propres nœuds : la phrase autour reste une
   // entrée du glossaire au lieu de partir à l'IA à chaque date.
   const etat = estValide
@@ -29,7 +33,7 @@ export default function EcranComptage({
       actions={(
         <>
           {canEditLignes && <Btn onClick={onAjouter}>Ajouter des produits</Btn>}
-          {canEditLignes && <Btn variant="primary" onClick={onTerminer}>Terminer le comptage</Btn>}
+          {canEditLignes && <Btn variant="primary" onClick={onTerminer}>Terminer le comptage<PastillePoints n={pointsValidation} coin="ligne" /></Btn>}
           {canManage && estValide && <Btn onClick={onRouvrir}>Rouvrir</Btn>}
         </>
       )}

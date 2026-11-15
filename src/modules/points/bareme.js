@@ -18,6 +18,7 @@ export const BAREME_DEFAUT = {
   perte_declaree: { points: 2, plafond: 2 },
   comptage_zone: { points: 10, plafond: 5 },
   inventaire_valide: { points: 20, plafond: 1 },
+  pointage_ponctuel: { points: 2, plafond: 2 },
 };
 
 export const ACTIONS = Object.keys(BAREME_DEFAUT);
@@ -30,6 +31,7 @@ export const LIBELLES_ACTIONS = {
   perte_declaree: 'Perte déclarée',
   comptage_zone: "Zone d'inventaire comptée",
   inventaire_valide: 'Inventaire validé',
+  pointage_ponctuel: "Pointage à l'heure",
 };
 
 // Ce que rapporte chaque geste, dit à l'employé (« Ce qui rapporte des points »).
@@ -41,6 +43,7 @@ export const EXPLICATIONS_ACTIONS = {
   perte_declaree: 'Chaque perte déclarée avec son produit et sa quantité.',
   comptage_zone: "Chaque zone comptée, versée quand l'inventaire est validé, cinq au plus.",
   inventaire_valide: "L'inventaire que vous validez, un par périmètre et par semaine.",
+  pointage_ponctuel: "Votre arrivée pointée à l'heure, pas en retard.",
 };
 
 // Rôles participants par défaut ; consultant et patron n'y entrent jamais.

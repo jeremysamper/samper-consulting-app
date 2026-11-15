@@ -33,6 +33,9 @@ function ponctualite(debut, maintenant) {
   return { texte: 'Commencé depuis', minutes: -ecart, couleur: 'var(--warning-text)' };
 }
 
+import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
+import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
+
 export default function CartePointage({
   shifts, prochain, aujourdhui, maintenant, onPointer, enCours, erreur, onPointerHorsPlanning = null, onVoirPlanning = null,
 }) {
@@ -44,6 +47,7 @@ export default function CartePointage({
   const attenteHorsPlanning = enCours && !shifts.some((sh) => sh.id === enCours) ? true : false;
   // Le service en cours : le premier qui n'est pas terminé.
   const courant = shifts.find((sh) => !(sh.pointageDebut && sh.pointageFin)) || null;
+  const pastilles = usePastillesPoints();
 
   return (
     <Section
@@ -117,10 +121,11 @@ export default function CartePointage({
               type="button"
               onClick={() => onPointer(shift, 'arrivee')}
               disabled={attente}
-              style={{ ...s.action, ...(principal ? s.arrivee : s.secondaire), opacity: attente ? 0.7 : 1 }}
+              style={{ ...s.action, ...(principal ? s.arrivee : s.secondaire), opacity: attente ? 0.7 : 1, ...porteurPoints(pastilles.pastillePointage(shift)) }}
             >
               <LogIn size={principal ? 20 : 18} strokeWidth={1.9} aria-hidden="true" />
               <span>{attente ? 'Pointage…' : 'Pointer mon arrivée'}</span>
+              <PastillePoints n={pastilles.pastillePointage(shift)} />
             </button>
           );
 

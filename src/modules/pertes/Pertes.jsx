@@ -13,6 +13,8 @@ import { Btn, Panneau } from '../../components/ui/index.jsx';
 import { CarteRepartition, CarteSeptJours, ReperesPertes } from './CartesPertes.jsx';
 import { zurichToday } from '../../utils/zurichTime.js';
 import './pertes.css';
+import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
+import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 import { Choix, Fenetre, st as stFenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
@@ -61,6 +63,9 @@ const Pertes = ({ user, etablissement }) => {
   const todayStr = new Date().toISOString().slice(0, 10);
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
+  // Pastille « +N » du geste qui rapporte (lot P3), seulement si le système
+  // des points est allumé et que la personne participe.
+  const pastilles = usePastillesPoints();
   const [pertes, setPertes] = React.useState(() => legacySB ? [] : readLegacyStorage('sc_pertes', demoData.pertes));
   const [showForm, setShowForm] = React.useState(false);
   const [fenetreExport, setFenetreExport] = React.useState(false);
@@ -240,7 +245,7 @@ const Pertes = ({ user, etablissement }) => {
       {/* Les tâches, en gros boutons (hors impression). */}
       <div className="pertes-tuiles no-print">
         <AccueilModule tuiles={[
-          { id: 'jette', Icone: Trash2, libelle: 'Je jette', etat: <>produit, quantité, motif</>, visible: Boolean(perms.pertes), onClick: () => setShowForm(true) },
+          { id: 'jette', Icone: Trash2, libelle: 'Je jette', etat: <>produit, quantité, motif</>, visible: Boolean(perms.pertes), onClick: () => setShowForm(true), pastille: <PastillePoints n={pastilles.pastille('perte_declaree')} /> },
           { id: 'exporter', Icone: Printer, libelle: 'Exporter', etat: <>PDF ou imprimante</>, onClick: () => setFenetreExport(true) },
         ]} />
       </div>

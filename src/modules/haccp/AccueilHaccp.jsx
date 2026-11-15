@@ -3,6 +3,8 @@ import { BookOpen, Camera, ClipboardCheck, Tag } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import { ECRANS_HACCP } from './HACCP.constants.js';
 import './haccp.css';
+import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
+import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tuiles de l'accueil du module HACCP, sur la grille partagée AccueilModule,
@@ -22,6 +24,7 @@ import './haccp.css';
 const N = ({ children }) => <span data-no-translate="">{children}</span>;
 
 export default function AccueilHaccp({ controles, canWrite, onOuvrir }) {
+  const pastilles = usePastillesPoints();
   let etatControles = null;
   if (controles) {
     etatControles = controles.dus > 0
@@ -30,8 +33,9 @@ export default function AccueilHaccp({ controles, canWrite, onOuvrir }) {
   }
   const tuiles = [
     { id: 'etiquettes', Icone: Tag, etat: <>Le nom et la date limite, à coller sur la boîte</>, visible: canWrite },
-    { id: 'tracabilite', Icone: Camera, etat: canWrite ? <>Garder l'étiquette d'un produit reçu</> : <>Voir les photos des étiquettes</> },
-    { id: 'controles', Icone: ClipboardCheck, etat: etatControles },
+    { id: 'tracabilite', Icone: Camera, etat: canWrite ? <>Garder l'étiquette d'un produit reçu</> : <>Voir les photos des étiquettes</>,
+      pastille: canWrite ? <PastillePoints n={pastilles.pastille('photo_tracabilite')} /> : null },
+    { id: 'controles', Icone: ClipboardCheck, etat: etatControles, pastille: <PastillePoints n={pastilles.pastille('controle_haccp')} /> },
     { id: 'releves', Icone: BookOpen, etat: <>Les relevés jour par jour</> },
   ].map(t => ({ ...t, libelle: ECRANS_HACCP[t.id], onClick: () => onOuvrir(t.id) }));
   const rendues = tuiles.filter(t => !('visible' in t) || Boolean(t.visible)).length;

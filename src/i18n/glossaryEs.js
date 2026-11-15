@@ -16,6 +16,14 @@
 // ════════════════════════════════════════════════════════════════
 
 export const UI_GLOSSARY_ES = {
+  // ── Points, pastilles et popup (lot P3) ──
+  "points obtenus": "puntos obtenidos",
+  "gestes": "gestos",
+  "versés à la validation": "abonados al validar",
+  "Les points ne comptent que les jours où vous êtes au planning.": "Los puntos solo cuentan los días en que usted está en el planning.",
+  "Votre arrivée pointée à l'heure, pas en retard.": "Su llegada fichada a tiempo, sin retraso.",
+  "Pointage à l'heure": "Fichaje puntual",
+  "Annulation : Pointage à l'heure": "Anulación: Fichaje puntual",
   // ── Points, relevé HACCP matin et soir ──
   "Le premier relevé d'une zone le matin (avant 15 h), puis le premier du soir.": "El primer registro de una zona por la mañana (antes de las 15 h), y luego el primero de la tarde.",
   // ── Points, anti-fuite et catalogue (lot P2) ──

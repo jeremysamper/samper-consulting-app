@@ -6,6 +6,8 @@ import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { useAlertInstances } from '../hooks/useAlertInstances.js';
 import { useVisibleNav } from '../hooks/useVisibleNav.js';
 import { usePointsRetour } from '../modules/points/usePointsRetour.js';
+import { IndicateursPointsProvider } from '../modules/points/IndicateursPoints.jsx';
+import PopupPoints from '../modules/points/PopupPoints.jsx';
 import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
 import SamperMark from '../components/brand/SamperMark.jsx';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
@@ -707,6 +709,7 @@ export default function AppLayout({
   if (tactile) {
     return (
       <ShellProvider value={shellValue}>
+      <IndicateursPointsProvider etabId={etablissement?.id} userId={user?.id} actif={points.actif && points.participant}>
       <div style={mls.root}>
         <OfflineBanner />
         <HomeScreenIconBanner />
@@ -777,6 +780,8 @@ export default function AppLayout({
         {passwordModal}
         {shortcutsLayer}
       </div>
+      <PopupPoints actif={points.actif && points.participant} />
+      </IndicateursPointsProvider>
       </ShellProvider>
     );
   }
@@ -790,6 +795,7 @@ export default function AppLayout({
   // en bas d'écran qui doivent commencer après elle (sélection du Planning).
   return (
     <ShellProvider value={shellValue}>
+    <IndicateursPointsProvider etabId={etablissement?.id} userId={user?.id} actif={points.actif && points.participant}>
     <div style={{ ...ls.root, '--largeur-menu': menuLarge ? '234px' : '76px' }} onClick={fermerPanneaux}>
       {/* Menu de l'ordinateur : le logo en haut, les modules, les réglages en
           bas. Replié, c'est un rail d'icônes de 76 px (un cercle par module,
@@ -918,6 +924,8 @@ export default function AppLayout({
       {passwordModal}
       {shortcutsLayer}
     </div>
+    <PopupPoints actif={points.actif && points.participant} />
+    </IndicateursPointsProvider>
     </ShellProvider>
   );
 }
