@@ -1,12 +1,12 @@
 import React from 'react';
 import { Gift } from 'lucide-react';
 
-// Photo d'un cadeau de la boutique, tuile intérieure au format 4:3 (jeton
-// --piste, rayon --r). Les photos du catalogue sont détourées (fond
-// transparent, marge comprise) : l'objet est posé entier sur la tuile, qui
-// garde la couleur de l'app en clair comme en sombre. Sans photo, ou si elle
-// ne se charge pas : le picto du cadeau. L'image est décorative, le nom est
-// écrit juste à côté.
+// Photo d'un cadeau de la boutique, vignette carrée (rayon --r, fond --piste
+// tant que l'image charge). Les photos du catalogue sont des photos entières du
+// vrai produit, déjà cadrées au carré : elles remplissent la vignette. Une
+// photo envoyée par la direction est recadrée au centre. Sans photo, ou si
+// elle ne se charge pas : le picto du cadeau. L'image est décorative, le nom
+// est écrit juste à côté.
 export default function PhotoCadeau({ url, taille = null, style }) {
   const [echec, setEchec] = React.useState(false);
   React.useEffect(() => { setEchec(false); }, [url]);
@@ -17,8 +17,8 @@ export default function PhotoCadeau({ url, taille = null, style }) {
       style={{
         position: 'relative',
         width: fixe ? taille : '100%',
-        height: fixe ? Math.round(taille * 0.75) : undefined,
-        aspectRatio: fixe ? undefined : '4 / 3',
+        height: fixe ? taille : undefined,
+        aspectRatio: fixe ? undefined : '1 / 1',
         flexShrink: 0,
         overflow: 'hidden',
         borderRadius: fixe ? 'var(--r-sm)' : 'var(--r)',
@@ -37,7 +37,7 @@ export default function PhotoCadeau({ url, taille = null, style }) {
           loading="lazy"
           decoding="async"
           onError={() => setEchec(true)}
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       ) : (
         <Gift size={fixe ? 18 : 32} strokeWidth={1.6} aria-hidden="true" />

@@ -18,7 +18,7 @@
 export const UI_GLOSSARY_ES = {
   // ── Points : crédits des photos ──
   "Crédits des photos": "Créditos de las fotos",
-  "Photos détourées à partir des originaux ci-dessous, chacune sous sa licence.": "Fotos recortadas a partir de los originales siguientes, cada una con su licencia.",
+  "Photos des produits, d'après les originaux ci-dessous, chacune sous sa licence.": "Fotos de los productos, según los originales siguientes, cada una con su licencia.",
   "Voir l'original": "Ver el original",
   // ── Points : photo des cadeaux ──
   "Photo (facultatif)": "Foto (opcional)",
