@@ -56,9 +56,9 @@ test('modules actifs de l’établissement : un module retiré retire sa carte',
 test('ligne des échéances seulement avec le droit factures_achat', () => {
   const achats = (role) => note(role).cartes.find((c) => c.id === 'achats');
   const texte = (c) => c.lignes.map((l) => l.join(' '));
-  assert.ok(texte(achats('patron')).includes('Échéances et paiements suivis'));
-  assert.ok(texte(achats('consultant')).includes('Échéances et paiements suivis'));
-  assert.ok(!texte(achats('resp_cuisine')).includes('Échéances et paiements suivis'));
+  assert.ok(texte(achats('patron')).includes('Suivez les échéances et les paiements.'));
+  assert.ok(texte(achats('consultant')).includes('Suivez les échéances et les paiements.'));
+  assert.ok(!texte(achats('resp_cuisine')).includes('Suivez les échéances et les paiements.'));
   assert.equal(achats('resp_cuisine').lignes.length, 2);
 });
 

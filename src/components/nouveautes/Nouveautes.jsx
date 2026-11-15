@@ -158,7 +158,8 @@ export default function Nouveautes({ user, etablissement, donneesPretes, page, m
               <span>
                 {ligne.map((morceau, j) => (
                   <React.Fragment key={j}>
-                    {j > 0 && ' '}
+                    {/* Après un nombre, espace insécable : « 2 points » ne se coupe pas. */}
+                    {j > 0 && (typeof ligne[j - 1] === 'string' ? ' ' : ' ')}
                     {typeof morceau === 'string'
                       ? <span>{morceau}</span>
                       : <span data-no-translate style={s.nombre}>{morceau.n}</span>}
