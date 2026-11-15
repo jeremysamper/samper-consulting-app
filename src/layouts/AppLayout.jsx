@@ -8,6 +8,7 @@ import { useVisibleNav } from '../hooks/useVisibleNav.js';
 import { usePointsRetour } from '../modules/points/usePointsRetour.js';
 import { IndicateursPointsProvider } from '../modules/points/IndicateursPoints.jsx';
 import PopupPoints from '../modules/points/PopupPoints.jsx';
+import Nouveautes from '../components/nouveautes/Nouveautes.jsx';
 import { usePosConnectionHealth } from '../hooks/usePosConnectionHealth.js';
 import SamperMark from '../components/brand/SamperMark.jsx';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
@@ -78,7 +79,10 @@ export default function AppLayout({
   shellMode = 'ordinateur',
   // Page dont le contenu est à l'écran (visiblePage d'App.jsx) : suit
   // currentPage, 300 ms plus tard quand le module demandé charge encore.
-  pageAffichee = currentPage
+  pageAffichee = currentPage,
+  // Hydratation après la connexion finie (App.jsx) : la note de mise à jour
+  // n'est décidée qu'après.
+  donneesPretes = false
 }) {
   // Tablette et téléphone partagent la coque tactile (page d'accueil, bouton
   // Accueil) ; l'ordinateur garde barre latérale et raccourcis.
@@ -781,6 +785,7 @@ export default function AppLayout({
         {shortcutsLayer}
       </div>
       <PopupPoints actif={points.actif && points.participant} />
+      <Nouveautes user={user} etablissement={etablissement} donneesPretes={donneesPretes} page={currentPage} modules={visibleNav} points={points} pointsAttendus={perms.points !== false} />
       </IndicateursPointsProvider>
       </ShellProvider>
     );
@@ -925,6 +930,7 @@ export default function AppLayout({
       {shortcutsLayer}
     </div>
     <PopupPoints actif={points.actif && points.participant} />
+    <Nouveautes user={user} etablissement={etablissement} donneesPretes={donneesPretes} page={currentPage} modules={visibleNav} points={points} pointsAttendus={perms.points !== false} />
     </IndicateursPointsProvider>
     </ShellProvider>
   );

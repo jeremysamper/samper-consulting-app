@@ -25,7 +25,9 @@ export function useEnSection() {
   return React.useContext(ContexteSection);
 }
 
-export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children, pied = null }) {
+// titreMasque : le titre nomme la fenêtre (aria-label) sans être affiché, quand
+// le corps pose son propre titre (note de mise à jour).
+export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children, pied = null, titreMasque = false }) {
   const enSection = React.useContext(ContexteSection);
   useBackLayer(!enSection, onClose, id);
   const voileRef = React.useRef(null);
@@ -57,7 +59,7 @@ export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children
     <div ref={voileRef} data-fenetre="" className="modal-sheet-overlay" style={st.voile} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-sheet" style={{ ...st.fenetre, width: `min(${largeur}px, 100%)` }} role="dialog" aria-modal="true" aria-label={titre}>
         <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
-        <div style={st.titre}>{titre}</div>
+        {!titreMasque && <div style={st.titre}>{titre}</div>}
         {sousTitre && <div style={st.sousTitre}>{sousTitre}</div>}
         <div style={st.corps}>{children}</div>
         {pied && <div style={st.pied}>{pied}</div>}
