@@ -69,6 +69,11 @@ export function photoCadeauValide(url) {
   return typeof url === 'string' && url.length <= 1000 && MOTIF_PHOTO_CADEAU.test(url);
 }
 
+// Page d'origine d'une photo du catalogue (crédits) : une adresse https.
+export function sourcePhotoValide(url) {
+  return typeof url === 'string' && url.length <= 1000 && /^https:\/\/[^\s]+$/.test(url);
+}
+
 // Catégories du catalogue ; « commun » paraît dans les deux rangées.
 export const CATEGORIES_CADEAU = ['cuisine', 'salle', 'commun'];
 export const LIBELLES_CATEGORIES = { cuisine: 'Cuisine', salle: 'Salle', commun: 'Commun' };

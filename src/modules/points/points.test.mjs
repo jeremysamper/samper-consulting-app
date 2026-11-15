@@ -260,3 +260,15 @@ test('photo de cadeau : seulement le stockage Supabase, comme la contrainte en b
   assert.ok(sql.includes("photo_url ~ '" + MOTIF_PHOTO_CADEAU.source.split('\\/').join('/') + "'"), 'même motif en base et à l\'écran');
   assert.ok(sql.includes('length(photo_url) <= 1000'));
 });
+
+import { sourcePhotoValide } from './bareme.js';
+
+test('crédit de photo : original en https, comme la contrainte en base', () => {
+  assert.equal(sourcePhotoValide('https://commons.wikimedia.org/wiki/File:Paring_Knife.jpg'), true);
+  assert.equal(sourcePhotoValide('http://exemple.invalid/x'), false);
+  assert.equal(sourcePhotoValide('https://a b'), false);
+  assert.equal(sourcePhotoValide(null), false);
+  const sql = lireMigration('20261115_points_cadeaux_photo_credit.sql');
+  assert.ok(sql.includes("photo_source ~ '^https://[^[:space:]]+$'"));
+  assert.ok(sql.includes('length(photo_credit) <= 300'));
+});

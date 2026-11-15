@@ -6,7 +6,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { supabase } from '../../services/supabase.js';
 import { dbService } from '../../services/dbService.js';
-import { photoCadeauValide } from './bareme.js';
+import { photoCadeauValide, sourcePhotoValide } from './bareme.js';
 
 function verifier({ data, error }) {
   if (error) throw error;
@@ -48,6 +48,8 @@ const mapCadeau = (r) => ({
   ordre: r.ordre,
   categorie: r.categorie || 'commun',
   photoUrl: photoCadeauValide(r.photo_url) ? r.photo_url : null,
+  photoCredit: r.photo_credit || null,
+  photoSource: sourcePhotoValide(r.photo_source) ? r.photo_source : null,
 });
 
 const mapCommande = (r) => ({
@@ -159,6 +161,9 @@ export const pointsService = {
       ordre: Number(cadeau.ordre) || 0,
       categorie: ['cuisine', 'salle', 'commun'].includes(cadeau.categorie) ? cadeau.categorie : 'commun',
       photo_url: photoCadeauValide(cadeau.photoUrl) ? cadeau.photoUrl : null,
+      // Crédit d'une photo du catalogue ; une photo envoyée par la direction n'en a pas.
+      photo_credit: photoCadeauValide(cadeau.photoUrl) && cadeau.photoCredit ? String(cadeau.photoCredit).slice(0, 300) : null,
+      photo_source: photoCadeauValide(cadeau.photoUrl) && sourcePhotoValide(cadeau.photoSource) ? cadeau.photoSource : null,
     };
     const q = cadeau.id
       ? supabase.from('points_cadeaux').update(payload).eq('id', cadeau.id).select().single()

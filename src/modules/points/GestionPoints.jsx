@@ -245,9 +245,9 @@ function OngletBoutique({ etabId, donnees, charger }) {
               size={120}
               onUpload={async (file) => {
                 const url = await pointsService.televerserPhotoCadeau(etabId, edition.id, file);
-                setEdition((e) => (e ? { ...e, photoUrl: url } : e));
+                setEdition((e) => (e ? { ...e, photoUrl: url, photoCredit: null, photoSource: null } : e));
               }}
-              onRemove={() => setEdition((e) => (e ? { ...e, photoUrl: null } : e))}
+              onRemove={() => setEdition((e) => (e ? { ...e, photoUrl: null, photoCredit: null, photoSource: null } : e))}
             />
             <span className="points-aide" style={{ flex: '1 1 180px' }}>Gardée à l'enregistrement. Une photo carrée ou en largeur rend mieux dans la boutique.</span>
           </div>
