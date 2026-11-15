@@ -39,15 +39,23 @@ export function pointsPastille(ind, action, { zoneId = null, perimetre = null } 
   return points;
 }
 
-// Pastille du bouton « J'arrive » : pas encore pointé et l'heure de début du
-// service pas dépassée (à la minute, comme en base).
+// Pointé plus d'une heure avant le début : rien (migration 20261115_points_pointage_borne).
+export const BORNE_AVANT_MIN = 60;
+
+// Pastille du bouton « J'arrive » : pas encore pointé, dans l'heure qui précède
+// le début du service et pas après (à la minute, comme en base).
 export function pastillePointage(ind, shift, maintenant = new Date()) {
   const points = pointsPastille(ind, 'pointage_ponctuel');
   if (points == null || !shift || shift.pointageDebut) return null;
   if (shift.note === 'Pointage hors planning') return null;
+  // Service dont la personne a posé elle-même l'heure, la date ou l'attribution
+  // (migration 20261115_points_shifts_retouche) : rien.
+  if ((ind.services_sans_pointage || []).includes(shift.id)) return null;
   const [h, m] = String(shift.debut || '').split(':').map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
-  return minutesZurich(maintenant) <= h * 60 + m ? points : null;
+  const debut = h * 60 + m;
+  const maintenantMin = minutesZurich(maintenant);
+  return maintenantMin <= debut && maintenantMin >= debut - BORNE_AVANT_MIN ? points : null;
 }
 
 // Popup : les crédits reçus à moins de 1,5 s d'écart se fondent en un seul
