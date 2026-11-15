@@ -16,6 +16,8 @@
 // ════════════════════════════════════════════════════════════════
 
 export const UI_GLOSSARY_ES = {
+  // ── Points, relevé HACCP matin et soir ──
+  "Le premier relevé d'une zone le matin (avant 15 h), puis le premier du soir.": "El primer registro de una zona por la mañana (antes de las 15 h), y luego el primero de la tarde.",
   // ── Points, anti-fuite et catalogue (lot P2) ──
   "Commun": "Común",
   "Aucun cadeau dans cette rangée.": "Ningún regalo en esta fila.",

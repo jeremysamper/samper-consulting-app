@@ -21,6 +21,8 @@ import { splitAffixes } from './affixes.js';
 import { UI_GLOSSARY_ES } from './glossaryEs.js';
 
 export const UI_GLOSSARY = {
+  // ── Points, relevé HACCP matin et soir ──
+  "Le premier relevé d'une zone le matin (avant 15 h), puis le premier du soir.": "The first reading of a zone in the morning (before 3 pm), then the first one in the evening.",
   // ── Points, anti-fuite et catalogue (lot P2) ──
   "Commun": "Shared",
   "Aucun cadeau dans cette rangée.": "No gift in this row.",
