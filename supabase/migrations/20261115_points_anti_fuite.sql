@@ -401,9 +401,10 @@ end;
 $fn$;
 
 -- F7 : au passage à « validé » d'un inventaire, une fois par périmètre et par
--- semaine : la validation au valideur, puis une zone comptée par personne et
--- par zone (cinq au plus par personne), sur les lignes réelles de
--- l'inventaire. Sa suppression annule tout ce qu'il a versé.
+-- semaine (périmètre = nom, sans casse ni espaces de bord) : la validation au
+-- valideur, puis une zone comptée par personne et par zone (cinq au plus par
+-- personne), sur les saisies appliquées des lignes réelles de l'inventaire.
+-- Sa suppression annule tout ce qu'il a versé.
 create or replace function public.points_trg_inventaires()
 returns trigger
 language plpgsql
@@ -432,7 +433,7 @@ begin
             or (m.source_table = 'inventaire_saisies_offline' and left(m.source_id, length(i.id) + 1) = i.id || ':'))
       where i.etablissement_id = new.etablissement_id
         and i.id <> new.id
-        and coalesce(i.nom, '') = coalesce(new.nom, '')
+        and lower(btrim(coalesce(i.nom, ''))) = lower(btrim(coalesce(new.nom, '')))
     ) then
       return null;
     end if;
@@ -445,6 +446,8 @@ begin
                row_number() over (partition by s.user_id order by min(s.created_at)) as rang
         from public.inventaire_saisies_offline s
         where s.inventaire_id = new.id
+          -- Saisie fusionnée par la RPC de comptage (ni périmée, ni écrite à côté).
+          and s.applique
           and exists (
             select 1
             from jsonb_array_elements(case when jsonb_typeof(new.lignes) = 'array' then new.lignes else '[]'::jsonb end) l
