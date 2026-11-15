@@ -211,7 +211,7 @@ function OngletBoutique({ etabId, donnees, charger }) {
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                   <div style={{ fontWeight: 'var(--g2)', overflowWrap: 'anywhere' }} data-no-translate>{c.nom}</div>
                   <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
-                    <span>{LIBELLES_CATEGORIES[c.categorie] || LIBELLES_CATEGORIES.commun}</span>{' '}
+                    <span style={{ marginRight: 8 }}>{LIBELLES_CATEGORIES[c.categorie] || LIBELLES_CATEGORIES.commun}</span>
                     {c.stock == null ? <span>Stock illimité</span> : <><span>En stock :</span>{' '}<span data-no-translate>{c.stock}</span></>}
                     {!c.actif && <>{' '}<span>Retiré de la boutique</span></>}
                   </div>
