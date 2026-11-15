@@ -21,6 +21,28 @@ import { splitAffixes } from './affixes.js';
 import { UI_GLOSSARY_ES } from './glossaryEs.js';
 
 export const UI_GLOSSARY = {
+  // ── Points, anti-fuite et catalogue (lot P2) ──
+  "Commun": "Shared",
+  "Aucun cadeau dans cette rangée.": "No gift in this row.",
+  "Points fixes par geste fait dans l'app, avec un plafond par jour. Tous gestes confondus, au plus": "Fixed points for each action done in the app, with a daily cap. All actions together, at most",
+  "points par jour et": "points per day and",
+  "Rangée de la boutique": "Shop row",
+  "Paraît en cuisine et en salle.": "Shown in kitchen and dining room.",
+  "Coût en points (100 à 10 000)": "Cost in points (100 to 10,000)",
+  "Le coût va de 100 à 10 000 points.": "The cost ranges from 100 to 10,000 points.",
+  "Un cadeau porte déjà ce nom dans cette boutique.": "A gift already has this name in this shop.",
+  "Plafonds par personne, tous gestes confondus": "Caps per person, all actions together",
+  "Un geste qui dépasserait l'un des deux ne rapporte rien. Avec les plafonds d'origine, une personne gagne au plus 4 800 points par an.": "An action that would exceed either cap earns nothing. With the original caps, a person earns at most 4,800 points a year.",
+  "Par jour (0 à 200)": "Per day (0 to 200)",
+  "Par mois (0 à 2 000)": "Per month (0 to 2,000)",
+  "Au plus par personne et par an :": "At most per person and per year:",
+  "Plafonds : 0 à 200 points par jour, 0 à 2 000 par mois.": "Caps: 0 to 200 points per day, 0 to 2,000 per month.",
+  "Le premier relevé d'une zone dans chaque tranche de deux heures.": "The first reading of a zone in each two-hour slot.",
+  "Une photo par produit et par jour, le produit indiqué.": "One photo per product and per day, with the product named.",
+  "Chaque facture scannée ou en PDF, avec son numéro, une seule fois.": "Each scanned or PDF invoice, with its number, only once.",
+  "Chaque perte déclarée avec son produit et sa quantité.": "Each waste report with its product and quantity.",
+  "Chaque zone comptée, versée quand l'inventaire est validé, cinq au plus.": "Each counted zone, paid when the inventory is validated, five at most.",
+  "L'inventaire que vous validez, un par périmètre et par semaine.": "The inventory you validate, one per scope and per week.",
   // ── Points & boutique (lot P1) ──
   "Points & boutique": "Points & shop",
   "Points": "Points",

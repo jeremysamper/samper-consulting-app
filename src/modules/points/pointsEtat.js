@@ -10,6 +10,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import React from 'react';
 import { pointsService } from './pointsService.js';
+import { PLAFONDS_TOTAUX, peutGererPoints } from './bareme.js';
 
 const cache = new Map(); // cle -> { etat, enCours }
 const abonnes = new Set();
@@ -50,9 +51,11 @@ export function lirePointsEtat(etabId, userId) {
   return cache.get(cle(etabId, userId))?.etat || null;
 }
 
-// État courant : { actif, participant, gere, bareme, roles_participants, exclus }.
-// `gereFront` : droit « gérer » du front, pris tant que la base n'a pas répondu.
-export function usePointsEtat(etabId, userId, { gereFront = false, enabled = true } = {}) {
+// État courant : { actif, participant, gere, bareme, roles_participants, exclus,
+// plafonds }. `gereFront` : droit « gérer » du front, pris tant que la base n'a
+// pas répondu. `role` : quand il est donné, « gère » exige la direction (P2,
+// F8), quelle que soit la réponse ; la base l'exige déjà dans points_gere.
+export function usePointsEtat(etabId, userId, { gereFront = false, enabled = true, role } = {}) {
   const [, forcer] = React.useReducer((n) => n + 1, 0);
   React.useEffect(() => {
     abonnes.add(forcer);
@@ -67,9 +70,13 @@ export function usePointsEtat(etabId, userId, { gereFront = false, enabled = tru
     pret: Boolean(etat),
     actif: Boolean(etat?.actif),
     participant: Boolean(etat?.participant),
-    gere: etat ? Boolean(etat.gere) : Boolean(gereFront),
+    gere: role === undefined
+      ? (etat ? Boolean(etat.gere) : Boolean(gereFront))
+      : peutGererPoints(role, etat ? etat.gere : gereFront),
     bareme: etat?.bareme || null,
     rolesParticipants: Array.isArray(etat?.roles_participants) ? etat.roles_participants : null,
     exclus: Array.isArray(etat?.exclus) ? etat.exclus : [],
-  }), [etat, gereFront]);
+    plafondJour: Number.isInteger(etat?.plafond_jour_total) ? etat.plafond_jour_total : PLAFONDS_TOTAUX.jour,
+    plafondMois: Number.isInteger(etat?.plafond_mois_total) ? etat.plafond_mois_total : PLAFONDS_TOTAUX.mois,
+  }), [etat, gereFront, role]);
 }

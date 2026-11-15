@@ -16,6 +16,28 @@
 // ════════════════════════════════════════════════════════════════
 
 export const UI_GLOSSARY_ES = {
+  // ── Points, anti-fuite et catalogue (lot P2) ──
+  "Commun": "Común",
+  "Aucun cadeau dans cette rangée.": "Ningún regalo en esta fila.",
+  "Points fixes par geste fait dans l'app, avec un plafond par jour. Tous gestes confondus, au plus": "Puntos fijos por cada gesto hecho en la app, con un tope diario. Todos los gestos juntos, como máximo",
+  "points par jour et": "puntos por día y",
+  "Rangée de la boutique": "Fila de la tienda",
+  "Paraît en cuisine et en salle.": "Aparece en cocina y en sala.",
+  "Coût en points (100 à 10 000)": "Coste en puntos (100 a 10 000)",
+  "Le coût va de 100 à 10 000 points.": "El coste va de 100 a 10 000 puntos.",
+  "Un cadeau porte déjà ce nom dans cette boutique.": "Ya hay un regalo con este nombre en esta tienda.",
+  "Plafonds par personne, tous gestes confondus": "Topes por persona, todos los gestos juntos",
+  "Un geste qui dépasserait l'un des deux ne rapporte rien. Avec les plafonds d'origine, une personne gagne au plus 4 800 points par an.": "Un gesto que superaría uno de los dos no da nada. Con los topes de origen, una persona gana como máximo 4 800 puntos al año.",
+  "Par jour (0 à 200)": "Por día (0 a 200)",
+  "Par mois (0 à 2 000)": "Por mes (0 a 2 000)",
+  "Au plus par personne et par an :": "Como máximo por persona y por año:",
+  "Plafonds : 0 à 200 points par jour, 0 à 2 000 par mois.": "Topes: 0 a 200 puntos por día, 0 a 2 000 por mes.",
+  "Le premier relevé d'une zone dans chaque tranche de deux heures.": "El primer registro de una zona en cada franja de dos horas.",
+  "Une photo par produit et par jour, le produit indiqué.": "Una foto por producto y por día, con el producto indicado.",
+  "Chaque facture scannée ou en PDF, avec son numéro, une seule fois.": "Cada factura escaneada o en PDF, con su número, una sola vez.",
+  "Chaque perte déclarée avec son produit et sa quantité.": "Cada pérdida declarada con su producto y su cantidad.",
+  "Chaque zone comptée, versée quand l'inventaire est validé, cinq au plus.": "Cada zona contada, abonada cuando se valida el inventario, cinco como máximo.",
+  "L'inventaire que vous validez, un par périmètre et par semaine.": "El inventario que usted valida, uno por perímetro y por semana.",
   // ── Points & boutique (lot P1) ──
   "Points & boutique": "Puntos y tienda",
   "Points": "Puntos",

@@ -36,6 +36,7 @@ export function useVisibleNav({ user, etablissement, perms }) {
   // seul qui gère (droit du front) la voit.
   const points = usePointsEtat(etablissement?.id, user?.id, {
     gereFront: canManageModule(role, 'points'),
+    role,
     enabled: perms.points !== false,
   });
   const voitPoints = entreeMenuVisible(points);

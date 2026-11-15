@@ -5,19 +5,23 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
-  ACTIONS, BAREME_DEFAUT, LIBELLES_ACTIONS, ROLES_PARTICIPANTS, ROLES_JAMAIS,
-  baremeEffectif, chiffresDuMois, entreeMenuVisible, erreurBareme, libelleAction,
-  messageCredit, prochainCadeau, raisonCommandeImpossible,
+  ACTIONS, BAREME_DEFAUT, COUT_MAX, COUT_MIN, LIBELLES_ACTIONS, PLAFONDS_TOTAUX, ROLES_PARTICIPANTS, ROLES_JAMAIS,
+  baremeEffectif, chiffresDuMois, entreeMenuVisible, erreurBareme, filtreParDefaut, filtrerCadeaux, libelleAction,
+  messageCredit, peutGererPoints, prochainCadeau, raisonCommandeImpossible,
 } from './bareme.js';
+import { rolesEcritureBase } from '../moduleConfig.js';
 
-const migration = readFileSync(
-  fileURLToPath(new URL('../../../supabase/migrations/20261114_points_boutique.sql', import.meta.url)), 'utf8',
+const lireMigration = (nom) => readFileSync(
+  fileURLToPath(new URL(`../../../supabase/migrations/${nom}`, import.meta.url)), 'utf8',
 );
+// La définition en vigueur est celle de la dernière migration qui la pose.
+const MIGRATIONS = ['20261115_points_anti_fuite.sql', '20261114_points_boutique.sql'].map(lireMigration);
 
-// Corps d'une fonction SQL de la migration, entre ses deux $fn$.
+// Corps d'une fonction SQL, entre ses deux $fn$, dans la dernière migration qui la définit.
 function corps(nom) {
+  const migration = MIGRATIONS.find((m) => m.includes(`create or replace function public.${nom}(`));
+  assert.ok(migration, `fonction ${nom} absente des migrations`);
   const debut = migration.indexOf(`create or replace function public.${nom}(`);
-  assert.ok(debut >= 0, `fonction ${nom} absente de la migration`);
   const a = migration.indexOf('$fn$', debut);
   const b = migration.indexOf('$fn$', a + 4);
   return migration.slice(a + 4, b);
@@ -117,4 +121,42 @@ test('chiffres du mois : crédits moins annulations, jour de Zurich', () => {
   ];
   assert.deepEqual(chiffresDuMois(mouvements, maintenant), { gagnes: 8, gestes: 2 });
   assert.deepEqual(chiffresDuMois([], maintenant), { gagnes: 0, gestes: 0 });
+});
+
+test('miroir P2 : plafonds totaux, bornes du coût et catégories comme en base', () => {
+  const p2 = MIGRATIONS[0];
+  assert.match(p2, /plafond_jour_total integer not null default 40/);
+  assert.match(p2, /plafond_mois_total integer not null default 400/);
+  assert.deepEqual(PLAFONDS_TOTAUX, { jour: 40, mois: 400 });
+  assert.ok(p2.includes(`check (cout between ${COUT_MIN} and ${COUT_MAX})`), 'bornes du coût');
+  assert.ok(p2.includes("check (categorie in ('cuisine', 'salle', 'commun'))"), 'catégories');
+});
+
+test("boutique : rangée choisie d'office selon le rôle", () => {
+  assert.equal(filtreParDefaut('serveur'), 'salle');
+  assert.equal(filtreParDefaut('hote'), 'salle');
+  assert.equal(filtreParDefaut('cuisinier'), 'cuisine');
+  assert.equal(filtreParDefaut('resp_cuisine'), 'cuisine');
+  assert.equal(filtreParDefaut('receptionniste'), 'tout');
+  assert.equal(filtreParDefaut('patron'), 'tout');
+  assert.equal(filtreParDefaut(undefined), 'tout');
+});
+
+test('boutique : les cadeaux communs paraissent dans chaque rangée', () => {
+  const cadeaux = [
+    { id: 'c', categorie: 'cuisine' }, { id: 's', categorie: 'salle' }, { id: 'm', categorie: 'commun' }, { id: 'x' },
+  ];
+  assert.deepEqual(filtrerCadeaux(cadeaux, 'cuisine').map((c) => c.id), ['c', 'm', 'x']);
+  assert.deepEqual(filtrerCadeaux(cadeaux, 'salle').map((c) => c.id), ['s', 'm', 'x']);
+  assert.deepEqual(filtrerCadeaux(cadeaux, 'tout').map((c) => c.id), ['c', 's', 'm', 'x']);
+  assert.deepEqual(filtrerCadeaux(null, 'salle'), []);
+});
+
+test('gestion : jamais pour un participant, même avec la case « Modifier »', () => {
+  assert.equal(peutGererPoints('patron', true), true);
+  assert.equal(peutGererPoints('consultant', true), true);
+  assert.equal(peutGererPoints('patron', false), false);
+  for (const role of ROLES_PARTICIPANTS) assert.equal(peutGererPoints(role, true), false, role);
+  // La case de Rôles & accès est verrouillée hors direction (canManageModule lit rolesEcritureBase).
+  assert.deepEqual(rolesEcritureBase.points, ['consultant', 'patron']);
 });

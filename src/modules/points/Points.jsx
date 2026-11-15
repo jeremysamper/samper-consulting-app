@@ -24,7 +24,7 @@ const ONGLETS_GESTION = [
 
 export default function Points({ user, etablissement }) {
   const etabId = etablissement?.id;
-  const etat = usePointsEtat(etabId, user?.id, { gereFront: canManageModule(user?.role, 'points') });
+  const etat = usePointsEtat(etabId, user?.id, { gereFront: canManageModule(user?.role, 'points'), role: user?.role });
   const participe = etat.actif && etat.participant;
   const onglets = React.useMemo(() => [
     ...(participe ? [{ id: 'moi', label: 'Mes points' }] : []),
@@ -44,7 +44,7 @@ export default function Points({ user, etablissement }) {
     );
   }
   if (!etat.gere) {
-    return <MesPoints user={user} etablissement={etablissement} bareme={etat.bareme} />;
+    return <MesPoints user={user} etablissement={etablissement} bareme={etat.bareme} plafonds={{ jour: etat.plafondJour, mois: etat.plafondMois }} />;
   }
 
   return (
@@ -56,7 +56,7 @@ export default function Points({ user, etablissement }) {
         )}
         <SegmentedTabs tabs={onglets} active={courant} onChange={setOnglet} />
         {courant === 'moi'
-          ? <MesPoints user={user} etablissement={etablissement} bareme={etat.bareme} sansTitre />
+          ? <MesPoints user={user} etablissement={etablissement} bareme={etat.bareme} plafonds={{ jour: etat.plafondJour, mois: etat.plafondMois }} sansTitre />
           : <GestionPoints key={`${etabId}-${courant}`} onglet={courant} user={user} etablissement={etablissement} etat={etat} />}
       </div>
     </div>

@@ -126,6 +126,9 @@ export const manageableModules = [
 export const rolesEcritureBase = {
   mep:        ['consultant', 'resp_cuisine', 'cuisinier'],
   pos:        ['consultant', 'patron', 'resp_cuisine'],
+  // points (P2, F8) : points_gere exige le rôle consultant ou patron en plus
+  // de la case ; hors direction, la case « Modifier » est verrouillée.
+  points:     ['consultant', 'patron'],
 };
 
 // Rôles autorisés à gérer un module quand aucun droit explicite n'est défini.

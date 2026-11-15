@@ -1,22 +1,23 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Points des employés : règles d'affichage, sans React.
 //
-// Miroir de la migration supabase/migrations/20261114_points_boutique.sql :
-//   BAREME_DEFAUT      = points_bareme_defaut()
+// Miroir des migrations des points :
+//   BAREME_DEFAUT      = points_bareme_defaut() (20261115_points_anti_fuite.sql)
 //   ROLES_PARTICIPANTS = points_roles_defaut()
-//   LIBELLES_ACTIONS   = points_libelle_action()
+//   LIBELLES_ACTIONS   = points_libelle_action() (20261114_points_boutique.sql)
+//   PLAFONDS_TOTAUX    = défauts de points_reglages.plafond_jour_total et _mois_total
 // La base reste la seule à créditer ; ces listes ne servent qu'à l'écran.
 // points.test.mjs compare les clés des deux côtés.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const BAREME_DEFAUT = {
-  releve_haccp: { points: 2, plafond: 10 },
+  releve_haccp: { points: 2, plafond: 8 },
   controle_haccp: { points: 3, plafond: 5 },
-  photo_tracabilite: { points: 3, plafond: 10 },
-  facture_achat: { points: 5, plafond: 10 },
-  perte_declaree: { points: 2, plafond: 5 },
+  photo_tracabilite: { points: 3, plafond: 3 },
+  facture_achat: { points: 5, plafond: 3 },
+  perte_declaree: { points: 2, plafond: 2 },
   comptage_zone: { points: 10, plafond: 5 },
-  inventaire_valide: { points: 20, plafond: 2 },
+  inventaire_valide: { points: 20, plafond: 1 },
 };
 
 export const ACTIONS = Object.keys(BAREME_DEFAUT);
@@ -33,13 +34,13 @@ export const LIBELLES_ACTIONS = {
 
 // Ce que rapporte chaque geste, dit à l'employé (« Ce qui rapporte des points »).
 export const EXPLICATIONS_ACTIONS = {
-  releve_haccp: 'Chaque relevé de température enregistré.',
+  releve_haccp: "Le premier relevé d'une zone dans chaque tranche de deux heures.",
   controle_haccp: 'Chaque contrôle HACCP enregistré.',
-  photo_tracabilite: 'Chaque photo de traçabilité, avec sa photo.',
-  facture_achat: 'Chaque facture ou bon scanné, photo ou PDF.',
-  perte_declaree: 'Chaque perte déclarée, quelle que soit la quantité.',
-  comptage_zone: "Chaque zone comptée dans un inventaire, une fois par zone.",
-  inventaire_valide: 'Chaque inventaire que vous validez.',
+  photo_tracabilite: 'Une photo par produit et par jour, le produit indiqué.',
+  facture_achat: 'Chaque facture scannée ou en PDF, avec son numéro, une seule fois.',
+  perte_declaree: 'Chaque perte déclarée avec son produit et sa quantité.',
+  comptage_zone: "Chaque zone comptée, versée quand l'inventaire est validé, cinq au plus.",
+  inventaire_valide: "L'inventaire que vous validez, un par périmètre et par semaine.",
 };
 
 // Rôles participants par défaut ; consultant et patron n'y entrent jamais.
@@ -48,6 +49,42 @@ export const ROLES_PARTICIPANTS = ['resp_cuisine', 'cuisinier', 'serveur', 'hote
 export const ROLES_JAMAIS = ['consultant', 'patron'];
 
 export const AJUSTEMENT_MAX = 500;
+// Plafonds par personne, tous gestes confondus (P2, F1) : au plus 4 800 points
+// par personne et par an avec les défauts.
+export const PLAFONDS_TOTAUX = { jour: 40, mois: 400 };
+export const PLAFOND_JOUR_TOTAL_MAX = 200;
+export const PLAFOND_MOIS_TOTAL_MAX = 2000;
+// Coût d'un cadeau (contrainte points_cadeaux_cout_bornes).
+export const COUT_MIN = 100;
+export const COUT_MAX = 10000;
+
+// Catégories du catalogue ; « commun » paraît dans les deux rangées.
+export const CATEGORIES_CADEAU = ['cuisine', 'salle', 'commun'];
+export const LIBELLES_CATEGORIES = { cuisine: 'Cuisine', salle: 'Salle', commun: 'Commun' };
+export const FILTRES_BOUTIQUE = [
+  { id: 'cuisine', label: 'Cuisine' },
+  { id: 'salle', label: 'Salle' },
+  { id: 'tout', label: 'Tout' },
+];
+
+// Rangée choisie d'office selon le rôle (P2, F11).
+export function filtreParDefaut(role) {
+  if (role === 'serveur' || role === 'hote') return 'salle';
+  if (role === 'resp_cuisine' || role === 'cuisinier') return 'cuisine';
+  return 'tout';
+}
+
+export function filtrerCadeaux(cadeaux, filtre) {
+  const liste = cadeaux || [];
+  if (filtre !== 'cuisine' && filtre !== 'salle') return liste;
+  return liste.filter((c) => (c.categorie || 'commun') === filtre || (c.categorie || 'commun') === 'commun');
+}
+
+// Gérer les points (P2, F8) : la direction seulement, et sa case « Modifier ».
+// Un participant ne gère jamais, même avec la case cochée.
+export function peutGererPoints(role, droitGerer) {
+  return ROLES_JAMAIS.includes(role) && Boolean(droitGerer);
+}
 export const POINTS_MAX = 100;
 export const PLAFOND_MAX = 50;
 
