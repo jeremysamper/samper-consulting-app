@@ -48,6 +48,9 @@ export function pastillePointage(ind, shift, maintenant = new Date()) {
   const points = pointsPastille(ind, 'pointage_ponctuel');
   if (points == null || !shift || shift.pointageDebut) return null;
   if (shift.note === 'Pointage hors planning') return null;
+  // Service dont la personne a posé elle-même l'heure, la date ou l'attribution
+  // (migration 20261115_points_shifts_retouche) : rien.
+  if ((ind.services_sans_pointage || []).includes(shift.id)) return null;
   const [h, m] = String(shift.debut || '').split(':').map(Number);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
   const debut = h * 60 + m;

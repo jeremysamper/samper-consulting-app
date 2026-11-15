@@ -21,7 +21,7 @@ export const UI_GLOSSARY_ES = {
   "gestes": "gestos",
   "versés à la validation": "abonados al validar",
   "Les points ne comptent que les jours où vous êtes au planning.": "Los puntos solo cuentan los días en que usted está en el planning.",
-  "Votre arrivée pointée dans l'heure qui précède le début, pas en retard.": "Su llegada fichada en la hora previa al inicio, sin retraso.",
+  "Votre arrivée pointée dans l'heure qui précède le début, pas en retard, sur un service que vous n'avez pas planifié vous-même.": "Su llegada fichada en la hora previa al inicio, sin retraso, en un turno que no planificó usted mismo.",
   "Pointage à l'heure": "Fichaje puntual",
   "Annulation : Pointage à l'heure": "Anulación: Fichaje puntual",
   // ── Points, relevé HACCP matin et soir ──

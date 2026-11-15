@@ -220,6 +220,17 @@ test('pointage : pastille dans l\'heure qui précède le début du service, pas 
   assert.equal(pastillePointage({ ...IND, programme_aujourdhui: false }, shift, new Date('2026-11-15T13:30:00Z')), null);
 });
 
+test('pointage : pas de pastille sur un service retouché par la personne elle-même', () => {
+  const shift = { id: 's-1', debut: '15:00', pointageDebut: null };
+  const maintenant = new Date('2026-11-15T13:30:00Z');
+  assert.equal(pastillePointage(IND, shift, maintenant), 2);
+  assert.equal(pastillePointage({ ...IND, services_sans_pointage: ['s-1'] }, shift, maintenant), null);
+  assert.equal(pastillePointage({ ...IND, services_sans_pointage: ['s-2'] }, shift, maintenant), 2);
+  const sql = lireMigration('20261115_points_shifts_retouche.sql');
+  assert.ok(sql.includes("'services_sans_pointage'"), 'clé lue par la pastille, écrite par points_indicateurs');
+  assert.match(EXPLICATIONS_ACTIONS.pointage_ponctuel, /que vous n'avez pas planifié vous-même/);
+});
+
 test('popup : crédits à moins de 1,5 s fondus en un seul, au-delà un popup neuf', () => {
   const a = fusionnerPopup(null, { points: 2, libelle: 'Relevé HACCP' }, 1000);
   assert.deepEqual(a, { points: 2, gestes: 1, libelle: 'Relevé HACCP', dernier: 1000 });

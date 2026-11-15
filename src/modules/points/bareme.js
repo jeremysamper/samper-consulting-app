@@ -43,7 +43,7 @@ export const EXPLICATIONS_ACTIONS = {
   perte_declaree: 'Chaque perte déclarée avec son produit et sa quantité.',
   comptage_zone: "Chaque zone comptée, versée quand l'inventaire est validé, cinq au plus.",
   inventaire_valide: "L'inventaire que vous validez, un par périmètre et par semaine.",
-  pointage_ponctuel: "Votre arrivée pointée dans l'heure qui précède le début, pas en retard.",
+  pointage_ponctuel: "Votre arrivée pointée dans l'heure qui précède le début, pas en retard, sur un service que vous n'avez pas planifié vous-même.",
 };
 
 // Rôles participants par défaut ; consultant et patron n'y entrent jamais.
