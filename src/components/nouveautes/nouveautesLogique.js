@@ -30,7 +30,7 @@ const POINTS_EQUIPE = {
   titre: 'Gagnez des points',
   lignes: [
     ["Un rond vert", { n: '+2' }, "à côté d'une tâche : elle vous rapporte des points."],
-    ["Ils se gagnent avec les relevés des frigos, les photos, les factures, les pertes et l'inventaire."],
+    ["Ils se gagnent avec les relevés des températures, la traçabilité, les factures, les pertes et l'inventaire."],
     ["Pointer à l'heure vous rapporte aussi", { n: '2' }, "points."],
     ["Les points ne comptent que les jours où vous êtes au planning."],
     ["Avec vos points, choisissez du matériel pro dans la boutique."],
@@ -44,7 +44,6 @@ const POINTS_GESTION = {
   lignes: [
     ["L'équipe gagne des points à chaque tâche faite dans l'app."],
     ["Elle les échange contre du matériel pro dans la boutique."],
-    ["Pour les allumer : module Points & boutique, onglet Réglages."],
   ],
 };
 
