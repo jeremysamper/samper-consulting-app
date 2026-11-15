@@ -81,6 +81,9 @@ as $fn$
              and s.debut <> s.fin
              and coalesce(s.note, '') <> 'Pointage hors planning'
              and lower(coalesce(s.statut, '')) not in ('annulé', 'annule', 'refusé', 'refuse')
+             -- Planifié avant ce jour : un service créé le jour même (par
+             -- exemple par un responsable pour lui-même) ne compte pas.
+             and coalesce(s.created_at, '-infinity'::timestamptz) < (p_jour::timestamp at time zone 'Europe/Zurich')
          )
      and not exists (
            select 1 from public.absences a
@@ -284,6 +287,10 @@ begin
       end if;
       -- Un service programmé, pas un pointage hors planning.
       if new.debut = new.fin or coalesce(new.note, '') = 'Pointage hors planning' then
+        return null;
+      end if;
+      -- L'heure de début décalée dans la même écriture : rien.
+      if new.debut is distinct from old.debut then
         return null;
       end if;
       -- À l'heure : au plus l'heure de début (le pointage est noté à la minute).
