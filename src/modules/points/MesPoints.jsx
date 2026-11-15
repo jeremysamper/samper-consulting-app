@@ -55,6 +55,7 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
   const [donnees, setDonnees] = React.useState(null);
   const [echec, setEchec] = React.useState(false);
   const [aCommander, setACommander] = React.useState(null);
+  const [credits, setCredits] = React.useState(false);
   // Rangée de la boutique choisie d'office selon le rôle (P2, F11).
   const [filtre, setFiltre] = React.useState(() => filtreParDefaut(user?.role));
   const [envoi, setEnvoi] = React.useState(false);
@@ -202,6 +203,9 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
               })}
             </div>
           )}
+          {proposes.some((c) => c.photoUrl && c.photoCredit) && (
+            <button type="button" className="points-credits" onClick={() => setCredits(true)}>Crédits des photos</button>
+          )}
         </section>
 
         {commandes.length > 0 && (
@@ -276,6 +280,22 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
         </div>
       </div>
 
+      {credits && (
+        <Fenetre id="points-credits" titre="Crédits des photos" onClose={() => setCredits(false)}>
+          <p style={st.remarque}>Photos détourées à partir des originaux ci-dessous, chacune sous sa licence.</p>
+          <div className="points-liste">
+            {proposes.filter((c) => c.photoUrl && c.photoCredit).map((c) => (
+              <div key={c.id} style={{ ...ligneStyle(), flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '8px 0' }}>
+                <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', overflowWrap: 'anywhere' }} data-no-translate>{c.nom}</span>
+                <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', overflowWrap: 'anywhere' }} data-no-translate>{c.photoCredit}</span>
+                {c.photoSource && (
+                  <a href={c.photoSource} target="_blank" rel="noopener noreferrer" style={{ fontSize: 'var(--t1)', color: 'var(--lien)' }}>Voir l'original</a>
+                )}
+              </div>
+            ))}
+          </div>
+        </Fenetre>
+      )}
       {aCommander && (
         <Fenetre
           id="points-commander"
