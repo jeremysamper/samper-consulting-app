@@ -34,7 +34,7 @@ export const LIBELLES_ACTIONS = {
 
 // Ce que rapporte chaque geste, dit à l'employé (« Ce qui rapporte des points »).
 export const EXPLICATIONS_ACTIONS = {
-  releve_haccp: "Le premier relevé d'une zone dans chaque tranche de deux heures.",
+  releve_haccp: "Le premier relevé d'une zone le matin (avant 15 h), puis le premier du soir.",
   controle_haccp: 'Chaque contrôle HACCP enregistré.',
   photo_tracabilite: 'Une photo par produit et par jour, le produit indiqué.',
   facture_achat: 'Chaque facture scannée ou en PDF, avec son numéro, une seule fois.',

@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import {
-  ACTIONS, BAREME_DEFAUT, COUT_MAX, COUT_MIN, LIBELLES_ACTIONS, PLAFONDS_TOTAUX, ROLES_PARTICIPANTS, ROLES_JAMAIS,
+  ACTIONS, BAREME_DEFAUT, COUT_MAX, COUT_MIN, EXPLICATIONS_ACTIONS, LIBELLES_ACTIONS, PLAFONDS_TOTAUX, ROLES_PARTICIPANTS, ROLES_JAMAIS,
   baremeEffectif, chiffresDuMois, entreeMenuVisible, erreurBareme, filtreParDefaut, filtrerCadeaux, libelleAction,
   messageCredit, peutGererPoints, prochainCadeau, raisonCommandeImpossible,
 } from './bareme.js';
@@ -159,4 +159,10 @@ test('gestion : jamais pour un participant, même avec la case « Modifier »', 
   for (const role of ROLES_PARTICIPANTS) assert.equal(peutGererPoints(role, true), false, role);
   // La case de Rôles & accès est verrouillée hors direction (canManageModule lit rolesEcritureBase).
   assert.deepEqual(rolesEcritureBase.points, ['consultant', 'patron']);
+});
+
+test('miroir matin et soir : le texte du barème dit la même heure que la base', () => {
+  const sql = lireMigration('20261115_points_haccp_matin_soir.sql');
+  assert.ok(sql.includes("at time zone 'Europe/Zurich') < 15 then 'matin' else 'soir'"), 'bascule à 15 h en base');
+  assert.match(EXPLICATIONS_ACTIONS.releve_haccp, /avant 15 h/);
 });
