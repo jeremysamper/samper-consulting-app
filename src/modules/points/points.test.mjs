@@ -246,3 +246,17 @@ test('miroir borne : la pastille et la base disent la même heure avant le débu
   assert.ok(sql.includes("(new.date + new.debut) - interval '60 minutes'"), 'borne de 60 minutes en base');
   assert.match(EXPLICATIONS_ACTIONS.pointage_ponctuel, /dans l'heure qui précède le début/);
 });
+
+import { MOTIF_PHOTO_CADEAU, photoCadeauValide } from './bareme.js';
+
+test('photo de cadeau : seulement le stockage Supabase, comme la contrainte en base', () => {
+  const base = 'https://ppmtoiqgajwcdkbnrcll.supabase.co/storage/v1/object/public/recette-photos/etab-2/';
+  assert.equal(photoCadeauValide(base + 'cadeau-catalogue-tastevin.webp'), true);
+  assert.equal(photoCadeauValide('https://images.unsplash.com/photo-1.webp'), false, 'aucune autre source (CSP)');
+  assert.equal(photoCadeauValide('http://ppmtoiqgajwcdkbnrcll.supabase.co/storage/v1/object/public/x.webp'), false);
+  assert.equal(photoCadeauValide(null), false);
+  assert.equal(photoCadeauValide(base + 'x'.repeat(1000)), false, '1000 caractères au plus');
+  const sql = lireMigration('20261115_points_cadeaux_photo.sql');
+  assert.ok(sql.includes("photo_url ~ '" + MOTIF_PHOTO_CADEAU.source.split('\\/').join('/') + "'"), 'même motif en base et à l\'écran');
+  assert.ok(sql.includes('length(photo_url) <= 1000'));
+});

@@ -16,6 +16,9 @@
 // ════════════════════════════════════════════════════════════════
 
 export const UI_GLOSSARY_ES = {
+  // ── Points : photo des cadeaux ──
+  "Photo (facultatif)": "Foto (opcional)",
+  "Gardée à l'enregistrement. Une photo carrée ou en largeur rend mieux dans la boutique.": "Se guarda al registrar. Una foto cuadrada o apaisada queda mejor en la tienda.",
   // ── Points, pastilles et popup (lot P3) ──
   "points obtenus": "puntos obtenidos",
   "gestes": "gestos",

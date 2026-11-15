@@ -12,6 +12,8 @@ import {
 import { messageErreurPoints, pointsService } from './pointsService.js';
 import { rafraichirPointsEtat } from './pointsEtat.js';
 import { NombrePoints, dateCourte } from './MesPoints.jsx';
+import PhotoCadeau from './PhotoCadeau.jsx';
+import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Gestion des points (qui gère « points », défaut consultant et patron) :
@@ -208,7 +210,8 @@ function OngletBoutique({ etabId, donnees, charger }) {
                 onClick={() => setEdition({ ...c, stock: c.stock == null ? '' : String(c.stock), cout: String(c.cout) })}
                 style={{ ...ligne, width: '100%', background: 'transparent', borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 0, borderRadius: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', minHeight: 'var(--ligne-aeree)' }}
               >
-                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
+                <PhotoCadeau url={c.photoUrl} taille={56} />
+                <div style={{ flex: '1 1 160px', minWidth: 0 }}>
                   <div style={{ fontWeight: 'var(--g2)', overflowWrap: 'anywhere' }} data-no-translate>{c.nom}</div>
                   <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
                     <span style={{ marginRight: 8 }}>{LIBELLES_CATEGORIES[c.categorie] || LIBELLES_CATEGORIES.commun}</span>
@@ -235,6 +238,19 @@ function OngletBoutique({ etabId, donnees, charger }) {
             </>
           )}
         >
+          <span style={st.label}>Photo (facultatif)</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <PhotoUploader
+              photoUrl={edition.photoUrl || null}
+              size={120}
+              onUpload={async (file) => {
+                const url = await pointsService.televerserPhotoCadeau(etabId, edition.id, file);
+                setEdition((e) => (e ? { ...e, photoUrl: url } : e));
+              }}
+              onRemove={() => setEdition((e) => (e ? { ...e, photoUrl: null } : e))}
+            />
+            <span className="points-aide" style={{ flex: '1 1 180px' }}>Gardée à l'enregistrement. Une photo carrée ou en largeur rend mieux dans la boutique.</span>
+          </div>
           <label style={st.label} htmlFor="points-cadeau-nom">Nom</label>
           <input id="points-cadeau-nom" style={st.champ} value={edition.nom} maxLength={120} onChange={(e) => setEdition({ ...edition, nom: e.target.value })} />
           <label style={st.label} htmlFor="points-cadeau-desc">Description (facultatif)</label>
