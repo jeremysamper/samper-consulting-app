@@ -21,6 +21,9 @@ import { splitAffixes } from './affixes.js';
 import { UI_GLOSSARY_ES } from './glossaryEs.js';
 
 export const UI_GLOSSARY = {
+  // ── Points : photo des cadeaux ──
+  "Photo (facultatif)": "Photo (optional)",
+  "Gardée à l'enregistrement. Une photo carrée ou en largeur rend mieux dans la boutique.": "Kept when you save. A square or landscape photo looks best in the shop.",
   // ── Points, pastilles et popup (lot P3) ──
   "points obtenus": "points earned",
   "gestes": "actions",

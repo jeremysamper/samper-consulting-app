@@ -5,6 +5,8 @@
 // Une lecture en échec lève : l'écran dit « non actualisé » au lieu d'un vide.
 // ─────────────────────────────────────────────────────────────────────────────
 import { supabase } from '../../services/supabase.js';
+import { dbService } from '../../services/dbService.js';
+import { photoCadeauValide } from './bareme.js';
 
 function verifier({ data, error }) {
   if (error) throw error;
@@ -45,6 +47,7 @@ const mapCadeau = (r) => ({
   actif: r.actif,
   ordre: r.ordre,
   categorie: r.categorie || 'commun',
+  photoUrl: photoCadeauValide(r.photo_url) ? r.photo_url : null,
 });
 
 const mapCommande = (r) => ({
@@ -155,11 +158,21 @@ export const pointsService = {
       actif: cadeau.actif !== false,
       ordre: Number(cadeau.ordre) || 0,
       categorie: ['cuisine', 'salle', 'commun'].includes(cadeau.categorie) ? cadeau.categorie : 'commun',
+      photo_url: photoCadeauValide(cadeau.photoUrl) ? cadeau.photoUrl : null,
     };
     const q = cadeau.id
       ? supabase.from('points_cadeaux').update(payload).eq('id', cadeau.id).select().single()
       : supabase.from('points_cadeaux').insert(payload).select().single();
     return mapCadeau(verifier(await q));
+  },
+
+  // Photo d'un cadeau : même envoi que les photos des fiches (Edge Function
+  // upload-recette-photo, bucket public recette-photos, dossier de
+  // l'établissement). Rend l'adresse publique, gardée à l'enregistrement.
+  async televerserPhotoCadeau(etabId, cadeauId, file) {
+    const { url } = await dbService.getDb().uploadRecettePhoto({ etabId, type: 'cadeau', id: cadeauId || `neuf-${Date.now()}`, file });
+    if (!photoCadeauValide(url)) throw new Error('Adresse de photo inattendue');
+    return url;
   },
 
   async supprimerCadeau(cadeauId) {

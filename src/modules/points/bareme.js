@@ -61,6 +61,14 @@ export const PLAFOND_MOIS_TOTAL_MAX = 2000;
 export const COUT_MIN = 100;
 export const COUT_MAX = 10000;
 
+// Photo d'un cadeau : seulement une adresse publique du stockage Supabase de
+// l'app (contrainte points_cadeaux_photo_url_check, migration
+// 20261115_points_cadeaux_photo ; la CSP n'affiche aucune autre source).
+export const MOTIF_PHOTO_CADEAU = /^https:\/\/[a-z0-9]+\.supabase\.co\/storage\/v1\/object\/public\//;
+export function photoCadeauValide(url) {
+  return typeof url === 'string' && url.length <= 1000 && MOTIF_PHOTO_CADEAU.test(url);
+}
+
 // Catégories du catalogue ; « commun » paraît dans les deux rangées.
 export const CATEGORIES_CADEAU = ['cuisine', 'salle', 'commun'];
 export const LIBELLES_CATEGORIES = { cuisine: 'Cuisine', salle: 'Salle', commun: 'Commun' };

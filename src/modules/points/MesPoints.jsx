@@ -10,6 +10,7 @@ import {
 } from './bareme.js';
 import { messageErreurPoints, pointsService } from './pointsService.js';
 import { ecouterMouvements } from './usePointsRetour.js';
+import PhotoCadeau from './PhotoCadeau.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Écran de l'employé : son solde et le prochain cadeau à portée (carte nuit),
@@ -180,10 +181,13 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
               {visibles.map((c) => {
                 const raison = raisonCommandeImpossible(c, solde);
                 return (
-                  <Panneau key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', overflowWrap: 'anywhere' }} data-no-translate>{c.nom}</div>
-                    {c.description && <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.45, overflowWrap: 'anywhere' }}>{c.description}</div>}
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginTop: 'auto' }}>
+                  <Panneau key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 0, padding: 12 }}>
+                    <PhotoCadeau url={c.photoUrl} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                      <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.35, overflowWrap: 'anywhere' }} data-no-translate>{c.nom}</div>
+                      {c.description && <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.45, overflowWrap: 'anywhere' }}>{c.description}</div>}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap', marginTop: 'auto' }}>
                       <NombrePoints n={c.cout} style={{ fontSize: 'var(--t3)' }} />
                       {c.stock != null && c.stock > 0 && (
                         <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
@@ -191,10 +195,8 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
                         </span>
                       )}
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                      <Btn onClick={() => setACommander(c)} disabled={Boolean(raison)} style={{ minHeight: 44 }}>Commander</Btn>
-                      {raison && <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}><RaisonEteinte raison={raison} /></span>}
-                    </div>
+                    <Btn onClick={() => setACommander(c)} disabled={Boolean(raison)} style={{ minHeight: 44, width: '100%', justifyContent: 'center' }}>Commander</Btn>
+                    {raison && <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 }}><RaisonEteinte raison={raison} /></span>}
                   </Panneau>
                 );
               })}

@@ -5,7 +5,7 @@
    760 et 1080 px). .points-page est le conteneur, la grille vit sur ses
    enfants ; aucune fenêtre du module n'y est posée (elles vont dans <body>).
    Téléphone : la carte du solde d'abord, deux repères sur une ligne (le
-   troisième revient dès 560 px), la boutique en une colonne.
+   troisième revient dès 560 px), la boutique en grille de deux vignettes.
    ───────────────────────────────────────────────────────────────────────────── */
 .points-page { container-type: inline-size; container-name: points; min-width: 0; }
 .points-grille { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
@@ -17,7 +17,9 @@
 /* Au téléphone, deux repères au plus sur une ligne. */
 .points-page .points-repere-3 { display: none !important; }
 .points-nuit-corps { display: flex; align-items: center; gap: 16px; min-width: 0; flex-wrap: wrap; }
-.points-boutique { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+/* Boutique : grille de vignettes (photo, nom, coût, Commander), deux de front
+   au téléphone, trois dès 560 px, quatre dès 1080 px. */
+.points-boutique { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; align-items: stretch; }
 .points-bas { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); min-width: 0; align-items: start; }
 .points-liste > :last-child { border-bottom-width: 0 !important; }
 .points-section-titre { margin: 0 0 4px; font-size: var(--t3); font-weight: var(--g3); color: var(--text); }
@@ -30,11 +32,11 @@
   .points-page .ui-repere-icone { display: inline-flex !important; }
   .points-page .points-repere-3 { display: flex !important; }
   .points-reperes { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-  .points-boutique { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .points-boutique { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 }
 @container points (min-width: 1080px) {
   .points-haut { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 24px; align-items: stretch; }
   .points-reperes { align-content: stretch; }
-  .points-boutique { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .points-boutique { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
   .points-bas { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
 }
