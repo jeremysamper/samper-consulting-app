@@ -3,6 +3,8 @@ import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
 import { hs } from './HACCP.styles.js';
 import ActionsCorrectives, { Mesure, PlageTexte } from './ActionsCorrectives.jsx';
 import { verdictReleve } from './haccpJour.js';
+import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
+import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Une zone (frigo ou appareil) sur l'accueil : son nom, sa plage en clair, son
@@ -29,6 +31,9 @@ function DernierJour({ date, today }) {
 }
 
 const ZoneTile = ({ zone, last, today, trend, actif, valeur, choix, canWrite, enCours, onOuvrir, onFermer, onValeur, onChoix, onEnregistrer }) => {
+  // Pastille « +N » du relevé de cette zone (lot P3) : rien si la zone est
+  // déjà payée pour la demi-journée, par n'importe qui.
+  const pointsZone = usePastillesPoints().pastille('releve_haccp', { zoneId: zone.id });
   const unite = zone.unite || '°C';
   const duJour = last && last.date === today;
   const verdictDernier = last ? verdictReleve(zone, last.valeur) : null;
@@ -90,7 +95,7 @@ const ZoneTile = ({ zone, last, today, trend, actif, valeur, choix, canWrite, en
               )}
             </div>
           )}
-          {canWrite && !actif && <button type="button" style={st.relever} onClick={onOuvrir}>Relever</button>}
+          {canWrite && !actif && <button type="button" style={{ ...st.relever, ...porteurPoints(pointsZone) }} onClick={onOuvrir}>Relever<PastillePoints n={pointsZone} /></button>}
         </div>
       </div>
 
