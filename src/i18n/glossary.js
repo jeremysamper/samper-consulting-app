@@ -2222,6 +2222,7 @@ export const UI_GLOSSARY = {
   'jours passés sautés': 'past days skipped',
   'jour passé sauté': 'past day skipped',
   'Rien à reprendre : cette semaine-là est vide.': 'Nothing to reuse: that week is empty.',
+  'Semaine à reprendre': 'Week to reuse',
   'Tout est déjà en place, rien ne sera copié.': 'Everything is already in place, nothing will be copied.',
   'Cette semaine est vide, rien à copier.': 'This week is empty, nothing to copy.',
   "Rien n'est effacé : un horaire déjà prévu reste en place, un jour passé ou d'absence est sauté, les pointages ne sont jamais copiés.": 'Nothing is deleted: a shift already planned stays in place, a past day or a day of absence is skipped, clock-ins are never copied.',

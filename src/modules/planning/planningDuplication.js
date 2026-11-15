@@ -102,11 +102,26 @@ export function planSemaines({ debutSource, offsets, existants, personneId = nul
   });
 }
 
-// « Reprendre la semaine du … » : la semaine d'avant recopiée SUR la semaine
-// affichée (qui commence à `semaine`). Toujours en mode garder. Ouverte sur la
-// semaine en cours, elle ne remplit que les jours à partir d'aujourd'hui.
-export const planReprendre = ({ semaine, existants, estAbsent, etablissementId, aPartirDu = null }) =>
-  planSemaines({ debutSource: ajouterJours(semaine, -7), offsets: [7], existants, estAbsent, etablissementId, aPartirDu });
+// « Reprendre la semaine du … » : une semaine passée recopiée SUR la semaine
+// affichée (qui commence à `semaine`). `recul` : combien de semaines en
+// arrière, 1 (la précédente) par défaut. Toujours en mode garder. Ouverte sur
+// la semaine en cours, elle ne remplit que les jours à partir d'aujourd'hui.
+export const planReprendre = ({ semaine, recul = 1, existants, estAbsent, etablissementId, aPartirDu = null }) =>
+  planSemaines({ debutSource: ajouterJours(semaine, -7 * recul), offsets: [7 * recul], existants, estAbsent, etablissementId, aPartirDu });
+
+// Semaines proposées à « Reprendre » : les `nb` semaines avant la semaine
+// affichée, de la plus proche à la plus lointaine, chacune avec son nombre
+// d'horaires. Une ou deux semaines sans horaires (fermeture, vacances) ne
+// bloquent plus la reprise : la semaine choisie d'office est la plus proche
+// qui en a, sinon la précédente.
+export function semainesAReprendre({ semaine, existants, nb = 8 }) {
+  const semaines = Array.from({ length: nb }, (_, i) => {
+    const debut = ajouterJours(semaine, -7 * (i + 1));
+    const fin = ajouterJours(debut, 6);
+    return { recul: i + 1, debut, n: existants.filter(s => s.date >= debut && s.date <= fin).length };
+  });
+  return { semaines, recul: (semaines.find(w => w.n > 0) || semaines[0]).recul };
+}
 
 // « Copier cette semaine sur la suivante » : la semaine affichée recopiée sur
 // celle d'après. Toujours en mode garder, jours passés sautés.

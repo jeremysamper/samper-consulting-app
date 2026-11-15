@@ -2,7 +2,7 @@ import React from 'react';
 import { Choix, Fenetre, Options, st } from './planningUi.jsx';
 import { ajouterJours } from './planningModeles.js';
 import { libellePeriode } from './planningExport.js';
-import { accord, planDuplication, planReprendre, planSemaines, planVersSuivante, resumeDuplication } from './planningDuplication.js';
+import { accord, planDuplication, planReprendre, planSemaines, planVersSuivante, resumeDuplication, semainesAReprendre } from './planningDuplication.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -10,7 +10,8 @@ import { zurichToday } from '../../utils/zurichTime.js';
 //
 // En tête, deux actions immédiates qui disent d'où vers où, chacune avec son
 // résumé déjà calculé (toucher l'action EST la confirmation) :
-// 1. « Reprendre la semaine du … » : la semaine d'avant SUR la semaine affichée ;
+// 1. « Reprendre la semaine du … » : une semaine passée SUR la semaine affichée,
+//    la plus proche qui a des horaires, une autre au choix (huit en arrière) ;
 // 2. « Copier cette semaine sur la suivante » : la semaine affichée sur celle
 //    d'après (la grille y passe ensuite, pour montrer le résultat).
 // Toujours en mode garder : rien n'est effacé. Une action qui ne copierait rien
@@ -67,7 +68,12 @@ export default function DupliquerModal({ semaine, existants, employees, estAbsen
   const [joursCibles, setJoursCibles] = React.useState(new Set());
   const [remplacer, setRemplacer] = React.useState(false);
 
-  const semainePrec = ajouterJours(semaine, -7);
+  // Semaine à reprendre : choisie d'office (la plus proche qui a des horaires)
+  // tant que la personne n'en a pas pris une autre dans la liste.
+  const [reculChoisi, setReculChoisi] = React.useState(null);
+  const aReprendre = React.useMemo(() => semainesAReprendre({ semaine, existants }), [semaine, existants]);
+  const recul = reculChoisi || aReprendre.recul;
+  const semaineSource = ajouterJours(semaine, -7 * recul);
   const semaineSuiv = ajouterJours(semaine, 7);
   const joursSemaine = React.useMemo(() => Array.from({ length: 7 }, (_, i) => ajouterJours(semaine, i)), [semaine]);
   // Aujourd'hui à Zurich : les jours d'avant sont sautés par toutes les copies.
@@ -76,7 +82,7 @@ export default function DupliquerModal({ semaine, existants, employees, estAbsen
   // Plans mémorisés : une mise à jour realtime ou un choix dans la fenêtre ne
   // refait que ce qui a changé (existants et estAbsent restent les mêmes objets
   // côté Planning.jsx tant que les horaires et les absences ne bougent pas).
-  const reprendre = React.useMemo(() => planReprendre({ semaine, existants, estAbsent, etablissementId, aPartirDu }), [semaine, existants, estAbsent, etablissementId, aPartirDu]);
+  const reprendre = React.useMemo(() => planReprendre({ semaine, recul, existants, estAbsent, etablissementId, aPartirDu }), [semaine, recul, existants, estAbsent, etablissementId, aPartirDu]);
   const suivante = React.useMemo(() => planVersSuivante({ semaine, existants, estAbsent, etablissementId, aPartirDu }), [semaine, existants, estAbsent, etablissementId, aPartirDu]);
 
   // « Autres copies » : calculé seulement quand la section est ouverte.
@@ -151,8 +157,18 @@ export default function DupliquerModal({ semaine, existants, employees, estAbsen
       )}
     >
       <div style={s.actions}>
+        <div>
+          <label style={st.label} htmlFor="dupliquer-source">Semaine à reprendre</label>
+          <select id="dupliquer-source" style={{ ...st.champ, marginTop: 4 }} value={recul} onChange={e => setReculChoisi(Number(e.target.value))} disabled={Boolean(enCours)}>
+            {aReprendre.semaines.map(w => (
+              <option key={w.recul} value={w.recul}>
+                {`${periodeDu(w.debut)} : ${w.n ? `${w.n} ${accord(w.n, 'horaire', 'horaires')}` : 'vide'}`}
+              </option>
+            ))}
+          </select>
+        </div>
         <Choix
-          titre={<>Reprendre la semaine du <span>{periodeNue(semainePrec)}</span></>}
+          titre={<>Reprendre la semaine du <span>{periodeNue(semaineSource)}</span></>}
           detail={enCours === 'reprendre' ? 'Copie en cours…' : raisonReprendre || <Resume parts={resumeDuplication(reprendre, { copies: COPIES_SEMAINE })} />}
           onClick={() => lancer('reprendre', reprendre)}
           disabled={Boolean(raisonReprendre) || !reprendre.aCreer.length || Boolean(enCours)}

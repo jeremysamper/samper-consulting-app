@@ -2203,6 +2203,7 @@ export const UI_GLOSSARY_ES = {
   'jours passés sautés': 'días pasados omitidos',
   'jour passé sauté': 'día pasado omitido',
   'Rien à reprendre : cette semaine-là est vide.': 'Nada que retomar: esa semana está vacía.',
+  'Semaine à reprendre': 'Semana que retomar',
   'Tout est déjà en place, rien ne sera copié.': 'Todo está ya en su sitio, no se copiará nada.',
   'Cette semaine est vide, rien à copier.': 'Esta semana está vacía, nada que copiar.',
   "Rien n'est effacé : un horaire déjà prévu reste en place, un jour passé ou d'absence est sauté, les pointages ne sont jamais copiés.": 'No se borra nada: un turno ya previsto se queda, un día pasado o de ausencia se omite, los fichajes nunca se copian.',

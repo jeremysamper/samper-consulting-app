@@ -1,7 +1,7 @@
 // node --test : plans de duplication (planningDuplication.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { planCopieVers, planDuplication, planReprendre, planSemaines, planVersSuivante, resumeDuplication } from './planningDuplication.js';
+import { planCopieVers, planDuplication, planReprendre, planSemaines, planVersSuivante, resumeDuplication, semainesAReprendre } from './planningDuplication.js';
 
 let n = 0;
 const h = (userId, date, debut, fin, extra = {}) => {
@@ -168,4 +168,29 @@ test('resumeDuplication : morceaux accordés, compteurs nuls omis', () => {
   assert.deepEqual(un.map(p => [p.n, p.texte]), [[1, 'horaire sera copié'], [2, 'remplacés'], [1, 'déjà pointé gardé']]);
   const passes = resumeDuplication({ aCreer: [1], aSupprimer: [], joursPasses: 4 });
   assert.deepEqual(passes.map(p => [p.n, p.texte]), [[1, 'horaire sera copié'], [4, 'jours passés sautés']]);
+});
+
+test('reprendre par-dessus deux semaines vides : la plus proche qui a des horaires est choisie', () => {
+  // Semaine pleine du 26.10, rien les semaines du 02.11 et du 09.11, semaine affichée du 16.11.
+  const src = [h('a', '2026-10-27', '10:00', '15:00'), h('b', '2026-11-01', '09:00', '16:00')];
+  const { semaines, recul } = semainesAReprendre({ semaine: '2026-11-16', existants: src });
+  assert.equal(semaines.length, 8);
+  assert.deepEqual(semaines.slice(0, 3).map(w => [w.debut, w.n]), [['2026-11-09', 0], ['2026-11-02', 0], ['2026-10-26', 2]]);
+  assert.equal(recul, 3);
+  const plan = planReprendre({ semaine: '2026-11-16', recul, existants: src, estAbsent: aucuneAbsence, etablissementId: 'e1' });
+  assert.deepEqual(plan.aCreer.map(c => c.date), ['2026-11-17', '2026-11-22']);
+});
+
+test('reprendre : sans horaire dans les huit semaines, la précédente reste proposée', () => {
+  const { recul } = semainesAReprendre({ semaine: S2, existants: [h('a', S2, '10:00', '15:00')] });
+  assert.equal(recul, 1);
+});
+
+test('reprendre une semaine lointaine : jours passés et horaires en place comptés comme pour la précédente', () => {
+  const src = [h('a', '2026-10-27', '10:00', '15:00'), h('a', '2026-10-29', '10:00', '15:00')];
+  const deja = h('a', '2026-11-19', '11:00', '14:00');
+  const plan = planReprendre({ semaine: '2026-11-16', recul: 3, existants: [...src, deja], estAbsent: aucuneAbsence, etablissementId: 'e1', aPartirDu: '2026-11-18' });
+  assert.equal(plan.aCreer.length, 0);
+  assert.equal(plan.joursPasses, 1);
+  assert.equal(plan.dejaPresents, 1);
 });
