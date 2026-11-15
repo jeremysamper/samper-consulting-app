@@ -23,7 +23,7 @@ import { UI_GLOSSARY_ES } from './glossaryEs.js';
 export const UI_GLOSSARY = {
   // ── Points : crédits des photos ──
   "Crédits des photos": "Photo credits",
-  "Photos détourées à partir des originaux ci-dessous, chacune sous sa licence.": "Cut-out photos made from the originals below, each under its own licence.",
+  "Photos des produits, d'après les originaux ci-dessous, chacune sous sa licence.": "Product photos, from the originals below, each under its own licence.",
   "Voir l'original": "See the original",
   // ── Points : photo des cadeaux ──
   "Photo (facultatif)": "Photo (optional)",

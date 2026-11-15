@@ -282,7 +282,7 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
 
       {credits && (
         <Fenetre id="points-credits" titre="Crédits des photos" onClose={() => setCredits(false)}>
-          <p style={st.remarque}>Photos détourées à partir des originaux ci-dessous, chacune sous sa licence.</p>
+          <p style={st.remarque}>Photos des produits, d'après les originaux ci-dessous, chacune sous sa licence.</p>
           <div className="points-liste">
             {proposes.filter((c) => c.photoUrl && c.photoCredit).map((c) => (
               <div key={c.id} style={{ ...ligneStyle(), flexDirection: 'column', alignItems: 'flex-start', gap: 2, padding: '8px 0' }}>
