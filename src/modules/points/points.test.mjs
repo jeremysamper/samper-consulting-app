@@ -15,7 +15,7 @@ const lireMigration = (nom) => readFileSync(
   fileURLToPath(new URL(`../../../supabase/migrations/${nom}`, import.meta.url)), 'utf8',
 );
 // La définition en vigueur est celle de la dernière migration qui la pose.
-const MIGRATIONS = ['20261115_points_anti_fuite.sql', '20261114_points_boutique.sql'].map(lireMigration);
+const MIGRATIONS = ['20261115_points_indicateurs.sql', '20261115_points_anti_fuite.sql', '20261114_points_boutique.sql'].map(lireMigration);
 
 // Corps d'une fonction SQL, entre ses deux $fn$, dans la dernière migration qui la définit.
 function corps(nom) {
@@ -124,7 +124,7 @@ test('chiffres du mois : crédits moins annulations, jour de Zurich', () => {
 });
 
 test('miroir P2 : plafonds totaux, bornes du coût et catégories comme en base', () => {
-  const p2 = MIGRATIONS[0];
+  const p2 = MIGRATIONS[1];
   assert.match(p2, /plafond_jour_total integer not null default 40/);
   assert.match(p2, /plafond_mois_total integer not null default 400/);
   assert.deepEqual(PLAFONDS_TOTAUX, { jour: 40, mois: 400 });
@@ -165,4 +165,65 @@ test('miroir matin et soir : le texte du barème dit la même heure que la base'
   const sql = lireMigration('20261115_points_haccp_matin_soir.sql');
   assert.ok(sql.includes("at time zone 'Europe/Zurich') < 15 then 'matin' else 'soir'"), 'bascule à 15 h en base');
   assert.match(EXPLICATIONS_ACTIONS.releve_haccp, /avant 15 h/);
+});
+
+// ── Lot P3 : pastilles et popup ──
+import { fusionnerPopup, momentZurich, pastillePointage, pointsPastille } from './indicateurs.js';
+
+const IND = {
+  actif: true, participant: true, programme_aujourdhui: true, reste_jour: 30, reste_mois: 300,
+  actions: {
+    releve_haccp: { points: 2, plafond: 8, faits: 1, reste: 7 },
+    photo_tracabilite: { points: 3, plafond: 3, faits: 3, reste: 0 },
+    comptage_zone: { points: 10, plafond: 5, faits: 0, reste: 5 },
+    inventaire_valide: { points: 20, plafond: 1, faits: 0, reste: 1 },
+    pointage_ponctuel: { points: 2, plafond: 2, faits: 0, reste: 2 },
+  },
+  zones_payees: ['frigo-1'], perimetres_payes: ['cave'],
+};
+
+test('pastille : le geste qui paierait encore porte ses points, sinon rien', () => {
+  assert.equal(pointsPastille(IND, 'releve_haccp', { zoneId: 'frigo-2' }), 2);
+  assert.equal(pointsPastille(IND, 'releve_haccp', { zoneId: 'frigo-1' }), null, 'zone déjà payée pour la demi-journée');
+  assert.equal(pointsPastille(IND, 'photo_tracabilite'), null, 'plafond du jour atteint');
+  assert.equal(pointsPastille({ ...IND, reste_jour: 5 }, 'comptage_zone', { perimetre: 'Bar' }), null, 'reste du jour trop court');
+  assert.equal(pointsPastille({ ...IND, reste_mois: 1 }, 'releve_haccp', {}), null, 'reste du mois trop court');
+  assert.equal(pointsPastille(IND, 'comptage_zone', { perimetre: ' Cave ' }), null, 'périmètre payé dans les 7 jours');
+  assert.equal(pointsPastille(IND, 'comptage_zone', { perimetre: 'Bar' }), 10);
+  assert.equal(pointsPastille(IND, 'inconnue'), null);
+});
+
+test('pastille : aucune si éteint, non participant ou hors planning', () => {
+  assert.equal(pointsPastille(null, 'releve_haccp'), null);
+  assert.equal(pointsPastille({}, 'releve_haccp'), null);
+  assert.equal(pointsPastille({ ...IND, actif: false }, 'releve_haccp'), null);
+  assert.equal(pointsPastille({ ...IND, participant: false }, 'releve_haccp'), null);
+  assert.equal(pointsPastille({ ...IND, programme_aujourdhui: false }, 'releve_haccp'), null);
+});
+
+test('demi-journée de Zurich : matin avant 15 h, soir dès 15 h, été comme hiver', () => {
+  assert.equal(momentZurich(new Date('2026-11-15T13:59:59Z')), 'matin');
+  assert.equal(momentZurich(new Date('2026-11-15T14:00:00Z')), 'soir');
+  assert.equal(momentZurich(new Date('2026-07-15T12:59:00Z')), 'matin');
+  assert.equal(momentZurich(new Date('2026-07-15T13:00:00Z')), 'soir');
+});
+
+test('pointage : pastille tant que le début du service n\'est pas dépassé et qu\'il n\'est pas pointé', () => {
+  const shift = { debut: '15:00', pointageDebut: null };
+  assert.equal(pastillePointage(IND, shift, new Date('2026-11-15T13:59:00Z')), 2);
+  assert.equal(pastillePointage(IND, shift, new Date('2026-11-15T14:00:00Z')), 2, '15:00 pile compte');
+  assert.equal(pastillePointage(IND, shift, new Date('2026-11-15T14:01:00Z')), null, 'en retard');
+  assert.equal(pastillePointage(IND, { ...shift, pointageDebut: '14:50' }, new Date('2026-11-15T13:00:00Z')), null);
+  assert.equal(pastillePointage(IND, { ...shift, note: 'Pointage hors planning' }, new Date('2026-11-15T13:00:00Z')), null);
+  assert.equal(pastillePointage({ ...IND, programme_aujourdhui: false }, shift, new Date('2026-11-15T13:00:00Z')), null);
+});
+
+test('popup : crédits à moins de 1,5 s fondus en un seul, au-delà un popup neuf', () => {
+  const a = fusionnerPopup(null, { points: 2, libelle: 'Relevé HACCP' }, 1000);
+  assert.deepEqual(a, { points: 2, gestes: 1, libelle: 'Relevé HACCP', dernier: 1000 });
+  const b = fusionnerPopup(a, { points: 3, libelle: 'Photo de traçabilité' }, 2400);
+  assert.equal(b.points, 5);
+  assert.equal(b.gestes, 2);
+  const c = fusionnerPopup(b, { points: 2, libelle: 'Relevé HACCP' }, 4000);
+  assert.deepEqual(c, { points: 2, gestes: 1, libelle: 'Relevé HACCP', dernier: 4000 });
 });

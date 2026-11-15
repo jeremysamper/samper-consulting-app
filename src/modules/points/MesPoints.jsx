@@ -234,6 +234,7 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
               <span data-no-translate>{formatPoints(plafonds.jour)}</span>{' '}<span>points par jour et</span>{' '}
               <span data-no-translate>{formatPoints(plafonds.mois)}</span>{' '}<span>par mois.</span>
             </p>
+            <p className="points-aide">Les points ne comptent que les jours où vous êtes au planning.</p>
             <div className="points-liste">
               {ACTIONS.filter((a) => regles[a].points > 0 && regles[a].plafond > 0).map((a) => (
                 <div key={a} style={{ ...ligneStyle(), padding: '6px 0', alignItems: 'flex-start' }}>

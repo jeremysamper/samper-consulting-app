@@ -21,6 +21,14 @@ import { splitAffixes } from './affixes.js';
 import { UI_GLOSSARY_ES } from './glossaryEs.js';
 
 export const UI_GLOSSARY = {
+  // ── Points, pastilles et popup (lot P3) ──
+  "points obtenus": "points earned",
+  "gestes": "actions",
+  "versés à la validation": "paid at validation",
+  "Les points ne comptent que les jours où vous êtes au planning.": "Points only count on days when you are on the schedule.",
+  "Votre arrivée pointée à l'heure, pas en retard.": "Your arrival clocked in on time, not late.",
+  "Pointage à l'heure": "On-time clock-in",
+  "Annulation : Pointage à l'heure": "Cancelled: On-time clock-in",
   // ── Points, relevé HACCP matin et soir ──
   "Le premier relevé d'une zone le matin (avant 15 h), puis le premier du soir.": "The first reading of a zone in the morning (before 3 pm), then the first one in the evening.",
   // ── Points, anti-fuite et catalogue (lot P2) ──

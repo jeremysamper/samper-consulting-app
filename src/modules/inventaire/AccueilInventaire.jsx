@@ -10,6 +10,8 @@ import { dateCH, estCompte } from './inventaireLignes.js';
 import { estACompleter } from './achatsLogic.js';
 import { estFacture, totauxFactures } from './facturesLogic.js';
 import { datesAVerifier, depensesParMois, echeancier, trierDocuments } from '../factures-achats/analysesAchats.js';
+import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
+import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Accueil du module Inventaire : une tuile par tâche, dans l'ordre où la
@@ -40,6 +42,7 @@ export default function AccueilInventaire({
   onJeCompte, onImport, onCompleter, onReglement, onEcheances, onVerifierDates, onEcarts, onChoisirPerimetre, onNouveauPerimetre,
 }) {
   const [fenetre, setFenetre] = React.useState(null); // 'perimetre' | null
+  const pastilles = usePastillesPoints();
   const fermer = React.useCallback(() => setFenetre(null), []);
   const aujourdhui = zurichToday();
 
@@ -68,6 +71,8 @@ export default function AccueilInventaire({
   const tuiles = [
     {
       id: 'compte', Icone: ClipboardList, libelle: 'Je compte', onClick: onJeCompte,
+      // Les zones comptées rapportent à la validation de l'inventaire.
+      pastille: <PastillePoints n={pastilles.pastille('comptage_zone', { perimetre: perimetreActif })} aide="versés à la validation" />,
       etat: !dernier
         ? <>aucun inventaire</>
         : dernier.statut !== 'validé'
@@ -76,12 +81,14 @@ export default function AccueilInventaire({
     },
     {
       id: 'livraison', Icone: Truck, libelle: 'Livraison reçue', onClick: () => onImport('bon_livraison'),
+      pastille: <PastillePoints n={pastilles.pastille('facture_achat')} />,
       etat: bonsACompleter
         ? <><span>{bonsACompleter}</span> {bonsACompleter > 1 ? 'bons à compléter' : 'bon à compléter'}</>
         : dernierBon?.dateDocument ? <>dernier bon le <span>{dateCH(dernierBon.dateDocument)}</span></> : <>aucun bon</>,
     },
     {
       id: 'facture', Icone: Receipt, libelle: 'Facture reçue', onClick: () => onImport('facture'),
+      pastille: <PastillePoints n={pastilles.pastille('facture_achat')} />,
       etat: facturesACompleter
         ? <><span>{facturesACompleter}</span> {facturesACompleter > 1 ? 'factures à compléter' : 'facture à compléter'}</>
         : derniereFacture?.dateDocument ? <>dernière facture le <span>{dateCH(derniereFacture.dateDocument)}</span></> : <>aucune facture</>,

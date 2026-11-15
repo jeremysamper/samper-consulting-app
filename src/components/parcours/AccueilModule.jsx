@@ -10,7 +10,10 @@ import React from 'react';
 // La ligne d'état vit dans la tuile, sous le libellé : une seule cible au
 // doigt. Une tuile hors droit n'est pas rendue, jamais grisée.
 //
-//   tuiles = [{ id, libelle, Icone, etat, visible, onClick, brut }]
+//   tuiles = [{ id, libelle, Icone, etat, visible, onClick, brut, pastille }]
+//
+// pastille : nœud posé en coin de la tuile (PastillePoints), en position
+// absolue : la tuile ne bouge pas ; absente, rien n'est ajouté.
 //
 // visible : absent, la tuile est toujours rendue ; présent, toute valeur
 // fausse la masque (false, mais aussi undefined ou null d'un droit qu'on n'a
@@ -33,6 +36,7 @@ export default function AccueilModule({ tuiles }) {
             <span style={st.libelle} data-no-translate={t.brut ? true : undefined}>{t.libelle}</span>
             {t.etat != null && <span style={st.etat}>{t.etat}</span>}
           </span>
+          {t.pastille || null}
         </button>
       ))}
     </div>

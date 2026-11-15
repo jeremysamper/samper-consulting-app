@@ -2,6 +2,8 @@ import React from 'react';
 import { CalendarClock, CalendarDays, LogIn, LogOut, Settings2, Users } from 'lucide-react';
 import { Choix, Fenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
+import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
+import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 import ReperesPlanning, { CartePlanningEquipe } from './ReperesPlanning.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -34,11 +36,13 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats
   const [gererOuvert, setGererOuvert] = React.useState(false);
   const fermer = React.useCallback(() => setGererOuvert(false), []);
   const choix = gerer.filter(Boolean);
+  const pastilles = usePastillesPoints();
 
   const tuiles = [
     jour && {
       id: 'pointer', Icone: jour.action === 'depart' ? LogOut : LogIn, libelle: jour.action === 'depart' ? 'Je pars' : 'J\'arrive',
       onClick: onPointer, etat: etatDuJour(jour),
+      pastille: jour.action === 'arrivee' ? <PastillePoints n={pastilles.pastillePointage(jour.shift)} /> : null,
     },
     jour && {
       id: 'horaires', Icone: CalendarClock, libelle: 'Mes horaires', onClick: onHoraires,
