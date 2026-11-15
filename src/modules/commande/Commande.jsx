@@ -41,8 +41,11 @@ const ONGLET_COMMANDE = 'commande';
 const ONGLET_FONDS = 'fonds';
 const cleOnglet = (etabId) => 'sc_commande_onglet_' + etabId;
 
-// Unité de la quantité à commander : on commande au kilo et au litre.
-const uniteDeCommande = (unite) => (unite === 'g' ? 'kg' : unite === 'ml' ? 'L' : (unite === 'pcs' ? 'pcs' : unite || ''));
+// Unité de la quantité à commander : à la pièce ou au carton, au choix sur
+// chaque ligne. Une ligne d'avant (g, ml, pcs ou vide) se lit à la pièce.
+const UNITES_COMMANDE = ['pièce', 'carton'];
+const uniteDeCommande = (unite) => (unite === 'carton' ? 'carton' : 'pièce');
+const libelleUnite = (unite, quantite) => (Number(quantite) >= 2 ? unite + 's' : unite);
 
 // Nombres dans leurs propres nœuds : la phrase autour reste une entrée du
 // glossaire.
@@ -187,7 +190,7 @@ const Commande = ({ user, etablissement }) => {
             produitId: null,
             nom: l.nom,
             categorie: l.rayon || AUTRES,
-            unite: uniteDeCommande(l.unite),
+            unite: 'pièce',
             besoin: 0,
             quantite: null,
             coche: true,
@@ -230,6 +233,15 @@ const Commande = ({ user, etablissement }) => {
     setItems(prev => prev.map(i => i.id === item.id ? { ...i, quantite: val } : i));
     if (legacySB) {
       try { await legacySB.db.upsertCommandeItem({ ...item, quantite: val }); }
+      catch (err) { notifyLegacy(messageErreur(err, 'commande'), 'error'); }
+    }
+  };
+
+  const persistUnite = async (item, unite) => {
+    if (unite === item.unite) return;
+    setItems(prev => prev.map(i => i.id === item.id ? { ...i, unite } : i));
+    if (legacySB) {
+      try { await legacySB.db.upsertCommandeItem({ ...item, unite }); }
       catch (err) { notifyLegacy(messageErreur(err, 'commande'), 'error'); }
     }
   };
@@ -307,7 +319,7 @@ const Commande = ({ user, etablissement }) => {
       produitId: null,
       nom: cleanNom,
       categorie: categorie || 'Autres',
-      unite: unite || '',
+      unite: uniteDeCommande(unite),
       besoin: 0,
       quantite: null,
       coche: true,
@@ -365,7 +377,7 @@ const Commande = ({ user, etablissement }) => {
         categorie: g.categorie,
         items: g.items.map(it => ({
           nom: it.nom,
-          qtyText: it.quantite != null ? `${fmtQty(it.quantite)}${it.unite ? ' ' + it.unite : ''}` : '',
+          qtyText: it.quantite != null ? `${fmtQty(it.quantite)} ${libelleUnite(uniteDeCommande(it.unite), it.quantite)}` : '',
           coche: false,
         })),
       })),
@@ -393,6 +405,7 @@ const Commande = ({ user, etablissement }) => {
       {/* Libellé lu par les lecteurs d'écran devant le nom de chaque produit
           (aria-labelledby de la quantité). */}
       <span id="commande-lbl-qte" hidden>Quantité</span>
+      <span id="commande-lbl-unite" hidden>Unité</span>
       <div className="commande-grille">
         <div className="commande-cote">
           {/* Gros boutons : ajouter, envoyer (commande non vide). */}
@@ -482,7 +495,9 @@ const Commande = ({ user, etablissement }) => {
                         <span style={s.sectionTitle}>{group.categorie}</span>
                         <span style={s.sectionCount}>{group.items.length}</span>
                       </button>
-                      {!isCollapsed && group.items.map((item, i) => (
+                      {!isCollapsed && group.items.map((item, i) => {
+                        const qteVue = draftQty[item.id] !== undefined ? draftQty[item.id] : item.quantite;
+                        return (
                         <div key={item.id} style={{ ...ligneStyle({ derniere: i === group.items.length - 1 }), ...s.row }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {editingId === item.id ? (
@@ -517,11 +532,19 @@ const Commande = ({ user, etablissement }) => {
                               onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                               style={s.qtyInput}
                             />
-                            <span style={s.qtyUnit}>{item.unite}</span>
+                            <select
+                              value={uniteDeCommande(item.unite)}
+                              aria-labelledby={`commande-lbl-unite commande-nom-${item.id}`}
+                              onChange={e => persistUnite(item, e.target.value)}
+                              style={s.uniteSelect}
+                            >
+                              {UNITES_COMMANDE.map(u => <option key={u} value={u}>{libelleUnite(u, qteVue)}</option>)}
+                            </select>
                           </div>
                           <button type="button" style={s.delBtn} className="no-print" onClick={() => retirer(item)} title="Retirer" aria-label="Retirer"><Trash2 size={16} aria-hidden="true" /></button>
                         </div>
-                      ))}
+                        );
+                      })}
                     </Panneau>
                   );
                 })
@@ -645,11 +668,10 @@ const AddProductModal = ({ onClose, onAdd }) => {
   // l'opérateur choisit lui-même, son choix est gardé.
   const [categorieChoisie, setCategorieChoisie] = React.useState(null);
   const categorie = categorieChoisie || classerProduit(nom);
-  const [unite, setUnite] = React.useState('');
+  const [unite, setUnite] = React.useState('pièce');
   // Mêmes rayons que la liste. « Hygiène / non alimentaire » est le libellé du
   // catalogue ; à la main, on range sous « Hygiène & consommables ».
   const CATS = RAYONS.filter(c => c !== 'Hygiène / non alimentaire');
-  const UNITES = ['', 'g', 'kg', 'ml', 'L', 'pcs'];
   return (
     <Fenetre
       id="commande-ajouter"
@@ -682,7 +704,7 @@ const AddProductModal = ({ onClose, onAdd }) => {
             <div style={{ width: 110 }}>
               <label style={s.label}>Unité</label>
               <select style={s.input} value={unite} onChange={e => setUnite(e.target.value)}>
-                {UNITES.map(u => <option key={u} value={u}>{u || '-'}</option>)}
+                {UNITES_COMMANDE.map(u => <option key={u} value={u}>{u}</option>)}
               </select>
             </div>
           </div>
@@ -742,7 +764,8 @@ const s = {
   tag: { marginLeft: 8, fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', background: 'var(--piste)', borderRadius: 'var(--r-full)', padding: '1px 8px', whiteSpace: 'nowrap', display: 'inline-block' },
   qtyWrap: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
   qtyInput: { width: 70, padding: '6px 8px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', textAlign: 'right', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)' },
-  qtyUnit: { fontSize: 'var(--t1)', color: 'var(--text2)', width: 26 },
+  // Unité de la ligne : un champ de l'échelle, à côté de la quantité.
+  uniteSelect: { width: 96, height: 'var(--controle)', padding: '0 8px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', background: 'var(--surface)', color: 'var(--text)', boxSizing: 'border-box' },
   // Retirer : un cercle de 40 px dans une cible de 44 px.
   delBtn: { width: 44, height: 44, background: 'none', border: 'none', color: 'var(--text3)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, borderRadius: 'var(--r-full)' },
   empty: { padding: 32, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' },
