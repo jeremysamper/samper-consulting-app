@@ -29,11 +29,11 @@ const POINTS_EQUIPE = {
   picto: 'points',
   titre: 'Gagnez des points',
   lignes: [
-    ['Rond vert', { n: '+2' }, ': points à gagner'],
-    ['Frigos, photos, factures, pertes, inventaire'],
-    ["Pointage à l'heure :", { n: '+2' }],
-    ['Seulement les jours au planning'],
-    ['Points = matériel pro en boutique'],
+    ["Un rond vert", { n: '+2' }, "à côté d'une tâche : elle vous rapporte des points."],
+    ["Ils se gagnent avec les relevés des frigos, les photos, les factures, les pertes et l'inventaire."],
+    ["Pointer à l'heure vous rapporte aussi", { n: '2' }, "points."],
+    ["Les points ne comptent que les jours où vous êtes au planning."],
+    ["Avec vos points, choisissez du matériel pro dans la boutique."],
   ],
 };
 
@@ -42,13 +42,13 @@ const POINTS_GESTION = {
   picto: 'points',
   titre: 'Points & boutique',
   lignes: [
-    ["Des points à chaque geste de l'équipe"],
-    ['Une boutique de matériel pro'],
-    ['À allumer : Points & boutique, Réglages'],
+    ["L'équipe gagne des points à chaque tâche faite dans l'app."],
+    ["Elle les échange contre du matériel pro dans la boutique."],
+    ["Pour les allumer : module Points & boutique, onglet Réglages."],
   ],
 };
 
-const LIGNE_ECHEANCES = ['Échéances et paiements suivis'];
+const LIGNE_ECHEANCES = ["Suivez les échéances et les paiements."];
 
 const MODULES = [
   {
@@ -57,9 +57,9 @@ const MODULES = [
     titre: 'Votre tableau de bord',
     droit: (d) => d.has('dashboard'),
     lignes: [
-      ['Personnaliser : ajoutez, retirez, déplacez'],
-      ['Choisissez la taille'],
-      ['Le même sur tous vos appareils'],
+      ["Avec « Personnaliser », ajoutez, retirez ou déplacez les widgets."],
+      ["Choisissez la taille de chaque widget."],
+      ["Vous retrouvez le même tableau sur tous vos appareils."],
     ],
   },
   {
@@ -68,10 +68,10 @@ const MODULES = [
     titre: 'Caisse et cuisine',
     droit: (d) => d.has('caisse') || d.has('kds'),
     lignes: [
-      ['Caisse : table, plats, Envoyer'],
-      ['Cuisine : un bon par table'],
-      ['Plat coché : le serveur est prévenu'],
-      ['Encaisser, puis clôturer'],
+      ["À la caisse : choisissez la table, ajoutez les plats, puis appuyez sur Envoyer."],
+      ["En cuisine, chaque table arrive sur un seul bon."],
+      ["Quand la cuisine coche un plat, le serveur est prévenu."],
+      ["En fin de repas, encaissez ; en fin de journée, clôturez la caisse."],
     ],
   },
   {
@@ -80,10 +80,10 @@ const MODULES = [
     titre: 'Commande',
     droit: (d) => d.has('commande'),
     lignes: [
-      ['Un onglet par carte'],
-      ['Cochez ce qui manque'],
-      ['Ma commande : tout, par rayon'],
-      ['PDF prêt à envoyer'],
+      ["Chaque carte a son onglet."],
+      ["Cochez les produits qui manquent."],
+      ["L'onglet Ma commande regroupe tout, rangé par rayon."],
+      ["Le PDF est prêt à envoyer au fournisseur."],
     ],
   },
   {
@@ -92,9 +92,9 @@ const MODULES = [
     titre: 'Messages',
     droit: (d) => d.has('messages'),
     lignes: [
-      ["Bulle en haut de l'écran"],
-      ['Écrivez à un collègue'],
-      ['Réponse en direct'],
+      ["La bulle en haut de l'écran ouvre vos messages."],
+      ["Écrivez directement à un collègue."],
+      ["Les réponses arrivent en direct."],
     ],
   },
   {
@@ -103,9 +103,9 @@ const MODULES = [
     titre: 'Factures & achats',
     droit: (d) => d.has('inventaire'),
     lignes: [
-      ['Photo de la facture à la livraison'],
+      ["À la livraison, prenez la facture en photo."],
       LIGNE_ECHEANCES,
-      ['Analyses par fournisseur'],
+      ["Retrouvez les analyses par fournisseur."],
     ],
   },
 ];
