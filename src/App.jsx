@@ -349,6 +349,7 @@ export default function App() {
         permissions={getPermissionsForRole(auth.profile.role)}
         shellMode={shellMode}
         pageAffichee={visiblePage}
+        donneesPretes={legacyVersion > 0}
       >
         {/* Keep-alive : chaque module visité reste monté ; seul le module prêt
             (visiblePage) est affiché. display:contents préserve la mise en page
