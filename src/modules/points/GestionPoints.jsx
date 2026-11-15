@@ -1,12 +1,13 @@
 import React from 'react';
 import { Btn, Panneau, ligneStyle } from '../../components/ui/index.jsx';
-import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
+import { Fenetre, Options, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { roles as ROLES } from '../moduleConfig.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import {
-  ACTIONS, AJUSTEMENT_MAX, BAREME_DEFAUT, LIBELLES_STATUTS, PLAFOND_MAX, POINTS_MAX, ROLES_PARTICIPANTS,
-  baremeEffectif, erreurBareme, libelleAction,
+  ACTIONS, AJUSTEMENT_MAX, BAREME_DEFAUT, CATEGORIES_CADEAU, COUT_MAX, COUT_MIN, LIBELLES_CATEGORIES, LIBELLES_STATUTS,
+  PLAFOND_JOUR_TOTAL_MAX, PLAFOND_MAX, PLAFOND_MOIS_TOTAL_MAX, POINTS_MAX, ROLES_PARTICIPANTS,
+  baremeEffectif, erreurBareme, formatPoints, libelleAction,
 } from './bareme.js';
 import { messageErreurPoints, pointsService } from './pointsService.js';
 import { rafraichirPointsEtat } from './pointsEtat.js';
@@ -140,7 +141,7 @@ function OngletCommandes({ donnees, charger }) {
 
 // ─── Boutique ───────────────────────────────────────────────────────────────
 
-const CADEAU_VIDE = { nom: '', description: '', cout: '', stock: '', actif: true };
+const CADEAU_VIDE = { nom: '', description: '', cout: '', stock: '', actif: true, categorie: 'commun' };
 
 function OngletBoutique({ etabId, donnees, charger }) {
   const [edition, setEdition] = React.useState(null);
@@ -151,7 +152,7 @@ function OngletBoutique({ etabId, donnees, charger }) {
     const cout = Number(edition.cout);
     const stock = edition.stock === '' || edition.stock == null ? null : Number(edition.stock);
     if (!String(edition.nom || '').trim()) { notify('Donnez un nom au cadeau.', 'warning'); return; }
-    if (!Number.isInteger(cout) || cout <= 0) { notify('Le coût est un nombre entier de points, au moins 1.', 'warning'); return; }
+    if (!Number.isInteger(cout) || cout < COUT_MIN || cout > COUT_MAX) { notify('Le coût va de 100 à 10 000 points.', 'warning'); return; }
     if (stock != null && (!Number.isInteger(stock) || stock < 0)) { notify('Le stock est un nombre entier, ou vide pour illimité.', 'warning'); return; }
     setEnvoi(true);
     try {
@@ -210,6 +211,7 @@ function OngletBoutique({ etabId, donnees, charger }) {
                 <div style={{ flex: '1 1 200px', minWidth: 0 }}>
                   <div style={{ fontWeight: 'var(--g2)', overflowWrap: 'anywhere' }} data-no-translate>{c.nom}</div>
                   <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
+                    <span>{LIBELLES_CATEGORIES[c.categorie] || LIBELLES_CATEGORIES.commun}</span>{' '}
                     {c.stock == null ? <span>Stock illimité</span> : <><span>En stock :</span>{' '}<span data-no-translate>{c.stock}</span></>}
                     {!c.actif && <>{' '}<span>Retiré de la boutique</span></>}
                   </div>
@@ -239,7 +241,7 @@ function OngletBoutique({ etabId, donnees, charger }) {
           <textarea id="points-cadeau-desc" style={{ ...st.champ, minHeight: 80, resize: 'vertical' }} value={edition.description} maxLength={1000} onChange={(e) => setEdition({ ...edition, description: e.target.value })} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              <label style={st.label} htmlFor="points-cadeau-cout">Coût en points</label>
+              <label style={st.label} htmlFor="points-cadeau-cout">Coût en points (100 à 10 000)</label>
               <input id="points-cadeau-cout" style={st.champ} inputMode="numeric" value={edition.cout} onChange={(e) => setEdition({ ...edition, cout: e.target.value.replace(/[^0-9]/g, '') })} />
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -247,6 +249,17 @@ function OngletBoutique({ etabId, donnees, charger }) {
               <input id="points-cadeau-stock" style={st.champ} inputMode="numeric" value={edition.stock} onChange={(e) => setEdition({ ...edition, stock: e.target.value.replace(/[^0-9]/g, '') })} />
             </div>
           </div>
+          <span style={st.label}>Rangée de la boutique</span>
+          <Options
+            nom="points-cadeau-categorie"
+            valeur={edition.categorie || 'commun'}
+            onChange={(v) => setEdition({ ...edition, categorie: v })}
+            options={CATEGORIES_CADEAU.map((cat) => ({
+              v: cat,
+              label: LIBELLES_CATEGORIES[cat],
+              detail: cat === 'commun' ? 'Paraît en cuisine et en salle.' : null,
+            }))}
+          />
           <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer', fontSize: 'var(--t2)' }}>
             <input type="checkbox" checked={edition.actif !== false} onChange={(e) => setEdition({ ...edition, actif: e.target.checked })} style={{ width: 20, height: 20, accentColor: 'var(--accent)' }} />
             <span>Proposé en boutique</span>
@@ -380,6 +393,8 @@ function OngletReglages({ etabId, user, etat }) {
   const [actif, setActif] = React.useState(etat.actif);
   const [roles, setRoles] = React.useState(etat.rolesParticipants || ROLES_PARTICIPANTS);
   const [bareme, setBareme] = React.useState(() => baremeEffectif(etat.bareme));
+  const [plafondJour, setPlafondJour] = React.useState(String(etat.plafondJour));
+  const [plafondMois, setPlafondMois] = React.useState(String(etat.plafondMois));
   const [envoi, setEnvoi] = React.useState(false);
 
   React.useEffect(() => { setActif(etat.actif); }, [etat.actif]);
@@ -403,9 +418,16 @@ function OngletReglages({ etabId, user, etat }) {
   const enregistrer = async () => {
     const erreur = erreurBareme(bareme);
     if (erreur) { notify(erreur, 'warning'); return; }
+    const jour = Number(plafondJour);
+    const mois = Number(plafondMois);
+    if (!Number.isInteger(jour) || jour < 0 || jour > PLAFOND_JOUR_TOTAL_MAX || !Number.isInteger(mois) || mois < 0 || mois > PLAFOND_MOIS_TOTAL_MAX) {
+      notify('Plafonds : 0 à 200 points par jour, 0 à 2 000 par mois.', 'warning');
+      return;
+    }
     setEnvoi(true);
     try {
       await pointsService.regler(etabId, { roles, bareme });
+      await pointsService.reglerPlafonds(etabId, jour, mois);
       await rafraichirPointsEtat(etabId, user.id);
       notify('Réglages enregistrés.', 'success');
     } catch (err) {
@@ -464,6 +486,22 @@ function OngletReglages({ etabId, user, etat }) {
             </React.Fragment>
           ))}
         </div>
+        <h3 className="points-section-titre" style={{ marginTop: 18, fontSize: 'var(--t2)' }}>Plafonds par personne, tous gestes confondus</h3>
+        <p className="points-aide">Un geste qui dépasserait l'un des deux ne rapporte rien. Avec les plafonds d'origine, une personne gagne au plus 4 800 points par an.</p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12, marginTop: 8 }}>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={st.label}>Par jour (0 à 200)</span>
+            <input style={st.champ} inputMode="numeric" value={plafondJour} onChange={(e) => setPlafondJour(e.target.value.replace(/[^0-9]/g, ''))} />
+          </label>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={st.label}>Par mois (0 à 2 000)</span>
+            <input style={st.champ} inputMode="numeric" value={plafondMois} onChange={(e) => setPlafondMois(e.target.value.replace(/[^0-9]/g, ''))} />
+          </label>
+        </div>
+        <p className="points-aide" style={{ marginTop: 6 }}>
+          <span>Au plus par personne et par an :</span>{' '}
+          <span data-no-translate>{formatPoints(Math.min(Number(plafondMois) || 0, (Number(plafondJour) || 0) * 31) * 12)}</span>{' '}<span>points</span>
+        </p>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
           <Btn onClick={() => setBareme({ ...BAREME_DEFAUT })} style={{ minHeight: 44 }}>Barème par défaut</Btn>
           <Btn variant="primary" onClick={enregistrer} disabled={envoi} style={{ minHeight: 44 }}>Enregistrer</Btn>

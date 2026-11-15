@@ -1,12 +1,12 @@
 import React from 'react';
 import { ListChecks, ShoppingBag, TrendingUp } from 'lucide-react';
-import { Anneau, Btn, CarteAvant, CarteRepere, Panneau, carteAvantStyles, ligneStyle } from '../../components/ui/index.jsx';
+import { Anneau, Btn, CarteAvant, CarteRepere, Panneau, SegmentedTabs, carteAvantStyles, ligneStyle } from '../../components/ui/index.jsx';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import {
-  ACTIONS, EXPLICATIONS_ACTIONS, LIBELLES_STATUTS, baremeEffectif, chiffresDuMois, formatPoints,
-  libelleAction, prochainCadeau, raisonCommandeImpossible,
+  ACTIONS, EXPLICATIONS_ACTIONS, FILTRES_BOUTIQUE, LIBELLES_STATUTS, PLAFONDS_TOTAUX, baremeEffectif, chiffresDuMois,
+  filtreParDefaut, filtrerCadeaux, formatPoints, libelleAction, prochainCadeau, raisonCommandeImpossible,
 } from './bareme.js';
 import { messageErreurPoints, pointsService } from './pointsService.js';
 import { ecouterMouvements } from './usePointsRetour.js';
@@ -48,12 +48,14 @@ function RaisonEteinte({ raison }) {
   );
 }
 
-export default function MesPoints({ user, etablissement, bareme, sansTitre = false }) {
+export default function MesPoints({ user, etablissement, bareme, plafonds = PLAFONDS_TOTAUX, sansTitre = false }) {
   const etabId = etablissement?.id;
   const userId = user?.id;
   const [donnees, setDonnees] = React.useState(null);
   const [echec, setEchec] = React.useState(false);
   const [aCommander, setACommander] = React.useState(null);
+  // Rangée de la boutique choisie d'office selon le rôle (P2, F11).
+  const [filtre, setFiltre] = React.useState(() => filtreParDefaut(user?.role));
   const [envoi, setEnvoi] = React.useState(false);
   const lectures = useOrdreLectures();
 
@@ -118,7 +120,8 @@ export default function MesPoints({ user, etablissement, bareme, sansTitre = fal
 
   const { solde, mouvements, cadeaux, commandes } = donnees;
   const proposes = cadeaux.filter((c) => c.actif);
-  const prochain = prochainCadeau(proposes, solde);
+  const visibles = filtrerCadeaux(proposes, filtre);
+  const prochain = prochainCadeau(visibles, solde);
   const mois = chiffresDuMois(mouvements);
   const enCours = commandes.filter((c) => c.statut === 'demandee');
   const nomCadeau = (id) => cadeaux.find((c) => c.id === id)?.nom || 'Cadeau retiré';
@@ -165,11 +168,16 @@ export default function MesPoints({ user, etablissement, bareme, sansTitre = fal
 
         <section aria-labelledby="points-boutique-titre">
           <h2 id="points-boutique-titre" className="points-section-titre">Boutique</h2>
+          {proposes.length > 0 && (
+            <SegmentedTabs tabs={FILTRES_BOUTIQUE} active={filtre} onChange={setFiltre} size="sm" style={{ marginBottom: 12 }} />
+          )}
           {proposes.length === 0 ? (
             <p className="points-aide">La direction n'a pas encore mis de cadeau en boutique.</p>
+          ) : visibles.length === 0 ? (
+            <p className="points-aide">Aucun cadeau dans cette rangée.</p>
           ) : (
-            <div className="points-boutique">
-              {proposes.map((c) => {
+            <div className="points-boutique" data-points-filtre={filtre}>
+              {visibles.map((c) => {
                 const raison = raisonCommandeImpossible(c, solde);
                 return (
                   <Panneau key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -221,7 +229,11 @@ export default function MesPoints({ user, etablissement, bareme, sansTitre = fal
         <div className="points-bas">
           <Panneau>
             <h2 className="points-section-titre">Ce qui rapporte des points</h2>
-            <p className="points-aide">Points fixes par geste fait dans l'app, avec un plafond par jour.</p>
+            <p className="points-aide">
+              <span>Points fixes par geste fait dans l'app, avec un plafond par jour. Tous gestes confondus, au plus</span>{' '}
+              <span data-no-translate>{formatPoints(plafonds.jour)}</span>{' '}<span>points par jour et</span>{' '}
+              <span data-no-translate>{formatPoints(plafonds.mois)}</span>{' '}<span>par mois.</span>
+            </p>
             <div className="points-liste">
               {ACTIONS.filter((a) => regles[a].points > 0 && regles[a].plafond > 0).map((a) => (
                 <div key={a} style={{ ...ligneStyle(), padding: '6px 0', alignItems: 'flex-start' }}>

@@ -13,6 +13,8 @@ function verifier({ data, error }) {
 
 // Message lisible d'une erreur de RPC (les messages de la base sont en français).
 export function messageErreurPoints(err, repli = "L'opération n'a pas abouti.") {
+  if (err?.code === '23505') return 'Un cadeau porte déjà ce nom dans cette boutique.';
+  if (err?.code === '23514') return 'Le coût va de 100 à 10 000 points.';
   const m = String(err?.message || '').trim();
   if (!m) return repli;
   if (/fetch|network|Failed to/i.test(m)) return 'Pas de réseau : réessayez dans un instant.';
@@ -42,6 +44,7 @@ const mapCadeau = (r) => ({
   stock: r.stock,
   actif: r.actif,
   ordre: r.ordre,
+  categorie: r.categorie || 'commun',
 });
 
 const mapCommande = (r) => ({
@@ -130,6 +133,12 @@ export const pointsService = {
     }));
   },
 
+  // Plafonds par personne, tous gestes confondus (P2) : RPC à part,
+  // points_regler garde sa signature.
+  async reglerPlafonds(etabId, jour, mois) {
+    return verifier(await supabase.rpc('points_regler_plafonds', { p_etab: etabId, p_jour: jour, p_mois: mois }));
+  },
+
   async ajuster(etabId, userId, points, motif) {
     return Number(verifier(await supabase.rpc('points_ajuster', {
       p_user: userId, p_etab: etabId, p_points: points, p_motif: motif,
@@ -145,6 +154,7 @@ export const pointsService = {
       stock: cadeau.stock === '' || cadeau.stock == null ? null : Number(cadeau.stock),
       actif: cadeau.actif !== false,
       ordre: Number(cadeau.ordre) || 0,
+      categorie: ['cuisine', 'salle', 'commun'].includes(cadeau.categorie) ? cadeau.categorie : 'commun',
     };
     const q = cadeau.id
       ? supabase.from('points_cadeaux').update(payload).eq('id', cadeau.id).select().single()
