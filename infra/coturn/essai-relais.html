@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Essai du relais coturn</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #1f2933; }
+  label { display: block; margin-top: 0.8rem; font-size: 0.9rem; }
+  input { width: 100%; box-sizing: border-box; padding: 0.5rem; font: inherit; }
+  button { margin-top: 1rem; padding: 0.6rem 1rem; font: inherit; cursor: pointer; }
+  li { margin: 0.3rem 0; }
+  .ok { color: #1b7f3b; }
+  .ko { color: #b42318; }
+</style>
+</head>
+<body>
+<!--
+  Essai du relais coturn depuis un navigateur (kit infra/coturn, lot C2b).
+  Fichier local : l'ouvrir directement depuis le disque. Il ne charge rien
+  d'autre et ne contacte que le relais saisi ci-dessous. L'identifiant vient
+  de verifier.sh, sur le serveur, et ne vaut que dix minutes.
+-->
+<h1>Essai du relais coturn</h1>
+<p>Coller les trois valeurs imprimées par <code>sudo bash verifier.sh &lt;nom du relais&gt;</code>.</p>
+<label>Nom du relais <input id="domaine" placeholder="relais.exemple.ch" autocomplete="off"></label>
+<label>Identifiant <input id="nom" autocomplete="off"></label>
+<label>Mot de passe <input id="mdp" autocomplete="off"></label>
+<button id="go" type="button">Tester</button>
+<ul id="res"></ul>
+<script>
+  const res = document.getElementById('res');
+  function ligne(texte, ok) {
+    const li = document.createElement('li');
+    li.textContent = (ok ? 'ok : ' : 'échec : ') + texte;
+    li.className = ok ? 'ok' : 'ko';
+    res.appendChild(li);
+  }
+  // Ouvre une connexion d'essai et rend les types de candidats obtenus en
+  // moins de dix secondes. Politique « relay » : seuls les relais comptent.
+  function candidats(iceServers, policy) {
+    return new Promise((resolve) => {
+      const types = new Set();
+      const pc = new RTCPeerConnection({ iceServers, iceTransportPolicy: policy });
+      const fin = () => { pc.close(); resolve(types); };
+      const minuteur = setTimeout(fin, 10000);
+      pc.onicecandidate = (e) => {
+        if (e.candidate && e.candidate.candidate) {
+          const m = / typ (\w+)/.exec(e.candidate.candidate);
+          if (m) types.add(m[1]);
+        } else if (!e.candidate) { clearTimeout(minuteur); fin(); }
+      };
+      pc.createDataChannel('essai');
+      pc.createOffer().then((o) => pc.setLocalDescription(o)).catch(() => { clearTimeout(minuteur); fin(); });
+    });
+  }
+  document.getElementById('go').addEventListener('click', async () => {
+    res.textContent = '';
+    const d = document.getElementById('domaine').value.trim().toLowerCase();
+    const username = document.getElementById('nom').value.trim();
+    const credential = document.getElementById('mdp').value.trim();
+    if (!d || !username || !credential) { ligne('les trois champs sont requis', false); return; }
+    const stun = await candidats([{ urls: ['stun:' + d + ':3478'] }], 'all');
+    ligne('découverte d\'adresse (STUN 3478/udp)', stun.has('srflx'));
+    const essais = [
+      ['relais TURN 3478/udp', 'turn:' + d + ':3478?transport=udp'],
+      ['relais TURN 3478/tcp', 'turn:' + d + ':3478?transport=tcp'],
+      ['relais TURN sur TLS 5349/tcp', 'turns:' + d + ':5349?transport=tcp'],
+    ];
+    for (const [nom, url] of essais) {
+      const t = await candidats([{ urls: [url], username, credential }], 'relay');
+      ligne(nom, t.has('relay'));
+    }
+  });
+</script>
+</body>
+</html>

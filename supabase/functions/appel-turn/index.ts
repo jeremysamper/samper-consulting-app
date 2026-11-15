@@ -1,41 +1,96 @@
 // ================================================================
-// Edge Function « appel-turn » : identifiants du relais TURN pour un appel
-// audio dans l'app (lot C2b, Messages et contacts ; audit C5, sections 6, 12
-// et 13, décisions D2 à D4).
+// Edge Function « appel-turn » : identifiants du relais pour un appel audio
+// dans l'app (lots C2b, Messages et contacts ; amendement A10 du brief :
+// relais coturn de la maison, sur un serveur en Suisse chez Infomaniak,
+// aucun serveur d'un tiers).
 //
 // POST (corps ignoré) → { iceServers, ttl }
-//   iceServers : liste prête pour new RTCPeerConnection({ iceServers }),
-//                rendue par Cloudflare Realtime TURN (generate-ice-servers) ;
-//                identifiants à durée courte (TTL_S), jamais la clé.
+//   iceServers : liste prête pour new RTCPeerConnection({ iceServers }) :
+//                découverte d'adresse (STUN) et relais (TURN en UDP et TCP
+//                sur 3478, TLS sur 5349) du serveur COTURN_DOMAINE, avec un
+//                identifiant temporaire valable TTL_S secondes.
+//
+// Identifiant temporaire (mécanisme REST de coturn, option use-auth-secret,
+// README.turnserver, section « TURN REST API ») :
+//   username   = "<expiration>:<pseudonyme>", expiration en secondes
+//                depuis 1970 ; coturn refuse l'identifiant une fois
+//                l'expiration passée ;
+//   credential = base64(HMAC-SHA1(secret partagé, username)).
+// Le secret ne quitte jamais cette fonction ni le serveur coturn.
+//
+// Pseudonyme (note nLPD du 13.11.2026, R3) : le journal de coturn garde le
+// nom d'utilisateur sept jours, il ne porte donc jamais l'identifiant du
+// compte en clair. pseudonyme = 24 premiers caractères hexadécimaux de
+// HMAC-SHA-256(K, id du compte), où K = HMAC-SHA-256(clé service_role du
+// projet, "appel-turn:pseudonyme:v1"). K n'existe que dans les Edge
+// Functions, jamais sur le serveur du relais : qui lit ce serveur ne peut pas
+// nommer la personne ; Samper Consulting peut recalculer le pseudonyme d'un
+// compte qui signale un appel raté. Stable d'un appel à l'autre pour un même
+// compte (le plafond d'allocations par compte de coturn s'applique). Change
+// si la clé service_role change.
+// La fonction ne journalise ni adresse IP, ni identifiant, ni pseudonyme.
 //
 // Qui reçoit des identifiants : une personne connectée (jeton d'un
 // utilisateur), au profil actif, qui n'est pas un compte de poste partagé
 // (pointage_postes, D4 : ces comptes n'appellent pas et ne sont pas appelés).
-// verify_jwt reste actif à la passerelle, mais la clé publique du projet est
-// un jeton valide de rôle anon et la passe : c'est le contrôle ci-dessous qui
-// la refuse (401).
+// verify_jwt reste actif à la passerelle, mais une clé publique du projet la
+// passe : c'est le contrôle ci-dessous qui la refuse (401).
 //
-// Secrets, posés par Jérémy lui-même (D3), jamais dans le dépôt ni dans une
-// session : CLOUDFLARE_TURN_KEY_ID, CLOUDFLARE_TURN_KEY_API_TOKEN. Tant qu'ils
-// manquent : 503. Lus à chaque requête (un secret posé agit sans redéployer).
+// Secrets, posés par Jérémy lui-même (A10), jamais dans le dépôt ni dans une
+// session : COTURN_SECRET (tiré sur le serveur par infra/coturn/installer.sh)
+// et COTURN_DOMAINE (nom du serveur, par exemple relais.example.ch). Tant que
+// l'un manque : 503, et l'app reste en connexion directe. Lus à chaque
+// requête (un secret posé agit sans redéployer).
 //
 // Codes : 200 identifiants ; 401 sans personne ; 403 compte inactif ou poste
 // partagé ; 405 méthode ; 500 configuration Supabase ou profil illisible ;
-// 502 relais en erreur ; 503 relais non configuré.
+// 503 relais non configuré.
 //
-// Écrite sans supabase-js (fetch seul) : traiter() se joue sous Node sur un
-// fetch simulé, avec le même fichier compilé que celui déployé.
+// Écrite sans supabase-js (fetch et WebCrypto seuls) : traiter() se joue sous
+// Node sur un fetch simulé, avec le même fichier compilé que celui déployé.
 // ================================================================
 import { enTetesCors } from '../_shared/cors.ts';
 
 // 30 minutes : sonnerie (30 s) et appel (15 min au plus), avec de la marge.
 export const TTL_S = 1800;
 
-const CLOUDFLARE = 'https://rtc.live.cloudflare.com/v1/turn/keys';
+// Ports du kit infra/coturn (turnserver.conf) : à changer ensemble.
+const PORT = 3478;
+const PORT_TLS = 5349;
+
+// Nom d'hôte DNS seul : lettres, chiffres, tirets, points.
+const NOM_HOTE = /^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/;
 
 type LireEnv = (cle: string) => string | undefined;
 
-export async function traiter(req: Request, env: LireEnv, f: typeof fetch = fetch): Promise<Response> {
+const enc = new TextEncoder();
+
+async function hmac(hash: 'SHA-1' | 'SHA-256', cle: BufferSource, message: string): Promise<Uint8Array> {
+  const k = await crypto.subtle.importKey('raw', cle, { name: 'HMAC', hash }, false, ['sign']);
+  return new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(message)));
+}
+
+async function hmacSha1Base64(secret: string, message: string): Promise<string> {
+  const sig = await hmac('SHA-1', enc.encode(secret), message);
+  let bin = '';
+  for (const o of sig) bin += String.fromCharCode(o);
+  return btoa(bin);
+}
+
+export const PSEUDO_ETIQUETTE = 'appel-turn:pseudonyme:v1';
+
+async function pseudonyme(cleService: string, uid: string): Promise<string> {
+  const k = await hmac('SHA-256', enc.encode(cleService), PSEUDO_ETIQUETTE);
+  const h = await hmac('SHA-256', k, uid);
+  return Array.from(h, (o) => o.toString(16).padStart(2, '0')).join('').slice(0, 24);
+}
+
+export async function traiter(
+  req: Request,
+  env: LireEnv,
+  f: typeof fetch = fetch,
+  maintenant: () => number = Date.now,
+): Promise<Response> {
   const cors = enTetesCors(req);
   const json = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
@@ -74,24 +129,33 @@ export async function traiter(req: Request, env: LireEnv, f: typeof fetch = fetc
   if (postes.length > 0) return json({ error: 'Poste partagé : appel indisponible.' }, 403);
 
   // 3. Secrets du relais.
-  const cle = env('CLOUDFLARE_TURN_KEY_ID');
-  const jeton = env('CLOUDFLARE_TURN_KEY_API_TOKEN');
-  if (!cle || !jeton) return json({ error: 'Relais non configuré.' }, 503);
-
-  // 4. Identifiants à durée courte.
-  const r = await f(`${CLOUDFLARE}/${encodeURIComponent(cle)}/credentials/generate-ice-servers`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${jeton}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ttl: TTL_S }),
-  });
-  if (!r.ok) {
-    console.error('[appel-turn] relais', r.status);
-    return json({ error: 'Relais indisponible.' }, 502);
+  const secret = env('COTURN_SECRET') || '';
+  const domaine = (env('COTURN_DOMAINE') || '').trim().toLowerCase();
+  if (!secret || !domaine) return json({ error: 'Relais non configuré.' }, 503);
+  if (!NOM_HOTE.test(domaine)) {
+    console.error('[appel-turn] COTURN_DOMAINE n\'est pas un nom d\'hôte');
+    return json({ error: 'Relais non configuré.' }, 503);
   }
-  const d = await r.json().catch(() => null);
-  const ice = d?.iceServers;
-  if (!ice || typeof ice !== 'object') return json({ error: 'Relais indisponible.' }, 502);
-  return json({ iceServers: Array.isArray(ice) ? ice : [ice], ttl: TTL_S });
+
+  // 4. Identifiant temporaire, signé par le secret partagé, sous pseudonyme.
+  const expiration = Math.floor(maintenant() / 1000) + TTL_S;
+  const username = `${expiration}:${await pseudonyme(service, uid)}`;
+  const credential = await hmacSha1Base64(secret, username);
+  return json({
+    iceServers: [
+      { urls: [`stun:${domaine}:${PORT}`] },
+      {
+        urls: [
+          `turn:${domaine}:${PORT}?transport=udp`,
+          `turn:${domaine}:${PORT}?transport=tcp`,
+          `turns:${domaine}:${PORT_TLS}?transport=tcp`,
+        ],
+        username,
+        credential,
+      },
+    ],
+    ttl: TTL_S,
+  });
 }
 
 if (typeof Deno !== 'undefined') {
