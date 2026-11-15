@@ -26,7 +26,7 @@ export const UI_GLOSSARY = {
   "gestes": "actions",
   "versés à la validation": "paid at validation",
   "Les points ne comptent que les jours où vous êtes au planning.": "Points only count on days when you are on the schedule.",
-  "Votre arrivée pointée à l'heure, pas en retard.": "Your arrival clocked in on time, not late.",
+  "Votre arrivée pointée dans l'heure qui précède le début, pas en retard.": "Your arrival clocked in within the hour before the start, not late.",
   "Pointage à l'heure": "On-time clock-in",
   "Annulation : Pointage à l'heure": "Cancelled: On-time clock-in",
   // ── Points, relevé HACCP matin et soir ──
