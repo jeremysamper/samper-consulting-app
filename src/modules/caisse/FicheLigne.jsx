@@ -10,13 +10,15 @@ import { REGLAGES_DEFAUT, libelleMode } from './reglages.js';
 // maison, derniers utilisés, saisie libre), message pour la cuisine ou le bar,
 // suppression. Chaque tap écrit tout de suite (onChange) : rien à enregistrer,
 // la feuille se referme quand on veut.
+// Suppléments (supplements.js) : un toucher sur un choix ajoute une ligne au
+// ticket, la fiche reste ouverte.
 // Réservée aux lignes en_attente (une ligne envoyée est figée en base).
 // Les valeurs saisies et les noms sont des données : data-no-translate.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 
-export default function FicheLigne({ ligne, sansRecents, reglages = REGLAGES_DEFAUT, suites = [1, 2, 3], onChange, onSupprimer, onClose }) {
+export default function FicheLigne({ ligne, sansRecents, reglages = REGLAGES_DEFAUT, suites = [1, 2, 3], supplements = [], onSupplement, onChange, onSupprimer, onClose }) {
   const [sansLibre, setSansLibre] = React.useState('');
   const [message, setMessage] = React.useState('');
   const [cibleMessage, setCibleMessage] = React.useState('cuisine');
@@ -90,6 +92,30 @@ export default function FicheLigne({ ligne, sansRecents, reglages = REGLAGES_DEF
           ))}
         </div>
 
+        {onSupplement && supplements.map((s) => (
+          <React.Fragment key={s.platId}>
+            <div style={st.rangTitre}>
+              <span data-no-translate>{s.nom}</span> <span style={st.prixSupp}>{chf(s.prix)}</span> <span>CHF</span>
+            </div>
+            <div style={st.rang}>
+              {s.choix.map((c) => (
+                <Btn key={c} variant="ghost" onClick={() => onSupplement(s, c)} style={st.btn44}>
+                  <span data-no-translate>{c}</span>
+                </Btn>
+              ))}
+              {s.choix.length === 0 && (
+                <Btn variant="ghost" onClick={() => onSupplement(s, null)} style={st.btn44}>Ajouter</Btn>
+              )}
+            </div>
+            {s.choix.length === 0 && (
+              <p style={st.aide}>
+                <span>Rangez des produits dans la catégorie</span> <span data-no-translate>{s.source}</span>
+                <span> : ils s&apos;afficheront ici.</span>
+              </p>
+            )}
+          </React.Fragment>
+        ))}
+
         <div style={st.rangTitre}>Cuisson</div>
         <div style={st.rang}>
           {cuissons.map((c) => (
@@ -158,6 +184,8 @@ const st = {
   rangTitre: { fontSize: 12, fontWeight: 600, color: 'var(--text3)', margin: '14px 0 6px' },
   rang: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
   qte: { fontFamily: 'var(--font-num)', fontSize: 18, fontWeight: 600, minWidth: 36, textAlign: 'center' },
+  prixSupp: { fontFamily: 'var(--font-num)' },
+  aide: { fontSize: 'var(--t1)', color: 'var(--text3)', margin: '6px 0 0' },
   messageRang: { display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' },
   messageTexte: { flex: 1, minWidth: 0, fontSize: 14, color: 'var(--text)' },
   pied: { display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginTop: 18 },

@@ -1,4 +1,5 @@
 import { CUISSONS } from './options.js';
+import { lireSupplements } from './supplements.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Réglages de la caisse (caisse_reglages.config, migration v4).
@@ -72,6 +73,8 @@ export const REGLAGES_DEFAUT = {
   fin_journee: '04:00',
   bascule_service: '15:00',
   legal: { raison_sociale: '', adresse: '', localite: '', numero_tva: '' },
+  // Suppléments proposés dans la fiche d'une ligne (supplements.js).
+  supplements: [],
 };
 
 export const HEURES_FIN_JOURNEE = ['02:00', '03:00', '04:00', '05:00', '06:00'];
@@ -146,6 +149,7 @@ export function fusionnerReglages(config) {
       localite: String(c.legal?.localite ?? '').trim().slice(0, 80),
       numero_tva: String(c.legal?.numero_tva ?? '').trim().slice(0, 24),
     },
+    supplements: lireSupplements(c.supplements),
     perso: {
       cuissons: Boolean(cuissons && cuissons.length),
       moyens_paiement: Boolean(moyens && moyens.length),

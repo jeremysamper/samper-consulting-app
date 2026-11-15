@@ -13,6 +13,7 @@ import { allergiesDe } from './clients.js';
 import { libelleOption } from './options.js';
 import { nomCourtDefaut, pictoDefaut, pictoParId } from './boutons.js';
 import { ID_TOUT, rangerArticles, sousGroupesAutres } from './categories.js';
+import { libelleSupplement, supplementsPourLigne } from './supplements.js';
 import { REGLAGES_DEFAUT, SUITE_MAX, libelleMode, peutOuvrirMode, suitesVisibles } from './reglages.js';
 import { useHauteurRestante, useLargeur, useRetraitBas } from './mesures.js';
 import { estPret } from './PlanTables.jsx';
@@ -160,6 +161,16 @@ export default function TicketEcran({
     () => rangerArticles({ articles: articlesCarte, boutons, categoriesMaison: categories }),
     [articlesCarte, boutons, categories],
   );
+  // Suppléments de la fiche ouverte : leurs choix suivent les catégories de
+  // caisse de tous les articles en vente, quelle que soit la carte affichée.
+  const rangementComplet = React.useMemo(
+    () => rangerArticles({ articles, boutons, categoriesMaison: categories }),
+    [articles, boutons, categories],
+  );
+  const supplementsFiche = React.useMemo(
+    () => supplementsPourLigne({ ligne: ficheLigne, supplements: reglages.supplements, rangement: rangementComplet, articles }),
+    [ficheLigne, reglages.supplements, rangementComplet, articles],
+  );
   // « Tout » par défaut : chaque produit reste à un tap, comme avant les
   // onglets. Une maison peut régler l'ouverture sur sa première catégorie.
   const ongletDefaut = reglages.ouverture === 'categorie' ? (rangement.onglets[0]?.id || ID_TOUT) : ID_TOUT;
@@ -179,9 +190,11 @@ export default function TicketEcran({
   async function ajouterArticle(plat) {
     // Même plat, même mode, sans note ni paramètre, pas encore envoyé : +1
     // (une ligne paramétrée reste la sienne, on n'y empile pas un couvert).
+    // Le libellé compte aussi : un supplément choisi (« Supplément alcool
+    // (Kirsch) ») ne reçoit pas le supplément nu touché dans la grille.
     const existante = lignes.find((l) =>
       l.statut === 'en_attente' && l.plat_id === plat.id && l.suite === modeActif
-      && !l.note && !(l.options || []).length);
+      && l.libelle === plat.nom && !l.note && !(l.options || []).length);
     if (existante) {
       const { error } = await caisse.majLigne(existante.id, { quantite: Number(existante.quantite) + 1 });
       if (erreur(error)) return;
@@ -220,6 +233,24 @@ export default function TicketEcran({
     if (!ficheLigne) return;
     const { error } = await caisse.majLigne(ficheLigne.id, partial);
     if (!erreur(error)) reload();
+  }
+
+  // Un supplément est une ligne à lui, dans le mode de la ligne d'origine :
+  // son prix vient de son plat (imposé par la base), son libellé dit le choix.
+  async function ajouterSupplement(s, choix) {
+    if (!ficheLigne) return;
+    const libelle = libelleSupplement(s.nom, choix);
+    const existante = lignes.find((l) =>
+      l.statut === 'en_attente' && l.plat_id === s.platId && l.suite === ficheLigne.suite
+      && l.libelle === libelle && !l.note && !(l.options || []).length);
+    const { error } = existante
+      ? await caisse.majLigne(existante.id, { quantite: Number(existante.quantite) + 1 })
+      : await caisse.ajouterLigne({
+        ticketId: ticket.id, platId: s.platId, libelle, prixUnitaire: s.prix, suite: ficheLigne.suite,
+      });
+    if (erreur(error)) return;
+    notify('Supplément ajouté au ticket.', 'success');
+    reload();
   }
 
   async function supprimerFicheLigne() {
@@ -688,6 +719,8 @@ export default function TicketEcran({
             sansRecents={sansRecents}
             reglages={reglages}
             suites={suitesVisibles(reglages, lignes, Math.max(modesOuverts, reglages.modes.max))}
+            supplements={supplementsFiche}
+            onSupplement={ajouterSupplement}
             onChange={majFicheLigne}
             onSupprimer={supprimerFicheLigne}
             onClose={() => setFicheLigneId(null)}
