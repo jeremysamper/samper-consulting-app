@@ -44,6 +44,10 @@ import VitrineCarte, { clePlat } from './VitrineCarte.jsx';
 import VitrineFiches, { fichesTrouvees } from './VitrineFiches.jsx';
 import './recettes.css';
 
+// Import de fiches (Gérer > Importer des fiches) : chargé à l'ouverture
+// seulement, avec le lecteur Excel qu'il appelle.
+const ImportLauncher = React.lazy(() => import('./import/ImportLauncher.jsx'));
+
 
 // CARTES & RECETTES
 // ALLERGENES_MAP, slug et buildRecettePdfData sont partagés avec le module
@@ -1449,6 +1453,7 @@ const Recettes = ({ user, etablissement }) => {
   const reloadDataRef = React.useRef(null);
   const [showExportModal, setShowExportModal] = React.useState(false);
   const [showIngredientSearch, setShowIngredientSearch] = React.useState(false);
+  const [showImport, setShowImport] = React.useState(false);
   // Carte d'accueil = préférence utilisateur par établissement (user_settings,
   // synchro multi-device, cache hydraté au login → lecture instantanée). Un
   // seul état, partagé avec la section « Carte d'accueil » de la page des
@@ -1932,6 +1937,22 @@ const Recettes = ({ user, etablissement }) => {
           onEnregistre={() => reloadDataRef.current && reloadDataRef.current()}
         />
       )}
+      {showImport && (
+        <React.Suspense fallback={null}>
+          <ImportLauncher
+            etabId={etabId}
+            legacySB={legacySB}
+            user={user}
+            cartes={cartes}
+            plats={plats}
+            recettes={recettes.filter(r => (r.etablissementId || 'etab-1') === etabId)}
+            carteIdDefaut={isLibrary ? '' : (activeCarte?.id || '')}
+            iaPermise={isConsultant}
+            onClose={() => setShowImport(false)}
+            onImported={() => { reloadDataRef.current && reloadDataRef.current(); reloadCartes(); }}
+          />
+        </React.Suspense>
+      )}
       {rattacherSelection && (
         <PlatPicker
           title="Rattacher la sélection à des plats"
@@ -2030,6 +2051,7 @@ const Recettes = ({ user, etablissement }) => {
                       },
                     ] },
                     { titre: 'Fiches', items: [
+                      canFiches && { titre: 'Importer des fiches', detail: 'Depuis le modèle Excel, une ou plusieurs à la fois, rangées dans une carte', onClick: () => setShowImport(true) },
                       canFiches && { titre: 'Sélectionner des fiches', detail: 'Pour les rattacher à des plats, les archiver ou les supprimer', onClick: entrerSelection },
                       isConsultant && { titre: 'Détecter les allergènes', detail: 'Analyse des ingrédients de chaque fiche, à vérifier ensuite', onClick: () => detectionRef.current?.lancer() },
                     ] },

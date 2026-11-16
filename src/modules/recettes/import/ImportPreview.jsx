@@ -2,6 +2,7 @@ import React from 'react';
 import { Btn } from '../../../components/ui/index.jsx';
 import { CATEGORIES_REC, UNITES_REC } from '../../consultant-tools/ConsultantTools.constants.js';
 import { AlertTriangle } from 'lucide-react';
+import { ALLERGENES, labelAllergene, sortAllergenes } from '../../../utils/allergenes.js';
 
 // Une recette est importable si elle a un nom et au moins un ingrédient.
 export const isRecipeValid = (r) => Boolean(r && String(r.nom || '').trim()) && (r.ingredients || []).length > 0;
@@ -101,14 +102,36 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                 {alertes.map((w, i) => (
                   <span key={i} style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--warning-strong)' }}>{w}</span>
                 ))}
+                <span style={{ flexBasis: '100%', fontSize: 'var(--t1)', color: 'var(--text2)' }}>
+                  {(r.allergenesIds || []).length
+                    ? <>Allergènes : {sortAllergenes(r.allergenesIds).map(labelAllergene).join(', ')}</>
+                    : 'Aucun allergène déclaré'}
+                </span>
                 <Btn small variant="ghost" onClick={() => toggleExpand(id)} style={{ marginLeft: 'auto' }}>
-                  {open ? '▲ Réduire' : '▼ Détail'}
+                  {open ? 'Réduire' : 'Détail'}
                 </Btn>
               </div>
 
               {open && (
                 <div style={{ padding: '4px 12px 12px', borderTop: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', margin: '8px 0 4px' }}>INGRÉDIENTS</div>
+                  <div style={sousTitre}>Allergènes de la fiche</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {ALLERGENES.map(a => {
+                      const coche = (r.allergenesIds || []).includes(a.id);
+                      return (
+                        <button
+                          key={a.id}
+                          type="button"
+                          aria-pressed={coche}
+                          onClick={() => patchRecipe(rIdx, { allergenesIds: coche ? r.allergenesIds.filter(x => x !== a.id) : [...(r.allergenesIds || []), a.id] })}
+                          style={{ ...pastille, ...(coche ? pastilleCochee : {}) }}
+                        >
+                          {a.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={sousTitre}>Ingrédients</div>
                   {(r.ingredients || []).length === 0 && (
                     <div style={{ fontSize: 'var(--t1)', color: 'var(--danger-strong)', fontStyle: 'italic' }}>Aucun ingrédient : recette non importable.</div>
                   )}
@@ -139,7 +162,7 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
                     );
                   })}
 
-                  <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', margin: '10px 0 4px' }}>ÉTAPES</div>
+                  <div style={sousTitre}>Étapes</div>
                   {(r.etapes || []).length === 0 && (
                     <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontStyle: 'italic' }}>Aucune étape détectée.</div>
                   )}
@@ -163,3 +186,11 @@ export default function ImportPreview({ recipes, onChange, unrecognizedUnits = [
     </div>
   );
 }
+
+const sousTitre = { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', margin: '10px 0 4px' };
+const pastille = {
+  padding: '6px 12px', minHeight: 32, borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid',
+  borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+  fontFamily: 'var(--font)', fontSize: 'var(--t1)', cursor: 'pointer',
+};
+const pastilleCochee = { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' };

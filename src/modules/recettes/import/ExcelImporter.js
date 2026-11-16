@@ -22,8 +22,11 @@ function loadXLSX() {
   return _xlsxPromise;
 }
 
+// Le tiret bas compte pour une espace : sans cela « etape_numero » ne
+// trouvait pas son synonyme « etape numero » et la passe tolérante
+// rangeait la colonne du numéro dans le texte des étapes.
 const norm = (s) => String(s ?? '')
-  .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim().replace(/\s+/g, ' ');
+  .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/_/g, ' ').trim().replace(/\s+/g, ' ');
 
 // Champs cibles + synonymes d'en-tête pour l'auto-détection.
 const COLUMN_SYNONYMS = {
@@ -40,6 +43,7 @@ const COLUMN_SYNONYMS = {
   allergenes: ['allergenes', 'allergene', 'allergens', 'allergenes (separes par ;)'],
   conservation: ['conservation', 'dlc', 'stockage', 'duree de vie', 'duree conservation'],
   dressage: ['dressage', 'finition', 'mise en assiette', 'presentation service'],
+  notes: ['notes', 'note', 'remarques', 'astuces', 'conseils'],
 };
 
 export const FIELD_LABELS = {
@@ -56,7 +60,12 @@ export const FIELD_LABELS = {
   allergenes: 'Allergènes',
   conservation: 'Conservation / DLC',
   dressage: 'Dressage / Service',
+  notes: 'Notes',
 };
+
+// Feuilles d'aide du modèle (mode d'emploi, exemple, listes) : jamais lues
+// comme des fiches, sans quoi l'exemple serait importé avec les vraies.
+const FEUILLE_AIDE = /^(mode d.?emploi|exemples?|listes?|aide|lisez.?moi)$/;
 
 const CATEGORIES_VALIDES = ['Entrées', 'Plats', 'Desserts', 'Fromages', 'Sauces', 'Fonds', 'Amuse-bouches', 'Garnitures'];
 const normalizeCategorie = (raw) => {
@@ -178,58 +187,101 @@ const litAllergenes = (raw) => {
 // Fusionne la note d'allergènes avec les notes déjà collectées.
 const avecNote = (notes, note) => [notes, note].filter(Boolean).join('\n');
 
+const texteCellule = (v) => String(v ?? '').trim();
+
 // Construit les recettes depuis les lignes + un mapping de colonnes.
 // catHint : catégorie déduite du nom de feuille - utilisée si la ligne ne renseigne pas la catégorie.
+//
+// Règles de lecture (modèle « Fiches ») :
+// - le nom de la fiche s'écrit une fois ; une ligne sans nom appartient à la
+//   fiche du dessus (les fichiers qui répètent le nom restent lus) ;
+// - catégorie, portions, prix et textes facultatifs : première valeur non
+//   vide de la fiche, quelle que soit sa ligne ;
+// - allergènes : réunis sur toutes les lignes de la fiche. Ils n'étaient lus
+//   que sur la première ligne, et une fiche dont le premier ingrédient ne
+//   portait pas tous les allergènes arrivait sous-déclarée.
 export function buildFromMapping(rows, headerRowIndex, map, catHint = null) {
   const dataRows = rows.slice(headerRowIndex + 1);
   const byTitre = new Map();
+  let courante = null;
 
   for (const row of dataRows) {
     const get = (field) => (map[field] != null ? row[map[field]] : undefined);
-    const titre = String(get('titre') ?? '').trim();
-    if (!titre) continue;
+    const titre = texteCellule(get('titre'));
+    const ingNom = texteCellule(get('ingredient'));
+    let etapeTxt = texteCellule(get('etapeTexte'));
+    const etapeNum = texteCellule(get('etapeNumero'));
+    // Une étape écrite dans la colonne du numéro, la colonne texte vide.
+    if (!etapeTxt && etapeNum && !Number.isFinite(Number(etapeNum.replace(',', '.')))) etapeTxt = etapeNum;
 
-    if (!byTitre.has(titre)) {
-      const rawCat = String(get('categorie') ?? '').trim();
-      const allerg = litAllergenes(get('allergenes'));
-      byTitre.set(titre, {
-        _tempId: tempId('rec'),
-        nom: titre,
-        categorie: rawCat ? normalizeCategorie(rawCat) : (catHint || 'Plats'),
-        portions: Number(get('portions')) || 4,
-        prixVente: Number(String(get('prixVente') ?? '').replace(',', '.')) || 0,
-        statut: 'brouillon',
-        version: 1,
-        allergenesIds: allerg.allergenesIds,
-        notesConsultant: allerg._noteAllergenes,
-        conservation: '',
-        dressage: '',
-        ingredients: [],
-        etapes: [],
-        _etapesBuffer: [],
-        _warnings: [...allerg._warnAllergenes],
-      });
+    if (titre) {
+      if (!byTitre.has(titre)) {
+        byTitre.set(titre, {
+          _tempId: tempId('rec'),
+          nom: titre,
+          categorie: catHint || 'Plats',
+          portions: 4,
+          prixVente: 0,
+          statut: 'brouillon',
+          version: 1,
+          allergenesIds: [],
+          notesConsultant: '',
+          conservation: '',
+          dressage: '',
+          ingredients: [],
+          etapes: [],
+          _etapesBuffer: [],
+          _nuances: [],
+          _notes: [],
+          _vu: {},
+          _warnings: [],
+        });
+      }
+      courante = byTitre.get(titre);
     }
-    const rec = byTitre.get(titre);
+    if (!courante) continue; // lignes avant la première fiche nommée
+    const rec = courante;
 
-    const ingNom = get('ingredient');
-    if (ingNom != null && String(ingNom).trim() !== '') {
+    const premiere = (champ, valeur, appliquer) => {
+      if (rec._vu[champ] || valeur === '') return;
+      rec._vu[champ] = true;
+      appliquer(valeur);
+    };
+    premiere('categorie', texteCellule(get('categorie')), v => { rec.categorie = normalizeCategorie(v); });
+    premiere('portions', texteCellule(get('portions')), v => {
+      const n = Math.round(Number(v.replace(',', '.')));
+      if (n > 0) rec.portions = n; else rec._vu.portions = false;
+    });
+    premiere('prixVente', texteCellule(get('prixVente')), v => { rec.prixVente = Number(v.replace(',', '.')) || 0; });
+    premiere('conservation', texteCellule(get('conservation')), v => { rec.conservation = v; });
+    premiere('dressage', texteCellule(get('dressage')), v => { rec.dressage = v; });
+    const note = texteCellule(get('notes'));
+    if (note) rec._notes.push(note);
+
+    const allerg = texteCellule(get('allergenes'));
+    if (allerg) {
+      const lu = splitAllergenesText(allerg);
+      lu.ids.forEach(id => { if (!rec.allergenesIds.includes(id)) rec.allergenesIds.push(id); });
+      lu.nuances.forEach(n => { if (!rec._nuances.includes(n)) rec._nuances.push(n); });
+    }
+
+    if (ingNom) {
       rec.ingredients.push(makeIngredient(ingNom, get('quantite'), get('unite'), get('prixUnit')));
     }
-    const etapeTxt = get('etapeTexte');
-    if (etapeTxt != null && String(etapeTxt).trim() !== '') {
-      rec._etapesBuffer.push({ ordre: Number(get('etapeNumero')) || rec._etapesBuffer.length + 1, texte: String(etapeTxt).trim() });
+    if (etapeTxt) {
+      const n = Number(etapeNum.replace(',', '.'));
+      rec._etapesBuffer.push({ ordre: Number.isFinite(n) && n > 0 ? n : rec._etapesBuffer.length + 1, rang: rec._etapesBuffer.length, texte: etapeTxt });
     }
-    // Champs optionnels : conservation et dressage (première valeur non vide trouvée).
-    const cons = String(get('conservation') ?? '').trim();
-    if (cons && !rec.conservation) rec.conservation = cons;
-    const dress = String(get('dressage') ?? '').trim();
-    if (dress && !rec.dressage) rec.dressage = dress;
   }
 
   return Array.from(byTitre.values()).map(rec => {
-    rec.etapes = rec._etapesBuffer.sort((a, b) => a.ordre - b.ordre).map(e => e.texte);
-    delete rec._etapesBuffer;
+    // Tri stable : à numéro égal, l'ordre des lignes du fichier.
+    rec.etapes = rec._etapesBuffer.sort((a, b) => a.ordre - b.ordre || a.rang - b.rang).map(e => e.texte);
+    const noteAllergenes = rec._nuances.length ? `Allergènes (fichier source) : ${rec._nuances.join(' ; ')}` : '';
+    rec.notesConsultant = avecNote(rec._notes.join('\n'), noteAllergenes);
+    if (rec._nuances.length) rec._warnings.push('Allergènes à vérifier (précision non normalisée)');
+    if (!rec._vu.portions) rec._warnings.push('Portions non renseignées, 4 par défaut');
+    delete rec._etapesBuffer; delete rec._nuances; delete rec._notes; delete rec._vu;
     const flagged = rec.ingredients.filter(i => i._import.warning).length;
     if (flagged > 0) rec._warnings.push(`${flagged} ligne(s) ingrédient à vérifier`);
     if (rec.ingredients.length === 0) rec._warnings.push('Aucun ingrédient détecté');
@@ -538,11 +590,19 @@ export async function parseWorkbook(arrayBuffer) {
     const sheet = wb.Sheets[sheetName];
     if (!sheet) { stats.sheetsSkipped.push(sheetName + ' (introuvable)'); continue; }
 
+    if (FEUILLE_AIDE.test(norm(sheetName))) { stats.sheetsSkipped.push(sheetName + ' (aide du modèle)'); continue; }
+
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false });
     if (!rows.length) { stats.sheetsSkipped.push(sheetName + ' (vide)'); continue; }
 
+    // Tableau à en-têtes (modèle « Fiches ») reconnu d'abord : une fiche
+    // nommée « Plat du jour » en colonne A ne doit pas le faire passer pour
+    // une fiche technique verticale.
+    const enTete = detectColumns(rows[findHeaderRow(rows)] || []);
+    const tableau = enTete.titre != null && (enTete.ingredient != null || enTete.etapeTexte != null);
+
     // Format fiche technique (label:valeur vertical) ?
-    if (detectFicheTechnique(rows)) {
+    if (!tableau && detectFicheTechnique(rows)) {
       const ficheRecipes = parseFicheTechnique(rows);
       if (ficheRecipes.length) {
         stats.sheetsRead.push({ name: sheetName, count: ficheRecipes.length });

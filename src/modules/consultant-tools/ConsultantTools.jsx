@@ -1,6 +1,5 @@
 import React from 'react';
 import { getDemoData } from '../../data/demoData.js';
-import ImportLauncher from '../recettes/import/ImportLauncher.jsx';
 import SafeModule from '../../legacy/SafeModule.jsx';
 import { getBrowserWindow, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { readText, writeText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
@@ -536,10 +535,8 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
   // gardent leurs liaisons en base.
   const cartesActivesLocal = (cartesLocal || []).filter(c => !c.archive);
 
-  // ═══ Import multiple de recettes ═══
-  // L'import (Excel / CSV / PDF, template, parsing, preview, insertion par
-  // lots) est géré par le module dédié src/modules/recettes/import.
-  const [showImport, setShowImport] = React.useState(false);
+  // L'import de fiches vit dans Cartes & Recettes (Gérer > Importer des
+  // fiches, src/modules/recettes/import) depuis le 16.11.2026.
   // Écran de résolution des correspondances catalogue ambiguës
   const [showMatchReview, setShowMatchReview] = React.useState(false);
   const [showBulkLinker, setShowBulkLinker] = React.useState(false);
@@ -577,20 +574,6 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
           : <div style={cts.fallback}>Module Factures non chargé.</div>
       ) : (
     <div style={cts.root}>
-      {showImport && (
-        <ImportLauncher
-          etabId={etabId}
-          legacySB={legacySB}
-          user={user}
-          onClose={() => setShowImport(false)}
-          onImported={async () => {
-            try {
-              const recs = await legacySB.db.listRecettes(etabId);
-              setRecettes(Array.isArray(recs) ? recs : []);
-            } catch (e) { /* le realtime rafraîchira la liste */ }
-          }}
-        />
-      )}
       {showBulkLinker && (
         <BulkProductLinker
           recettes={recettesEtab}
@@ -666,7 +649,6 @@ const ConsultantToolsInner = ({ user, etablissement }) => {
                   { titre: 'Sélectionner plusieurs recettes', detail: 'Pour les exporter en Excel chiffré, les cacher ou les transférer.', onClick: recSel.enter },
                   reviewCount > 0 && { titre: `Correspondances à valider (${reviewCount})`, detail: 'Ingrédients rapprochés du catalogue avec un doute.', onClick: () => setShowMatchReview(true) },
                   unlinkedCount > 0 && { titre: `Lier les ingrédients au catalogue (${unlinkedCount})`, detail: 'Ingrédients encore sans produit du catalogue.', onClick: () => setShowBulkLinker(true) },
-                  { titre: 'Importer des recettes', detail: 'Depuis un fichier Excel ou un document.', onClick: () => setShowImport(true) },
                 ] }]}
               />
               <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher…" />

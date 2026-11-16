@@ -1,13 +1,14 @@
 import React from 'react';
-import * as XLSX from 'xlsx';
 import { Btn } from '../../../components/ui/index.jsx';
+import { Fenetre, st as fst } from '../../../components/ui/Fenetres.jsx';
 import { notify } from '../../../components/toast/index.js';
 import { parseWorkbook, buildFromMapping, FIELD_LABELS } from './ExcelImporter.js';
 import ImportPreview, { isRecipeValid } from './ImportPreview.jsx';
 import { getUnrecognizedUnits, resetUnrecognizedUnits } from './UnitParser.js';
 import { messageErreur } from '../../../utils/messageErreur.js';
+import { CATEGORIES_PLAT, categorieDuPlat } from '../../../utils/categoriesPlat.js';
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 5;
 
 // Nettoie une recette importée -> payload accepté par upsertRecette.
 function toRecettePayload(recipe, etabId, userId) {
@@ -42,42 +43,69 @@ function toRecettePayload(recipe, etabId, userId) {
   };
 }
 
-const overlay = {
-  position: 'fixed', inset: 0, zIndex: 9000, background: 'rgba(20,16,12,0.55)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
-};
-const panel = {
-  background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)',
-  width: 'min(860px, 96vw)', maxHeight: '92vh', display: 'flex', flexDirection: 'column',
-  boxShadow: '0 24px 60px rgba(0,0,0,0.35)',
-};
+const cleNom = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
-// Modale d'import multiple de recettes (Excel / CSV / PDF).
-// Props : etabId, legacySB, user, onClose, onImported
-export default function ImportLauncher({ etabId, legacySB, user, onClose, onImported }) {
+// Rubrique unique d'une carte : quand tous ses plats sont dans la même
+// rubrique (une carte de petit-déjeuner toute en « Plats »), les fiches
+// importées s'y rangent aussi. Carte vide ou à plusieurs rubriques : ''
+// (la rubrique suit la catégorie de chaque fiche).
+function rubriqueDominante(plats, carteId) {
+  if (!carteId) return '';
+  const rubriques = new Set((plats || [])
+    .filter(p => (p.carteIds || []).includes(carteId))
+    .map(categorieDuPlat));
+  const [seule] = rubriques;
+  return rubriques.size === 1 && CATEGORIES_PLAT.includes(seule) ? seule : '';
+}
+
+// Fenêtre d'import de fiches recettes (Cartes & Recettes > Gérer).
+// Props : etabId, legacySB, user, cartes, plats, recettes (fiches de
+// l'établissement, pour signaler les doublons), carteIdDefaut, iaPermise
+// (lecture des photos par l'IA, consultant seulement), onClose, onImported.
+export default function ImportLauncher({
+  etabId, legacySB, user, cartes = [], plats = [], recettes = [],
+  carteIdDefaut = '', iaPermise = false, onClose, onImported,
+}) {
   const [step, setStep] = React.useState('choose'); // choose | mapping | preview | importing | done
   const [parsing, setParsing] = React.useState(false);
   const [parsingMsg, setParsingMsg] = React.useState('Lecture du fichier…');
   const [parseError, setParseError] = React.useState('');
-  const [scannedPdf, setScannedPdf] = React.useState(false);
   const [recipes, setRecipes] = React.useState([]);
   const [mappingData, setMappingData] = React.useState(null);
   const [mapping, setMapping] = React.useState({});
-  const [parseStats, setParseStats] = React.useState(null);
-  const [progress, setProgress] = React.useState({ done: 0, total: 0, imported: 0, failed: 0 });
-  // Récap par fichier après un import multiple (fichiers ignorés / en échec).
+  const [progress, setProgress] = React.useState({ done: 0, total: 0, imported: 0, ranges: 0 });
+  const [echecs, setEchecs] = React.useState([]); // [{ nom, raison }]
   const [fileNotes, setFileNotes] = React.useState([]);
   const [dragOver, setDragOver] = React.useState(false);
+  const [carteId, setCarteId] = React.useState(() => (cartes.some(c => c.id === carteIdDefaut) ? carteIdDefaut : ''));
+  const [rubrique, setRubrique] = React.useState(() => rubriqueDominante(plats, carteIdDefaut));
   const fileInputRef = React.useRef(null);
   const cancelRef = React.useRef(false);
+  const carte = cartes.find(c => c.id === carteId) || null;
+
+  const choisirCarte = (id) => { setCarteId(id); setRubrique(rubriqueDominante(plats, id)); };
+  const rubriqueDe = (r) => rubrique || (CATEGORIES_PLAT.includes(r.categorie) ? r.categorie : 'Plats');
 
   const reset = () => {
-    setStep('choose'); setParseError(''); setScannedPdf(false);
-    setRecipes([]); setMappingData(null); setMapping({}); setParseStats(null);
-    setFileNotes([]);
+    setStep('choose'); setParseError('');
+    setRecipes([]); setMappingData(null); setMapping({});
+    setFileNotes([]); setEchecs([]);
   };
 
-  // Détecte le type d'un fichier à partir de son extension / type MIME.
+  // Une fiche qui porte le nom d'une fiche de l'établissement (ou d'une autre
+  // fiche du même import) arrive décochée : un second import du même fichier
+  // ne double rien sans qu'on le demande.
+  const marquerDoublons = (list) => {
+    const vus = new Set((recettes || []).map(r => cleNom(r.nom)));
+    return list.map(r => {
+      const cle = cleNom(r.nom);
+      const doublon = vus.has(cle);
+      vus.add(cle);
+      if (!doublon) return r;
+      return { ...r, _selected: false, _warnings: [...(r._warnings || []), 'Ce nom existe déjà dans l\'établissement : décochée'] };
+    });
+  };
+
   const detectKind = (file) => {
     const name = String(file.name || '').toLowerCase();
     const type = String(file.type || '').toLowerCase();
@@ -88,64 +116,50 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
     return 'unknown';
   };
 
-  // ── Parsing : détection automatique du type + plusieurs fichiers d'un coup ──
-  // Chaque fichier est lu selon son type, les recettes sont agrégées dans un
-  // seul aperçu. Les fichiers en échec sont listés sans bloquer les autres.
+  // Plusieurs fichiers d'un coup : chacun est lu selon son type, les fiches
+  // sont réunies dans un seul aperçu, un fichier en échec ne bloque pas les autres.
   const handleFiles = async (fileList) => {
     const files = Array.from(fileList || []);
     if (!files.length) return;
-    setParsing(true); setParseError(''); setScannedPdf(false);
+    setParsing(true); setParseError('');
     resetUnrecognizedUnits();
 
     const aggregated = [];
     const notes = [];
-    let needsMappingResult = null; // Excel à mapper (seulement si fichier unique)
-    let firstStats = null;
-    let scannedCount = 0;
+    let needsMappingResult = null;
     const many = files.length > 1;
 
     for (let idx = 0; idx < files.length; idx += 1) {
       const file = files[idx];
       const kind = detectKind(file);
-      setParsingMsg(
-        many ? `Lecture ${idx + 1}/${files.length} : ${file.name}…`
-          : (kind === 'photo' ? 'Lecture en cours, quelques secondes…' : 'Lecture du fichier…'),
-      );
+      setParsingMsg(many ? `Lecture ${idx + 1}/${files.length} : ${file.name}…` : 'Lecture du fichier…');
       try {
         if (kind === 'excel') {
-          const buf = await file.arrayBuffer();
-          const result = await parseWorkbook(buf);
-          if (result.stats && !firstStats) firstStats = result.stats;
+          const result = await parseWorkbook(await file.arrayBuffer());
           if (result.needsMapping) {
             if (!many) needsMappingResult = result;
-            else notes.push(`${file.name} : colonnes non reconnues, à importer seul pour le mappage manuel.`);
+            else notes.push(`${file.name} : colonnes non reconnues. Importez-le seul pour choisir les colonnes.`);
           } else if (result.recipes && result.recipes.length) {
             aggregated.push(...result.recipes);
           } else {
-            notes.push(`${file.name} : aucune recette détectée.`);
+            notes.push(`${file.name} : aucune fiche trouvée.`);
           }
         } else if (kind === 'pdf') {
-          const { parsePdf } = await import('./PdfImporter.js'); // chargement à la demande
-          const buf = await file.arrayBuffer();
-          const result = await parsePdf(buf);
-          if (result.scanned) {
-            scannedCount += 1;
-            notes.push(`${file.name} : PDF scanné (image), prenez-en une photo pour la lecture.`);
-          } else if (result.recipes && result.recipes.length) {
-            aggregated.push(...result.recipes);
-          } else {
-            notes.push(`${file.name} : aucune recette détectée.`);
-          }
-        } else if (kind === 'photo') {
+          const { parsePdf } = await import('./PdfImporter.js');
+          const result = await parsePdf(await file.arrayBuffer());
+          if (result.scanned) notes.push(`${file.name} : PDF scanné, sans texte à lire.`);
+          else if (result.recipes && result.recipes.length) aggregated.push(...result.recipes);
+          else notes.push(`${file.name} : aucune fiche trouvée.`);
+        } else if (kind === 'photo' && iaPermise) {
+          setParsingMsg('Lecture de la photo, quelques secondes…');
           const { ocrRecipe } = await import('../../../services/aiService.js');
           const result = await ocrRecipe(file);
-          if (result.recipes && result.recipes.length) {
-            aggregated.push(...result.recipes);
-          } else {
-            notes.push(`${file.name} : aucune recette détectée sur la photo.`);
-          }
+          if (result.recipes && result.recipes.length) aggregated.push(...result.recipes);
+          else notes.push(`${file.name} : aucune fiche trouvée sur la photo.`);
+        } else if (kind === 'photo') {
+          notes.push(`${file.name} : les photos ne sont pas lues ici. Remplissez le modèle Excel.`);
         } else {
-          notes.push(`${file.name} : format non pris en charge.`);
+          notes.push(`${file.name} : format non pris en charge. Utilisez le modèle Excel.`);
         }
       } catch (err) {
         notes.push(`${file.name} : ${messageErreur(err, 'import des recettes', 'fichier illisible.')}`);
@@ -155,30 +169,27 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
     setParsing(false);
     setParsingMsg('Lecture du fichier…');
 
-    // Fichier Excel unique sans recette exploitable mais avec colonnes à mapper.
     if (needsMappingResult && !aggregated.length) {
-      if (firstStats) setParseStats(firstStats);
       setMappingData(needsMappingResult);
       setMapping(needsMappingResult.detected || {});
       setStep('mapping');
       return;
     }
-
     if (aggregated.length) {
-      if (!many && firstStats) setParseStats(firstStats);
       setFileNotes(notes);
-      setRecipes(aggregated);
+      setRecipes(marquerDoublons(aggregated));
       setStep('preview');
     } else {
-      if (!many && scannedCount > 0) setScannedPdf(true);
-      setParseError(notes.length ? notes.join('\n') : 'Aucune recette détectée.');
+      setParseError(notes.length ? notes.join('\n') : 'Aucune fiche trouvée.');
     }
   };
 
   const onInputChange = (e) => {
-    const files = e.target.files;
+    // Copie avant de vider le champ : remettre la valeur à vide peut vider la
+    // liste elle-même, et l'import ne recevait alors aucun fichier.
+    const files = Array.from(e.target.files || []);
     e.target.value = '';
-    if (files && files.length) handleFiles(files);
+    if (files.length) handleFiles(files);
   };
 
   const onDrop = (e) => {
@@ -188,259 +199,258 @@ export default function ImportLauncher({ etabId, legacySB, user, onClose, onImpo
     if (files && files.length) handleFiles(files);
   };
 
-  // ── Mapping de colonnes ──
   const applyMapping = () => {
     if (mapping.titre == null) {
-      notify('Sélectionnez au minimum la colonne « Titre de la recette ».', 'warning');
+      notify('Choisissez au moins la colonne du nom de la recette.', 'warning');
       return;
     }
     try {
       const built = buildFromMapping(mappingData.rows, mappingData.headerRowIndex, mapping);
-      if (!built.length) { setParseError('Aucune recette construite avec ce mapping.'); return; }
-      setRecipes(built);
+      if (!built.length) { setParseError('Aucune fiche construite avec ces colonnes.'); return; }
+      setRecipes(marquerDoublons(built));
       setStep('preview');
     } catch (err) {
-      setParseError('Correspondance des colonnes invalide. ' + messageErreur(err, 'import des recettes'));
+      setParseError('Colonnes invalides. ' + messageErreur(err, 'import des recettes'));
     }
   };
 
-  // ── Insertion en base, par lots ──
+  // Une fiche, puis son plat sur la carte choisie (au nom de la fiche, la
+  // fiche rattachée en composant). Une fiche créée dont le rangement échoue
+  // reste dans la bibliothèque, et l'échec est dit à la fin.
+  const importerUne = async (r) => {
+    const payload = toRecettePayload(r, etabId, user && user.id);
+    await legacySB.db.upsertRecette(payload);
+    if (!carteId) return { range: false };
+    try {
+      const plat = await legacySB.db.upsertPlat({ etablissementId: etabId, nom: payload.nom, categorie: rubriqueDe(r), ordre: 0 });
+      await legacySB.db.linkRecetteToPlat(plat.id, payload.id, 'composant', 0);
+      await legacySB.db.addPlatToCarte(carteId, plat.id);
+      return { range: true };
+    } catch (err) {
+      console.error('[import recette : rangement carte]', err);
+      return { range: false, raison: 'fiche créée, mais pas rangée dans la carte' };
+    }
+  };
+
   const runImport = async (list) => {
     if (!legacySB) { notify('Base non connectée.', 'error'); return; }
     cancelRef.current = false;
     setStep('importing');
-    setProgress({ done: 0, total: list.length, imported: 0, failed: 0 });
-    let imported = 0, failed = 0, done = 0;
+    setEchecs([]);
+    let imported = 0, ranges = 0, done = 0;
+    const aReprendre = [];
+    setProgress({ done: 0, total: list.length, imported: 0, ranges: 0 });
     for (let i = 0; i < list.length; i += BATCH_SIZE) {
       if (cancelRef.current) break;
       const batch = list.slice(i, i + BATCH_SIZE);
-      const results = await Promise.allSettled(
-        batch.map(r => legacySB.db.upsertRecette(toRecettePayload(r, etabId, user && user.id))),
-      );
-      results.forEach(res => {
+      const results = await Promise.allSettled(batch.map(importerUne));
+      results.forEach((res, k) => {
         done += 1;
-        if (res.status === 'fulfilled') imported += 1;
-        else { failed += 1; console.error('[import recette]', res.reason); }
+        const nom = String(batch[k].nom || '').trim();
+        if (res.status === 'fulfilled') {
+          imported += 1;
+          if (res.value.range) ranges += 1;
+          if (res.value.raison) aReprendre.push({ nom, raison: res.value.raison });
+        } else {
+          console.error('[import recette]', res.reason);
+          aReprendre.push({ nom, raison: messageErreur(res.reason, 'import des recettes', 'fiche non créée.') });
+        }
       });
-      setProgress({ done, total: list.length, imported, failed });
+      setProgress({ done, total: list.length, imported, ranges });
     }
+    setEchecs(aReprendre);
     setStep('done');
     if (imported > 0) {
-      notify(`${imported} recette(s) importée(s).`, failed > 0 ? 'warning' : 'success');
+      notify(`${imported} fiche(s) importée(s).`, aReprendre.length ? 'warning' : 'success');
       if (onImported) onImported();
+    } else {
+      notify('Aucune fiche importée.', 'error');
     }
-    if (imported === 0) notify('Aucune recette importée.', 'error');
   };
 
+  const aImporter = recipes.filter(r => r._selected !== false && isRecipeValid(r));
   const importAllValid = () => {
-    const list = recipes.filter(r => r._selected !== false && isRecipeValid(r));
-    if (!list.length) { notify('Aucune recette valide sélectionnée.', 'warning'); return; }
-    runImport(list);
+    if (!aImporter.length) { notify('Aucune fiche valide cochée.', 'warning'); return; }
+    runImport(aImporter);
   };
 
-  // ── Template téléchargeable ──
-  const downloadTemplate = async () => {
-    const XLSX = await import('xlsx'); // chargé à la demande (hors bundle du module)
-    const rows = [
-      ['titre', 'categorie', 'portions', 'prix_vente', 'ingredient', 'quantite', 'unite', 'etape_numero', 'etape_texte', 'allergenes'],
-      ['Risotto aux asperges', 'Plats', 4, 28.5, 'Riz Arborio', 320, 'g', '', '', 'lactose'],
-      ['Risotto aux asperges', 'Plats', 4, 28.5, 'Asperges vertes', 400, 'g', '', '', ''],
-      ['Risotto aux asperges', 'Plats', 4, 28.5, 'Parmesan', 80, 'g', '', '', 'lactose'],
-      ['Risotto aux asperges', 'Plats', 4, 28.5, '', '', '', 1, "Faire revenir l'oignon dans l'huile", ''],
-      ['Risotto aux asperges', 'Plats', 4, 28.5, '', '', '', 2, 'Ajouter le riz et nacrer 2 min', ''],
-    ];
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 9 }, { wch: 12 }, { wch: 24 }, { wch: 10 }, { wch: 8 }, { wch: 13 }, { wch: 40 }, { wch: 18 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Recettes');
-    XLSX.writeFile(wb, 'template-import-recettes.xlsx');
+  const telechargerModele = async () => {
+    try {
+      const { telechargerModeleFiches } = await import('./modeleFiches.js');
+      await telechargerModeleFiches();
+    } catch (err) {
+      notify('Téléchargement impossible. ' + messageErreur(err, 'import des recettes'), 'error');
+    }
   };
 
-  const headerBar = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
-      <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)' }}>
-        Import multiple de recettes
-      </div>
-      <button type="button" className="ui-fermer" aria-label="Fermer" onClick={onClose} title="Fermer" style={{ background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)' }}>×</button>
-    </div>
-  );
+  const formats = iaPermise ? 'Excel, CSV, PDF ou photos' : 'Excel, CSV ou PDF';
 
   return (
-    <div style={overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={panel}>
-        {headerBar}
-        <div style={{ padding: 18, overflowY: 'auto' }}>
+    <Fenetre id="import-fiches" titre="Importer des fiches" onClose={onClose} largeur={860}>
+      {step === 'choose' && (
+        <>
+          <div style={fst.remarque}>
+            Remplissez le modèle : le nom de la fiche une seule fois, puis une ligne par ingrédient
+            et une étape par ligne. Déposez ensuite le fichier ici, ou plusieurs à la fois.
+          </div>
+          <div>
+            <Btn variant="ghost" onClick={telechargerModele}>Télécharger le modèle Excel</Btn>
+          </div>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => fileInputRef.current && fileInputRef.current.click()}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current && fileInputRef.current.click(); } }}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDrop}
+            style={{ ...dropZone, ...(dragOver ? dropZoneActive : {}) }}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept={iaPermise ? '.xlsx,.xls,.csv,.pdf,image/*' : '.xlsx,.xls,.csv,.pdf'}
+              style={{ display: 'none' }}
+              onChange={onInputChange}
+            />
+            <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
+              Déposez vos fichiers ici, ou touchez pour les choisir
+            </div>
+            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{formats}</div>
+          </div>
+          {parsing && <div style={{ fontSize: 'var(--t2)', color: 'var(--lien)' }}>{parsingMsg}</div>}
+          {parseError && <div style={errBox}>{parseError}</div>}
+        </>
+      )}
 
-          {/* ── Choix du format ── */}
-          {step === 'choose' && (
-            <div>
-              <p style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 0 }}>
-                Glissez une ou plusieurs fiches recettes : le type de chaque fichier
-                est détecté automatiquement. Les recettes sont créées en brouillon
-                sur l'établissement courant.
-              </p>
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current && fileInputRef.current.click(); } }}
-                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragLeave={() => setDragOver(false)}
-                onDrop={onDrop}
-                style={{ ...dropZone, ...(dragOver ? dropZoneActive : {}) }}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  accept=".xlsx,.xls,.csv,.pdf,image/*"
-                  style={{ display: 'none' }}
-                  onChange={onInputChange}
-                />
-                <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
-                  Glissez vos fiches ici, ou cliquez pour parcourir
-                </div>
-                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
-                  Excel, CSV, PDF ou photos, plusieurs fichiers à la fois
-                </div>
-              </div>
-              <div style={{ marginTop: 14 }}>
-                <Btn variant="ghost" small onClick={downloadTemplate}>Télécharger le template Excel</Btn>
-              </div>
-              {parsing && <div style={{ marginTop: 12, fontSize: 'var(--t2)', color: 'var(--lien)' }}>⟳ {parsingMsg}</div>}
-              {parseError && <div style={errBox}>{parseError}</div>}
-              {scannedPdf && (
-                <div style={{ ...errBox, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)' }}>
-                  Ce PDF semble être une image scannée (aucun texte sélectionnable).
-                  Astuce : prenez-en une photo et utilisez l'option « Photo » ci-dessus
-                  pour le faire lire automatiquement.
-                </div>
-              )}
+      {step === 'mapping' && mappingData && (
+        <>
+          <div style={fst.remarque}>
+            Les colonnes de ce fichier n'ont pas été reconnues. Indiquez la colonne de chaque information.
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+            {Object.entries(FIELD_LABELS).map(([field, label]) => (
+              <label key={field} style={fst.section}>
+                <span style={fst.label}>{label}{field === 'titre' ? ' (obligatoire)' : ''}</span>
+                <select
+                  value={mapping[field] == null ? '' : mapping[field]}
+                  onChange={e => setMapping(m => ({ ...m, [field]: e.target.value === '' ? null : Number(e.target.value) }))}
+                  style={fst.champ}
+                >
+                  <option value="">Ignorer</option>
+                  {mappingData.headers.map(h => <option key={h.index} value={h.index}>{h.label}</option>)}
+                </select>
+              </label>
+            ))}
+          </div>
+          {parseError && <div style={errBox}>{parseError}</div>}
+          <div style={fst.pied}>
+            <Btn variant="ghost" onClick={reset}>Retour</Btn>
+            <Btn variant="primary" onClick={applyMapping}>Continuer</Btn>
+          </div>
+        </>
+      )}
+
+      {step === 'preview' && (
+        <>
+          <div style={destination}>
+            <label style={{ ...fst.section, flex: '1 1 240px' }}>
+              <span style={fst.label}>Ranger les fiches dans</span>
+              <select value={carteId} onChange={e => choisirCarte(e.target.value)} style={fst.champ}>
+                <option value="">La bibliothèque seulement</option>
+                {cartes.map(c => <option key={c.id} value={c.id}>{c.nom}</option>)}
+              </select>
+            </label>
+            {carte && (
+              <label style={{ ...fst.section, flex: '1 1 200px' }}>
+                <span style={fst.label}>Rubrique sur la carte</span>
+                <select value={rubrique} onChange={e => setRubrique(e.target.value)} style={fst.champ}>
+                  <option value="">Celle de chaque fiche</option>
+                  {CATEGORIES_PLAT.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </label>
+            )}
+            <div style={{ ...fst.remarque, flexBasis: '100%' }}>
+              {carte
+                ? <>Chaque fiche devient un plat de la carte <strong data-no-translate="">{carte.nom}</strong>, à son nom. Les fiches arrivent en brouillon.</>
+                : 'Les fiches arrivent en brouillon dans la bibliothèque. Vous pourrez les rattacher à des plats ensuite.'}
+            </div>
+          </div>
+          {fileNotes.length > 0 && (
+            <div style={warnBox}>
+              <strong>{fileNotes.length} fichier(s) non lu(s) :</strong>
+              <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                {fileNotes.map((n, i) => <li key={i} style={{ marginBottom: 2 }}>{n}</li>)}
+              </ul>
             </div>
           )}
+          <ImportPreview recipes={recipes} onChange={setRecipes} unrecognizedUnits={getUnrecognizedUnits()} />
+          <div style={fst.pied}>
+            <Btn variant="ghost" onClick={reset}>Autre fichier</Btn>
+            <div style={{ flex: 1 }} />
+            <Btn variant="primary" onClick={importAllValid} disabled={!aImporter.length}>
+              Importer <span data-no-translate="">{aImporter.length}</span> {aImporter.length > 1 ? 'fiches' : 'fiche'}
+            </Btn>
+          </div>
+        </>
+      )}
 
-          {/* ── Assistant de mapping de colonnes ── */}
-          {step === 'mapping' && mappingData && (
-            <div>
-              <p style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 0 }}>
-                Les colonnes n'ont pas pu être reconnues automatiquement. Associez
-                chaque champ cible à une colonne du fichier.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {Object.entries(FIELD_LABELS).map(([field, label]) => (
-                  <label key={field} style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 'var(--t1)' }}>
-                    <span style={{ fontWeight: 'var(--g3)', color: 'var(--text2)' }}>
-                      {label}{field === 'titre' ? ' *' : ''}
-                    </span>
-                    <select
-                      value={mapping[field] == null ? '' : mapping[field]}
-                      onChange={e => setMapping(m => ({ ...m, [field]: e.target.value === '' ? null : Number(e.target.value) }))}
-                      style={{ padding: '6px 8px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--bg)', color: 'var(--text)', fontSize: 'var(--t1)' }}
-                    >
-                      <option value="">ignorer</option>
-                      {mappingData.headers.map(h => <option key={h.index} value={h.index}>{h.label}</option>)}
-                    </select>
-                  </label>
-                ))}
-              </div>
-              {parseError && <div style={errBox}>{parseError}</div>}
-              <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                <Btn variant="ghost" onClick={reset}>Retour</Btn>
-                <Btn variant="primary" onClick={applyMapping}>Continuer</Btn>
-              </div>
-            </div>
-          )}
-
-          {/* ── Aperçu avant import ── */}
-          {step === 'preview' && (
-            <div>
-              {parseStats && (
-                <div style={statsBanner}>
-                  <strong>{parseStats.sheetsTotal}</strong> feuille(s) dans le classeur,{' '}
-                  <strong>{parseStats.sheetsRead.length}</strong> lue(s),{' '}
-                  <strong>{parseStats.rowsTotal}</strong> ligne(s) analysée(s),{' '}
-                  <strong>{recipes.length}</strong> recette(s) détectée(s),{' '}
-                  <strong>{recipes.reduce((s, r) => s + (r.ingredients || []).length, 0)}</strong> ingrédient(s)
-                  {parseStats.sheetsRead.length > 0 && (
-                    <span style={{ color: 'var(--text2)' }}>
-                      {' '}- {parseStats.sheetsRead.map(s => `${s.name} (${s.count})`).join(', ')}
-                    </span>
-                  )}
-                  {parseStats.sheetsSkipped.length > 0 && (
-                    <span style={{ color: 'var(--warning-text)' }}>
-                      {', '}ignoré(s) : {parseStats.sheetsSkipped.join(', ')}
-                    </span>
-                  )}
-                </div>
-              )}
-              {fileNotes.length > 0 && (
-                <div style={{ ...errBox, background: 'var(--warning-bg)', borderColor: 'var(--warning-bd)', color: 'var(--warning-text)', marginTop: 0, marginBottom: 10 }}>
-                  <strong>{fileNotes.length} fichier(s) non importé(s) :</strong>
-                  <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-                    {fileNotes.map((n, i) => <li key={i} style={{ marginBottom: 2 }}>{n}</li>)}
-                  </ul>
-                </div>
-              )}
-              <ImportPreview recipes={recipes} onChange={setRecipes} unrecognizedUnits={getUnrecognizedUnits()} />
-              <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-                <Btn variant="ghost" onClick={reset}>Autre fichier</Btn>
-                <div style={{ flex: 1 }} />
-                <Btn variant="primary" onClick={importAllValid}>
-                  Importer les recettes valides ({recipes.filter(r => r._selected !== false && isRecipeValid(r)).length})
-                </Btn>
-              </div>
-            </div>
-          )}
-
-          {/* ── Import en cours ── */}
-          {step === 'importing' && (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
-                Import en cours… {progress.done} / {progress.total}
-              </div>
-              <div style={{ height: 10, background: 'var(--bg)', borderRadius: 'var(--r)', margin: '14px 0', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                <div style={{ height: '100%', width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
-              </div>
-              <Btn variant="danger" onClick={() => { cancelRef.current = true; }}>Annuler</Btn>
-            </div>
-          )}
-
-          {/* ── Terminé ── */}
-          {step === 'done' && (
-            <div style={{ textAlign: 'center', padding: '20px 0' }}>
-              <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', margin: '8px 0' }}>
-                Import terminé
-              </div>
-              <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>
-                {progress.imported} recette(s) importée(s)
-                {progress.failed > 0 ? `, ${progress.failed} échec(s)` : ''}
-                {cancelRef.current ? ', interrompu' : ''}
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
-                <Btn variant="ghost" onClick={reset}>Importer un autre fichier</Btn>
-                <Btn variant="primary" onClick={onClose}>Fermer</Btn>
-              </div>
-            </div>
-          )}
+      {step === 'importing' && (
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
+            Import en cours : {progress.done} sur {progress.total}
+          </div>
+          <div style={{ height: 10, background: 'var(--piste)', borderRadius: 'var(--r-full)', margin: '14px 0', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%`, background: 'var(--accent)', transition: 'width 0.2s' }} />
+          </div>
+          <Btn variant="ghost" onClick={() => { cancelRef.current = true; }}>Arrêter après ce lot</Btn>
         </div>
-      </div>
-    </div>
+      )}
+
+      {step === 'done' && (
+        <div style={{ padding: '8px 0' }}>
+          <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>Import terminé</div>
+          <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 6, lineHeight: 1.5 }}>
+            {progress.imported} fiche(s) importée(s)
+            {carte && progress.ranges > 0 ? <>, {progress.ranges} rangée(s) dans <span data-no-translate="">{carte.nom}</span></> : ''}
+            {cancelRef.current ? ', import arrêté' : ''}.
+          </div>
+          {echecs.length > 0 && (
+            <div style={{ ...errBox, marginTop: 12 }}>
+              <strong>À reprendre :</strong>
+              <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                {echecs.map((e, i) => <li key={i}><span data-no-translate="">{e.nom}</span> : {e.raison}</li>)}
+              </ul>
+            </div>
+          )}
+          <div style={fst.pied}>
+            <Btn variant="ghost" onClick={reset}>Importer d'autres fiches</Btn>
+            <Btn variant="primary" onClick={onClose}>Fermer</Btn>
+          </div>
+        </div>
+      )}
+    </Fenetre>
   );
 }
 
-const statsBanner = {
-  marginBottom: 10, padding: '8px 12px', borderRadius: 'var(--r)', fontSize: 'var(--t1)',
-  background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--text)', lineHeight: 1.6,
+const destination = {
+  display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end',
+  padding: 14, borderRadius: 'var(--r)', background: 'var(--piste)',
 };
+// Zone de dépôt : une tuile intérieure (pas de cadre en pointillés, Galet).
 const dropZone = {
   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8,
   cursor: 'pointer', textAlign: 'center', padding: '34px 18px',
-  borderWidth: 2, borderStyle: 'dashed', borderColor: 'var(--border)', borderRadius: 'var(--r)', background: 'var(--bg)',
+  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', background: 'var(--piste)',
   transition: 'border-color 0.15s, background 0.15s',
 };
 const dropZoneActive = {
   borderColor: 'var(--onglet)', background: 'var(--selection)',
 };
 const errBox = {
-  marginTop: 12, padding: '8px 0 8px 12px',  fontSize: 'var(--t1)',  borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)',
+  padding: '8px 0 8px 12px', fontSize: 'var(--t1)', borderLeft: '2px solid var(--danger-bd)', color: 'var(--danger-text)', whiteSpace: 'pre-line',
+};
+const warnBox = {
+  padding: '8px 0 8px 12px', fontSize: 'var(--t1)', borderLeft: '2px solid var(--warning-bd)', color: 'var(--warning-text)',
 };
