@@ -1,0 +1,118 @@
+/* Réservation d'une table en ligne (/table/<adresse>) : états et mouvements.
+   Page publique autonome, sans app.css : elle reprend la direction de l'app
+   (cartes blanches, pilules, aplat sombre pour le choix) avec ses propres
+   jetons --t-*, posés en ligne sur .rt-racine par ReservationTable.jsx.
+   Mouvements courts et doux, coupés quand le système demande moins
+   d'animations. */
+
+.rt-racine { -webkit-tap-highlight-color: transparent; }
+.rt-racine ::selection { background: var(--t-selection); }
+
+/* ── Entrées ── (par « translate » et non « transform » : l'enfoncement
+   au toucher, en transform, reste libre une fois l'entrée finie) */
+@keyframes rt-entree {
+  from { opacity: 0; translate: 0 10px; }
+  to { opacity: 1; translate: 0 0; }
+}
+@keyframes rt-apparait {
+  from { opacity: 0; translate: 0 4px; }
+  to { opacity: 1; translate: 0 0; }
+}
+.rt-entree { animation: rt-entree 0.46s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--rt-delai, 0ms); }
+.rt-apparait { animation: rt-apparait 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--rt-delai, 0ms); }
+
+/* ── Pilules de choix : nombre de personnes, jours, heures ── */
+.rt-choix {
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; font-family: var(--font); color: var(--t-ink); background: var(--t-surface);
+  border-width: 1px; border-style: solid; border-color: var(--t-btn-bord);
+  font-variant-numeric: tabular-nums;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.14s ease, box-shadow 0.18s ease;
+}
+.rt-choix:active:not(:disabled) { transform: scale(0.95); }
+.rt-choix[data-actif="1"] {
+  background: var(--t-accent); color: var(--t-on-accent); border-color: var(--t-accent);
+  box-shadow: var(--t-sh);
+}
+.rt-choix:disabled { cursor: default; background: transparent; border-color: transparent; color: var(--t-ink3); }
+@media (hover: hover) {
+  .rt-choix:not([data-actif="1"]):not(:disabled):hover { background: var(--t-selection); border-color: var(--t-selection); }
+}
+
+.rt-puce { width: 44px; height: 44px; border-radius: 999px; font-size: 16px; font-weight: 500; }
+.rt-puce-liste { width: auto; min-width: 64px; padding: 0 12px; appearance: none; -webkit-appearance: none; text-align: center; }
+
+.rt-jours {
+  display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; margin: 0 -2px;
+  scroll-snap-type: x proximity; scrollbar-width: thin; scrollbar-color: var(--t-line) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+.rt-jour {
+  flex-direction: column; gap: 2px; flex-shrink: 0; scroll-snap-align: start;
+  width: 56px; height: 64px; border-radius: 14px;
+}
+.rt-jour-nom { font-size: 12px; font-weight: 400; opacity: 0.8; }
+.rt-jour-num { font-size: 17px; font-weight: 500; }
+
+.rt-creneaux { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 8px; }
+.rt-creneau { height: 44px; border-radius: 999px; font-size: 15px; font-weight: 500; }
+
+/* Attente des heures : des pilules muettes qui respirent. */
+@keyframes rt-respire { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+.rt-squelette { height: 44px; border-radius: 999px; background: var(--t-piste); animation: rt-respire 1.3s ease-in-out infinite; }
+
+/* ── Boutons ── */
+.rt-bouton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  cursor: pointer; font-family: var(--font); font-size: 15px; font-weight: 500;
+  border-radius: 999px; border-width: 1px; border-style: solid;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.14s ease, opacity 0.18s ease;
+}
+.rt-bouton:active:not(:disabled) { transform: scale(0.97); }
+.rt-bouton:disabled { cursor: default; }
+.rt-principal { background: var(--t-accent); color: var(--t-on-accent); border-color: var(--t-accent); }
+.rt-secondaire { background: var(--t-surface); color: var(--t-ink); border-color: var(--t-btn-bord); }
+.rt-inverse { background: var(--t-on-accent); color: var(--t-accent); border-color: var(--t-on-accent); }
+.rt-lien { background: transparent; color: var(--t-ink); border-color: transparent; text-decoration: underline; text-underline-offset: 3px; }
+@media (hover: hover) {
+  .rt-principal:not(:disabled):hover, .rt-inverse:hover { opacity: 0.9; }
+  .rt-secondaire:hover, .rt-lien:hover { background: var(--t-selection); border-color: var(--t-selection); }
+  .rt-pastille:hover { background: var(--t-selection); }
+}
+
+@keyframes rt-tourne { to { transform: rotate(360deg); } }
+.rt-roue {
+  width: 16px; height: 16px; border-radius: 999px; flex-shrink: 0;
+  border-width: 2px; border-style: solid; border-color: currentColor; border-top-color: transparent;
+  animation: rt-tourne 0.7s linear infinite;
+}
+
+/* ── Champs ── */
+.rt-champ { transition: border-color 0.18s ease, box-shadow 0.18s ease; }
+.rt-champ:hover { border-color: var(--t-ink3); }
+.rt-champ:focus { outline: none; border-color: var(--t-ink); box-shadow: 0 0 0 1px var(--t-ink); }
+.rt-champ::placeholder { color: var(--t-ink3); }
+
+/* ── Avancement ── */
+.rt-barre { height: 4px; border-radius: 999px; background: var(--t-line); overflow: hidden; }
+.rt-barre > span {
+  display: block; height: 100%; border-radius: 999px; background: var(--t-accent);
+  transform-origin: left center; transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ── Confirmation : le rond puis la coche, tracés ── */
+@keyframes rt-rond { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes rt-trait { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.rt-coche { animation: rt-rond 0.42s cubic-bezier(0.2, 0.8, 0.2, 1.2) both; }
+.rt-coche path { stroke-dasharray: 1; animation: rt-trait 0.42s 0.24s cubic-bezier(0.4, 0, 0.2, 1) both; }
+
+/* ── Focus au clavier : hors de la pilule, visible sur l'aplat sombre ── */
+.rt-racine :focus-visible { outline: 2px solid var(--t-focus); outline-offset: 2px; }
+.rt-racine .rt-champ:focus-visible { outline: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rt-racine *, .rt-racine *::before, .rt-racine *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -74,14 +74,26 @@
   // ── Bouton + fenêtre par-dessus le site ──
   var voile = null;
   var dernierFocus = null;
+  // Entrée et sortie de la fenêtre : un fondu court, la boîte qui monte un
+  // peu. Rien quand le système demande moins d'animations.
+  var calme = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var douceur = 'cubic-bezier(0.2, 0.7, 0.2, 1)';
+  function animer(el, images, duree) {
+    if (calme || !el.animate) return null;
+    try { return el.animate(images, { duration: duree, easing: douceur, fill: 'both' }); } catch (err) { return null; }
+  }
 
   function fermer() {
     if (!voile) return;
-    voile.parentNode.removeChild(voile);
+    var v = voile;
     voile = null;
     document.documentElement.style.overflow = '';
     document.removeEventListener('keydown', surTouche, true);
     if (dernierFocus && dernierFocus.focus) dernierFocus.focus();
+    var retirer = function () { if (v.parentNode) v.parentNode.removeChild(v); };
+    var a = animer(v, [{ opacity: 1 }, { opacity: 0 }], 180);
+    animer(v.firstChild, [{ transform: 'none' }, { transform: 'translateY(12px) scale(0.985)' }], 180);
+    if (a) { a.onfinish = retirer; setTimeout(retirer, 400); } else retirer();
   }
 
   function surTouche(e) {
@@ -96,12 +108,12 @@
     voile.setAttribute('role', 'dialog');
     voile.setAttribute('aria-modal', 'true');
     voile.setAttribute('aria-label', texte);
-    voile.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(20,26,25,0.55);'
-      + 'display:flex;align-items:center;justify-content:center;padding:16px;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);';
+    voile.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:rgba(9,30,40,0.5);'
+      + 'display:flex;align-items:center;justify-content:center;padding:16px;';
     var boite = document.createElement('div');
     var petit = window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
     boite.style.cssText = 'position:relative;width:100%;max-width:640px;height:' + (petit ? '100%' : 'min(820px, calc(100vh - 32px))')
-      + ';border-radius:' + (petit ? '0' : '10px') + ';overflow:hidden;background:#f2f5f6;box-shadow:0 24px 70px rgba(0,0,0,0.35);';
+      + ';border-radius:' + (petit ? '0' : '24px') + ';overflow:hidden;background:#e8ebee;box-shadow:0 24px 64px rgba(9,30,40,0.18);';
     if (petit) voile.style.padding = '0';
     var cadre = document.createElement('iframe');
     cadre.src = urlPage('modal');
@@ -113,6 +125,8 @@
     document.body.appendChild(voile);
     document.documentElement.style.overflow = 'hidden';
     document.addEventListener('keydown', surTouche, true);
+    animer(voile, [{ opacity: 0 }, { opacity: 1 }], 220);
+    animer(boite, [{ transform: petit ? 'translateY(24px)' : 'translateY(16px) scale(0.985)', opacity: 0 }, { transform: 'none', opacity: 1 }], 340);
     cadre.focus();
 
     window.addEventListener('message', function ecoute(ev) {
@@ -150,10 +164,12 @@
   bouton.type = 'button';
   bouton.textContent = texte;
   bouton.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-height:48px;padding:12px 26px;'
-    + 'border:0;border-radius:6px;cursor:pointer;font:600 16px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:0.01em;'
-    + 'background:' + fond + ';color:' + texteClair(fond) + ';transition:filter .2s ease;';
-  bouton.addEventListener('mouseenter', function () { bouton.style.filter = 'brightness(1.08)'; });
-  bouton.addEventListener('mouseleave', function () { bouton.style.filter = ''; });
+    + 'border:0;border-radius:999px;cursor:pointer;font:500 16px/1.2 system-ui,-apple-system,"Segoe UI",sans-serif;'
+    + 'background:' + fond + ';color:' + texteClair(fond) + ';transition:opacity .18s ease,transform .14s ease;';
+  bouton.addEventListener('mouseenter', function () { bouton.style.opacity = '0.9'; });
+  bouton.addEventListener('mouseleave', function () { bouton.style.opacity = ''; bouton.style.transform = ''; });
+  bouton.addEventListener('pointerdown', function () { if (!calme) bouton.style.transform = 'scale(0.97)'; });
+  bouton.addEventListener('pointerup', function () { bouton.style.transform = ''; });
   bouton.addEventListener('click', ouvrir);
   place2.parent.insertBefore(bouton, place2.avant);
 })();

@@ -36,7 +36,7 @@ Direction d'apparence de l'app depuis le 13.11.2026 (elle remplace la direction 
 - Une règle globale qui reprend une couleur ne vise que la valeur neutre nommée (`--border`, `--border2`), jamais tout élément qui porte la propriété.
 - Un jeton de couleur nouveau sans son miroir dans `THEME_VAR_OVERRIDES` (`src/design/brandTokens.js`), ou sans ses deux valeurs sombres identiques.
 - Appliquer la direction dans une vue capturée en PDF : `.pdf-render-root` garde les rayons de 8 px et les couleurs de marque, un export sort identique au pixel.
-- Restyler le Spa, le KDS, la FAQ ou `src/reservation/`, qui gardent leur système.
+- Restyler le Spa, le KDS, la FAQ ou la réservation d'un soin (`src/reservation/ReservationEnLigne.jsx`, `GuideIntegration.jsx`), qui gardent leur système. La réservation d'une table (`ReservationTable.jsx`, `reservationTable.css`, `public/widget-table.js`) suit la direction depuis le 17.11.2026, avec ses jetons `--t-*` recopiés d'`app.css` (page autonome, sans `app.css`).
 
 ## Coque
 - Menu de l'ordinateur : un rail d'icônes de 76 px par défaut (un cercle de 44 px par module sur `--surface`, l'entrée choisie en aplat `--nav-active`, le libellé gardé pour le lecteur d'écran et en infobulle). Le bouton placé à gauche du titre le déplie en menu à libellés de 234 px, Ctrl ou Cmd + B aussi ; le choix est gardé sur le poste dans `sc_menu_deplie` (`'1'` déplié), que la coque seule écrit (la section Menu et gestes des réglages passe par elle, `ShellContext`, `reglages.menu`). La coque pose `--largeur-menu` (76 ou 234 px) : ce qui est fixe en bas d'écran s'y cale.
