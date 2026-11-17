@@ -272,3 +272,41 @@ test('crédit de photo : original en https, comme la contrainte en base', () => 
   assert.ok(sql.includes("photo_source ~ '^https://[^[:space:]]+$'"));
   assert.ok(sql.includes('length(photo_credit) <= 300'));
 });
+
+// Classement de l'équipe (17.11.2026) : podium, liste, personnes masquées.
+const { classerEquipe, initiales } = await import('./classement.js');
+const pers = (userId, solde, extra = {}) => ({ userId, prenom: userId, nom: '', role: 'cuisinier', actif: true, participant: true, exclu: false, solde, gagneMois: 0, ...extra });
+
+test('classement : les personnes masquées disparaissent et les rangs se recomptent sans elles', () => {
+  const soldes = [pers('a', 100), pers('b', 900), pers('c', 500), pers('d', 300), pers('e', 200)];
+  const { podium, liste } = classerEquipe(soldes, new Set(['b']));
+  assert.deepEqual(podium.map((p) => [p.userId, p.rang]), [['c', 1], ['d', 2], ['e', 3]]);
+  assert.deepEqual(liste.map((p) => [p.userId, p.rang]), [['a', 4]]);
+  assert.ok(![...podium, ...liste].some((p) => p.userId === 'b'));
+});
+
+test('classement : à solde égal même rang, puis le rang suivant saute', () => {
+  const { podium, liste } = classerEquipe([pers('a', 50), pers('b', 50, { gagneMois: 10 }), pers('c', 20), pers('d', 20)], []);
+  assert.deepEqual(podium.map((p) => [p.userId, p.rang]), [['b', 1], ['a', 1], ['c', 3]]);
+  assert.deepEqual(liste.map((p) => [p.userId, p.rang]), [['d', 3]]);
+});
+
+test('classement : un solde nul n\'a ni rang ni place au podium', () => {
+  const { podium, liste } = classerEquipe([pers('a', 0), pers('b', 40), pers('c', 0)], []);
+  assert.deepEqual(podium.map((p) => p.userId), ['b']);
+  assert.deepEqual(liste.map((p) => [p.userId, p.rang]), [['a', null], ['c', null]]);
+});
+
+test('classement : exclus, non participants et comptes désactivés hors classement, masqués exclus aussi', () => {
+  const soldes = [pers('a', 10), pers('x', 999, { exclu: true }), pers('y', 5, { participant: false }), pers('z', 7, { actif: false }), pers('m', 3, { exclu: true })];
+  const { podium, liste, hors } = classerEquipe(soldes, ['m']);
+  assert.deepEqual(podium.map((p) => p.userId), ['a']);
+  assert.equal(liste.length, 0);
+  assert.deepEqual(hors.map((p) => p.userId), ['x', 'y', 'z']);
+});
+
+test('classement : initiales du prénom et du nom', () => {
+  assert.equal(initiales({ prenom: 'élodie', nom: 'Martin' }), 'ÉM');
+  assert.equal(initiales({ prenom: 'Noé' }), 'N');
+  assert.equal(initiales({}), '?');
+});

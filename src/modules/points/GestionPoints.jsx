@@ -14,6 +14,8 @@ import { rafraichirPointsEtat } from './pointsEtat.js';
 import { NombrePoints, dateCourte } from './MesPoints.jsx';
 import PhotoCadeau from './PhotoCadeau.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
+import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
+import { classerEquipe, initiales } from './classement.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Gestion des points (qui gère « points », défaut consultant et patron) :
@@ -25,6 +27,12 @@ import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 const nomPersonne = (p) => [p?.prenom, p?.nom].filter(Boolean).join(' ') || 'Personne sans nom';
 const libelleRole = (r) => ROLES[r]?.label || r || '';
 const ligne = { ...ligneStyle(), flexWrap: 'wrap', padding: '6px 0' };
+// Ligne en bouton du classement : transparente, sans rayon, pleine largeur.
+const ligneBouton = {
+  ...ligneStyle(), padding: '6px 0', width: '100%', background: 'transparent',
+  borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 0, borderRadius: 0,
+  cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)',
+};
 // Vignette du catalogue : la carte blanche de la boutique de l'équipe
 // (MesPoints.jsx), en bouton.
 const vignette = {
@@ -307,6 +315,11 @@ function OngletEquipe({ etabId, user, donnees, charger, exclus }) {
   const [motif, setMotif] = React.useState('');
   const [envoi, setEnvoi] = React.useState(false);
   const liste = donnees.soldes;
+  // Personnes masquées du planning de cet établissement : ni podium ni
+  // classement (affichage seulement, comme dans le Planning).
+  const { masques, status: statutMasques } = usePlanningMasques(etabId);
+  const masquesLus = statutMasques === 'ready' || statutMasques === 'absent';
+  const { podium, liste: classement, hors } = React.useMemo(() => classerEquipe(liste, masques), [liste, masques]);
 
   const ouvrir = (p) => { setPersonne(p); setPoints(''); setMotif(''); };
 
@@ -347,41 +360,86 @@ function OngletEquipe({ etabId, user, donnees, charger, exclus }) {
     }
   };
 
+  // Une ligne de personne : rang (classement seulement), nom, rôle, solde.
+  const lignePersonne = (p, { avecRang }) => (
+    <button key={p.userId} type="button" onClick={() => ouvrir(p)} style={ligneBouton}>
+      {avecRang && <span className="points-rang" data-no-translate>{p.rang ?? ''}</span>}
+      <div style={{ flex: '1 1 0', minWidth: 0 }}>
+        <div style={{ fontWeight: 'var(--g2)', overflowWrap: 'anywhere' }} data-no-translate>{nomPersonne(p)}</div>
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
+          <span>{libelleRole(p.role)}</span>
+          {p.exclu && <>{' '}<span>Exclu des points</span></>}
+          {!p.exclu && !p.participant && <>{' '}<span>Ne gagne pas de points</span></>}
+        </div>
+      </div>
+      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+        <NombrePoints n={p.solde} />
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
+          <span data-no-translate>{p.gagneMois > 0 ? `+${p.gagneMois}` : p.gagneMois}</span>{' '}<span>ce mois</span>
+        </div>
+      </div>
+    </button>
+  );
+
+  // Podium : le 1er au centre, le 2e à gauche, le 3e à droite (placement par
+  // la feuille ; l'ordre de lecture reste 1, 2, 3).
+  const placePodium = (p, i) => (
+    <button key={p.userId} type="button" className="points-podium-place" data-place={i + 1} onClick={() => ouvrir(p)}>
+      <span className="points-podium-rond" aria-hidden="true" data-no-translate>{initiales(p)}</span>
+      <span className="points-podium-prenom" data-no-translate>{p.prenom || nomPersonne(p)}</span>
+      <NombrePoints n={p.solde} style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }} />
+      <span className="points-podium-marche" data-no-translate>{p.rang}</span>
+    </button>
+  );
+
+  if (!liste.length) {
+    return (
+      <Panneau>
+        <h2 className="points-section-titre">Classement</h2>
+        <p className="points-aide">Personne n'est rattaché à cet établissement en dehors de la direction.</p>
+      </Panneau>
+    );
+  }
+  // Fail-closed : tant que les personnes masquées ne sont pas lues, rien ne
+  // s'affiche, pour qu'aucune n'apparaisse un instant.
+  if (!masquesLus) {
+    return (
+      <Panneau>
+        <h2 className="points-section-titre">Classement</h2>
+        <p className="points-aide" role="status">
+          {statutMasques === 'error' ? 'Le classement attend la liste des personnes masquées. Il revient dans un instant.' : 'Chargement…'}
+        </p>
+      </Panneau>
+    );
+  }
+
   return (
     <>
       <Panneau>
-        <h2 className="points-section-titre">Soldes de l'équipe</h2>
-        <p className="points-aide">Touchez une personne pour ajuster son solde ou l'exclure des points. Aucun classement n'est montré à l'équipe.</p>
-        {liste.length === 0 ? (
-          <p className="points-aide">Personne n'est rattaché à cet établissement en dehors de la direction.</p>
+        <h2 className="points-section-titre">Podium</h2>
+        {podium.length ? (
+          <div className="points-podium">{podium.map(placePodium)}</div>
         ) : (
-          <div className="points-liste">
-            {liste.map((p) => (
-              <button
-                key={p.userId}
-                type="button"
-                onClick={() => ouvrir(p)}
-                style={{ ...ligne, width: '100%', background: 'transparent', borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 0, borderRadius: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', minHeight: 'var(--ligne-aeree)' }}
-              >
-                <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-                  <div style={{ fontWeight: 'var(--g2)', overflowWrap: 'anywhere' }} data-no-translate>{nomPersonne(p)}</div>
-                  <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
-                    <span>{libelleRole(p.role)}</span>
-                    {p.exclu && <>{' '}<span>Exclu des points</span></>}
-                    {!p.exclu && !p.participant && <>{' '}<span>Ne gagne pas de points</span></>}
-                  </div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <NombrePoints n={p.solde} />
-                  <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
-                    <span data-no-translate>{p.gagneMois > 0 ? `+${p.gagneMois}` : p.gagneMois}</span>{' '}<span>ce mois</span>
-                  </div>
-                </div>
-              </button>
-            ))}
-          </div>
+          <p className="points-aide">Personne n'a encore de points. Le podium se remplit avec les premiers points gagnés.</p>
         )}
       </Panneau>
+      <Panneau>
+        <h2 className="points-section-titre">Classement</h2>
+        <p className="points-aide">Touchez une personne pour ajuster son solde ou l'exclure des points. Aucun classement n'est montré à l'équipe.</p>
+        <p className="points-aide">Les personnes masquées du planning n'apparaissent pas ici.</p>
+        {classement.length ? (
+          <div className="points-liste">{classement.map((p) => lignePersonne(p, { avecRang: true }))}</div>
+        ) : (
+          <p className="points-aide">Tout le monde est sur le podium.</p>
+        )}
+      </Panneau>
+      {hors.length > 0 && (
+        <Panneau>
+          <h2 className="points-section-titre">Hors classement</h2>
+          <p className="points-aide">Ces personnes ne gagnent pas de points en ce moment.</p>
+          <div className="points-liste">{hors.map((p) => lignePersonne(p, { avecRang: false }))}</div>
+        </Panneau>
+      )}
       {personne && (
         <Fenetre
           id="points-personne"
