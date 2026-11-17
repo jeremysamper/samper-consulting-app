@@ -113,12 +113,16 @@ function etatDroitAction(rolePerms, personne, ecarts, droitId, accesModule) {
 
 // Case à cocher avec une cible de 44 px : une case nue de 16 px se rate au
 // doigt sur l'iPad, et le tap raté passe pour un bug.
-function Case({ checked, disabled, onChange, label }) {
+// Avec `texte`, le libellé est écrit à gauche de la case, dans la même cible.
+function Case({ checked, disabled, onChange, label, texte, titre }) {
   return (
-    <label style={{
-      width: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    <label title={titre} style={{
+      minWidth: 44, height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+      padding: texte ? '0 4px 0 8px' : 0, boxSizing: 'border-box',
+      fontSize: 'var(--t1)', color: disabled ? 'var(--text3)' : 'var(--text2)', whiteSpace: 'nowrap',
       cursor: disabled ? 'default' : 'pointer', flexShrink: 0,
     }}>
+      {texte && <span>{texte}</span>}
       <input
         type="checkbox"
         checked={checked}
@@ -566,64 +570,58 @@ const Roles = ({ user }) => {
                     notes.push(`Consultation seule : la base réserve l’écriture aux rôles ${listeRoles(e.ecriture)}`);
                   }
                 }
+                // Sur la ligne du module, quand il est ouvert : « Modifier » et
+                // ses droits d'action, chacun une case nommée, puis
+                // l'interrupteur. Fermé, ils ne s'appliquent pas : rendus
+                // (grisés) seulement s'ils portent un écart.
+                const montrerGerer = (e.acces || aCle(ecarts, cleGerer(m.permKey))) && GERABLES.has(m.permKey);
+                const droits = (DROITS_PAR_MODULE[m.permKey] || []).map((d) => {
+                  const da = etatDroitAction(rolePerms, u, ecarts, d.id, e.acces);
+                  // Droit qui demande aussi « Modifier » (fiches) : sans lui,
+                  // la case est vide et inactive, la valeur stockée reste.
+                  const sansGerer = d.requiertGerer && !e.gerer;
+                  if (da.ajuste) notes.push(`${d.label} : ajusté pour ${u.prenom} (rôle : ${da.duRole ? 'autorisé' : 'non autorisé'})`);
+                  return { d, da, sansGerer };
+                }).filter(({ da }) => e.acces || da.ajuste);
                 const note = notes.length ? notes.join('. ') : null;
-                // Sous le module, quand il est ouvert : « Modifier » et ses
-                // droits d'action, chacun une case nommée. Fermé, ils ne
-                // s'appliquent pas : rendus (grisés) seulement s'ils portent un écart.
                 return (
                   <div key={m.permKey} style={{ ...ros.moduleBloc, opacity: e.accesVerrouille ? 0.6 : 1 }}>
                     <div style={ros.moduleRow}>
-                      <div style={{ flex: 1, minWidth: 0, padding: '8px 0' }}>
+                      <div style={{ flex: '1 1 160px', minWidth: 0, padding: '8px 0' }}>
                         <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' }}>{label}</div>
                         {note && (
                           <div style={{ fontSize: 'var(--t1)', marginTop: 2, color: e.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{note}</div>
                         )}
                       </div>
-                      <Interrupteur
-                        checked={e.acces}
-                        disabled={!casesActives || e.accesVerrouille}
-                        label={`Accès à ${label} pour ${u.prenom}`}
-                        onChange={() => basculer(u, m.permKey, e.duRole.acces, e.acces)}
-                      />
-                    </div>
-                    {(e.acces || aCle(ecarts, cleGerer(m.permKey))) && GERABLES.has(m.permKey) && (
-                      <div style={ros.droitRow}>
-                        <div style={{ flex: 1, minWidth: 0, padding: '6px 0', fontSize: 'var(--t2)', color: 'var(--text2)' }}>Modifier</div>
-                        <Case
-                          checked={e.gerer}
-                          disabled={!casesActives || e.gererVerrouille || !e.acces}
-                          label={`Modifier dans ${label} pour ${u.prenom}`}
-                          onChange={() => basculer(u, cleGerer(m.permKey), e.duRole.gerer, e.gerer)}
-                        />
-                      </div>
-                    )}
-                    {(DROITS_PAR_MODULE[m.permKey] || []).map((d) => {
-                      const da = etatDroitAction(rolePerms, u, ecarts, d.id, e.acces);
-                      // Module fermé : le droit n'est rendu que s'il porte un écart, pour rester visible.
-                      if (!e.acces && !da.ajuste) return null;
-                      // Droit qui demande aussi « Modifier » (fiches) : sans lui,
-                      // la case est vide et inactive, la valeur stockée reste.
-                      const sansGerer = d.requiertGerer && !e.gerer;
-                      const noteDroit = sansGerer
-                        ? 'Demande le droit Modifier'
-                        : (da.ajuste ? `Ajusté pour ${u.prenom} (rôle : ${da.duRole ? 'autorisé' : 'non autorisé'})` : null);
-                      return (
-                        <div key={d.id} style={ros.droitRow}>
-                          <div style={{ flex: 1, minWidth: 0, padding: '6px 0' }}>
-                            <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}>{d.label}</div>
-                            {noteDroit && (
-                              <div style={{ fontSize: 'var(--t1)', marginTop: 2, color: da.ajuste ? 'var(--accent)' : 'var(--text3)' }}>{noteDroit}</div>
-                            )}
-                          </div>
+                      <div style={ros.moduleCommandes}>
+                        {montrerGerer && (
                           <Case
+                            texte="Modifier"
+                            checked={e.gerer}
+                            disabled={!casesActives || e.gererVerrouille || !e.acces}
+                            label={`Modifier dans ${label} pour ${u.prenom}`}
+                            onChange={() => basculer(u, cleGerer(m.permKey), e.duRole.gerer, e.gerer)}
+                          />
+                        )}
+                        {droits.map(({ d, da, sansGerer }) => (
+                          <Case
+                            key={d.id}
+                            texte={d.label}
+                            titre={sansGerer ? 'Demande le droit Modifier' : undefined}
                             checked={da.actif && !sansGerer}
                             disabled={!casesActives || !e.acces || sansGerer}
                             label={`${d.label} dans ${label} pour ${u.prenom}`}
                             onChange={() => basculer(u, cleGerer(d.id), da.duRole, da.actif)}
                           />
-                        </div>
-                      );
-                    })}
+                        ))}
+                        <Interrupteur
+                          checked={e.acces}
+                          disabled={!casesActives || e.accesVerrouille}
+                          label={`Accès à ${label} pour ${u.prenom}`}
+                          onChange={() => basculer(u, m.permKey, e.duRole.acces, e.acces)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 );
               })}
@@ -779,11 +777,10 @@ const ros = {
   modulesCol: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)', overflow: 'hidden', minWidth: 0 },
   modulesHeader: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 18px', borderBottom: '1px solid var(--rule-soft)', background: 'var(--zone)', flexWrap: 'wrap', gap: 10 },
   moduleList: { display: 'flex', flexDirection: 'column' },
-  // Un module : sa ligne (nom, interrupteur), puis ses cases quand il est ouvert.
-  moduleBloc: { padding: '2px 12px 4px 18px', borderBottom: '1px solid var(--rule-soft)' },
-  moduleRow: { display: 'flex', alignItems: 'center', gap: 8 },
-  // « Modifier » et les droits d'action sous leur module : en retrait, libellé nommé.
-  droitRow: { display: 'flex', alignItems: 'center', gap: 8, paddingLeft: 16, paddingRight: 6 },
+  // Un module : une seule ligne (nom, puis ses cases et son interrupteur).
+  moduleBloc: { padding: '2px 12px 2px 18px', borderBottom: '1px solid var(--rule-soft)' },
+  moduleRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  moduleCommandes: { display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4, flexWrap: 'wrap', marginLeft: 'auto' },
   rolesGrille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 96px), 1fr))', gap: 6, marginTop: 2 },
   // 44 px : la cible au doigt, pas plus, la fenêtre garde sa hauteur sur téléphone.
   roleTuile: { minHeight: 44, padding: '6px 8px', justifyContent: 'center' },
