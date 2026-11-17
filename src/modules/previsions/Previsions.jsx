@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Input } from '../../components/ui/index.jsx';
+import { useEffect, useState } from 'react';
+import { Btn } from '../../components/ui/index.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
-import AccueilReservations from './AccueilReservations.jsx';
+import RechercheFiches from '../recettes/RechercheFiches.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
 import RechercheResas from './RechercheResas.jsx';
@@ -14,6 +14,9 @@ import ClientsResa from './ClientsResa.jsx';
 import { useReservationsJour } from './useReservationsJour.js';
 import { removeStorageKeys } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
+// Le champ de recherche reprend celui de Cartes & Recettes (.rc-recherche).
+import '../recettes/recettes.css';
+import './reservations.css';
 
 // Tuile Le rapport (statistiques, lecture seule) : la direction, l'hôte et le
 // responsable cuisine (anticipation des couverts). Masqué pour le service, la
@@ -30,20 +33,24 @@ import { zurichToday } from '../../utils/zurichTime.js';
 const CLE_MODE_SERVICE = 'sc_resa_mode_service';
 
 // Réglages de la réservation en ligne : la direction (gardeEnLigne.js). Ils
-// vivent dans la page des réglages, section 'reservation_en_ligne' ; la tuile
-// « Réglages » y mène.
+// vivent dans la page des réglages, section 'reservation_en_ligne'.
 
-// Rôles voyant les KPIs financiers (CA prévisionnel, etc.)
-// Réservé pour les futurs affichages de chiffre d'affaires estimé.
-const ROLES_FINANCIALS = ['consultant', 'patron', 'resp_cuisine'];
-
-// Écrans du parcours (l'accueil a ses tuiles, sans en-tête de tâche).
+// Écrans ouverts depuis la barre. Le planning est l'écran d'arrivée : il n'a
+// pas d'en-tête de tâche.
 const TITRES_ECRAN = {
-  planning: 'Le planning',
   plan: 'Organiser mes réservations',
-  chercher: 'Je cherche une réservation',
   clients: 'Les clients',
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Depuis le 17.11.2026 (décision de Jérémy), le module s'ouvre sur le planning
+// des réservations, avec la barre de Cartes & Recettes en tête : le champ de
+// recherche, puis « Je réserve une table » (action principale, droit gérer),
+// « Organiser mes réservations » et « Les clients ». Plus d'accueil à tuiles
+// ni de repères du jour. Une recherche montre ses résultats à la place du
+// planning ; la vider rend le planning. Organiser et Les clients restent des
+// écrans de tâche : Retour, Échap et le geste retour ramènent au planning.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function Previsions({ user, etablissement }) {
   const [showForm,     setShowForm]     = useState(false);
@@ -52,9 +59,6 @@ export default function Previsions({ user, etablissement }) {
   const [recherche,     setRecherche]     = useState('');
   const [resaTrouvee,   setResaTrouvee]   = useState(null);
   const [resaEnEdition, setResaEnEdition] = useState(null);
-  // Le champ de « Je cherche une réservation » prend la main quand on vient de
-  // toucher sa tuile.
-  const [champAuToucher, setChampAuToucher] = useState(false);
   useEffect(() => { removeStorageKeys([CLE_MODE_SERVICE]); }, []);
   // Relance la recherche après une modification : sans ça, la liste continue
   // d'afficher la version d'avant la modification qu'on vient de faire.
@@ -64,18 +68,9 @@ export default function Previsions({ user, etablissement }) {
     setRefreshKey((k) => k + 1);
   };
 
-  // Écran du parcours : l'accueil (une tuile par tâche), puis un écran par
-  // tâche. Aucun écran n'est repris à l'ouverture suivante : seul le mode
-  // service du jour se rouvre, par sa propre clé. Revenir à l'accueil referme
-  // le jour ouvert, la recherche et la fiche trouvée.
-  const { ecran, setEcran, retourAccueil } = useEcranModule('reservations', {
-    surRetour: () => {
-      setSelectedDate(null);
-      setRecherche('');
-      setResaTrouvee(null);
-      setChampAuToucher(false);
-    },
-  });
+  // Écran du parcours : le planning à l'arrivée, puis un écran par tâche.
+  // Aucun écran n'est repris à l'ouverture suivante.
+  const { ecran, setEcran, retourAccueil } = useEcranModule('reservations');
 
   // Fiche ouverte depuis la recherche : statuts et demandes en ligne passent
   // par la même source que la vue jour (le jour de la réservation trouvée),
@@ -94,26 +89,19 @@ export default function Previsions({ user, etablissement }) {
   // Créer / modifier / annuler des réservations : droit « gérer » du module
   // (Rôles & accès, case « Modifier » ; défaut consultant/patron/resp_cuisine/hôte).
   const canEdit        = peutGererReservations(user?.role);
-  // showFinancials réservé pour les futures sections KPIs CA
-  // const showFinancials = ROLES_FINANCIALS.includes(user?.role);
 
-  const surAccueil = ecran === ECRAN_ACCUEIL;
+  const surPlanning = ecran === ECRAN_ACCUEIL;
   const aujourdhui = zurichToday();
 
-  // Réservations du jour pour les repères et la carte de l'accueil. Lecture
-  // seule, à l'accueil.
-  const jourAccueil = useReservationsJour(etabId, surAccueil ? aujourdhui : null, { refreshKey });
-
-
-  // Échap sur un écran de tâche ramène à l'accueil du module (useEcranModule),
-  // sauf quand une fenêtre du module est ouverte par-dessus : formulaire,
-  // fiche, mode service, fiche de table, gestion des salles. Elles ne sont pas
-  // des Fenetre : on les reconnaît à leur couche de retour (useBackLayer, en
-  // tête de l'historique) ou à leur voile fixe posé dans <main>. Échap n'y fait
-  // alors rien, comme avant les écrans. Phase de capture : passe avant
-  // useEcranModule, qui laisse la main à un Échap déjà traité.
+  // Échap sur un écran de tâche ramène au planning (useEcranModule), sauf
+  // quand une fenêtre du module est ouverte par-dessus : formulaire, fiche,
+  // fiche de table, gestion des salles. Elles ne sont pas des Fenetre : on les
+  // reconnaît à leur couche de retour (useBackLayer, en tête de l'historique)
+  // ou à leur voile fixe posé dans <main>. Échap n'y fait alors rien. Phase de
+  // capture : passe avant useEcranModule, qui laisse la main à un Échap déjà
+  // traité.
   useEffect(() => {
-    if (surAccueil) return undefined;
+    if (surPlanning) return undefined;
     const echap = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       const calque = window.history.state?.layer;
@@ -121,7 +109,7 @@ export default function Previsions({ user, etablissement }) {
     };
     document.addEventListener('keydown', echap, true);
     return () => document.removeEventListener('keydown', echap, true);
-  }, [surAccueil]);
+  }, [surPlanning]);
 
   // Fait relire les vues (semaine ou jour, via refreshKey) et rien d'autre : le
   // formulaire se ferme lui-même s'il est encore ouvert. Le fermer ici cassait
@@ -132,18 +120,16 @@ export default function Previsions({ user, etablissement }) {
   }
 
   // Un jour choisi ailleurs (demande en ligne, résultat de recherche) s'ouvre
-  // dans Le planning.
+  // dans le planning.
   function allerAuJour(date) {
     setRecherche('');
     setSelectedDate(date);
-    setEcran('planning');
   }
 
   const etatEcran = {
-    planning: selectedDate ? null : <>la semaine, service par service</>,
-    chercher: <>par le nom ou le téléphone, toutes dates</>,
     clients: <>le fichier, rempli par les réservations</>,
   };
+  const enRecherche = recherche.trim() !== '';
 
   return (
     <section style={{ position: 'relative', minHeight: '100%' }}>
@@ -157,56 +143,58 @@ export default function Previsions({ user, etablissement }) {
         </div>
       )}
 
-      {/* ── Accueil : les demandes venues du site en tête, pour qui peut les
-             traiter, confirmées ou refusées d'un geste ; puis les tuiles. ── */}
-      {etabId && surAccueil && canEdit && (
-        <DemandesEnLigne
-          etablissementId={etabId}
-          refreshKey={refreshKey}
-          onTraitee={() => setRefreshKey((k) => k + 1)}
-          onAllerAuJour={allerAuJour}
-          style={st.demandesAccueil}
-        />
+      {/* ── La barre : le champ d'abord, puis l'action principale et les
+             écrans du module. Le conteneur ne porte que la barre : les vues
+             et leurs fenêtres fixes restent hors de lui. ── */}
+      {etabId && surPlanning && (
+        <div className="resa-page no-print">
+          <div className="resa-tete">
+            <RechercheFiches value={recherche} onChange={setRecherche} placeholder="Nom ou téléphone" />
+            <div className="module-actions resa-actions">
+              {canEdit && <Btn variant="primary" onClick={() => setShowForm(true)}>Je réserve une table</Btn>}
+              <Btn onClick={() => setEcran('plan')} title="Le jour d'aujourd'hui sur le plan de salle">Organiser mes réservations</Btn>
+              <Btn onClick={() => setEcran('clients')}>Les clients</Btn>
+            </div>
+          </div>
+        </div>
       )}
 
-      {etabId && surAccueil && (
-        <AccueilReservations
-          resasDuJour={jourAccueil.resas && !jourAccueil.error ? jourAccueil.resas : null}
-          canEdit={canEdit}
-          onReserver={() => setShowForm(true)}
-          onPlanning={() => setEcran('planning')}
-          onPlan={() => setEcran('plan')}
-          onChercher={() => { setChampAuToucher(true); setEcran('chercher'); }}
-          onClients={() => setEcran('clients')}
-        />
-      )}
-
-      {etabId && !surAccueil && (
+      {etabId && !surPlanning && (
         <EcranTache titre={TITRES_ECRAN[ecran]} etat={etatEcran[ecran] || null} onRetour={retourAccueil} />
       )}
 
-      {/* ── Le planning : la semaine, puis le jour, tels qu'avant ; les
-             demandes venues du site en tête, quel que soit le jour affiché. ── */}
-      {etabId && ecran === 'planning' && (
+      {/* ── Le planning : la semaine, puis le jour ; les demandes venues du
+             site en tête, pour qui peut les traiter. Une recherche montre ses
+             résultats à la place. « Nouvelle réservation » vit dans la barre :
+             les vues ne rendent pas la leur. ── */}
+      {etabId && surPlanning && (
         <>
           {canEdit && (
             <DemandesEnLigne
               etablissementId={etabId}
               refreshKey={refreshKey}
               onTraitee={() => setRefreshKey((k) => k + 1)}
-              onAllerAuJour={setSelectedDate}
+              onAllerAuJour={allerAuJour}
             />
           )}
-          {!selectedDate && (
+          {enRecherche && (
+            <RechercheResas
+              etablissementId={etabId}
+              terme={recherche}
+              refreshKey={rechercheKey}
+              onOuvrir={setResaTrouvee}
+              onAllerAuJour={allerAuJour}
+            />
+          )}
+          {!enRecherche && !selectedDate && (
             <VueSemaine
               etablissementId={etabId}
               onDayClick={setSelectedDate}
               onOpenResa={setResaTrouvee}
-              onNouvelle={canEdit && etabId ? () => setShowForm(true) : null}
               refreshKey={refreshKey}
             />
           )}
-          {selectedDate && (
+          {!enRecherche && selectedDate && (
             <VueJour
               etablissementId={etabId}
               date={selectedDate}
@@ -214,7 +202,7 @@ export default function Previsions({ user, etablissement }) {
               onResaUpdated={() => setRefreshKey((k) => k + 1)}
               refreshKey={refreshKey}
               canEdit={canEdit}
-              onNouvelle={canEdit && etabId ? () => setShowForm(true) : null}
+              boutonNouvelle={false}
             />
           )}
         </>
@@ -233,33 +221,6 @@ export default function Previsions({ user, etablissement }) {
           canEdit={canEdit}
           onNouvelle={canEdit && etabId ? () => setShowForm(true) : null}
         />
-      )}
-
-      {/* ── Je cherche une réservation : le champ ouvert, puis les résultats
-             d'aujourd'hui (fiche, Voir le jour). ── */}
-      {etabId && ecran === 'chercher' && (
-        <>
-          <Input
-            type="text"
-            inputMode="search"
-            enterKeyHint="search"
-            autoFocus={champAuToucher}
-            value={recherche}
-            onChange={(e) => setRecherche(e.target.value)}
-            placeholder="Nom ou téléphone"
-            aria-label="Nom ou téléphone"
-            style={st.champ}
-          />
-          {recherche.trim() !== '' && (
-            <RechercheResas
-              etablissementId={etabId}
-              terme={recherche}
-              refreshKey={rechercheKey}
-              onOuvrir={setResaTrouvee}
-              onAllerAuJour={allerAuJour}
-            />
-          )}
-        </>
       )}
 
       {etabId && ecran === 'clients' && (
@@ -286,7 +247,7 @@ export default function Previsions({ user, etablissement }) {
           etablissementId={etabId}
           // Pré-remplie sur le jour consulté : quand on regarde samedi, le
           // formulaire ne doit pas s'ouvrir sur aujourd'hui.
-          initialDate={selectedDate || undefined}
+          initialDate={(surPlanning && !enRecherche && selectedDate) || undefined}
           onClose={() => setShowForm(false)}
           onSaved={handleSaved}
         />
@@ -318,10 +279,3 @@ export default function Previsions({ user, etablissement }) {
     </section>
   );
 }
-
-const st = {
-  // 16 px : iOS ne zoome pas sur le champ quand il prend la main.
-  champ: { marginTop: 16, fontSize: 'var(--t3)', padding: '12px 14px', minHeight: 44 },
-  // Premier bloc de l'accueil : pas de marge au-dessus, un écart avant les tuiles.
-  demandesAccueil: { marginTop: 0, marginBottom: 16 },
-};

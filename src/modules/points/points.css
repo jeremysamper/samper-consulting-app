@@ -18,8 +18,11 @@
 .points-page .points-repere-3 { display: none !important; }
 .points-nuit-corps { display: flex; align-items: center; gap: 16px; min-width: 0; flex-wrap: wrap; }
 /* Boutique : grille de vignettes (photo, nom, coût, Commander), deux de front
-   au téléphone, trois dès 560 px, quatre dès 1080 px. */
+   au téléphone, trois dès 560 px, quatre dès 1080 px. Le catalogue de la
+   gestion (onglet Boutique) prend la même grille, ses vignettes en boutons
+   (!important : le fond de la vignette est posé en style en ligne). */
 .points-boutique { display: grid; gap: 10px; grid-template-columns: repeat(2, minmax(0, 1fr)); min-width: 0; align-items: stretch; }
+.points-vignette:hover { background: var(--selection) !important; }
 .points-bas { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr); min-width: 0; align-items: start; }
 .points-liste > :last-child { border-bottom-width: 0 !important; }
 .points-section-titre { margin: 0 0 4px; font-size: var(--t3); font-weight: var(--g3); color: var(--text); }

@@ -172,6 +172,8 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
 // vueInitiale : « plan » pour l'écran Le plan de salle, qui s'ouvre sur le plan
 // du jour. onBack absent : pas de « Retour à la semaine » (l'écran a déjà son
 // Retour vers l'accueil du module).
+// boutonNouvelle faux : l'écran hôte porte déjà « Je réserve une table »
+// (barre du planning), l'en-tête du jour ne rend pas le sien.
 // compact (écran Le plan de salle) : Liste / Plan, la date et les chiffres du
 // jour sur une seule ligne, sans « Mode service » ni « Nouvelle réservation »
 // (les tuiles Ce soir et Je réserve une table de l'accueil, un geste plus
@@ -179,7 +181,7 @@ function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {
 // sans descendre la page, téléphone compris.
 export default function VueJour({
   etablissementId, date, onBack = null, onResaUpdated, refreshKey, canEdit = true, onModeService, onNouvelle = null,
-  vueInitiale = 'liste', compact = false,
+  vueInitiale = 'liste', compact = false, boutonNouvelle = true,
 }) {
   const isMobile    = useIsMobile();
   const {
@@ -291,7 +293,7 @@ export default function VueJour({
         {/* Ajout depuis le jour affiché : le bouton du bandeau de module
             ouvrait toujours le formulaire sur aujourd'hui, obligeant à
             resaisir la date qu'on avait justement sous les yeux. */}
-        {canEdit && (
+        {canEdit && boutonNouvelle && (
           <button
             type="button"
             onClick={() => setCreating(true)}

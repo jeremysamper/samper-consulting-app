@@ -10,9 +10,12 @@ import { Search } from 'lucide-react';
 //
 // Raccourci « / » (KeyboardShortcuts) : seul le champ visible répond, les
 // modules gardés montés en arrière-plan sont en display none.
+//
+// Réservations reprend ce champ en tête de son planning (17.11.2026), avec son
+// propre texte d'aide (placeholder).
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function RechercheFiches({ value, onChange }) {
+export default function RechercheFiches({ value, onChange, placeholder = "Nom d'un plat ou d'une recette" }) {
   const racineRef = React.useRef(null);
   const champRef = React.useRef(null);
 
@@ -38,8 +41,8 @@ export default function RechercheFiches({ value, onChange }) {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => { if (e.key === 'Escape' && value) { e.preventDefault(); onChange(''); } }}
-        placeholder="Nom d'un plat ou d'une recette"
-        aria-label="Nom d'un plat ou d'une recette"
+        placeholder={placeholder}
+        aria-label={placeholder}
       />
       {value && (
         <button

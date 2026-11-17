@@ -1,6 +1,5 @@
 import React from 'react';
-import { CalendarClock, ChevronsRight, ClipboardCheck, ConciergeBell, History, LayoutGrid, Zap, ReceiptText } from 'lucide-react';
-import AccueilModule from '../../components/parcours/AccueilModule.jsx';
+import { ChevronsRight, ConciergeBell } from 'lucide-react';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
 import { Btn } from '../../components/ui/index.jsx';
@@ -23,8 +22,6 @@ import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
 import { useMaintenant } from './mesures.js';
-import { resumeService } from './resumeService.js';
-import { CarteTablesOuvertes, ReperesCaisse } from './CartesCaisse.jsx';
 import { peutGererReservations } from '../previsions/gardeEnLigne.js';
 import {
   ajustementsDuService, lignesDeplacement, lignesReunion, lignesSeparation, reservationDirecte,
@@ -36,7 +33,9 @@ import './caisse.css';
 // ─────────────────────────────────────────────────────────────────────────────
 // Caisse v1 : prise de commande par table depuis le plan de salle, ventes
 // directes au comptoir, bons envoyés au KDS (RPC caisse_envoyer_bon),
-// encaissement simple. Accueil à tuiles comme les autres modules par tâche.
+// encaissement simple. Depuis le 17.11.2026 le module s'ouvre sur le plan de
+// salle, qui prend la hauteur de l'écran, avec toutes les actions en barre au
+// dessus (décision de Jérémy) : plus d'accueil à tuiles ni de repères.
 //
 // Les articles vendables sont les plats actifs portés par au moins une carte
 // active (ni archivée ni masquée) de l'établissement ; sans aucune liaison de
@@ -95,7 +94,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const etabId = etablissement?.id;
   const plan = usePlanSalle(etabId);
   const { ecran, setEcran, retourAccueil } = useEcranModule('caisse', {
-    repris: ['tables', 'tickets', 'sans_ticket'],
+    repris: ['tickets', 'sans_ticket'],
   });
 
   const [tickets, setTickets] = React.useState([]);
@@ -608,61 +607,37 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // Bandeau du mode test : en tête de chaque écran de la caisse, sans exception.
   const bandeauTest = modeTest ? <BandeauTest onQuitter={quitterModeTest} enCours={testEnCours} /> : null;
 
-  // ── Accueil à tuiles ──
-  if (ecran === ECRAN_ACCUEIL) {
-    const tuiles = [
-      {
-        id: 'tables',
-        libelle: 'Prendre une table',
-        Icone: LayoutGrid,
-        etat: tables.some((t) => t.actif !== false)
-          ? <><span>{tickets.filter((t) => t.table_id).length}</span> <span>tables servies</span></>
-          : 'Aucune table dans le plan de salle',
-        onClick: () => { setModeTables('ouvrir'); setEcran('tables'); },
-      },
-      {
-        id: 'direct',
-        libelle: 'Vente directe',
-        Icone: Zap,
-        etat: 'Sans table, encaissement immédiat',
-        onClick: venteDirecte,
-      },
-      {
-        id: 'tickets',
-        libelle: 'Tickets ouverts',
-        Icone: ReceiptText,
-        etat: <><span>{tickets.length}</span> <span>ouverts</span>{', '}<span>{chf(tickets.reduce((s, t) => s + totalTicket(t), 0))}</span> <span>CHF</span></>,
-        onClick: () => setEcran('tickets'),
-      },
-      // En mode test, pas de « Réservations sans ticket » : un tap y poserait
-      // un vrai statut sur une vraie réservation.
-      ...(modeTest ? [] : [{
-        id: 'sans_ticket',
-        libelle: 'Réservations sans ticket',
-        Icone: CalendarClock,
-        etat: sansTicket.length
-          ? <><span>{sansTicket.length}</span> <span>à vérifier : no-show ou arrivé ?</span></>
-          : 'Aucune réservation en retard',
-        onClick: () => setEcran('sans_ticket'),
-      }]),
-      // v7 : de vraies ventes seulement, jamais en mode test.
-      ...(modeTest ? [] : [{
-        id: 'historique',
-        libelle: 'Historique et quittances',
-        Icone: History,
-        etat: 'Tickets encaissés, par jour ou par numéro',
-        onClick: () => setEcran('historique'),
-      }]),
-      ...(modeTest || !peutHabiller ? [] : [{
-        id: 'cloture',
-        libelle: 'Clôture de caisse',
-        Icone: ClipboardCheck,
-        etat: etatJour?.cloture
-          ? "La caisse d'aujourd'hui est clôturée"
-          : <><span>{etatJour?.tickets_du_jour ?? 0}</span> <span>tickets à clôturer aujourd'hui</span></>,
-        onClick: () => setEcran('cloture'),
-      }]),
-    ];
+  // ── Le plan de salle, écran d'arrivée (17.11.2026) ──
+  // Toutes les actions en barre au-dessus du plan, qui prend la hauteur qui
+  // reste (PlanTables.jsx). Les gardes sont celles des tuiles d'avant : en
+  // mode test, ni « Réservations sans ticket » (elle poserait de vrais
+  // statuts), ni historique, ni clôture (de vraies ventes seulement) ; la
+  // clôture aux rôles qui habillent la caisse. L'écran « tables » ne sert
+  // plus qu'à choisir la nouvelle table d'un ticket ; sans déplacement en
+  // cours, il rend le plan d'arrivée.
+  const deplacement = ecran === 'tables' && modeTables === 'deplacer';
+  const avecTables = tables.some((t) => t.actif !== false);
+  const vuePlan = (
+    <PlanTables
+      salles={salles}
+      tables={tablesVues}
+      tablees={tablees}
+      ticketsParTable={ticketsParTable}
+      noms={nomsTables}
+      attendues={attendues}
+      elements={elements}
+      onTapTable={tapTable}
+      onTransferer={deplacement ? null : transfererTicket}
+      choixSeul={deplacement}
+      peutDeplacer={peutDeplacerTables}
+      onDeplacerGroupe={({ membres, dx, dy }) => ecrireAjustements(lignesDeplacement(membres, dx, dy, ajustParTable))}
+      onReunir={reunirTables}
+      onSeparer={(membres) => { const s = lignesSeparation(membres, ajustParTable); ecrireAjustements(s.lignes, s.effacer); }}
+      onRemettre={remettrePlanDeBase}
+    />
+  );
+
+  if (ecran === ECRAN_ACCUEIL || (ecran === 'tables' && !deplacement)) {
     const enRetard = !modeTest && peutHabiller ? (etatJour?.a_cloturer || []) : [];
     return (
       <>
@@ -684,83 +659,37 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             <Btn onClick={rechargerTickets} style={st.btn44}>Réessayer</Btn>
           </div>
         )}
+        {/* Jour non clôturé : la clôture s'ouvre par « Clôture de caisse »,
+            dans la barre, pour les mêmes rôles. */}
         {enRetard.length > 0 && (
           <div style={st.propositionVider} data-cadre="" data-caisse-non-cloturee="">
             <p style={st.propositionTexte}>
               <span>La caisse du</span> <span style={st.num}>{dateCH(enRetard[0].jour)}</span> <span>n'est pas clôturée.</span>
               {enRetard.length > 1 && <>{' '}<span style={st.num}>{enRetard.length}</span> <span>jours attendent leur clôture.</span></>}
             </p>
-            <span style={st.propositionActions}>
-              <Btn onClick={() => setEcran('cloture')} style={st.btn44}>Clôturer</Btn>
-            </span>
           </div>
         )}
         {/* Hors mode test : un poste en essai ne s'abonne à rien. */}
         {!modeTest && <InvitationAvisPret user={user} etablissement={etablissement} />}
-        {/* Direction Galet : repères et carte « Tables ouvertes » autour des
-            tuiles, par largeur de conteneur (caisse.css). Ils redisent ce que
-            l'accueil lit déjà ; au téléphone, ni l'un ni l'autre. */}
-        <div className="caisse-page">
-          <div className="caisse-grille">
-            <div className="caisse-haut">
-              <div className="caisse-tuiles"><AccueilModule tuiles={tuiles} /></div>
-              {(tables.some((t) => t.actif !== false) || tickets.length > 0) && (
-                <CarteTablesOuvertes resume={resumeService(tickets, tables, (t) => etatTicket(t, maintenant))} />
-              )}
-            </div>
-            <ReperesCaisse
-              ouverts={tickets.length}
-              totalOuvert={tickets.reduce((s, t) => s + totalTicket(t), 0)}
-              sansTicket={sansTicket.length}
-              etatJour={etatJour}
-              montrerSansTicket={!modeTest}
-              montrerCloture={!modeTest && peutHabiller}
-            />
-          </div>
+        <div className="module-actions caisse-actions no-print" data-caisse-actions="">
+          <Btn variant="primary" onClick={venteDirecte} style={st.btn44}>Vente directe</Btn>
+          <Btn onClick={() => setEcran('tickets')} style={st.btn44}>
+            <span>{modeTest ? 'Tickets de test ouverts' : 'Tickets ouverts'}</span>
+            <span style={st.compteBtn}>{tickets.length}</span>
+          </Btn>
+          {!modeTest && (
+            <Btn onClick={() => setEcran('sans_ticket')} style={st.btn44}>
+              <span>Réservations sans ticket</span>
+              {sansTicket.length > 0 && <span style={st.compteBtn}>{sansTicket.length}</span>}
+            </Btn>
+          )}
+          {!modeTest && <Btn onClick={() => setEcran('historique')} style={st.btn44}>Historique et quittances</Btn>}
+          {!modeTest && peutHabiller && <Btn onClick={() => setEcran('cloture')} style={st.btn44}>Clôture de caisse</Btn>}
         </div>
-      </>
-    );
-  }
-
-  // ── Plan de salle (ouvrir ou déplacer) ──
-  if (ecran === 'tables') {
-    const deplacement = modeTables === 'deplacer';
-    return (
-      <>
-      {bandeauTest}
-      <EcranTache
-        titre={deplacement ? 'Choisir la nouvelle table' : 'Prendre une table'}
-        etat={deplacement ? null : 'Touchez une table pour ouvrir son ticket'}
-        onRetour={() => {
-          if (deplacement) { setModeTables('ouvrir'); setEcran('ticket'); return; }
-          retourAccueil();
-        }}
-      >
-        {tables.some((t) => t.actif !== false) ? (
-          <PlanTables
-            salles={salles}
-            tables={tablesVues}
-            tablees={tablees}
-            ticketsParTable={ticketsParTable}
-            noms={nomsTables}
-            attendues={attendues}
-            elements={elements}
-            onTapTable={tapTable}
-            onTransferer={deplacement ? null : transfererTicket}
-            choixSeul={deplacement}
-            peutDeplacer={peutDeplacerTables}
-            onDeplacerGroupe={({ membres, dx, dy }) => ecrireAjustements(lignesDeplacement(membres, dx, dy, ajustParTable))}
-            onReunir={reunirTables}
-            onSeparer={(membres) => { const s = lignesSeparation(membres, ajustParTable); ecrireAjustements(s.lignes, s.effacer); }}
-            onRemettre={remettrePlanDeBase}
-          />
-        ) : (
-          <div style={st.videBloc}>
-            <p style={st.vide}>Aucune table dans le plan de salle. Dessinez la salle dans Réservations, ou vendez sans table.</p>
-            <Btn onClick={venteDirecte} style={st.btn44}>Vente directe</Btn>
-          </div>
+        {avecTables ? vuePlan : (
+          <p style={st.vide}>Aucune table dans le plan de salle. Dessinez la salle dans Réservations, ou vendez sans table par « Vente directe ».</p>
         )}
-        {quiTable && !deplacement && (
+        {quiTable && (
           <QuiEstLa
             key={quiTable.id}
             table={quiTable}
@@ -772,6 +701,20 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             onClose={() => setQuiTable(null)}
           />
         )}
+      </>
+    );
+  }
+
+  // ── Choisir la nouvelle table d'un ticket ──
+  if (deplacement) {
+    return (
+      <>
+      {bandeauTest}
+      <EcranTache
+        titre="Choisir la nouvelle table"
+        onRetour={() => { setModeTables('ouvrir'); setEcran('ticket'); }}
+      >
+        {avecTables ? vuePlan : <p style={st.vide}>Aucune table dans le plan de salle.</p>}
       </EcranTache>
       </>
     );
@@ -944,8 +887,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
 const st = {
   erreur: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12, color: 'var(--text)' },
   vide: { color: 'var(--text3)', fontSize: 'var(--t2)' },
-  videBloc: { display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'flex-start', marginTop: 12 },
   btn44: { minHeight: 44, flexShrink: 0 },
+  // Compte porté par un bouton de la barre (tickets ouverts, réservations sans ticket).
+  compteBtn: { fontFamily: 'var(--font-num)', color: 'var(--text2)' },
   // Liste dans une carte blanche (direction Galet) : les lignes se séparent
   // par leur filet doux, la dernière n'en porte pas (caisse.css).
   listeTickets: {

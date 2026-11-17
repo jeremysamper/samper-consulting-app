@@ -25,6 +25,14 @@ import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 const nomPersonne = (p) => [p?.prenom, p?.nom].filter(Boolean).join(' ') || 'Personne sans nom';
 const libelleRole = (r) => ROLES[r]?.label || r || '';
 const ligne = { ...ligneStyle(), flexWrap: 'wrap', padding: '6px 0' };
+// Vignette du catalogue : la carte blanche de la boutique de l'équipe
+// (MesPoints.jsx), en bouton.
+const vignette = {
+  display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: 10, minWidth: 0, width: '100%', padding: 12, boxSizing: 'border-box',
+  background: 'var(--zone)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
+  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+  color: 'var(--text)', fontFamily: 'var(--font)', textAlign: 'left', cursor: 'pointer',
+};
 
 function useDonneesGestion(etabId) {
   const [donnees, setDonnees] = React.useState(null);
@@ -197,34 +205,39 @@ function OngletBoutique({ etabId, donnees, charger }) {
         <p className="points-aide" style={{ flex: '1 1 260px' }}>Un cadeau en nature peut compter comme salaire au-delà d'un petit montant : à vérifier avec la fiduciaire.</p>
         <Btn variant="primary" onClick={() => setEdition({ ...CADEAU_VIDE })} style={{ minHeight: 44 }}>Ajouter un cadeau</Btn>
       </div>
-      <Panneau>
-        <h2 className="points-section-titre">Catalogue</h2>
+      {/* Catalogue en grille de vignettes sur tous les supports (17.11.2026),
+          la même que la boutique de l'équipe (points.css) : toucher une
+          vignette ouvre la fiche du cadeau. */}
+      <section aria-labelledby="points-catalogue-titre">
+        <h2 id="points-catalogue-titre" className="points-section-titre">Catalogue</h2>
         {donnees.cadeaux.length === 0 ? (
           <p className="points-aide">Aucun cadeau pour l'instant. « Ajouter un cadeau » ouvre la fiche.</p>
         ) : (
-          <div className="points-liste">
+          <div className="points-boutique" data-points-catalogue="">
             {donnees.cadeaux.map((c) => (
               <button
                 key={c.id}
                 type="button"
+                data-cadre=""
+                className="points-vignette"
                 onClick={() => setEdition({ ...c, stock: c.stock == null ? '' : String(c.stock), cout: String(c.cout) })}
-                style={{ ...ligne, width: '100%', background: 'transparent', borderTopWidth: 0, borderLeftWidth: 0, borderRightWidth: 0, borderRadius: 0, cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font)', minHeight: 'var(--ligne-aeree)' }}
+                style={vignette}
               >
-                <PhotoCadeau url={c.photoUrl} taille={56} />
-                <div style={{ flex: '1 1 160px', minWidth: 0 }}>
-                  <div style={{ fontWeight: 'var(--g2)', overflowWrap: 'anywhere' }} data-no-translate>{c.nom}</div>
-                  <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
-                    <span style={{ marginRight: 8 }}>{LIBELLES_CATEGORIES[c.categorie] || LIBELLES_CATEGORIES.commun}</span>
-                    {c.stock == null ? <span>Stock illimité</span> : <><span>En stock :</span>{' '}<span data-no-translate>{c.stock}</span></>}
-                    {!c.actif && <>{' '}<span>Retiré de la boutique</span></>}
+                <PhotoCadeau url={c.photoUrl} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
+                  <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.35, overflowWrap: 'anywhere' }} data-no-translate>{c.nom}</div>
+                  <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.45, display: 'flex', flexWrap: 'wrap', gap: '0 8px' }}>
+                    <span>{LIBELLES_CATEGORIES[c.categorie] || LIBELLES_CATEGORIES.commun}</span>
+                    {c.stock == null ? <span>Stock illimité</span> : <span><span>En stock :</span>{' '}<span data-no-translate>{c.stock}</span></span>}
                   </div>
+                  {!c.actif && <div style={{ fontSize: 'var(--t1)', color: 'var(--warning-text)', fontWeight: 'var(--g2)' }}>Retiré de la boutique</div>}
                 </div>
-                <NombrePoints n={c.cout} />
+                <NombrePoints n={c.cout} style={{ fontSize: 'var(--t3)', marginTop: 'auto' }} />
               </button>
             ))}
           </div>
         )}
-      </Panneau>
+      </section>
       {edition && (
         <Fenetre
           id="points-cadeau"
