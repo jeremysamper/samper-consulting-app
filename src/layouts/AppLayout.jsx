@@ -47,6 +47,15 @@ import { messageErreur } from '../utils/messageErreur.js';
 // jamais un geste pour une marge.
 const PAGES_MARGE_SERREE = new Set(['spa', 'caisse']);
 
+// Ordinateur : les modules tiennent dans une colonne centrée de LARGEUR_CONTENU
+// au plus. Au-delà, la marge de côté de <main> grandit (le pourcentage d'un
+// padding se lit sur la largeur du parent, égale à celle de <main>) : aucune
+// enveloppe ajoutée, un module qui prend 100 % de la hauteur la lit toujours
+// sur <main>. La caisse et le KDS gardent toute la largeur : une colonne
+// bornée leur retirerait des produits ou des bons par écran.
+const LARGEUR_CONTENU = 1440;
+const PAGES_PLEINE_LARGEUR = new Set(['caisse', 'kds']);
+
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
 // et la page d'accueil de la coque tactile.
 const PAGES_HORS_MENU = { factures: 'Factures', parametres: 'Paramètres', roles: 'Rôles et accès', compte: 'Réglages', accueil: 'Accueil' };
@@ -919,7 +928,7 @@ export default function AppLayout({
             </div>
           </header>
 
-          <main ref={mainRef} style={ls.content}>
+          <main ref={mainRef} style={PAGES_PLEINE_LARGEUR.has(pageAffichee) ? ls.content : ls.contentCentre}>
             <div hidden={!surAccueilOrdinateur}>{carteAlertes}</div>
             {children}
           </main>
@@ -1004,12 +1013,20 @@ const ls = {
   // s'arrête sous le padding de son conteneur de défilement : leurs top: 0
   // retombent donc une marge sous le header.
   // scroll-padding : « faire défiler jusqu'à » ne cache pas la cible sous lui.
+  // Les quatre côtés en propriétés longues, mêmes clés que contentCentre :
+  // passer de l'un à l'autre ne change que des valeurs (un raccourci padding
+  // à côté d'un paddingLeft retiré au changement de page perdrait le côté).
   content: {
     flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', maxWidth: '100%',
-    padding: 'var(--marge)', paddingTop: 'calc(var(--app-header-h) + var(--marge))',
+    paddingTop: 'calc(var(--app-header-h) + var(--marge))', paddingBottom: 'var(--marge)',
+    paddingLeft: 'var(--marge)', paddingRight: 'var(--marge)',
     scrollPaddingTop: 'var(--app-header-h)',
   },
-
+};
+ls.contentCentre = {
+  ...ls.content,
+  paddingLeft: `max(var(--marge), calc((100% - ${LARGEUR_CONTENU}px) / 2))`,
+  paddingRight: `max(var(--marge), calc((100% - ${LARGEUR_CONTENU}px) / 2))`,
 };
 
 // ═══════════════════════════════════════════════════════════════
