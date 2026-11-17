@@ -5375,6 +5375,27 @@ export const UI_GLOSSARY = {
   "À la livraison, prenez la facture en photo.": "On delivery, take a photo of the invoice.",
   "Suivez les échéances et les paiements.": "Track due dates and payments.",
   "Retrouvez les analyses par fournisseur.": "See the analysis by supplier.",
+  // Allergènes des réservations (libellés en minuscules) et alerte de la caisse.
+  'œufs': "eggs",
+  'poissons': "fish",
+  'crustacés': "crustaceans",
+  'fruits à coque': "tree nuts",
+  'sulfites': "sulphites",
+  'arachides': "peanuts",
+  'soja': "soy",
+  'céleri': "celery",
+  'moutarde': "mustard",
+  'sésame': "sesame",
+  'mollusques': "molluscs",
+  'lupin': "lupin",
+  'gluten': "gluten",
+  'lactose': "lactose",
+  'Attention allergène': "Allergen warning",
+  'Ajouter quand même': "Add anyway",
+  'contient': "contains",
+  'La table a signalé cet allergène.': "The table reported this allergen.",
+  'La table a signalé ces allergènes.': "The table reported these allergens.",
+  "Vérifiez avec le client avant d'envoyer.": "Check with the guest before sending.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

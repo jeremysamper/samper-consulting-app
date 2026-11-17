@@ -41,6 +41,7 @@
 
 .rt-puce { width: 44px; height: 44px; border-radius: 999px; font-size: 16px; font-weight: 500; }
 .rt-puce-liste { width: auto; min-width: 64px; padding: 0 12px; appearance: none; -webkit-appearance: none; text-align: center; }
+.rt-allergene { min-height: 44px; padding: 0 16px; border-radius: 999px; font-size: 14px; font-weight: 500; }
 
 .rt-jours {
   display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 8px; margin: 0 -2px;

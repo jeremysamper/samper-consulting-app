@@ -1,6 +1,7 @@
 import React from 'react';
-import { Check, ChevronDown, ConciergeBell, FlaskConical, Hourglass, Megaphone, Plus, Send } from 'lucide-react';
+import { Check, ChevronDown, ConciergeBell, FlaskConical, Hourglass, Megaphone, Plus, Send, TriangleAlert } from 'lucide-react';
 import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
+import { Fenetre, st as fen } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { zurichDateHeure } from '../../utils/zurichTime.js';
@@ -9,7 +10,7 @@ import FicheLigne from './FicheLigne.jsx';
 import BoutonFiche from './BoutonFiche.jsx';
 import CorrigerClient from './CorrigerClient.jsx';
 import Encaissement from './Encaissement.jsx';
-import { allergiesDe } from './clients.js';
+import { allergenesEnConflit, allergenesIdsDe, allergiesDe } from './clients.js';
 import { libelleOption } from './options.js';
 import { nomCourtDefaut, pictoDefaut, pictoParId } from './boutons.js';
 import { ID_TOUT, rangerArticles, sousGroupesAutres } from './categories.js';
@@ -67,7 +68,7 @@ const ID_PLUS = '_plus';
 const LIBELLES_QUI = { reservation: 'Réservation', passage: 'Client de passage', compte: 'Compte client' };
 
 export default function TicketEcran({
-  ticket, articles, boutons = {}, categories = [], reglages = REGLAGES_DEFAUT,
+  ticket, articles, allergenesFiches = null, boutons = {}, categories = [], reglages = REGLAGES_DEFAUT,
   peutHabiller = false, onBoutonsChange,
   ticketsMemeTable, onDeplacer, onFusionne, onClos, reload,
   cartes = [], reservation = null, reservations = [], onReservationsChange,
@@ -103,6 +104,9 @@ export default function TicketEcran({
   // fiche, hors mode, pour les mêmes rôles.
   const [editionBoutons, setEditionBoutons] = React.useState(false);
   const [boutonPlat, setBoutonPlat] = React.useState(null);
+  // Plat touché qui contient un allergène signalé par la table : { plat,
+  // allergenes } ; la fenêtre « Attention allergène » demande de confirmer.
+  const [alerteAllergene, setAlerteAllergene] = React.useState(null);
   const appuiLong = React.useRef({ timer: null, declenche: false });
 
   const racineRef = React.useRef(null);
@@ -347,6 +351,15 @@ export default function TicketEcran({
   if (!ticket) return null;
 
   const allergies = allergiesDe(reservation);
+  // Allergènes signalés par la table (réservation et fiche client), croisés
+  // avec les fiches de chaque plat : pastille sur le bouton, confirmation au toucher.
+  const allergenesTable = allergenesIdsDe(reservation);
+  const conflitsDe = (plat) => allergenesEnConflit(plat, allergenesTable, allergenesFiches);
+  function toucherArticle(plat) {
+    const conflits = conflitsDe(plat);
+    if (conflits.length) { setAlerteAllergene({ plat, allergenes: conflits }); return; }
+    ajouterArticle(plat);
+  }
   const dense = reglages.grille === 'dense';
   const styleGrille = { ...st.grille, gridTemplateColumns: `repeat(auto-fill, minmax(${dense ? 112 : 140}px, 1fr))` };
 
@@ -354,21 +367,25 @@ export default function TicketEcran({
     const hab = boutons[a.id];
     const couleur = hab?.couleur || categorie?.couleur || null;
     const picto = pictoParId(hab?.picto || categorie?.picto || pictoDefaut(a.categorie));
+    const conflits = conflitsDe(a);
     return (
       <button
         key={a.id}
         type="button"
         data-cadre=""
         data-produit={a.id}
+        data-allergene={conflits.length ? '' : undefined}
+        title={conflits.length ? `Attention : contient ${conflits.join(', ')}` : undefined}
         style={{
           ...st.article,
           ...(dense ? st.articleDense : null),
           ...(couleur ? { background: `var(--caisse-${couleur})`, boxShadow: 'none' } : null),
+          ...(conflits.length ? st.articleAllergene : null),
         }}
         onClick={() => {
           if (appuiLong.current.declenche) { appuiLong.current.declenche = false; return; }
           if (editionBoutons && peutHabiller) { setBoutonPlat(a); return; }
-          ajouterArticle(a);
+          toucherArticle(a);
         }}
         onPointerDown={() => debutAppuiLong(a)}
         onPointerUp={finAppuiLong}
@@ -380,6 +397,12 @@ export default function TicketEcran({
           {picto && <picto.Icone size={18} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />}
           <span style={st.articleNom} data-no-translate>{hab?.nom_court || nomCourtDefaut(a.nom)}</span>
         </span>
+        {conflits.length > 0 && (
+          <span style={st.articleAlerte}>
+            <TriangleAlert size={14} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span>{conflits.join(', ')}</span>
+          </span>
+        )}
         <span style={st.articlePrix}>{chf(a.prixVente)}</span>
       </button>
     );
@@ -741,6 +764,38 @@ export default function TicketEcran({
             role={role}
           />
         )}
+        {alerteAllergene && (
+          <Fenetre
+            id="caisse-alerte-allergene"
+            titre="Attention allergène"
+            onClose={() => setAlerteAllergene(null)}
+            largeur={420}
+            pied={(
+              <>
+                <button type="button" style={fen.secondaire} onClick={() => setAlerteAllergene(null)}>Annuler</button>
+                <button
+                  type="button"
+                  style={fen.primaire}
+                  onClick={() => { const { plat } = alerteAllergene; setAlerteAllergene(null); ajouterArticle(plat); }}
+                >
+                  Ajouter quand même
+                </button>
+              </>
+            )}
+          >
+            <div style={st.alerteCorps}>
+              <TriangleAlert size={22} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--danger-text)' }} />
+              <p style={{ margin: 0, lineHeight: 1.5 }}>
+                <span data-no-translate>{alerteAllergene.plat.nom}</span>
+                {' '}<span>contient</span>{' '}
+                <strong>{alerteAllergene.allergenes.join(', ')}</strong>
+                <span>.</span>{' '}
+                <span>{alerteAllergene.allergenes.length > 1 ? 'La table a signalé ces allergènes.' : 'La table a signalé cet allergène.'}</span>{' '}
+                <span>Vérifiez avec le client avant d'envoyer.</span>
+              </p>
+            </div>
+          </Fenetre>
+        )}
         {corrigerOuvert && (
           <CorrigerClient
             reservation={reservation}
@@ -793,6 +848,15 @@ const st = {
   bandeauNom: { fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.2, overflowWrap: 'anywhere' },
   bandeauDetail: { display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: 13, color: 'var(--text2)' },
   bandeauAllergies: { fontSize: 13, fontWeight: 600, color: 'var(--warning-text)', lineHeight: 1.3, overflowWrap: 'anywhere' },
+  // Plat qui contient un allergène signalé par la table : contour (ombre
+  // intérieure, comme le contour d'origine) et ligne d'alerte en encre de
+  // danger, la couleur du bouton reste.
+  articleAllergene: { boxShadow: 'inset 0 0 0 2px var(--danger-text)' },
+  articleAlerte: {
+    display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0,
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--danger-text)', lineHeight: 1.2, overflowWrap: 'anywhere',
+  },
+  alerteCorps: { display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 'var(--t2)', color: 'var(--text)' },
   zoneGrille: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, paddingBottom: 4 },
   zoneLignes: { padding: '6px 16px 0', minWidth: 0 },
   modeCompte: {

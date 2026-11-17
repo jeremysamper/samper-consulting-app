@@ -257,6 +257,19 @@ export async function listReservations(etablissementId, dates) {
   return { data: data || [], error: null };
 }
 
+// Allergènes des fiches techniques de la maison : Map recette_id -> ids du
+// référentiel. Fiches cachées et archivées comprises : un calcul de sécurité
+// alimentaire n'en écarte aucune. Sert à l'alerte d'un plat commandé pour une
+// table qui a signalé un allergène.
+export async function listAllergenesFiches(etablissementId) {
+  const { data, error } = await supabase
+    .from('recettes')
+    .select('id, allergenes_ids')
+    .eq('etablissement_id', etablissementId);
+  if (error) return { data: null, error: mapError(error, 'Allergènes des fiches illisibles.') };
+  return { data: new Map((data || []).map((r) => [r.id, Array.isArray(r.allergenes_ids) ? r.allergenes_ids : []])), error: null };
+}
+
 // Fichier clients pour la recherche de la caisse : nom, prénom, allergies.
 // Les coordonnées ne quittent pas la base.
 export async function listClients(etablissementId) {

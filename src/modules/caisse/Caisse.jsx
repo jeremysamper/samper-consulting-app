@@ -111,6 +111,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // le réglage « Cartes en vente » (voir plus bas).
   const [plats, setPlats] = React.useState([]);
   const [cartesLues, setCartesLues] = React.useState([]);
+  // Allergènes des fiches (recette_id -> ids), pour l'alerte à la commande.
+  const [allergenesFiches, setAllergenesFiches] = React.useState(() => new Map());
   // Réservations d'aujourd'hui et de la veille (v5), et la table dont la
   // feuille « Qui est à cette table ? » est ouverte.
   const [reservations, setReservations] = React.useState([]);
@@ -254,13 +256,16 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       if (!etabId) return;
       const db = dbService.getDb();
       if (!db) return;
-      const [platsLus, cartes] = await Promise.all([
+      const [platsLus, cartes, fiches] = await Promise.all([
         db.listPlats(etabId),
         db.listCartes(etabId),
+        caisse.listAllergenesFiches(etabId),
       ]);
       if (!vivant) return;
       setPlats(platsLus || []);
       setCartesLues(cartes || []);
+      // Lecture en échec : pas d'alerte allergène plutôt qu'une fausse.
+      setAllergenesFiches(fiches.data || new Map());
     })();
     return () => { vivant = false; };
   }, [etabId, legacyVersion]);
@@ -904,6 +909,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           key={ticket.id}
           ticket={ticket}
           articles={articles}
+          allergenesFiches={allergenesFiches}
           boutons={boutons}
           categories={categories}
           reglages={reglages}

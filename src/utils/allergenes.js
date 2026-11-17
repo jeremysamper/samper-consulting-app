@@ -193,3 +193,16 @@ export function splitAllergenesText(raw) {
   parts.push(cur);
   return normalizeAllergenes(parts.map(p => p.trim()).filter(Boolean));
 }
+
+// ─── Allergènes notés sur une réservation (reservation_tags) ───
+// La valeur enregistrée est le libellé en minuscules (« fruits à coque ») :
+// les écrans des réservations l'affichent tel quel, et resolveAllergene la
+// ramène à son id. Les anciennes valeurs (« noix », « fruits_de_mer »)
+// restent lisibles.
+export const valeurTagAllergene = (id) => labelAllergene(id).toLowerCase();
+export const VALEURS_TAG_ALLERGENES = ALLERGENES.map(a => valeurTagAllergene(a.id));
+
+export function idsDeTagAllergene(valeur) {
+  if (norm(valeur).replace(/[_\s]+/g, ' ') === 'fruits de mer') return ['crustaces', 'mollusques'];
+  return resolveAllergene(valeur).ids;
+}

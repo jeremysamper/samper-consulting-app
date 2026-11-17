@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, MapPin, Phone, X } from 'lucide-react';
+import { ALLERGENES } from '../utils/allergenes.js';
 import './reservationTable.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,6 +31,15 @@ const JOURS_COURTS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
 const SERVICES = { midi: 'Midi', soir: 'Soir', brunch: 'Brunch' };
 const EMAIL_OK = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const ACCENT_DEFAUT = '#003042';
+
+// Message envoyé au restaurant : la ligne des allergènes cochés d'abord (forme
+// lue par le déclencheur resa_tags_allergenes_en_ligne), puis le mot du client.
+function messageAvecAllergies(message, ids) {
+  const libelles = ALLERGENES.filter((a) => ids.includes(a.id)).map((a) => a.label);
+  const mot = String(message || '').trim();
+  if (!libelles.length) return mot;
+  return `Allergies : ${libelles.join(', ')}${mot ? `\n\n${mot}` : ''}`;
+}
 // Espace fine insécable devant « ? » : le signe ne part jamais seul à la ligne.
 const FINE = '\u202f';
 
@@ -121,7 +131,10 @@ export default function ReservationTable() {
   const [date, setDate] = useState(null);
   const [creneaux, setCreneaux] = useState({ cle: null, services: [], chargement: false });
   const [choix, setChoix] = useState(null); // { service, heure }
-  const [form, setForm] = useState({ prenom: '', nom: '', email: '', telephone: '', message: '', siteWeb: '', actus: false });
+  const [form, setForm] = useState({ prenom: '', nom: '', email: '', telephone: '', message: '', siteWeb: '', actus: false, allergenes: [] });
+  const basculerAllergene = (id) => setForm((p) => ({
+    ...p, allergenes: p.allergenes.includes(id) ? p.allergenes.filter((x) => x !== id) : [...p.allergenes, id],
+  }));
   const [envoi, setEnvoi] = useState(false);
   const [resultat, setResultat] = useState(null);
   const [erreur, setErreur] = useState(null);
@@ -227,7 +240,13 @@ export default function ReservationTable() {
     try {
       const { ok, statut, corps } = await appeler('public_table_reserver', {
         slug: parametres.slug, date, service: choix.service, heure: choix.heure, couverts,
-        prenom: f.prenom, nom: f.nom, email: f.email, telephone: f.telephone, message: f.message,
+        prenom: f.prenom, nom: f.nom, email: f.email, telephone: f.telephone,
+        // Allergènes cochés : une ligne « Allergies : … » en tête du message.
+        // La base en tire les tags de la réservation (déclencheur
+        // resa_tags_allergenes_en_ligne, migration 20261117), que la caisse
+        // croise avec les fiches des plats commandés. L'équipe la lit aussi
+        // dans les notes et dans l'e-mail.
+        message: messageAvecAllergies(f.message, f.allergenes),
         // Accord pour les actualités et bons cadeaux : décoché par défaut,
         // seul un geste du client le donne (nLPD / RGPD).
         consentement: f.actus === true,
@@ -254,7 +273,7 @@ export default function ReservationTable() {
   function recommencer() {
     setChoix(null);
     setResultat(null);
-    setForm((p) => ({ ...p, message: '' }));
+    setForm((p) => ({ ...p, message: '', allergenes: [] }));
     debutSaisie.current = performance.now();
     allerA('moment');
   }
@@ -474,8 +493,29 @@ export default function ReservationTable() {
                         <input id="t-tel" className="rt-champ" type="tel" inputMode="tel" autoComplete="tel" style={s.champ} value={form.telephone} onChange={(e) => setForm({ ...form, telephone: e.target.value })} required />
                       </Champ>
                     </div>
+                    <fieldset style={s.groupe}>
+                      <legend style={s.legende}>Allergies à signaler (facultatif)</legend>
+                      <div style={s.aide}>Touchez les allergènes qui concernent votre table. Le restaurant les verra avec votre réservation.</div>
+                      <div style={{ ...s.puces, marginTop: 10 }}>
+                        {ALLERGENES.map((a) => {
+                          const actif = form.allergenes.includes(a.id);
+                          return (
+                            <button
+                              key={a.id}
+                              type="button"
+                              aria-pressed={actif}
+                              data-actif={actif ? '1' : undefined}
+                              className="rt-choix rt-allergene"
+                              onClick={() => basculerAllergene(a.id)}
+                            >
+                              {a.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </fieldset>
                     <Champ label="Un mot pour le restaurant (facultatif)" id="t-message">
-                      <textarea id="t-message" className="rt-champ" style={{ ...s.champ, minHeight: 84, resize: 'vertical' }} value={form.message} placeholder="Allergie, anniversaire, chaise haute…" onChange={(e) => setForm({ ...form, message: e.target.value })} />
+                      <textarea id="t-message" className="rt-champ" style={{ ...s.champ, minHeight: 84, resize: 'vertical' }} value={form.message} placeholder="Précision sur une allergie, anniversaire, chaise haute…" onChange={(e) => setForm({ ...form, message: e.target.value })} />
                     </Champ>
 
                     <label htmlFor="t-actus" style={s.accord}>
@@ -532,6 +572,9 @@ export default function ReservationTable() {
                     ['Le', jourLong(date)],
                     ['À', choix.heure],
                     ['Au nom de', `${form.prenom.trim()} ${form.nom.trim()}`],
+                    ...(form.allergenes.length
+                      ? [['Allergies', ALLERGENES.filter((a) => form.allergenes.includes(a.id)).map((a) => a.label).join(', ')]]
+                      : []),
                   ].map(([label, valeur], i, liste) => (
                     <div key={label} className="rt-apparait" style={{ ...s.bonLigne, ...delai(i + 4, 60), ...(i === liste.length - 1 ? { borderBottomWidth: 0 } : null) }}>
                       <dt style={s.bonLabel}>{label}</dt>
@@ -633,6 +676,10 @@ const s = {
     background: 'var(--t-danger-soft)', color: 'var(--t-danger)',
   },
   puces: { display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 16 },
+  // Allergies : un groupe de pilules sous le même titre que les champs.
+  groupe: { border: 0, margin: 0, padding: 0, minWidth: 0 },
+  legende: { padding: 0, fontSize: 14, fontWeight: 500, color: 'var(--t-ink)' },
+  aide: { fontSize: 12, color: 'var(--t-ink3)', marginTop: 4, lineHeight: 1.4 },
   autreDate: { display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, color: 'var(--t-ink2)', marginTop: 8 },
   champDate: {
     minHeight: 40, padding: '6px 14px', borderRadius: 999,

@@ -1,11 +1,13 @@
 import { useState } from 'react';
+import { VALEURS_TAG_ALLERGENES } from '../../utils/allergenes.js';
 
 const TAG_GROUPS = [
   {
     label: 'Allergènes', type_tag: 'allergene',
     color:       { bg: 'var(--danger-bg-soft)', text: 'var(--danger-text)', border: 'var(--danger-bd)' },
     colorActive: { bg: 'var(--danger-text)', text: 'var(--surface)',    border: 'var(--danger-text)' },
-    tags: ['gluten', 'lactose', 'noix', 'fruits_de_mer'],
+    // Les 14 allergènes du référentiel (utils/allergenes.js), au libellé.
+    tags: VALEURS_TAG_ALLERGENES,
   },
   {
     label: 'Régimes', type_tag: 'regime',
@@ -34,6 +36,10 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
   const [showDialog, setShowDialog] = useState(false);
   const [customValeur, setCustomValeur] = useState('');
   const [customType, setCustomType] = useState('allergene');
+
+  // Tags du groupe sans bouton prédéfini : les libres, et les anciennes
+  // valeurs prédéfinies (« noix », « fruits_de_mer ») que la liste n'a plus.
+  const horsListe = (group) => value.filter((t) => t.type_tag === group.type_tag && (t.libre || !group.tags.includes(t.valeur)));
 
   function isSelected(type_tag, valeur) {
     return value.some((t) => t.type_tag === type_tag && t.valeur === valeur);
@@ -117,7 +123,7 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {TAG_GROUPS.flatMap((group) => {
             const couleurs = { off: group.color, on: group.colorActive };
-            const libres = value.filter((t) => t.type_tag === group.type_tag && t.libre);
+            const libres = horsListe(group);
             return [
               ...group.tags.map((v) => puce(`${group.type_tag}-${v}`, isSelected(group.type_tag, v), false, couleurs, libelleTag(v), () => toggleTag(group.type_tag, v, false))),
               ...libres.map((t) => puce(`${group.type_tag}-libre-${t.valeur}`, true, true, couleurs, t.valeur, () => toggleTag(group.type_tag, t.valeur, true))),
@@ -141,7 +147,7 @@ export default function ReservationTagSelector({ value = [], onChange, compact =
   return (
     <div>
       {TAG_GROUPS.map((group) => {
-        const libresInGroup = value.filter((t) => t.type_tag === group.type_tag && t.libre);
+        const libresInGroup = horsListe(group);
         const allTags = [
           ...group.tags.map((v) => ({ valeur: v, libre: false })),
           ...libresInGroup.map((t) => ({ valeur: t.valeur, libre: true })),

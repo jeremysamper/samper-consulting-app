@@ -10,6 +10,8 @@
 //     reservation_tags: [{ type_tag, valeur }], resa_clients: { allergies } }
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { idsDeTagAllergene, labelAllergene, sortAllergenes, splitAllergenesText } from '../../utils/allergenes.js';
+
 export const COUVERTS_RAPIDES = [1, 2, 3, 4, 5, 6, 7, 8];
 export const COUVERTS_MAX = 99;
 
@@ -34,6 +36,38 @@ export function allergiesDe(resa) {
     .filter((t) => t.type_tag === 'allergene' || t.type_tag === 'regime')
     .forEach((t) => ajouter(t.valeur));
   return vus;
+}
+
+// Allergènes de la table, en ids du référentiel : les tags « allergène » de
+// la réservation et ce que la fiche client nomme dans ses allergies. Sert à
+// croiser avec les fiches des plats commandés (allergenesEnConflit).
+export function allergenesIdsDe(resa) {
+  const ids = new Set();
+  (resa?.reservation_tags || [])
+    .filter((t) => t.type_tag === 'allergene')
+    .forEach((t) => idsDeTagAllergene(t.valeur).forEach((id) => ids.add(id)));
+  splitAllergenesText(resa?.resa_clients?.allergies).ids.forEach((id) => ids.add(id));
+  return sortAllergenes([...ids]);
+}
+
+// Allergènes d'un plat : ceux de ses fiches techniques (plat_recettes, liste
+// plate). null quand le plat n'a aucune fiche lue : ses allergènes ne sont
+// pas connus, ce qui n'est pas « aucun allergène ».
+export function allergenesDuPlat(plat, allergenesFiches) {
+  const fiches = (plat?.recettes || []).filter((l) => allergenesFiches?.has(l.recetteId));
+  if (!fiches.length) return null;
+  const ids = new Set();
+  fiches.forEach((l) => (allergenesFiches.get(l.recetteId) || []).forEach((id) => ids.add(id)));
+  return [...ids];
+}
+
+// Allergènes de la table que le plat contient, en libellés, dans l'ordre du
+// référentiel. Vide quand rien ne croise ou que le plat n'a pas de fiche.
+export function allergenesEnConflit(plat, allergenesTable, allergenesFiches) {
+  if (!allergenesTable?.length) return [];
+  const duPlat = allergenesDuPlat(plat, allergenesFiches);
+  if (!duPlat) return [];
+  return sortAllergenes(allergenesTable.filter((id) => duPlat.includes(id))).map(labelAllergene);
 }
 
 // tableId : l'id d'une table, ou la liste des tables d'une tablée.
