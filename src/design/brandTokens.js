@@ -230,6 +230,11 @@ export const THEME_VAR_OVERRIDES = `
     --carte-soleil-texte: ${BRAND.color.ink};
     --carte-ciel: ${BRAND.color.tint};
     --carte-ciel-texte: ${BRAND.color.ink};
+    --medaille-or: #d9a93a;
+    --medaille-argent: #c3cbd1;
+    --medaille-bronze: #c98a5c;
+    --medaille-texte: ${BRAND.color.ink};
+    --medaille-ruban: ${BRAND.color.primary};
   }
 `;
 

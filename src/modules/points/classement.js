@@ -40,9 +40,3 @@ export function classerEquipe(soldes, masques) {
     hors: visibles.filter((p) => !classe(p)).sort(parNom),
   };
 }
-
-// Initiales d'une personne pour son rond (prénom puis nom).
-export function initiales(p) {
-  const lettre = (s) => String(s || '').trim().charAt(0).toLocaleUpperCase('fr');
-  return (lettre(p?.prenom) + lettre(p?.nom)) || '?';
-}

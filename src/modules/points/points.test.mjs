@@ -274,7 +274,7 @@ test('crédit de photo : original en https, comme la contrainte en base', () => 
 });
 
 // Classement de l'équipe (17.11.2026) : podium, liste, personnes masquées.
-const { classerEquipe, initiales } = await import('./classement.js');
+const { classerEquipe } = await import('./classement.js');
 const pers = (userId, solde, extra = {}) => ({ userId, prenom: userId, nom: '', role: 'cuisinier', actif: true, participant: true, exclu: false, solde, gagneMois: 0, ...extra });
 
 test('classement : les personnes masquées disparaissent et les rangs se recomptent sans elles', () => {
@@ -303,10 +303,4 @@ test('classement : exclus, non participants et comptes désactivés hors classem
   assert.deepEqual(podium.map((p) => p.userId), ['a']);
   assert.equal(liste.length, 0);
   assert.deepEqual(hors.map((p) => p.userId), ['x', 'y', 'z']);
-});
-
-test('classement : initiales du prénom et du nom', () => {
-  assert.equal(initiales({ prenom: 'élodie', nom: 'Martin' }), 'ÉM');
-  assert.equal(initiales({ prenom: 'Noé' }), 'N');
-  assert.equal(initiales({}), '?');
 });

@@ -15,7 +15,7 @@ import { NombrePoints, dateCourte } from './MesPoints.jsx';
 import PhotoCadeau from './PhotoCadeau.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
-import { classerEquipe, initiales } from './classement.js';
+import { classerEquipe } from './classement.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Gestion des points (qui gère « points », défaut consultant et patron) :
@@ -41,6 +41,21 @@ const vignette = {
   borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   color: 'var(--text)', fontFamily: 'var(--font)', textAlign: 'left', cursor: 'pointer',
 };
+
+// Médaille du podium : or, argent, bronze selon le rang (deux premiers à
+// égalité : deux médailles d'or), le rang écrit dessus. Couleurs par jetons.
+const COULEURS_MEDAILLE = { 1: 'var(--medaille-or)', 2: 'var(--medaille-argent)', 3: 'var(--medaille-bronze)' };
+function Medaille({ rang }) {
+  return (
+    <svg className="points-medaille" viewBox="0 0 40 50" role="img" aria-label={String(rang)} focusable="false" data-no-translate>
+      <path d="M9 0h9l5 17h-9z" style={{ fill: 'var(--medaille-ruban)' }} />
+      <path d="M31 0h-9l-5 17h9z" style={{ fill: 'var(--medaille-ruban)', opacity: 0.8 }} />
+      <circle cx="20" cy="33" r="16" style={{ fill: COULEURS_MEDAILLE[rang] || 'var(--medaille-bronze)' }} />
+      <circle cx="20" cy="33" r="12.5" style={{ fill: 'none', stroke: 'var(--medaille-texte)', strokeOpacity: 0.25, strokeWidth: 1 }} />
+      <text x="20" y="33" textAnchor="middle" dominantBaseline="central" style={{ fill: 'var(--medaille-texte)', fontFamily: 'var(--font-num)', fontSize: 15, fontWeight: 400 }}>{rang}</text>
+    </svg>
+  );
+}
 
 function useDonneesGestion(etabId) {
   const [donnees, setDonnees] = React.useState(null);
@@ -381,14 +396,14 @@ function OngletEquipe({ etabId, user, donnees, charger, exclus }) {
     </button>
   );
 
-  // Podium : le 1er au centre, le 2e à gauche, le 3e à droite (placement par
-  // la feuille ; l'ordre de lecture reste 1, 2, 3).
+  // Podium : trois cartes distinctes, une médaille chacune ; le 1er au centre,
+  // le 2e à gauche, le 3e à droite (placement par la feuille ; l'ordre de
+  // lecture reste 1, 2, 3).
   const placePodium = (p, i) => (
-    <button key={p.userId} type="button" className="points-podium-place" data-place={i + 1} onClick={() => ouvrir(p)}>
-      <span className="points-podium-rond" aria-hidden="true" data-no-translate>{initiales(p)}</span>
+    <button key={p.userId} type="button" className="points-podium-place" data-place={i + 1} data-cadre="" onClick={() => ouvrir(p)}>
+      <Medaille rang={p.rang} />
       <span className="points-podium-prenom" data-no-translate>{p.prenom || nomPersonne(p)}</span>
       <NombrePoints n={p.solde} style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }} />
-      <span className="points-podium-marche" data-no-translate>{p.rang}</span>
     </button>
   );
 
@@ -415,14 +430,17 @@ function OngletEquipe({ etabId, user, donnees, charger, exclus }) {
 
   return (
     <>
-      <Panneau>
-        <h2 className="points-section-titre">Podium</h2>
-        {podium.length ? (
+      {podium.length ? (
+        <section className="points-podium-section" aria-labelledby="points-podium-titre">
+          <h2 id="points-podium-titre" className="points-section-titre">Podium</h2>
           <div className="points-podium">{podium.map(placePodium)}</div>
-        ) : (
+        </section>
+      ) : (
+        <Panneau>
+          <h2 className="points-section-titre">Podium</h2>
           <p className="points-aide">Personne n'a encore de points. Le podium se remplit avec les premiers points gagnés.</p>
-        )}
-      </Panneau>
+        </Panneau>
+      )}
       <Panneau>
         <h2 className="points-section-titre">Classement</h2>
         <p className="points-aide">Touchez une personne pour ajuster son solde ou l'exclure des points. Aucun classement n'est montré à l'équipe.</p>
