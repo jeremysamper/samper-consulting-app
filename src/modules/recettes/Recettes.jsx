@@ -1,5 +1,6 @@
 import React from 'react';
 import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/demoData.js';
+import { peutLireFichesParIA } from '../moduleConfig.js';
 import { lireCarteAccueil, useCarteAccueil } from './carteAccueil.js';
 import { peutGererCartes } from './gardesRecettes.js';
 import { notifyLegacy, readLegacyStorage } from '../../legacy/legacyApi.js';
@@ -1991,7 +1992,7 @@ const Recettes = ({ user, etablissement }) => {
             plats={plats}
             recettes={recettes.filter(r => (r.etablissementId || 'etab-1') === etabId)}
             carteIdDefaut={isLibrary ? '' : (activeCarte?.id || '')}
-            iaPermise={isConsultant}
+            iaPermise={peutLireFichesParIA(user)}
             onClose={() => setShowImport(false)}
             onImported={() => { reloadDataRef.current && reloadDataRef.current(); reloadCartes(); }}
           />
@@ -2111,7 +2112,7 @@ const Recettes = ({ user, etablissement }) => {
                       },
                     ] },
                     { titre: 'Fiches', items: [
-                      canFiches && { titre: 'Importer des fiches', detail: 'Depuis le modèle Excel, une ou plusieurs à la fois, rangées dans une carte', onClick: () => setShowImport(true) },
+                      canFiches && { titre: 'Importer des fiches', detail: peutLireFichesParIA(user) ? 'Depuis une photo, un PDF ou le modèle Excel, rangées dans une carte' : 'Depuis le modèle Excel, une ou plusieurs à la fois, rangées dans une carte', onClick: () => setShowImport(true) },
                       canFiches && { titre: 'Sélectionner des fiches', detail: 'Pour les rattacher à des plats, les archiver ou les supprimer', onClick: entrerSelection },
                       isConsultant && { titre: 'Détecter les allergènes', detail: 'Analyse des ingrédients de chaque fiche, à vérifier ensuite', onClick: () => detectionRef.current?.lancer() },
                     ] },

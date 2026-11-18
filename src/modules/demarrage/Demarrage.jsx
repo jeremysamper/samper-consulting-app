@@ -6,13 +6,14 @@ import { confirmLegacy } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { ouvrirCompte } from '../../services/navigationService.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { etabToggleableModules, isModuleActiveForEtab, isPageActiveForEtab, navItems } from '../moduleConfig.js';
+import { etabToggleableModules, isModuleActiveForEtab, isPageActiveForEtab, navItems, peutLireFichesParIA } from '../moduleConfig.js';
 import { EVENEMENT_DEMARRAGE } from './CarteDemarrage.jsx';
 import { lireMiseEnRoute, marquerEtapes } from './demarrageService.js';
 import { chargerExemple, effacerExemple, telechargerModele } from './exempleService.js';
 
-// L'importeur de recettes lit aussi les photos par l'IA : réservé au
-// consultant, comme dans les Outils consultant où il vit.
+// L'importeur de recettes lit aussi les photos par l'IA : ouvert au patron
+// depuis le 18.11.2026 (décision de Jérémy, lot A1), comme au consultant.
+// La page elle-même ne s'ouvre qu'à eux deux (peutOuvrirDemarrage).
 const ImportLauncher = React.lazy(() => import('../recettes/import/ImportLauncher.jsx'));
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -94,6 +95,8 @@ export default function Demarrage({ user, etablissement, setPage }) {
 
   const pret = etat.status === 'ready' || (etat.status === 'error' && etat.faites);
   const faites = etat.faites || new Set();
+  // Règle S1 : une seule action principale, celle de la prochaine étape à faire.
+  const principale = ['etablissement', 'recettes', 'catalogue', 'planning', 'exemple'].find((e) => !faites.has(e)) || null;
   const modules = etabToggleableModules.filter((item) => isModuleActiveForEtab(etablissement, item.permKey));
 
   return (
@@ -134,7 +137,7 @@ export default function Demarrage({ user, etablissement, setPage }) {
             <div style={s.actions}>
               {consultant && <Btn onClick={() => ouvrirCompte('parametres')}>Ouvrir les paramètres</Btn>}
               {!faites.has('etablissement') && (
-                <Btn variant="primary" disabled={enCours === 'etablissement'} onClick={() => agir('etablissement', () => marquerEtapes(etabId, ['etablissement']))}>
+                <Btn variant={principale === 'etablissement' ? 'primary' : undefined} disabled={enCours === 'etablissement'} onClick={() => agir('etablissement', () => marquerEtapes(etabId, ['etablissement']))}>
                   C'est bon
                 </Btn>
               )}
@@ -142,14 +145,10 @@ export default function Demarrage({ user, etablissement, setPage }) {
           </Etape>
 
           <Etape numero={2} titre="Recettes" fait={faites.has('recettes')}>
+            <p style={s.texte}>Photographiez vos fiches, ou importez-les depuis un fichier Excel ou PDF. L'app les lit, puis vous relisez avant d'enregistrer.</p>
             <p style={s.texte}>Une fiche suffit pour cocher l'étape.</p>
-            <p style={s.texte}>
-              {consultant
-                ? 'Le modèle Excel se réimporte tel quel par « Importer des recettes ».'
-                : 'Remplissez le modèle Excel et confiez-le à votre consultant pour l\'import, ou écrivez vos fiches dans Cartes & Recettes.'}
-            </p>
             <div style={s.actions}>
-              {consultant && <Btn variant="primary" onClick={() => setImportOuvert(true)}>Importer des recettes</Btn>}
+              <Btn variant={principale === 'recettes' ? 'primary' : undefined} onClick={() => setImportOuvert(true)}>Importer vos fiches</Btn>
               {peutOuvrir('cartes') && <Btn onClick={() => setPage('cartes')}>Ouvrir Cartes & Recettes</Btn>}
               <Btn onClick={() => modele('modele-recettes.xlsx')}>Modèle Excel des recettes</Btn>
             </div>
@@ -159,7 +158,7 @@ export default function Demarrage({ user, etablissement, setPage }) {
             <p style={s.texte}>Un produit suffit. Dans le catalogue : Importer, puis Fichier Excel, une ligne par produit.</p>
             <div style={s.actions}>
               {peutOuvrir('catalogue')
-                ? <Btn onClick={() => setPage('catalogue')}>Ouvrir le catalogue</Btn>
+                ? <Btn variant={principale === 'catalogue' ? 'primary' : undefined} onClick={() => setPage('catalogue')}>Ouvrir le catalogue</Btn>
                 : <span style={s.texte}>Le catalogue n'est pas activé pour cet établissement.</span>}
               <Btn onClick={() => modele('modele-catalogue.xlsx')}>Modèle Excel du catalogue</Btn>
             </div>
@@ -169,7 +168,7 @@ export default function Demarrage({ user, etablissement, setPage }) {
             <p style={s.texte}>Un horaire suffit. Dans le planning : Faire le planning, puis la semaine suivante.</p>
             <div style={s.actions}>
               {peutOuvrir('planning')
-                ? <Btn onClick={() => setPage('planning')}>Ouvrir le planning</Btn>
+                ? <Btn variant={principale === 'planning' ? 'primary' : undefined} onClick={() => setPage('planning')}>Ouvrir le planning</Btn>
                 : <span style={s.texte}>Le planning n'est pas activé pour cet établissement.</span>}
             </div>
           </Etape>
@@ -179,7 +178,7 @@ export default function Demarrage({ user, etablissement, setPage }) {
             <div style={s.actions}>
               {etat.registre?.length
                 ? <Btn variant="danger" disabled={enCours === 'exemple'} onClick={effacer}>Effacer l'exemple</Btn>
-                : <Btn variant="primary" disabled={enCours === 'exemple'} onClick={charger}>Charger l'exemple</Btn>}
+                : <Btn variant={principale === 'exemple' ? 'primary' : undefined} disabled={enCours === 'exemple'} onClick={charger}>Charger l'exemple</Btn>}
               {enCours === 'exemple' && <span style={s.texte} aria-live="polite">Un instant…</span>}
             </div>
           </Etape>
@@ -193,12 +192,13 @@ export default function Demarrage({ user, etablissement, setPage }) {
         </footer>
       )}
 
-      {importOuvert && consultant && (
+      {importOuvert && (
         <React.Suspense fallback={null}>
           <ImportLauncher
             etabId={etabId}
             legacySB={dbService.getBridge()}
             user={user}
+            iaPermise={peutLireFichesParIA(user)}
             onClose={() => setImportOuvert(false)}
             onImported={() => { relire(); signaler(); }}
           />
@@ -224,23 +224,23 @@ function Etape({ numero, titre, fait, dernier, children }) {
 }
 
 const s = {
-  page: { display: 'flex', flexDirection: 'column', gap: 18, maxWidth: 880, margin: '0 auto', width: '100%', minWidth: 0 },
-  titre: { margin: 0, fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 28, lineHeight: 1.2, color: 'var(--text)' },
-  intro: { margin: '6px 0 0', fontSize: 15, lineHeight: 1.55, color: 'var(--text2)' },
-  info: { margin: 0, fontSize: 14, color: 'var(--text2)' },
-  erreur: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', borderRadius: 'var(--r-sm)', background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', fontSize: 14 },
-  termine: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 14px', borderRadius: 'var(--r-sm)', background: 'var(--success-bg-soft)', color: 'var(--success-text)', fontSize: 14 },
+  page: { display: 'flex', flexDirection: 'column', gap: 24, maxWidth: 880, margin: '0 auto', width: '100%', minWidth: 0 },
+  titre: { margin: 0, fontFamily: 'var(--font)', fontWeight: 'var(--g2)', fontSize: 'var(--t6)', lineHeight: 1.2, color: 'var(--text)' },
+  intro: { margin: '6px 0 0', fontSize: 'var(--t2)', lineHeight: 1.55, color: 'var(--text2)' },
+  info: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)' },
+  erreur: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 16px', borderRadius: 'var(--r)', background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', fontSize: 'var(--t2)' },
+  termine: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '12px 16px', borderRadius: 'var(--r)', background: 'var(--success-bg-soft)', color: 'var(--success-text)', fontSize: 'var(--t2)' },
   liste: {
-    listStyle: 'none', margin: 0, padding: 0, background: 'var(--surface)', borderRadius: 'var(--r)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+    listStyle: 'none', margin: 0, padding: '4px 24px', background: 'var(--zone)', borderRadius: 'var(--r-lg)',
+    boxShadow: 'inset 0 0 0 1px var(--rule-soft), var(--sh)',
   },
-  etape: { padding: '18px 20px', borderBottom: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
+  etape: { padding: '20px 0', borderBottom: '1px solid var(--rule-soft)', display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
   etapeTete: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
-  numero: { fontSize: 12, color: 'var(--text3)' },
-  etapeTitre: { margin: '2px 0 0', fontFamily: 'var(--font-serif)', fontWeight: 400, fontSize: 19, lineHeight: 1.25, color: 'var(--text)' },
-  fait: { fontSize: 13, fontWeight: 600, color: 'var(--success-text)', whiteSpace: 'nowrap' },
-  aFaire: { fontSize: 13, color: 'var(--text2)', whiteSpace: 'nowrap' },
-  texte: { margin: 0, fontSize: 14, lineHeight: 1.55, color: 'var(--text2)', overflowWrap: 'anywhere' },
+  numero: { fontSize: 'var(--t1)', color: 'var(--text3)' },
+  etapeTitre: { margin: '2px 0 0', fontFamily: 'var(--font)', fontWeight: 'var(--g3)', fontSize: 'var(--t3)', lineHeight: 1.25, color: 'var(--text)' },
+  fait: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--success-text)', whiteSpace: 'nowrap' },
+  aFaire: { fontSize: 'var(--t2)', color: 'var(--text2)', whiteSpace: 'nowrap' },
+  texte: { margin: 0, fontSize: 'var(--t2)', lineHeight: 1.55, color: 'var(--text2)', overflowWrap: 'anywhere' },
   actions: { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
   pied: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
 };

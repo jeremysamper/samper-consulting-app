@@ -22,7 +22,7 @@ export const EVENEMENT_DEMARRAGE = 'sc:demarrage';
 const PROCHAINE = {
   etablissement: "Vérifiez d'abord les informations de l'établissement.",
   recettes: 'Ajoutez vos fiches : une photo de chaque fiche suffit.',
-  catalogue: 'Ajoutez vos produits : une photo de facture les remplit.',
+  catalogue: 'Ajoutez vos produits : le modèle Excel les importe en une fois.',
   planning: "Faites la première semaine de l'équipe.",
 };
 

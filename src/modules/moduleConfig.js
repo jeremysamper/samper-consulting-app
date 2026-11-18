@@ -384,6 +384,14 @@ export function peutAdministrerCompte(user, permissions = {}) {
 // ouverte par la carte du tableau de bord. Consultant et patron, comme la RLS
 // de demarrage_etapes et donnees_exemple. normalizePage la laisse passer
 // telle quelle, comme `compte`.
+// Lecture des fiches en photo par l'IA (tâche ocr-recipe) : ouverte le
+// 18.11.2026 au patron et au resp_cuisine (décision de Jérémy), miroir des
+// AUTHORING_ROLES d'ai-proxy. Le reste de l'IA reste au consultant.
+export const ROLES_IA_FICHES = ['consultant', 'patron', 'resp_cuisine'];
+export function peutLireFichesParIA(user) {
+  return ROLES_IA_FICHES.includes(user?.role);
+}
+
 export function peutOuvrirDemarrage(user) {
   return user?.role === 'consultant' || user?.role === 'patron';
 }
