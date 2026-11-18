@@ -27,7 +27,18 @@ import { copieHoraire, estPointe, horaireDeplace, idCopie, regleDepot } from './
 // Bandeaux d'un dépôt refusé : rien n'a été écrit.
 const REFUS = new Set(['chevauche', 'pointe']);
 
-export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite, etabId }) {
+// verifier({ ajouts, retraits }) : contrôle de conformité CCNT avant chaque
+// écriture (Planning.jsx, conformiteCcnt.js). Il rend true, tout de suite,
+// quand l'écriture ne crée aucune infraction : elle part alors exactement
+// comme avant, sans attente. Sinon une promesse : true si la personne
+// confirme dans la fenêtre, false si elle revient (rien n'est écrit).
+const verifierPuis = (verifier, projet, faire) => {
+  const ok = verifier ? verifier(projet) : true;
+  if (ok === true) return faire();
+  return Promise.resolve(ok).then(v => (v ? faire() : null));
+};
+
+export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite, etabId, verifier = null }) {
   const existantsRef = React.useRef(existants);
   existantsRef.current = existants;
   const [bandeau, setBandeau] = React.useState(null);
@@ -90,6 +101,8 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
       if (!silencieux) notifyLegacy('Ce créneau est déjà occupé.', 'warning');
       return;
     }
+    const ok = verifier ? verifier({ ajouts: aCreer }) : true;
+    if (ok !== true && !(await ok)) return;
     try {
       let crees;
       if (bridge) {
@@ -160,8 +173,8 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
   const deposer = ({ horaire, cible, regle }) => {
     if (regle.bloque === 'chevauche') return signaler({ type: 'chevauche' });
     if (regle.bloque === 'pointe') return signaler({ type: 'pointe', horaire, cible, absence: regle.absence });
-    if (regle.effet === 'deplacer') return deplacer(horaire, cible, regle.absence);
-    if (regle.effet === 'copier') return copier(horaire, cible, regle.absence);
+    if (regle.effet === 'deplacer') return verifierPuis(verifier, { ajouts: [horaireDeplace(horaire, cible)] }, () => deplacer(horaire, cible, regle.absence));
+    if (regle.effet === 'copier') return verifierPuis(verifier, { ajouts: [copieHoraire(horaire, cible, 'controle-ccnt')] }, () => copier(horaire, cible, regle.absence));
     return null;
   };
 
@@ -292,6 +305,9 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
     const cible = { userId: geste.apres.userId, date: geste.apres.date };
     // Copie refusée : le déplacement reste annulable quand le refus se ferme.
     if (!copiePossible(geste.avant, cible, geste.absence)) { geste.annulation = false; return; }
+    // L'original revient à sa place (même id) et la copie arrive sur la case.
+    const ok = verifier ? verifier({ ajouts: [geste.avant, copieHoraire(geste.avant, cible, 'controle-ccnt')] }) : true;
+    if (ok !== true && !(await ok)) { occuper(geste, false); return; }
     if (!(await annulerDeplacement(geste))) return;
     copier(geste.avant, cible, geste.absence);
   };
@@ -302,7 +318,7 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
     if (!geste || geste.type !== 'pointe') return;
     const horaire = actuel(geste.horaire.id) || geste.horaire;
     if (!copiePossible(horaire, geste.cible, geste.absence)) return;
-    copier(horaire, geste.cible, geste.absence);
+    verifierPuis(verifier, { ajouts: [copieHoraire(horaire, geste.cible, 'controle-ccnt')] }, () => copier(horaire, geste.cible, geste.absence));
   };
 
   // ─── Duplication (fenêtres Dupliquer et « Dupliquer vers… ») ───
@@ -311,6 +327,14 @@ export function useEcrituresHoraires({ bridge, setPlanning, existants, canWrite,
   // mode 'bandeau' : « N horaires copiés. Annuler » ; 'toast' : le message de
   // « Dupliquer vers… ».
   const appliquerDuplication = async ({ aCreer, aSupprimer }, { mode = 'bandeau' } = {}) => {
+    // Retour sans enregistrer depuis la confirmation CCNT : la fenêtre de
+    // duplication reste ouverte (elle garde sa fenêtre ouverte sur une erreur).
+    const ok = verifier ? verifier({ ajouts: aCreer, retraits: aSupprimer }) : true;
+    if (ok !== true && !(await ok)) {
+      const refus = new Error('Duplication non confirmée');
+      refus.refusCcnt = true;
+      throw refus;
+    }
     const aEffacer = new Set(aSupprimer);
     const remplaces = existantsRef.current.filter(s => aEffacer.has(s.id));
     let crees;

@@ -43,6 +43,7 @@ import {
 } from './produitsMaison.js';
 import { useAchatsDocuments } from './useAchatsDocuments.js';
 import { useHaussesPrix } from '../factures-achats/haussesPrixDonnees.js';
+import { useDemandeEcran } from '../../services/demandeEcran.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { Btn } from '../../components/ui/index.jsx';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
@@ -223,6 +224,9 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire', ecranReglage = nu
     surRetour: () => setAVerifier([]),
     fixe: enReglage ? 'gerer' : null,
   });
+  // Écran demandé depuis une autre page (widget « Hausses de prix » du tableau
+  // de bord), servi même quand le module était resté monté derrière.
+  useDemandeEcran('achats', setEcran, achatsVue && canRegler && !enReglage);
   // Les onglets de vues n'existent plus : la clé est effacée, sa valeur
   // n'est pas reprise, tout le monde découvre l'accueil du module.
   // Provisoire : à retirer quelques semaines après la mise en prod du lot 1

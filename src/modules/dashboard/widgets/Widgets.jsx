@@ -16,7 +16,6 @@ import { Chiffre, LienModule, Parties, Repere, Section, StatutGroupe, Vide } fro
 import { absencesAVenir, absencesDuJour, jourRelatif, heureParlee, pertesParSemaine, relevesDuJour } from '../tableauLogique.js';
 import { CAPACITE_RACCOURCIS } from './dispositionLogique.js';
 import { chiffresDuMois, formatPoints, libelleAction, prochainCadeau } from '../../points/bareme.js';
-import { JOURS_PAR_DEFAUT, SEUIL_ECART_PCT, prixAffiche } from '../../catalogue/haussesPrix.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composants des widgets du tableau de bord. Chacun reçoit :
@@ -269,11 +268,13 @@ export function WidgetAbsences({ t, taille }) {
   );
 }
 
-// Hausses de prix fournisseur (catalogue/haussesPrix.js), de la plus forte à la
-// plus faible : produit, fournisseur, nouveau et ancien prix, écart. Dès la
-// taille grande, les fiches qui utilisent le produit et l'effet de la hausse
-// sur leur coût matière (prixResolution.js).
+// Hausses de prix fournisseur à voir, les mêmes que l'écran « Hausses de prix »
+// de Factures & achats (factures-achats/haussesTableau.js), la plus récente
+// d'abord : produit, fournisseur, nouveau et ancien prix, écart. Dès la taille
+// grande, les fiches qui utilisent le produit et l'effet de la hausse sur leur
+// coût matière (catalogue/effetsHausseFiches.js).
 const LIGNES_HAUSSES = { moyen: 2, grand: 3, pleine: 6 };
+const PRIX_PAR = { kg: 'le kg', L: 'le litre', pièce: 'la pièce' };
 const FICHES_PAR_HAUSSE = { grand: 2, pleine: 3 };
 const montant = (v) => v.toLocaleString('fr-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const ecart = (v) => `${v > 0 ? '+' : ''}${v.toLocaleString('fr-CH', { maximumFractionDigits: 1 })} %`;
@@ -296,7 +297,10 @@ function EffetFiche({ f }) {
 }
 
 function FichesTouchees({ h, n }) {
-  const fiches = h.fiches || [];
+  // L'effet se lit après les hausses : rien tant qu'il n'est pas arrivé.
+  if (h.fiches === undefined) return null;
+  if (h.fiches === null) return <span style={w.ligneDetail}>Produit non relié au catalogue : effet sur les fiches non chiffré.</span>;
+  const fiches = h.fiches;
   if (!fiches.length) return <span style={w.ligneDetail}>Aucune fiche n&apos;utilise ce produit.</span>;
   if (!h.suitCatalogue) {
     return (
@@ -320,27 +324,28 @@ function FichesTouchees({ h, n }) {
 
 export function WidgetHaussesPrix({ t, taille }) {
   const liste = t.haussesPrix?.hausses || [];
+  const seuil = t.haussesPrix?.seuil;
   const n = LIGNES_HAUSSES[taille] || 2;
   const nbFiches = FICHES_PAR_HAUSSE[taille] || 0;
+  const versHausses = t.peutOuvrir('achats') ? () => t.ouvrir('achats', 'hausses') : null;
   return (
     <Section
       id="tdb-w-hausses"
       titre="Hausses de prix"
-      sousTitre={`Prix d'achat en hausse de ${SEUIL_ECART_PCT} % ou plus sur les ${JOURS_PAR_DEFAUT} derniers jours`}
-      action={<LienModule onClick={t.peutOuvrir('catalogue') ? () => t.ouvrir('catalogue') : null}>Ouvrir le catalogue</LienModule>}
+      sousTitre={<><span>Prix d&apos;achat en hausse de</span>{' '}<span data-no-translate>{`${(seuil || 0).toLocaleString('fr-CH', { maximumFractionDigits: 1 })} %`}</span>{' '}<span>ou plus, factures et bons à voir</span></>}
+      action={<LienModule onClick={versHausses}>Voir les hausses</LienModule>}
     >
-      {!liste.length && <Vide>{`Aucune hausse de prix sur les ${JOURS_PAR_DEFAUT} derniers jours.`}</Vide>}
+      {!liste.length && <Vide>Aucune hausse de prix à voir.</Vide>}
       {liste.slice(0, n).map((h) => {
-        const apres = prixAffiche(h.nouveau, h.unite);
-        const avant = prixAffiche(h.ancien, h.unite);
+        const parUnite = PRIX_PAR[h.unite] || '';
         return (
           <div key={h.cle} className="tdb-filet" style={{ ...w.ligne, alignItems: 'flex-start' }} data-hausse-prix="">
             <span style={{ minWidth: 0, flex: '1 1 auto' }}>
-              <span style={w.ligneTitre}>{h.produitNom}</span>
+              <span style={w.ligneTitre}>{h.nom}</span>
               <span style={w.ligneDetail}>
-                {h.fournisseurNom ? <span data-no-translate>{h.fournisseurNom}</span> : <span>Fournisseur non précisé</span>}
-                {', '}<span data-no-translate>CHF {montant(apres.prix)}</span>{' '}<span>{apres.libelle}</span>
-                {', '}<span>avant</span>{' '}<span data-no-translate>CHF {montant(avant.prix)}</span>
+                {h.fournisseur ? <span data-no-translate>{h.fournisseur}</span> : <span>Fournisseur non précisé</span>}
+                {', '}<span data-no-translate>CHF {montant(h.prix)}</span>{' '}<span>{parUnite}</span>
+                {', '}<span>avant</span>{' '}<span data-no-translate>CHF {montant(h.prixAvant)}</span>
               </span>
               {nbFiches > 0 && <FichesTouchees h={h} n={nbFiches} />}
             </span>

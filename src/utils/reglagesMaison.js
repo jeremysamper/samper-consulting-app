@@ -15,11 +15,6 @@ export const ARRONDIS = [0, 5, 15];
 
 export const DEFAUTS = {
   fermetures: { joursFermes: [], servicesFermes: {}, periodes: [] },
-  // Repos quotidien de 11 h et pauses de la LTr (art. 15 et 15a) ; 50 h par
-  // semaine au plus (LTr art. 9, hôtellerie et restauration) ; deux jours de
-  // repos par semaine (CCNT). La journée maximale n'est pas contrôlée par
-  // défaut.
-  tempsTravail: { actif: true, reposMinH: 11, pausesLoi: true, journeeMaxH: null, semaineMaxH: 50, joursReposSemaine: 2 },
   // Aucun arrondi et l'arrivée comptée dès le pointage : le calcul d'avant.
   pointage: { arrondiMin: 0, avance: 'pointee' },
   objectifs: { matierePct: null, personnelPct: null, caMensuelHt: null },
@@ -52,19 +47,6 @@ export function normaliserFermetures(brut) {
   return { joursFermes, servicesFermes, periodes };
 }
 
-export function normaliserTempsTravail(brut) {
-  const b = estObjet(brut) ? brut : {};
-  const d = DEFAUTS.tempsTravail;
-  return {
-    actif: b.actif === false ? false : d.actif,
-    reposMinH: nombre(b.repos_min_h, 8, 14) ?? d.reposMinH,
-    pausesLoi: b.pauses_loi === false ? false : d.pausesLoi,
-    journeeMaxH: b.journee_max_h == null ? d.journeeMaxH : nombre(b.journee_max_h, 6, 14),
-    semaineMaxH: b.semaine_max_h === null ? null : (nombre(b.semaine_max_h, 30, 60) ?? d.semaineMaxH),
-    joursReposSemaine: b.jours_repos_semaine === 0 ? 0 : (nombre(b.jours_repos_semaine, 1, 2) ?? d.joursReposSemaine),
-  };
-}
-
 export function normaliserPointage(brut) {
   const b = estObjet(brut) ? brut : {};
   return {
@@ -87,7 +69,6 @@ export function normaliserLigne(ligne) {
   const l = estObjet(ligne) ? ligne : {};
   return {
     fermetures: normaliserFermetures(l.fermetures),
-    tempsTravail: normaliserTempsTravail(l.temps_travail),
     pointage: normaliserPointage(l.pointage),
     objectifs: normaliserObjectifs(l.objectifs),
   };
@@ -97,16 +78,12 @@ export function normaliserLigne(ligne) {
 // pour l'écriture.
 export const versBase = {
   fermetures: (f) => ({ jours_fermes: f.joursFermes, services_fermes: f.servicesFermes, periodes: f.periodes }),
-  tempsTravail: (t) => ({
-    actif: t.actif, repos_min_h: t.reposMinH, pauses_loi: t.pausesLoi,
-    journee_max_h: t.journeeMaxH, semaine_max_h: t.semaineMaxH, jours_repos_semaine: t.joursReposSemaine,
-  }),
   pointage: (p) => ({ arrondi_min: p.arrondiMin, avance: p.avance }),
   objectifs: (o) => ({ matiere_pct: o.matierePct, personnel_pct: o.personnelPct, ca_mensuel_ht: o.caMensuelHt }),
 };
 // Où vit chaque bloc : les objectifs ont leur table, lue par la direction seule.
-export const COLONNES = { fermetures: 'fermetures', tempsTravail: 'temps_travail', pointage: 'pointage', objectifs: 'objectifs' };
-export const TABLES = { fermetures: 'reglages_maison', tempsTravail: 'reglages_maison', pointage: 'reglages_maison', objectifs: 'objectifs_maison' };
+export const COLONNES = { fermetures: 'fermetures', pointage: 'pointage', objectifs: 'objectifs' };
+export const TABLES = { fermetures: 'reglages_maison', pointage: 'reglages_maison', objectifs: 'objectifs_maison' };
 
 // Règles du pointage retenues par établissement, posées par useReglagesMaison
 // à chaque lecture et lues par heuresPointees (modules/planning/pointageRegles.js).

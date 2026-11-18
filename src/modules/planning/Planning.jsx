@@ -41,11 +41,12 @@ import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './poin
 import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
 import MasquesModal from './MasquesModal.jsx';
 import { heuresPointees } from './pointageRegles.js';
-import { controlesTempsTravail } from './tempsTravail.js';
 import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
 import { maisonFermee, periodeDe } from '../../utils/reglagesMaison.js';
 import { useContrats } from './contratsService.js';
 import { calcHeures, periodeEnCours, soldePersonne } from './soldesHeures.js';
+import { analyserEquipe, cleCaseCcnt, constatsParCase, decaler as decalerCcnt, infractionsCreees, lundiDe as lundiCcnt } from './conformiteCcnt.js';
+import { ConfirmationCcnt, MarqueCcnt, PanneauCcnt } from './ConformiteCcnt.jsx';
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -266,13 +267,43 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Ce qui s'affiche. planningEtab reste la base des écritures et des contrôles
   // de chevauchement : un horaire masqué existe toujours.
   const planningVisible = planningEtab.filter(s => !estMasque(s.userId));
-  // Réglages de la maison (18.11.2026) : jours fermés, contrôles du temps de
-  // travail, règles du pointage (retenues au passage pour heuresPointees).
+  // Réglages de la maison (18.11.2026) : jours fermés et règles du pointage
+  // (retenues au passage pour heuresPointees). La conformité CCNT de la
+  // grille vient de conformiteCcnt.js.
   const maison = useReglagesMaison(etabId);
+
+  // ─── Conformité CCNT (conformiteCcnt.js) ───
+  // Avant chaque écriture d'horaires : les infractions que l'écriture crée.
+  // Aucune : true tout de suite, l'écriture part comme avant. Sinon la fenêtre
+  // ConfirmationCcnt les nomme et la promesse rend la réponse. Ni blocage ni
+  // motif stocké. Toutes les absences comptent (une personne masquée garde ses
+  // règles).
+  const absencesCcnt = absencesEtab.status === 'absent' ? [] : absencesEtab.absences;
+  const reglagesCcnt = { heuresSemaine: heuresContractuelles(etablissement), saisonnier: etablissement?.type === 'saisonnier' };
+  const ccntRef = React.useRef(null);
+  ccntRef.current = { existants: planningEtab, absences: absencesCcnt, ...reglagesCcnt };
+  const [confirmationCcnt, setConfirmationCcnt] = React.useState(null);
+  const confirmationCcntRef = React.useRef(null);
+  const confirmerCcnt = React.useCallback((projet) => {
+    const infractions = infractionsCreees({ ...ccntRef.current, ...projet });
+    if (!infractions.length) return true;
+    // Une demande encore ouverte (double geste) vaut un retour sans enregistrer.
+    confirmationCcntRef.current?.resolve(false);
+    return new Promise((resolve) => {
+      confirmationCcntRef.current = { infractions, resolve };
+      setConfirmationCcnt(confirmationCcntRef.current);
+    });
+  }, []);
+  const repondreCcnt = React.useCallback((ok) => {
+    const demande = confirmationCcntRef.current;
+    confirmationCcntRef.current = null;
+    setConfirmationCcnt(null);
+    demande?.resolve(ok);
+  }, []);
 
   // Écritures des gestes de la grille (modèle posé, glisser, duplication) et
   // leur retour arrière : useEcrituresHoraires.js.
-  const ecritures = useEcrituresHoraires({ bridge: legacySB, setPlanning, existants: planningEtab, canWrite, etabId });
+  const ecritures = useEcrituresHoraires({ bridge: legacySB, setPlanning, existants: planningEtab, canWrite, etabId, verifier: confirmerCcnt });
 
   // Téléphones saisis par chacun dans « Mon compte » (consultant et patron).
   const phones = useTeamPhones(user.role);
@@ -360,14 +391,6 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   const getShift = (userId, date) => planningVisible.find(s => s.userId === userId && s.date === date);
   const getShiftsDay = (userId, date) => planningVisible.filter(s => s.userId === userId && s.date === date);
-  // Temps de travail : ce qui est à vérifier, horaire par horaire, montré à
-  // qui écrit le planning. Jamais bloquant. Les semaines entières de la grille
-  // comptent aussi leurs jours de repos.
-  const periodeGrille = DAYS.length ? { debut: DAYS[0].date, fin: DAYS[DAYS.length - 1].date } : null;
-  const alertesTemps = React.useMemo(
-    () => (canWrite ? controlesTempsTravail({ shifts: planningEtab, regles: maison.tempsTravail, periode: periodeGrille }) : null),
-    [canWrite, planningEtab, maison.tempsTravail, periodeGrille?.debut, periodeGrille?.fin]
-  );
   const libelleFermeture = (date) => {
     if (!maisonFermee(maison.fermetures, date)) return null;
     return periodeDe(maison.fermetures, date)?.motif || 'Fermé';
@@ -421,6 +444,22 @@ const Planning = ({ user, etablissement, initialTab }) => {
     return out;
   }, [employees, planningEtab, selectedDate]);
 
+  // Constats de conformité CCNT de la période affichée, pour qui écrit le
+  // planning : la grille (semaines affichées) ou, au téléphone, la semaine du
+  // jour lu. Marques par case et panneau « Conformité CCNT ».
+  const periodeCcnt = isMobile
+    ? { debut: lundiCcnt(mobileDate), fin: decalerCcnt(lundiCcnt(mobileDate), 6) }
+    : { debut: DAYS[0]?.date, fin: DAYS[DAYS.length - 1]?.date };
+  const constatsCcnt = React.useMemo(() => (canWrite && periodeCcnt.debut ? analyserEquipe({
+    userIds: employees.map(e => e.id),
+    shifts: planningEtab,
+    absences: absencesCcnt,
+    debut: periodeCcnt.debut,
+    fin: periodeCcnt.fin,
+    ...reglagesCcnt,
+  }) : []), [canWrite, employees, planningEtab, absencesCcnt, periodeCcnt.debut, periodeCcnt.fin, reglagesCcnt.heuresSemaine, reglagesCcnt.saisonnier]);
+  const constatsCcntCase = React.useMemo(() => constatsParCase(constatsCcnt), [constatsCcnt]);
+
   // Mois courant en label fr (ex: "avril 2026")
   const currentMonthLabel = React.useMemo(() => {
     const ref = new Date(selectedDate + 'T12:00:00');
@@ -472,6 +511,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
       alertLegacy('Veuillez remplir employé, date, heure de début et heure de fin.');
       return;
     }
+    // Revenir sans enregistrer : la fenêtre de saisie reste ouverte.
+    const conforme = confirmerCcnt({ ajouts: [{ ...editForm, etablissementId: editForm.etablissementId || etabId }] });
+    if (conforme !== true && !(await conforme)) return;
     if (legacySB) {
       try {
         if (editForm.id) {
@@ -902,6 +944,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
         setBatchSaving(false);
         return;
       }
+
+      // Revenir sans enregistrer : la fenêtre de saisie groupée reste ouverte.
+      const conforme = confirmerCcnt({ ajouts: toCreate, retraits: Array.from(idsToRemove) });
+      if (conforme !== true && !(await conforme)) return;
 
       let createdShifts = [];
       if (legacySB) {
@@ -1437,7 +1483,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
           onExporter={() => setExportOuvert(true)}
         />
       ) : activeTab === 'planning' ? (
-        isMobile ? renderMobilePlanning() : (
+        <>
+        {isMobile ? renderMobilePlanning() : (
           <Panneau style={pls.panneau}>
             <div style={pls.enteteGrille}>
               <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)' }}>Planning {horizon} semaine{horizon > 1 ? 's' : ''}</div>
@@ -1510,7 +1557,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                         const vise = glisser.glisse && glisser.glisse.cle === cle ? glisser.glisse.etat : null;
                         return (
                           <div key={d.date} data-planning-case={cle} data-etat-depot={vise || undefined} style={vise ? { ...pls.dayCell, ...pls.caseVisee[vise] } : pls.dayCell}>
-                            <ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected} absence={absenceDe(absencesVisibles, emp.id, d.date)} onRemplir={remplissage && canWrite ? remplirCase : null} glisser={glisserCase} alertes={alertesTemps}/>
+                            <ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected} absence={absenceDe(absencesVisibles, emp.id, d.date)} onRemplir={remplissage && canWrite ? remplirCase : null} glisser={glisserCase} pied={<MarqueCcnt constats={constatsCcntCase.get(cleCaseCcnt(emp.id, d.date))} />}/>
                           </div>
                         );
                       })}
@@ -1522,7 +1569,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
               </div>
             </div>
           </Panneau>
-        )
+        )}
+        {canWrite && (
+          <div className="no-print">
+            <PanneauCcnt constats={constatsCcnt} personnes={employees.filter(e => passeFiltre(e.id))} nomDe={nomDe} />
+          </div>
+        )}
+        </>
       ) : activeTab === 'pointage' ? (
         isMobile ? renderMobilePointage() : (
           <Panneau style={pls.panneau}>
@@ -1924,6 +1977,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
             onClick={() => setShowBulkDeleteConfirm(true)}
           >Supprimer ({selectedIds.size})</button>
         </div>
+      )}
+
+      {/* Confirmation CCNT : ouverte par confirmerCcnt avant une écriture qui
+          crée une infraction, au-dessus de la fenêtre qui écrit. */}
+      {confirmationCcnt && (
+        <ConfirmationCcnt infractions={confirmationCcnt.infractions} nomDe={nomDe} onRepondre={repondreCcnt} />
       )}
 
       {saisieRapide && canWrite && (

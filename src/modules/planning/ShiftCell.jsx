@@ -30,9 +30,10 @@ const activable = (agir) => ({
 // horaire s'attrape à la souris ou par appui long ; il ne sélectionne pas de
 // texte et n'ouvre pas le menu d'appui long. origineId : l'horaire traîné
 // (pâli, contour pointillé) ; souleveId : l'horaire soulevé par l'appui long.
-// alertes : Map id d'horaire -> contrôles du temps de travail (tempsTravail.js),
-// ou null ; un point et un mot sous les heures, la règle en infobulle.
-const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openEditShift, calcHeures, selectionMode = false, selectedIds, toggleShiftSelected, absence = null, onRemplir = null, glisser = null, alertes = null }) => {
+// pied : posé sous les horaires du jour, dans la case (marque de conformité
+// CCNT) ; une case vide n'en reçoit pas, les règles du jour visent un jour
+// travaillé.
+const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openEditShift, calcHeures, selectionMode = false, selectedIds, toggleShiftSelected, absence = null, onRemplir = null, glisser = null, pied = null }) => {
   const shifts = getShiftsDay(userId, date);
   const remplir = (e) => { e.stopPropagation(); onRemplir(userId, date); };
   if (shifts.length === 0) {
@@ -99,17 +100,11 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
               {(shift.poste || heures) && (
                 <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{[heures > 0 && formatDuree(heures), shift.poste].filter(Boolean).join(', ')}</div>
               )}
-              {alertes?.get(shift.id)?.map((a) => (
-                <div key={a.code} title={a.phrase} data-temps-travail={a.code} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--t1)', color: 'var(--warning-text)', lineHeight: 1.3 }}>
-                  <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 'var(--r-full)', background: 'var(--warning-strong)', flexShrink: 0 }} />
-                  <span>{a.libelle}</span>
-                  <span data-no-translate="" style={{ fontFamily: 'var(--font-num)', whiteSpace: 'nowrap' }}>{a.valeur}</span>
-                </div>
-              ))}
             </div>
           </div>
         );
       })}
+      {pied}
       {canWrite && !selectionMode && !onRemplir && shifts.length < 2 && (
         <div
           style={{ ...pls.emptyCell, minHeight: 22, padding: '2px', fontSize: 'var(--t1)' }}

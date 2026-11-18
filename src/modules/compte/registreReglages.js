@@ -206,13 +206,6 @@ export const SECTIONS = [
     charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionContrats })),
   },
   {
-    id: 'planning_temps_travail', libelle: 'Planning : temps de travail', onglet: 'Temps de travail', detail: 'Repos, pauses, journée et semaine les plus longues, signalés dans la grille',
-    motsCles: 'loi ltr ccnt repos pause heures maximum', groupe: 'modules', portee: 'maison', module: 'planning',
-    garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
-    charger: () => import('../planning/SectionsReglesPlanning.jsx').then((m) => ({ default: m.SectionTempsTravail })),
-    signaux: ['reglages_maison'],
-  },
-  {
     id: 'planning_pointage', libelle: 'Planning : pointage', onglet: 'Pointage', detail: 'Arrivée en avance et arrondi des heures comptées',
     motsCles: 'pointer arrondi avance heures comptées salaires', groupe: 'modules', portee: 'maison', module: 'planning',
     garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),

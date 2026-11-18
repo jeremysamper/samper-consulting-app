@@ -112,3 +112,29 @@ test('lignes du même article sur une pièce : prix moyen pondéré ; lecture do
   assert.ok(Math.abs(h[0].ecartPct - 10) < 1e-9); // (30.60 + 36.72) / 10,2 kg = 6.60
   assert.equal(h[0].doute, true);
 });
+
+test('prix d\'avant de plus d\'un an : plus une référence, aucune hausse', () => {
+  const h = haussesPrix([
+    doc({ id: 'a', dateDocument: '2025-10-01', lignes: [tomates(30.6)] }),
+    doc({ id: 'b', dateDocument: '2026-11-01', lignes: [tomates(33.66)] }),
+  ]);
+  assert.equal(h.length, 0);
+});
+
+test('lecture bornée (fenêtre + un an) : mêmes hausses que tout l\'historique', () => {
+  const docs = [
+    doc({ id: 'a', dateDocument: '2024-05-01', lignes: [tomates(20)] }),
+    doc({ id: 'b', dateDocument: '2025-06-01', lignes: [tomates(25)] }),
+    doc({ id: 'c', dateDocument: '2025-12-01', lignes: [tomates(30.6)] }),
+    doc({ id: 'd', dateDocument: '2026-10-20', lignes: [tomates(33.66)] }),
+    doc({ id: 'e', dateDocument: '2026-11-10', lignes: [tomates(37.03)] }),
+  ];
+  const depuis = '2026-08-20';
+  const debutLecture = '2025-08-20'; // depuis moins 365 jours
+  const tout = haussesPrix(docs, { depuis });
+  const borne = haussesPrix(docs.filter((d) => d.dateDocument >= debutLecture), { depuis });
+  assert.deepEqual(borne, tout);
+  assert.deepEqual(tout.map((h) => h.docId), ['e', 'd']);
+  assert.equal(tout[0].reference, null);
+  assert.equal(tout[0].libelle, 'PARMADORO PUREE TOMATES');
+});

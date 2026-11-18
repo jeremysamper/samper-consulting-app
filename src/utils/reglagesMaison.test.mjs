@@ -1,7 +1,7 @@
 // node --test : réglages de la maison, lecture prudente et fermetures.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAUTS, jourIsoDe, maisonFermee, normaliserLigne, normaliserFermetures, normaliserObjectifs, normaliserPointage, normaliserTempsTravail, versBase } from './reglagesMaison.js';
+import { DEFAUTS, jourIsoDe, maisonFermee, normaliserLigne, normaliserFermetures, normaliserObjectifs, normaliserPointage, versBase } from './reglagesMaison.js';
 
 // Cas partagés avec la copie TypeScript de l'évaluateur d'alertes
 // (supabase/functions/alerts-evaluator/helpers/fermetures.ts) : mêmes entrées,
@@ -32,23 +32,20 @@ test('fermetures : jours, périodes, services', () => {
 
 test('lecture prudente : ligne absente ou illisible = défauts', () => {
   assert.deepEqual(normaliserLigne(null), DEFAUTS);
-  assert.deepEqual(normaliserLigne({ fermetures: 'x', temps_travail: [], pointage: null, objectifs: 3 }), DEFAUTS);
+  assert.deepEqual(normaliserLigne({ fermetures: 'x', pointage: null, objectifs: 3 }), DEFAUTS);
   const f = normaliserFermetures({ jours_fermes: [1, 1, 9, '3'], services_fermes: { 2: ['soir', 'nuit'], 8: ['midi'] }, periodes: [{ du: '2026-02-01', au: '2026-01-01' }, { du: '2026-01-01', au: '2026-01-02', motif: 7 }] });
   assert.deepEqual(f, { joursFermes: [1, 3], servicesFermes: { 2: ['soir'] }, periodes: [{ du: '2026-01-01', au: '2026-01-02', motif: '' }] });
   assert.deepEqual(normaliserPointage({ arrondi_min: 7, avance: 'autre' }), DEFAUTS.pointage);
   assert.deepEqual(normaliserPointage({ arrondi_min: 15, avance: 'prevue' }), { arrondiMin: 15, avance: 'prevue' });
-  assert.equal(normaliserTempsTravail({ repos_min_h: 3 }).reposMinH, 11);
-  assert.equal(normaliserTempsTravail({ semaine_max_h: null }).semaineMaxH, null);
   assert.deepEqual(normaliserObjectifs({ matiere_pct: '28,5', personnel_pct: 120, ca_mensuel_ht: 90000 }), { matierePct: 28.5, personnelPct: null, caMensuelHt: 90000 });
 });
 
 test('aller-retour avec la base : rien ne se perd', () => {
   const lisible = {
     fermetures: { joursFermes: [1], servicesFermes: { 2: ['soir'] }, periodes: [{ du: '2026-12-24', au: '2027-01-05', motif: 'Vacances' }] },
-    tempsTravail: { actif: true, reposMinH: 11, pausesLoi: true, journeeMaxH: 10, semaineMaxH: 50, joursReposSemaine: 2 },
     pointage: { arrondiMin: 5, avance: 'prevue' },
     objectifs: { matierePct: 28, personnelPct: 35, caMensuelHt: 120000 },
   };
-  const ligne = Object.fromEntries([['fermetures', versBase.fermetures(lisible.fermetures)], ['temps_travail', versBase.tempsTravail(lisible.tempsTravail)], ['pointage', versBase.pointage(lisible.pointage)], ['objectifs', versBase.objectifs(lisible.objectifs)]]);
+  const ligne = Object.fromEntries([['fermetures', versBase.fermetures(lisible.fermetures)], ['pointage', versBase.pointage(lisible.pointage)], ['objectifs', versBase.objectifs(lisible.objectifs)]]);
   assert.deepEqual(normaliserLigne(JSON.parse(JSON.stringify(ligne))), lisible);
 });

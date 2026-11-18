@@ -31,7 +31,7 @@ async function lire(etabId, { force = false } = {}) {
   if (enVol.has(etabId)) return enVol.get(etabId);
   const p = (async () => {
     const [maison, objectifs] = await Promise.all([
-      supabase.from('reglages_maison').select('etablissement_id, fermetures, temps_travail, pointage').eq('etablissement_id', etabId).maybeSingle(),
+      supabase.from('reglages_maison').select('etablissement_id, fermetures, pointage').eq('etablissement_id', etabId).maybeSingle(),
       supabase.from('objectifs_maison').select('objectifs').eq('etablissement_id', etabId).maybeSingle(),
     ]);
     const error = maison.error || objectifs.error;
@@ -76,7 +76,7 @@ export function useReglagesMaison(etabId) {
 
   useReglageModifie('reglages_maison', () => recharger(true));
 
-  // Écrit un bloc (fermetures, tempsTravail, pointage, objectifs), déjà sous sa
+  // Écrit un bloc (fermetures, pointage, objectifs), déjà sous sa
   // forme lisible ; les autres blocs de la ligne ne sont pas touchés.
   const enregistrer = useCallback(async (bloc, valeur) => {
     if (!etabId || !COLONNES[bloc]) return { error: 'Réglage inconnu.' };
