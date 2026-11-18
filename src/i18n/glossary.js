@@ -1753,6 +1753,11 @@ export const UI_GLOSSARY = {
   'horaires cette semaine': 'shifts this week',
   'horaire cette semaine': 'shift this week',
   'aucun horaire cette semaine': 'no shift this week',
+  // Écrans vides qui proposent la prochaine action (lot A2).
+  "Aucune fiche pour l'instant. Photographiez vos fiches papier ou importez un fichier Excel : l'app les lit, vous relisez.": "No recipe sheet yet. Take a photo of your paper sheets or import an Excel file: the app reads them, you check.",
+  "Aucune fiche pour l'instant. Importez vos fiches depuis le modèle Excel, ou créez-en une avec « Nouvelle fiche ».": "No recipe sheet yet. Import your sheets from the Excel template, or create one with \"New sheet\".",
+  "Votre équipe n'est pas encore dans l'app. Votre consultant crée le compte de chaque personne : envoyez-lui la liste, avec le rôle de chacun. Le planning se remplit ensuite ici.": "Your team is not in the app yet. Your consultant creates an account for each person: send them the list, with each person's role. The schedule then fills in here.",
+  "Importer des fiches": "Import recipe sheets",
   // Temps gagné (lot T, tableau de bord du patron).
   "Temps gagné": "Time saved",
   "Temps gagné cette semaine": "Time saved this week",

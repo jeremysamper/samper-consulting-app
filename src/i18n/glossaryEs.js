@@ -5746,4 +5746,9 @@ export const UI_GLOSSARY_ES = {
   "Une partie de l'exemple n'a pas été chargée. Réessayez.": 'Una parte del ejemplo no se cargó. Inténtelo de nuevo.',
   "Une partie de l'exemple est utilisée ailleurs et reste en place.": 'Una parte del ejemplo se usa en otro lugar y se queda.',
   'Modèle introuvable. Réessayez plus tard.': 'Plantilla no encontrada. Inténtelo más tarde.',
+  // Écrans vides qui proposent la prochaine action (lot A2).
+  "Aucune fiche pour l'instant. Photographiez vos fiches papier ou importez un fichier Excel : l'app les lit, vous relisez.": "Todavía no hay fichas. Fotografíe sus fichas en papel o importe un archivo Excel: la app las lee y usted las revisa.",
+  "Aucune fiche pour l'instant. Importez vos fiches depuis le modèle Excel, ou créez-en une avec « Nouvelle fiche ».": "Todavía no hay fichas. Importe sus fichas desde la plantilla Excel o cree una con «Nueva ficha».",
+  "Votre équipe n'est pas encore dans l'app. Votre consultant crée le compte de chaque personne : envoyez-lui la liste, avec le rôle de chacun. Le planning se remplit ensuite ici.": "Su equipo todavía no está en la app. Su consultor crea la cuenta de cada persona: envíele la lista con el rol de cada una. Después, el planning se rellena aquí.",
+  "Importer des fiches": "Importar fichas",
 };

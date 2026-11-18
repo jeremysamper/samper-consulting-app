@@ -2309,7 +2309,20 @@ const Recettes = ({ user, etablissement }) => {
                         : 'Hors ligne : les recettes de cet établissement n’ont pas encore été chargées sur cet appareil. Elles s’afficheront au retour du réseau.')}
                     onRetry={dataStatus === 'error' ? retryAll : null}
                   />
-                : <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize: 'var(--t2)'}}>{canFiches ? 'Aucune recette pour cet établissement. Le bouton « Nouvelle fiche » en crée une.' : 'Aucune recette pour cet établissement.'}</div>
+                : (
+                  // Écran vide d'un établissement neuf (lot A2) : la prochaine
+                  // action, importer les fiches existantes plutôt que les retaper.
+                  <div style={{padding:24, textAlign:'center', color:'var(--text2)', fontSize: 'var(--t2)'}} data-vide-fiches="">
+                    <p style={{ margin: 0 }}>
+                      {!canFiches
+                        ? 'Aucune recette pour cet établissement.'
+                        : peutLireFichesParIA(user)
+                          ? "Aucune fiche pour l'instant. Photographiez vos fiches papier ou importez un fichier Excel : l'app les lit, vous relisez."
+                          : "Aucune fiche pour l'instant. Importez vos fiches depuis le modèle Excel, ou créez-en une avec « Nouvelle fiche »."}
+                    </p>
+                    {canFiches && <div style={{ marginTop: 12 }}><Btn onClick={() => setShowImport(true)}>Importer des fiches</Btn></div>}
+                  </div>
+                )
             ) : (
               <VitrineFiches
                 recettesEtab={recettesEtab}
@@ -2328,6 +2341,8 @@ const Recettes = ({ user, etablissement }) => {
                 onOuvrir={ouvrirFiche}
                 onEtiquette={setEtiquetteRecette}
                 onModifierPlat={(plat) => setPlatEdite({ plat })}
+                onImporter={() => setShowImport(true)}
+                importParPhoto={peutLireFichesParIA(user)}
                 ficheQuitteeId={ficheQuitteeRef.current}
                 refQuittee={vignetteQuitteeRef}
               />

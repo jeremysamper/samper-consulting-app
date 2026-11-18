@@ -1,4 +1,5 @@
 import React from 'react';
+import { Btn } from '../../components/ui/index.jsx';
 import { Clock, Users } from 'lucide-react';
 import VignetteFiche from '../../components/fiches/VignetteFiche.jsx';
 import SectionFiches, { GrilleFiches } from '../../components/fiches/SectionFiches.jsx';
@@ -58,6 +59,7 @@ export default function VitrineFiches({
   canFiches, canEtiqueter, voirArchivees, onBasculerArchivees,
   voirPlats = false, onBasculerPlats, selection = null,
   onOuvrir, onEtiquette, onModifierPlat, ficheQuitteeId, refQuittee,
+  onImporter = null, importParPhoto = false,
 }) {
   const visiblesParId = React.useMemo(() => new Map((recettesEtab || []).map((r) => [r.id, r])), [recettesEtab]);
   const platsParRecette = React.useMemo(() => {
@@ -146,11 +148,20 @@ export default function VitrineFiches({
         </p>
       )}
       {rien && !q && (
-        <p className="fv-vide-recherche">
-          {canFiches
-            ? 'Aucune recette pour cet établissement. Le bouton « Nouvelle fiche » en crée une.'
-            : 'Aucune recette pour cet établissement.'}
-        </p>
+        // Écran vide d'un établissement neuf (lot A2) : la prochaine action,
+        // importer les fiches qui existent déjà, plutôt que les retaper.
+        <div className="fv-vide-recherche" data-vide-fiches="">
+          <p style={{ margin: 0 }}>
+            {!canFiches
+              ? 'Aucune recette pour cet établissement.'
+              : importParPhoto
+                ? "Aucune fiche pour l'instant. Photographiez vos fiches papier ou importez un fichier Excel : l'app les lit, vous relisez."
+                : "Aucune fiche pour l'instant. Importez vos fiches depuis le modèle Excel, ou créez-en une avec « Nouvelle fiche »."}
+          </p>
+          {canFiches && onImporter && (
+            <div style={{ marginTop: 12 }}><Btn onClick={onImporter}>Importer des fiches</Btn></div>
+          )}
+        </div>
       )}
 
       {groupes.map(([cat, items]) => (

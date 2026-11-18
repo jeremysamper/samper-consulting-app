@@ -1372,6 +1372,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           heures={heuresSemaine}
           absents={absentsDuJour}
           canWrite={canWrite}
+          sansEquipe={canWrite && !employees.some(u => !['consultant', 'patron'].includes(u.role))}
           gerer={[
             // Sur téléphone, les cartes du pointage n'ouvrent pas le détail : pas de correction.
             !isMobile && { titre: 'Corriger un pointage', detail: 'Touchez ensuite la ligne de la personne.', onClick: () => setEcran('equipe') },

@@ -5696,4 +5696,9 @@ export const UI_GLOSSARY_DE = {
   "Une partie de l'exemple n'a pas été chargée. Réessayez.": "Ein Teil des Beispiels wurde nicht geladen. Versuchen Sie es erneut.",
   "Une partie de l'exemple est utilisée ailleurs et reste en place.": "Ein Teil des Beispiels wird anderswo verwendet und bleibt bestehen.",
   "Modèle introuvable. Réessayez plus tard.": "Vorlage nicht gefunden. Versuchen Sie es später erneut.",
+  // Écrans vides qui proposent la prochaine action (lot A2).
+  "Aucune fiche pour l'instant. Photographiez vos fiches papier ou importez un fichier Excel : l'app les lit, vous relisez.": "Noch kein Rezeptblatt. Fotografieren Sie Ihre Papierblätter oder importieren Sie eine Excel-Datei: Die App liest sie, Sie prüfen.",
+  "Aucune fiche pour l'instant. Importez vos fiches depuis le modèle Excel, ou créez-en une avec « Nouvelle fiche ».": "Noch kein Rezeptblatt. Importieren Sie Ihre Blätter aus der Excel-Vorlage oder erstellen Sie eines mit «Neues Rezeptblatt».",
+  "Votre équipe n'est pas encore dans l'app. Votre consultant crée le compte de chaque personne : envoyez-lui la liste, avec le rôle de chacun. Le planning se remplit ensuite ici.": "Ihr Team ist noch nicht in der App. Ihr Berater erstellt für jede Person ein Konto: Senden Sie ihm die Liste mit der Rolle jeder Person. Danach füllt sich der Dienstplan hier.",
+  "Importer des fiches": "Rezeptblätter importieren",
 };

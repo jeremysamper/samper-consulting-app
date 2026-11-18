@@ -5,6 +5,7 @@ import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
 import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 import ReperesPlanning, { CartePlanningEquipe } from './ReperesPlanning.jsx';
+import { Panneau } from '../../components/ui/index.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Accueil du module Planning : une tuile par tâche, sur la grille partagée
@@ -32,7 +33,7 @@ function etatDuJour(jour) {
   return <>hors planning, ajouté au planning à votre nom</>;
 }
 
-export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats, heures, absents, canWrite, gerer, onPointer, onHoraires, onEquipe, onPlanning }) {
+export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats, heures, absents, canWrite, gerer, onPointer, onHoraires, onEquipe, onPlanning, sansEquipe = false }) {
   const [gererOuvert, setGererOuvert] = React.useState(false);
   const fermer = React.useCallback(() => setGererOuvert(false), []);
   const choix = gerer.filter(Boolean);
@@ -65,6 +66,13 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats
   return (
     <>
       <div className="pl-page">
+        {sansEquipe && (
+          // Établissement neuf (lot A2) : sans équipe, « Faire le planning »
+          // ouvre une grille vide. L'écran dit d'abord ce qui manque.
+          <Panneau style={{ marginBottom: 24 }}>
+            <p style={st.vide} data-planning-sans-equipe="">Votre équipe n'est pas encore dans l'app. Votre consultant crée le compte de chaque personne : envoyez-lui la liste, avec le rôle de chacun. Le planning se remplit ensuite ici.</p>
+          </Panneau>
+        )}
         <div className="pl-grille">
           <ReperesPlanning equipe={equipe} heures={heures} absents={absents} />
           <CartePlanningEquipe etats={etats} />
@@ -84,4 +92,5 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats
 
 const st = {
   choix: { display: 'flex', flexDirection: 'column', gap: 6 },
+  vide: { margin: 0, fontSize: 'var(--t2)', lineHeight: 1.5, color: 'var(--text)' },
 };
