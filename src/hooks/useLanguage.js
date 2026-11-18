@@ -16,8 +16,8 @@ function readInitialLang() {
 }
 
 /**
- * Mode d'affichage « Original » (français, tel que saisi), « English » ou
- * « Español » (traduction à la volée du DOM). Voir src/i18n/domTranslator.js
+ * Mode d'affichage « Original » (français, tel que saisi), « English »,
+ * « Español » ou « Deutsch » (traduction à la volée du DOM). Voir src/i18n/domTranslator.js
  */
 export function useLanguage(etablissementId) {
   const [state, setState] = useState(() => ({ lang: getLanguage(), translating: false, degraded: false }));

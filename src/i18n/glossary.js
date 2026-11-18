@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════════════════════════
-// Glossaire statique FR → EN (le pendant espagnol vit dans glossaryEs.js).
+// Glossaire statique FR → EN (les pendants espagnol et allemand vivent dans
+// glossaryEs.js et glossaryDe.js).
 //
 // Couvre le vocabulaire d'interface le plus fréquent (navigation, actions,
 // statuts, en-têtes de tableaux, catégories produits). Ces chaînes sont
@@ -19,6 +20,7 @@
 import { normalizeSearch } from '../utils/searchText.js';
 import { splitAffixes } from './affixes.js';
 import { UI_GLOSSARY_ES } from './glossaryEs.js';
+import { UI_GLOSSARY_DE } from './glossaryDe.js';
 
 export const UI_GLOSSARY = {
   // ── Points : crédits des photos ──
@@ -1531,7 +1533,7 @@ export const UI_GLOSSARY = {
   'Un montant positif et une date de début ; la fin après le début.': 'A positive amount and a start date; the end after the start.',
   'Le nouveau salaire commence après le début du salaire actuel.': 'The new salary starts after the start of the current salary.',
   'Salaire enregistré.': 'Salary saved.',
-  'Même calcul que le Chiffrage des Outils consultant : prix du catalogue, sinon prix noté dans la fiche. Prix de vente TVA comprise. La moyenne de la carte compte un plat de chaque, sans les quantités vendues.': 'Same calculation as the Costing in the Consultant tools: catalogue price, otherwise the price noted in the recipe. Selling prices incl. VAT. The menu average counts one of each dish, without quantities sold.',
+  'Même calcul que le Chiffrage de Cartes & Recettes : prix du catalogue, sinon prix noté dans la fiche. Prix de vente TVA comprise. La moyenne de la carte compte un plat de chaque, sans les quantités vendues.': 'Same calculation as the Costing in Menus & Recipes: catalogue price, otherwise the price noted in the recipe. Selling prices incl. VAT. The menu average counts one of each dish, without quantities sold.',
   'fiche à prix de vente': 'recipe with a selling price',
   'fiches à prix de vente': 'recipes with a selling price',
   'food cost': 'food cost',
@@ -3012,6 +3014,7 @@ export const UI_GLOSSARY = {
   'Une autre pile d\'inventaires : cave, matériel, consommables…': 'Another stack of inventories: cellar, equipment, consumables…',
   'autre date, départ vierge ou catalogue, nouveau périmètre': 'another date, blank start or catalogue, new scope',
   'une page après l’autre, avec l’appareil photo': 'one page after another, with the camera',
+  'la feuille seule et droite dans le cadre, une page après l’autre': 'the sheet alone and straight in the frame, one page after another',
   'reçus par mail ou déjà sur l’appareil, plusieurs à la fois': 'received by email or already on the device, several at once',
   'Rouvrir cet inventaire': 'Reopen this inventory',
   'Il repassera « en cours » et redeviendra modifiable.': 'It will go back to « in progress » and become editable again.',
@@ -3167,6 +3170,14 @@ export const UI_GLOSSARY = {
   'Prix de vente du plat': 'Selling price of the dish',
   'Demande le droit Modifier': 'Requires the Edit right',
   'Créer et modifier les fiches': 'Create and edit sheets',
+  // ── Chiffrage dans Cartes & Recettes (18.11.2026) ──
+  'Chiffrer les fiches (coûts, prix de vente, marges)': 'Cost the recipe sheets (costs, selling prices, margins)',
+  'Coûts, prix de vente et marges': 'Costs, selling prices and margins',
+  'Coûts, prix de vente et marges des fiches et des plats': 'Costs, selling prices and margins of sheets and dishes',
+  'Coûts, prix de vente et marge de la fiche': 'Costs, selling price and margin of the sheet',
+  'Pour les exporter en Excel chiffré': 'To export them to a costed Excel file',
+  'Choisissez une recette dans la liste': 'Choose a recipe in the list',
+  'Aucun plat': 'No dish',
   'Rattacher la sélection à des plats': 'Link the selection to dishes',
   'Aucun plat. « Ajouter un plat » sur une carte en crée un.': 'No dishes. “Add a dish” on a menu creates one.',
   'Transférer': 'Transfer',
@@ -4874,7 +4885,7 @@ export const UI_GLOSSARY = {
   "Mode clair ou sombre, langue d'affichage": 'Light or dark mode, display language',
   'Sur cet appareil. Le bouton de la barre du haut fait la même chose.': 'On this device. The button in the top bar does the same.',
   "Langue d'affichage": 'Display language',
-  "Original garde le texte tel qu'il a été saisi. English et Español traduisent l'écran, pas les données.": 'Original keeps the text as it was typed. English and Español translate the screen, not the data.',
+  "Original garde le texte tel qu'il a été saisi. English, Español et Deutsch traduisent l'écran, pas les données.": 'Original keeps the text as it was typed. English, Español and Deutsch translate the screen, not the data.',
   'Tous les réglages': 'All settings',
   // ── Réglages : section Caisse ──
   'Catégories, produits, modes, paiement, terminal, TVA et clôture': 'Categories, products, modes, payment, terminal, VAT and closing',
@@ -5202,7 +5213,7 @@ export const UI_GLOSSARY = {
   "Casse": "Breakage",
   "Préparations": "Preparations",
   // ── Statistiques (S2) : Marges et Chiffrage ──
-  "Chiffrage (Outils consultant)": "Costing (Consultant tools)",
+  "Chiffrage (Cartes & Recettes)": "Costing (Menus & Recipes)",
   "aujourd'hui, aux prix et coûts actuels": "today, at current prices and costs",
   "Ensemble": "All",
   "valeur d'aujourd'hui": "today's value",
@@ -5308,7 +5319,7 @@ export const UI_GLOSSARY = {
   "E-mail d'envoi": "Sending email",
   "Nom, téléphone, mot de passe, double authentification, déconnexion": "Name, phone, password, two-factor authentication, sign out",
   "Thème, taille du texte, densité, couleur des actions, animations, contraste": "Theme, text size, density, action colour, animations, contrast",
-  "Original, English ou Español, pour l'affichage": "Original, English or Español, for display",
+  "Original, English, Español ou Deutsch, pour l'affichage": "Original, English, Español or Deutsch, for display",
   "La page qui s'ouvre au lancement de l'app": "The page that opens when the app starts",
   "Présentation, menu déplié, geste de retour par le bord": "Layout, expanded menu, edge swipe back",
   "Chercher un réglage": "Search settings",
@@ -5339,7 +5350,7 @@ export const UI_GLOSSARY = {
   "Le bouton principal, la pilule choisie et l'entrée choisie du menu. Pétrole est la couleur de la marque.": "The main button, the selected pill and the selected menu entry. Petrol is the brand colour.",
   "Plus de fondus ni de glissements : les écrans changent d'un coup.": "No more fades or slides: screens change at once.",
   "Textes secondaires plus foncés, filets et contours plus marqués.": "Darker secondary text, stronger rules and outlines.",
-  "Original garde le texte tel qu'il a été saisi. English et Español traduisent l'écran, pas les données. Le sélecteur de la barre du haut fait la même chose.": "Original keeps the text as it was typed. English and Español translate the screen, not the data. The selector in the top bar does the same.",
+  "Original garde le texte tel qu'il a été saisi. English, Español et Deutsch traduisent l'écran, pas les données. Le sélecteur de la barre du haut fait la même chose.": "Original keeps the text as it was typed. English, Español and Deutsch translate the screen, not the data. The selector in the top bar does the same.",
   "Ouvrir l'app sur": "Open the app on",
   "La dernière page ouverte": "The last page opened",
   "La page d'accueil": "The home page",
@@ -5495,6 +5506,37 @@ export const UI_GLOSSARY = {
   "atteint": "met",
   "dépassé": "exceeded",
   "pas atteint": "not met",
+  // ── Factures & achats : hausses de prix fournisseur ──
+  'Hausses de prix': "Price increases",
+  'hausses à voir': "price increases to review",
+  'hausse à voir': "price increase to review",
+  'aucune hausse à voir': "no price increase to review",
+  'Aucune hausse à voir.': "No price increase to review.",
+  'À voir': "To review",
+  'Déjà vues': "Already seen",
+  'Marquer comme vu': "Mark as seen",
+  'Remettre à voir': "Mark as unseen",
+  'vue le': "seen on",
+  'bon de livraison du': "delivery note of",
+  "prix d'avant du": "previous price from",
+  'soit': "that is",
+  'CHF de plus sur ce document': "CHF more on this document",
+  'CHF la pièce': "CHF per piece",
+  "Lecture à vérifier : le montant n'a pas été retrouvé sur la ligne imprimée.": "Reading to check: the amount was not found on the printed line.",
+  'Les hausses de prix ne sont pas encore activées sur la base de données.': "Price increases are not yet enabled in the database.",
+  "Les hausses de prix n'ont pas pu être lues. Réessayez dans un instant.": "Price increases could not be read. Try again in a moment.",
+  "Prix à l'unité (kilo, litre ou pièce) comparé au prix précédent du même article chez le même fournisseur, sur les factures et les bons de livraison des": "Unit price (kilo, litre or piece) compared with the previous price of the same item from the same supplier, on invoices and delivery notes from the last",
+  'derniers jours.': "days.",
+  'Alerte dès': "Alert from",
+  'Le seuil se règle dans les réglages de Factures & achats.': "The threshold is set in the Invoices & purchases settings.",
+  "Seuil d'alerte sur les prix des fournisseurs": "Alert threshold on supplier prices",
+  'Alerter dès une hausse de (%)': "Alert from an increase of (%)",
+  "Prix à l'unité (kilo, litre ou pièce) d'un article, comparé à son prix précédent chez le même fournisseur. Par défaut :": "Unit price (kilo, litre or piece) of an item, compared with its previous price from the same supplier. Default:",
+  'Un seuil entre 1 et 50 %.': "A threshold between 1 and 50%.",
+  'Seuil enregistré.': "Threshold saved.",
+  "Le seuil n'a pas pu être lu. Réessayez dans un instant.": "The threshold could not be read. Try again in a moment.",
+  "Le seuil n'a pas pu être enregistré. Réessayez dans un instant.": "The threshold could not be saved. Try again in a moment.",
+  "La hausse n'a pas pu être enregistrée. Réessayez dans un instant.": "The price increase could not be saved. Try again in a moment.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
@@ -5506,7 +5548,7 @@ export const DO_NOT_TRANSLATE = new Set([
 ]);
 
 // Une table par langue cible, toutes indexées sur la même chaîne française.
-const TABLES = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES };
+const TABLES = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES, de: UI_GLOSSARY_DE };
 
 /**
  * Forme indexée d'une entrée : la clé réduite à son cœur, comme le moteur
@@ -5563,7 +5605,7 @@ function glossaryIndex(lang) {
  * est découpée de la même façon et retrouve ses affixes autour de la traduction.
  * Préserve la casse tout-majuscules (« SUPPRIMER » → « DELETE » / « ELIMINAR »).
  * @param {string} source chaîne française
- * @param {'en'|'es'} [lang='en'] langue cible
+ * @param {'en'|'es'|'de'} [lang='en'] langue cible
  * @returns {string|null} la traduction, ou null si absente du glossaire.
  */
 export function lookupGlossary(source, lang = 'en') {

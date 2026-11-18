@@ -126,11 +126,12 @@ test('aucune ouverture sur le KDS ni sur le pointage', () => {
   assert.equal(pageExclue('accueil'), false);
 });
 
-test('chaque texte est dans les deux glossaires', () => {
+test('chaque texte est dans les trois glossaires', () => {
   const manquants = [];
   textesATraduire().forEach((t) => {
     if (!lookupGlossary(t, 'en')) manquants.push(`en: ${t}`);
     if (!lookupGlossary(t, 'es')) manquants.push(`es: ${t}`);
+    if (!lookupGlossary(t, 'de')) manquants.push(`de: ${t}`);
   });
   assert.deepEqual(manquants, []);
   assert.ok(textesATraduire().length >= 30);

@@ -726,7 +726,7 @@ html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45;
 }
 
 /* Sélecteur de langue desktop (LanguageToggle) : libellés complets en grand
-   écran, codes FR / EN / ES en dessous de 1280 px. Avec trois libellés
+   écran, codes FR / EN / ES / DE en dessous de 1280 px. Avec les libellés
    complets, le titre de page passait sur deux lignes à 1024 px. */
 .lang-seg-code { display: none; }
 @media (max-width: 1279.98px) {

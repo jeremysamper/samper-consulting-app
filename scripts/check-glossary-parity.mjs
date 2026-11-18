@@ -1,10 +1,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Parité des glossaires de traduction (src/i18n/glossary.js ↔ glossaryEs.js).
+// Parité des glossaires de traduction (src/i18n/glossary.js ↔ glossaryEs.js
+// ↔ glossaryDe.js).
 //
-// Les deux tables sont indexées sur la même chaîne française. Une clé présente
-// dans une seule d'entre elles ne casse rien, mais la chaîne part à l'IA dans
-// l'autre langue : plus lente, en ligne seulement, et payante à chaque
-// établissement. D'où ce contrôle, branché sur `npm run lint`.
+// Les trois tables sont indexées sur la même chaîne française. Une clé absente
+// d'une table ne casse rien, mais la chaîne part à l'IA dans cette langue :
+// plus lente, en ligne seulement, et payante à chaque établissement. D'où ce
+// contrôle, branché sur `npm run lint`. L'anglais sert de référence : chaque
+// autre table doit avoir exactement ses clés.
 //
 // Les clés sont indexées sur leur cœur, ponctuation d'entourage retirée comme
 // le moteur la retire du texte affiché (glossaryEntryCore). Une clé ponctuée
@@ -20,16 +22,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
 import { UI_GLOSSARY, glossaryEntryCore } from '../src/i18n/glossary.js';
 import { UI_GLOSSARY_ES } from '../src/i18n/glossaryEs.js';
+import { UI_GLOSSARY_DE } from '../src/i18n/glossaryDe.js';
 
-const tables = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES };
+const tables = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES, de: UI_GLOSSARY_DE };
+const fichiers = { es: 'glossaryEs.js', de: 'glossaryDe.js' };
 const problems = [];
 
 const keys = (t) => new Set(Object.keys(t));
 const en = keys(UI_GLOSSARY);
-const es = keys(UI_GLOSSARY_ES);
 
-for (const k of en) if (!es.has(k)) problems.push(`glossaryEs.js : clé manquante ${JSON.stringify(k)}`);
-for (const k of es) if (!en.has(k)) problems.push(`glossary.js : clé manquante ${JSON.stringify(k)}`);
+for (const [lang, fichier] of Object.entries(fichiers)) {
+  const autre = keys(tables[lang]);
+  for (const k of en) if (!autre.has(k)) problems.push(`${fichier} : clé manquante ${JSON.stringify(k)}`);
+  for (const k of autre) if (!en.has(k)) problems.push(`glossary.js : clé manquante ${JSON.stringify(k)} (présente dans ${fichier})`);
+}
 
 let ponctuees = 0;
 for (const [lang, table] of Object.entries(tables)) {
@@ -67,4 +73,4 @@ if (problems.length) {
   process.exit(1);
 }
 
-console.log(`Glossaires alignés : ${en.size} clés en anglais et en espagnol (dont ${ponctuees} ponctuées, indexées sur leur cœur).`);
+console.log(`Glossaires alignés : ${en.size} clés en anglais, en espagnol et en allemand (dont ${ponctuees} ponctuées, indexées sur leur cœur).`);

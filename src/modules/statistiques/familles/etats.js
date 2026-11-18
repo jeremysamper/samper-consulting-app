@@ -1,4 +1,4 @@
-// Familles Marges (Comptabilité) et Chiffrage (Outils consultant) du catalogue
+// Familles Marges (Comptabilité) et Chiffrage (Cartes & Recettes) du catalogue
 // des Statistiques : des valeurs d'aujourd'hui (nature 'etat'), aux prix et
 // coûts actuels, sans série dans le temps. Chaque mesure lit une ligne rendue
 // par etatMarges (comptabilite/serieMarges.js) ou etatChiffrage
@@ -93,7 +93,7 @@ export const familleMarges = {
 
 export const familleChiffrage = {
   id: 'chiffrage',
-  libelle: 'Chiffrage (Outils consultant)',
+  libelle: 'Chiffrage (Cartes & Recettes)',
   journee: 'aujourd\'hui, aux prix et coûts actuels',
   calculer: instantane((d) => ({ fiches: etatChiffrage(d) })),
   mesures: [

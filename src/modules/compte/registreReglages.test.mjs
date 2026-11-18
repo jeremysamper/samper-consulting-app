@@ -69,6 +69,9 @@ const AVANT = {
   objectifs: DIRECTION,
   planning_temps_travail: DIRECTION,
   planning_pointage: DIRECTION,
+  // 18.11.2026 : seuil des hausses de prix fournisseur, réglage neuf, pour qui
+  // voit les hausses (Factures & achats et droit « Régler les factures »).
+  achats_hausses: DIRECTION,
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {

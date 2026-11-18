@@ -145,9 +145,14 @@ export const defaultManageRoles = ['consultant', 'patron'];
 //   Cartes & Recettes. Demande aussi « Modifier » du module (requiertGerer).
 //   Garde de présentation seulement : recettes, plats, plat_recettes et
 //   carte_plats ne vérifient en base que l'établissement (user_can_access_etab).
+//   chiffrage : l'écran Chiffrage de Cartes & Recettes (coûts, prix de vente,
+//   food cost, marges), venu des Outils consultant le 18.11.2026 pour que la
+//   direction et la comptabilité chiffrent seules. Sans « Modifier » : on peut
+//   chiffrer sans toucher aux fiches. Garde de présentation, comme « fiches ».
 export const droitsAction = [
   { id: 'factures_achat', module: 'inventaire', label: 'Régler les factures', defaultRoles: ['consultant', 'patron'] },
   { id: 'fiches', module: 'recettes', label: 'Créer et modifier les fiches', defaultRoles: ['consultant', 'patron'], requiertGerer: true },
+  { id: 'chiffrage', module: 'recettes', label: 'Chiffrer les fiches (coûts, prix de vente, marges)', defaultRoles: ['consultant', 'patron'] },
   //   inspection : passer une chambre « inspectée » (Étages, lot H1). Vérifié
   //   en base par le déclencheur chambres_garde_colonnes (migration
   //   20261028_hotel_h1), mêmes rôles par défaut : les tenir en phase.
@@ -428,8 +433,9 @@ const pageAliases = {
   recettes: 'cartes',
   outils: 'consultant_tools',
   outils_consultant: 'consultant_tools',
-  simulation: 'consultant_tools',
-  simulation_carte: 'consultant_tools',
+  // Le Chiffrage (ex-Simulation) vit dans Cartes & Recettes depuis le 18.11.2026.
+  simulation: 'cartes',
+  simulation_carte: 'cartes',
   roles_acces: 'roles',
   etablissements: 'parametres',
   assistant: 'faq',
@@ -438,13 +444,9 @@ const pageAliases = {
   compta: 'comptabilite'
 };
 
-const consultantToolsTabAliases = {
-  outils: 'chiffrage',
-  outils_consultant: 'chiffrage',
-  // Onglet Simulation retiré le 27.10.2026 : ses anciens liens ouvrent Chiffrage.
-  simulation: 'chiffrage',
-  simulation_carte: 'chiffrage'
-};
+// Les Outils consultant n'ont plus d'onglet à choisir depuis le 18.11.2026
+// (Factures seules, le Chiffrage est parti dans Cartes & Recettes).
+const consultantToolsTabAliases = {};
 
 export function normalizePage(page) {
   return pageAliases[page] || page || 'dashboard';

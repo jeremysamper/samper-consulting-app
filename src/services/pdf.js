@@ -2997,7 +2997,9 @@ const CP1252_EXTRA = new Set([
   0x02DC, 0x2122, 0x0161, 0x203A, 0x0153, 0x017E, 0x0178,
 ]);
 
-function pdfSafeText(value) {
+// Exportée pour les générateurs vectoriels posés dans un module (dossier du
+// contrôle HACCP) : un seul nettoyage des textes pour tous les PDF.
+export function pdfSafeText(value) {
   if (value == null) return '';
   return String(value).replace(/[^\x00-\x7F]/g, (ch) => {
     if (Object.prototype.hasOwnProperty.call(PDF_CHAR_REPLACEMENTS, ch)) return PDF_CHAR_REPLACEMENTS[ch];

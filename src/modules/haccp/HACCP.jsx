@@ -40,6 +40,7 @@ import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { peutConfigurerHaccp } from './gardesHaccp.js';
 import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { chiffresReleves } from './serieHaccp.js';
+import DossierControleFenetre from './DossierControleFenetre.jsx';
 
 
 // ─────────────────────────────────────────────────────
@@ -178,6 +179,8 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   // 'print' | 'pdf' = action demandée ; null = modale fermée.
   const [exportRelevesMode, setExportRelevesMode] = React.useState(null);
   const [exportRelevesBusy, setExportRelevesBusy] = React.useState(false);
+  // Dossier du contrôle (accueil, qui gère le HACCP) : fenêtre de la période.
+  const [dossierOuvert, setDossierOuvert] = React.useState(false);
 
   // ─── Traçabilité : trigger de capture enregistré par le sous-composant ───
   // (ref stable pour éviter une boucle de re-render : Tracabilite ré-enregistre
@@ -908,6 +911,9 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
             <div style={hs.contexte} data-no-translate="">{capitalize(fmtJour(todayStr, false))}</div>
             {(pret || isConsultant) && (
               <div className="module-actions">
+                {pret && canManage && (
+                  <button type="button" style={hs.exportBtn} onClick={() => setDossierOuvert(true)}>Dossier du contrôle</button>
+                )}
                 {pret && boutonExporter('haccp-dashboard-print')}
                 {/* Les réglages du HACCP s'ouvrent par la page des réglages
                     seule (section 'haccp') : plus de bouton ici. */}
@@ -1317,6 +1323,19 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
       {zoneModal && <ZoneForm zone={zoneModal==='new'?null:zoneModal} onSave={saveZone} onCancel={()=>setZoneModal(null)}/>}
       {ctrlModal && <CtrlForm ctrl={ctrlModal==='new'?null:ctrlModal} onSave={saveCtrl} onCancel={()=>setCtrlModal(null)}/>}
       {creneauModal && <CreneauForm creneau={creneauModal==='new'?null:creneauModal} creneaux={creneaux} onSave={saveCreneau} onCancel={()=>setCreneauModal(null)}/>}
+
+      {dossierOuvert && canManage && (
+        <DossierControleFenetre
+          etablissement={etablissement}
+          etabId={etabId}
+          legacySB={legacySB}
+          zones={zones}
+          releves={releves}
+          tpls={ctrlTpls}
+          controles={controls}
+          onClose={() => setDossierOuvert(false)}
+        />
+      )}
 
       {/* ─── Modale export relevés : période journalière ou mensuelle ─── */}
       {exportRelevesMode && (

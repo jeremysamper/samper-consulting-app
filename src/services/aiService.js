@@ -296,13 +296,14 @@ export async function parseFacture(files, options = {}) {
     return normaliserFacture(data, { source: 'scan', pages: prep.pages });
   }
 
-  const images = [];
-  for (const file of liste) {
+  // Pages préparées en parallèle (compression, redressement), gardées dans l'ordre.
+  // `fichier` : la page telle que lue, photo redressée comprise, pour que la
+  // pièce gardée (« Voir la photo ») soit à l'endroit elle aussi.
+  const pages = await Promise.all(liste.map(async (file) => {
     if (estPdf(file)) {
       // PDF mêlé à des photos : on ne prend que ses pages rendues.
       const prep = await preparerPdf(file);
-      if (prep.source === 'scan') images.push(...prep.images);
-      continue;
+      return { images: prep.source === 'scan' ? prep.images : [], fichier: file };
     }
     let img = file;
     try {
@@ -310,19 +311,78 @@ export async function parseFacture(files, options = {}) {
     } catch (e) {
       img = file;
     }
-    const imageBase64 = await fileToBase64(img);
-    if (!imageBase64) continue;
-    let mediaType = (img.type || file.type || 'image/jpeg').toLowerCase();
+    const droite = await redresserPhoto(img);
+    const imageBase64 = await fileToBase64(droite);
+    if (!imageBase64) return { images: [], fichier: file };
+    let mediaType = (droite.type || file.type || 'image/jpeg').toLowerCase();
     if (!ACCEPTED_MEDIA.includes(mediaType)) mediaType = 'image/jpeg';
-    images.push({ imageBase64, mediaType });
-  }
+    return { images: [{ imageBase64, mediaType }], fichier: droite !== img ? droite : file };
+  }));
+  const images = pages.flatMap(p => p.images);
   if (!images.length) throw new Error('Document vide ou illisible.');
 
   const data = await callAi('parse-facture', {
     images: images.slice(0, 5),
     ...(options.fournisseurHint ? { fournisseurHint: options.fournisseurHint } : {}),
   });
-  return normaliserFacture(data, { source: 'scan', pages: images.length });
+  return { ...normaliserFacture(data, { source: 'scan', pages: images.length }), fichiers: pages.map(p => p.fichier) };
+}
+
+// ── Redressement d'une photo de document ──
+// Une facture photographiée à plat sur un plan de travail sort souvent de côté
+// ou à l'envers, et lue telle quelle elle fait inventer des lignes (trois photos
+// prises de côté le 18.11.2026). La photo est montrée au modèle sous ses quatre
+// rotations, il désigne celle qui se lit à l'endroit (choix comparé, juste sur
+// les quatre sens à l'essai, là où « dans quel sens ? » se trompait), puis elle
+// est tournée avant la lecture. Une fonction ai-proxy ancienne, une panne ou un
+// format que le navigateur ne sait pas dessiner laissent la photo telle quelle.
+
+// Toile de la source tournée de `quarts` quarts de tour dans le sens horaire,
+// côté le plus long ramené à `max` pixels.
+function toileTournee(source, quarts, max) {
+  const k = Math.min(1, max / Math.max(source.width, source.height));
+  const w = Math.round(source.width * k);
+  const h = Math.round(source.height * k);
+  const c = document.createElement('canvas');
+  const pivote = quarts % 2 === 1;
+  c.width = pivote ? h : w;
+  c.height = pivote ? w : h;
+  const g = c.getContext('2d');
+  g.translate(c.width / 2, c.height / 2);
+  g.rotate((quarts * Math.PI) / 2);
+  g.drawImage(source, -w / 2, -h / 2, w, h);
+  return c;
+}
+
+const toileEnJpeg = (c, qualite) => new Promise(resolve => c.toBlob(resolve, 'image/jpeg', qualite));
+
+export async function redresserPhoto(file) {
+  if (typeof createImageBitmap !== 'function') return file;
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch (e) {
+    return file;
+  }
+  try {
+    const images = [];
+    for (const q of [0, 1, 2, 3]) {
+      const blob = await toileEnJpeg(toileTournee(bitmap, q, 1024), 0.8);
+      images.push({ imageBase64: await fileToBase64(blob), mediaType: 'image/jpeg' });
+    }
+    const data = await callAi('orientation-document', { images });
+    const n = Number(data?.result?.image);
+    const quarts = n >= 2 && n <= 4 ? n - 1 : 0;
+    if (!quarts) return file;
+    const blob = await toileEnJpeg(toileTournee(bitmap, quarts, 2200), 0.88);
+    if (!blob) return file;
+    const nom = String(file.name || 'photo').replace(/\.[a-z0-9]+$/i, '') + '.jpg';
+    return new File([blob], nom, { type: 'image/jpeg' });
+  } catch (e) {
+    return file;
+  } finally {
+    if (bitmap && typeof bitmap.close === 'function') bitmap.close();
+  }
 }
 
 // Échéance d'une facture lue : la date imprimée, sinon date de facture +

@@ -23,7 +23,7 @@
 import React from 'react';
 import './tableau.css';
 import { canManageModule, getDemoData, getPermissionsForRole } from '../../data/demoData.js';
-import { estEtablissementHotel, isModuleActiveForEtab, isPageActiveForEtab, navItems } from '../moduleConfig.js';
+import { estEtablissementHotel, isModuleActiveForEtab, isPageActiveForEtab, navItems, peutOuvrirPage } from '../moduleConfig.js';
 import { applyNavOrder, parseNavOrder } from '../../hooks/useNavOrder.js';
 import { readJson } from '../../utils/storage.js';
 import { dbService } from '../../services/dbService.js';
@@ -55,6 +55,7 @@ import { modulesDuMenu as filtrerMenu, raccourcisAffiches } from './widgets/disp
 import { messageErreur } from '../../utils/messageErreur.js';
 import { usePointsEtat } from '../points/pointsEtat.js';
 import { useResumePoints } from '../points/useResumePoints.js';
+import { useHaussesPrix } from '../catalogue/useHaussesPrix.js';
 
 // Heure de Zurich, rafraîchie toutes les 30 s (durée en poste, retards) et au
 // retour sur l'app. Le jour suit : passé minuit, tout se relit sur le nouveau.
@@ -116,6 +117,11 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   // Régularité de l'équipe (direction, planning activé) : une ligne de plus
   // seulement si l'établissement a au moins un contrat.
   const regularite = useRegulariteEquipe(direction && avecPlanning);
+  // Hausses de prix fournisseur : la direction, sous la garde du Catalogue
+  // (module activé pour l'établissement, page permise : celle de
+  // LegacyModuleHost), seule à lire ici les prix d'achat.
+  const voitHaussesPrix = direction && actif('catalogue') && peutOuvrirPage('catalogue', user, perms);
+  const haussesPrix = useHaussesPrix({ etabId, aujourdhui, enabled: voitHaussesPrix });
   // Points & boutique : l'état est celui du filtre du menu (même lecture en
   // cache) ; le solde n'est lu que si le système est allumé et que la personne
   // participe.
@@ -297,12 +303,14 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
     avecAbsences: absencesLues,
     avecMessages: actif('messages') && perms.messages !== false,
     avecPoints: pointsEtat.actif && pointsEtat.participant && points.lu,
+    avecHaussesPrix: voitHaussesPrix && haussesPrix.statut === 'pret',
+    nbHaussesPrix: voitHaussesPrix && haussesPrix.statut === 'pret' ? haussesPrix.hausses.length : 0,
     modulesDuMenu: menu,
   };
 
   const t = {
     user, aujourdhui, maintenant, mobile, etabId, consultant, direction, d, absences, absencesLues, telephones, nbMessages,
-    nonLu, peutOuvrir, ouvrir, reperes, items, blocsGestion, regularite, publierMessage, points,
+    nonLu, peutOuvrir, ouvrir, reperes, items, blocsGestion, regularite, publierMessage, points, haussesPrix,
     avecPlanning, avecGroupes, avecCouvertsLus, avecGroupesLus,
     versPlanning: peutOuvrir('planning') ? () => ouvrir('planning') : null,
     versReservations: peutOuvrir('previsions') ? () => ouvrir('previsions') : null,

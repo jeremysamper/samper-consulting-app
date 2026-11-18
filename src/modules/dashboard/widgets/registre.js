@@ -2,7 +2,7 @@ import { CalendarDays, LayoutGrid, ListTodo, MessageSquareQuote } from 'lucide-r
 import { getModuleIcon } from '../../moduleIcons.js';
 import { CATALOGUE } from './catalogue.js';
 import {
-  WidgetAbsences, WidgetAFaire, WidgetAVenir, WidgetChiffre, WidgetEquipe, WidgetGroupes, WidgetHotel, WidgetMesPoints, WidgetMessages,
+  WidgetAbsences, WidgetAFaire, WidgetAVenir, WidgetChiffre, WidgetEquipe, WidgetGroupes, WidgetHaussesPrix, WidgetHotel, WidgetMesPoints, WidgetMessages,
   WidgetMot, WidgetPertesSemaines, WidgetPointage, WidgetQuiTravaille, WidgetRaccourcis, WidgetRegularite, WidgetReleves,
   WidgetRepere, WidgetReservations, WidgetSemaine,
 } from './Widgets.jsx';
@@ -32,6 +32,7 @@ const COMPOSANTS = {
   'chiffre-pertes': WidgetChiffre,
   'chiffre-stock': WidgetChiffre,
   'regularite': WidgetRegularite,
+  'hausses-prix': WidgetHaussesPrix,
   'haccp-releves': WidgetReleves,
   'pertes-semaines': WidgetPertesSemaines,
   'groupes': WidgetGroupes,
