@@ -5408,6 +5408,11 @@ export const UI_GLOSSARY = {
   'La table a signalé cet allergène.': "The table reported this allergen.",
   'La table a signalé ces allergènes.': "The table reported these allergens.",
   "Vérifiez avec le client avant d'envoyer.": "Check with the guest before sending.",
+  // Caisse, plan au téléphone (18.11.2026)
+  'Voir toute la salle': "Show the whole room",
+  'Agrandir le plan': "Enlarge the plan",
+  'Zoom arrière': "Zoom out",
+  'Zoom avant': "Zoom in",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

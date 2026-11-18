@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronsRight, Clock, ConciergeBell, SlidersHorizontal } from 'lucide-react';
+import { ChevronsRight, Clock, ConciergeBell, Maximize2, Minimize2, Minus, Move, Plus, SlidersHorizontal } from 'lucide-react';
 import { PLAN_W, PLAN_H } from '../../hooks/planSalleCanevas.js';
 import { Btn, Panneau, TabBar } from '../../components/ui/index.jsx';
 import { ElementDecor } from '../previsions/planDecor.jsx';
@@ -33,7 +33,16 @@ import { ATTENTE_COMMANDE_MIN, cadreDe, decalageBorne, tableSous } from './planS
 //                      réunit, toucher une tablée propose de la séparer.
 //
 // Affichage réglé sur l'appareil (sc_caisse_plan) : infos portées par les
-// tables, taille du texte, liste des tables ouvertes, salle ouverte.
+// tables, taille du texte, liste des tables ouvertes, salle ouverte, zoom du
+// téléphone.
+//
+// Téléphone (carte de moins de 560 px) : une salle en largeur ne tient pas
+// dans un écran en hauteur sans écraser ses tables. Le plan prend toute la
+// hauteur qui reste et s'ouvre agrandi, tables lisibles ; on le parcourt au
+// doigt, on pince pour zoomer, et trois boutons ronds en bas à droite
+// agrandissent, réduisent ou montrent toute la salle. Le glisser d'un ticket
+// vers une autre table n'y est pas proposé (il prendrait le doigt qui
+// parcourt le plan) : on change de table depuis le ticket, par « Déplacer ».
 // Les noms de tables et de clients sont des données : data-no-translate ; les
 // mots autour (couv., min, places) passent au glossaire.
 // Chaque nombre vit dans son propre nœud (traduction du DOM).
@@ -71,7 +80,17 @@ export function estPret(ligne) {
 
 // ── Affichage gardé sur l'appareil ───────────────────────────────────────────
 const CLE_AFFICHAGE = 'sc_caisse_plan';
-const AFFICHAGE_DEFAUT = { montant: true, minutes: true, couverts: true, nom: true, grand: false, liste: true, salles: {} };
+const AFFICHAGE_DEFAUT = { montant: true, minutes: true, couverts: true, nom: true, grand: false, liste: true, salles: {}, zoomTel: null };
+
+// Zoom du téléphone : une table « lisible » mesure au moins ce côté en pixels
+// (numéro et montant y tiennent). Le zoom est un facteur de la vue « toute la
+// salle » ; null = le zoom lisible, recalculé pour chaque salle.
+const TABLE_LISIBLE = 64;
+const borne = (v, min, max) => Math.min(max, Math.max(min, v));
+function medianeTables(tables) {
+  const cotes = tables.map((t) => Math.min(Number(t.largeur) || 0, Number(t.hauteur) || 0)).filter((c) => c > 0).sort((a, b) => a - b);
+  return cotes.length ? cotes[Math.floor(cotes.length / 2)] : 0;
+}
 function lireAffichage() {
   const v = readJson(CLE_AFFICHAGE, null);
   return v && typeof v === 'object' ? { ...AFFICHAGE_DEFAUT, ...v, salles: { ...(v.salles || {}) } } : { ...AFFICHAGE_DEFAUT, salles: {} };
@@ -133,6 +152,12 @@ export default function PlanTables({
   const salleRef = React.useRef(null);   // le canevas complet, mis à l'échelle
   const largeurCol = useLargeur(colRef);
   const hauteurDispo = useHauteurRestante(corpsRef, true, 8, 300);
+  const fenetreRef = React.useRef(null);   // au téléphone : la fenêtre qui défile sur la salle
+  const ancreRef = React.useRef(null);     // point de la salle à garder sous le doigt après un zoom
+  const pincementRef = React.useRef(null);
+  const zoomEtat = React.useRef({});
+  const [zoomDirect, setZoomDirect] = React.useState(null);   // zoom pendant un pincement
+  const tel = largeurCol > 0 && largeurCol < 560;
 
   const majAffichage = (patch) => setAffichage((a) => {
     const v = { ...a, ...patch };
@@ -156,6 +181,7 @@ export default function PlanTables({
     setSalleId(id);
     const cle = sallesAvecTables[0]?.etablissement_id || '_';
     majAffichage({ salles: { ...(affichage.salles || {}), [cle]: id } });
+    if (fenetreRef.current) { fenetreRef.current.scrollLeft = 0; fenetreRef.current.scrollTop = 0; }
   }
 
   // ── Cadrage : la salle prend la largeur de la carte, bornée par la hauteur
@@ -164,19 +190,120 @@ export default function PlanTables({
   // se cale sur ce qui est dessiné (tables, décor et place des chaises) : une
   // salle qui n'occupe qu'une part du canevas s'affiche en grand. En mode
   // déplacer, tout le canevas, pour poser une table n'importe où.
-  const pad = 14;
+  const pad = tel ? 8 : 14;
   const dispoL = Math.max(0, largeurCol - pad * 2);
   const dispoH = hauteurDispo && largeurCol >= 560 ? Math.max(200, hauteurDispo - pad * 2) : null;
   const vue = cadrage(deplacerActif ? null : [...visibles, ...decor]);
   let k = vue.w ? dispoL / vue.w : 0;
   if (dispoH) k = Math.min(k, dispoH / vue.h);
   k = Math.min(k, 1.6);
+  // Téléphone : la fenêtre du plan prend la hauteur qui reste. kToute montre
+  // toute la salle ; le zoom multiplie cette échelle, jusqu'à 1,6 au plus.
+  const fenetreH = tel ? Math.max(280, Math.floor((hauteurDispo || 0) - pad * 2 - 2)) : 0;
+  const kToute = tel && vue.w ? Math.min(dispoL / vue.w, fenetreH / vue.h) : k;
+  const zoomMax = tel && kToute > 0 ? Math.max(1, 1.6 / kToute) : 1;
+  const mediane = medianeTables(visibles);
+  const zoomLisible = tel && mediane && kToute ? borne(TABLE_LISIBLE / (mediane * kToute), 1, zoomMax) : 1;
+  const zoom = tel ? borne(zoomDirect ?? affichage.zoomTel ?? zoomLisible, 1, zoomMax) : 1;
+  if (tel) k = kToute * zoom;
   const largeur = Math.round(dispoL);
   const hauteur = Math.round(vue.h * k);
-  // Origine du canevas complet dans la vue : la salle est centrée en largeur.
-  const origineX = vue.x0 * k - (largeur - vue.w * k) / 2;
-  const origineY = vue.y0 * k;
+  // La surface qui porte la salle : celle de la vue à l'ordinateur ; au
+  // téléphone, au moins la fenêtre, plus une bande sous la salle pour que les
+  // boutons de zoom ne cachent jamais une table.
+  const reserveZoom = tel ? 60 : 0;
+  const surfaceW = tel ? Math.max(largeur, Math.ceil(vue.w * k)) : largeur;
+  const surfaceH = tel ? Math.max(fenetreH, Math.ceil(vue.h * k) + reserveZoom) : hauteur;
+  // Origine du canevas complet dans la vue : la salle est centrée en largeur
+  // (et en hauteur au-dessus de la bande des boutons, au téléphone).
+  const origineX = vue.x0 * k - (surfaceW - vue.w * k) / 2;
+  const origineY = vue.y0 * k - (tel ? Math.max(0, (surfaceH - reserveZoom - vue.h * k) / 2) : 0);
   const echelleTexte = affichage.grand ? 1.2 : 1;
+  zoomEtat.current = { zoom, zoomMax, zoomLisible, k };
+
+  // ── Zoom du téléphone ─────────────────────────────────────────────────────
+  // Le point de la salle (unités du canevas) sous un point de l'écran.
+  const pointSalle = (sx, sy) => {
+    const r = salleRef.current?.getBoundingClientRect();
+    const kk = zoomEtat.current.k;
+    return r && kk ? { ux: (sx - r.left) / kk, uy: (sy - r.top) / kk } : null;
+  };
+  // Change le zoom en gardant à sa place le point de la salle situé au
+  // centre de la fenêtre.
+  function zoomer(valeur) {
+    const f = fenetreRef.current;
+    if (!f) return;
+    const r = f.getBoundingClientRect();
+    const sx = r.left + r.width / 2;
+    const sy = r.top + r.height / 2;
+    const p = pointSalle(sx, sy);
+    if (p) ancreRef.current = { ...p, sx, sy };
+    majAffichage({ zoomTel: borne(valeur, 1, zoomEtat.current.zoomMax) });
+  }
+  // Après un zoom, la fenêtre défile pour remettre le point ancré sous le
+  // doigt (ou au centre). À chaque rendu : l'ancre n'existe que juste après
+  // un zoom.
+  React.useLayoutEffect(() => {
+    const a = ancreRef.current;
+    const f = fenetreRef.current;
+    if (!a || !f) return;
+    ancreRef.current = null;
+    const r = f.getBoundingClientRect();
+    f.scrollLeft = Math.max(0, r.left - origineX + a.ux * k - a.sx);
+    f.scrollTop = Math.max(0, r.top - origineY + a.uy * k - a.sy);
+  });
+  // Pincer à deux doigts. Écouteurs natifs (passive: false) : React pose les
+  // siens en passif et ne pourrait pas empêcher le zoom de toute la page.
+  React.useEffect(() => {
+    const f = fenetreRef.current;
+    if (!tel || !f) return undefined;
+    const ecart = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const milieu = (t) => ({ x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 });
+    const debut = (e) => {
+      if (e.touches.length !== 2) return;
+      const m = milieu(e.touches);
+      const z = zoomEtat.current.zoom;
+      pincementRef.current = { d0: ecart(e.touches) || 1, z0: z, dernier: z, ancre: pointSalle(m.x, m.y) };
+      if (e.cancelable) e.preventDefault();
+    };
+    const bouger = (e) => {
+      const p = pincementRef.current;
+      if (!p || e.touches.length !== 2) return;
+      if (e.cancelable) e.preventDefault();
+      const m = milieu(e.touches);
+      p.dernier = borne((p.z0 * ecart(e.touches)) / p.d0, 1, zoomEtat.current.zoomMax);
+      if (p.ancre) ancreRef.current = { ...p.ancre, sx: m.x, sy: m.y };
+      setZoomDirect(p.dernier);
+    };
+    const fin = (e) => {
+      const p = pincementRef.current;
+      if (!p || e.touches.length >= 2) return;
+      pincementRef.current = null;
+      // Le toucher qui reste après un pincement n'ouvre pas de table.
+      finGesteRef.current = Date.now();
+      setZoomDirect(null);
+      majAffichage({ zoomTel: p.dernier });
+    };
+    // Safari : sans cela, le pincement agrandit toute la page.
+    const geste = (e) => e.preventDefault();
+    f.addEventListener('touchstart', debut, { passive: false });
+    f.addEventListener('touchmove', bouger, { passive: false });
+    f.addEventListener('touchend', fin);
+    f.addEventListener('touchcancel', fin);
+    f.addEventListener('gesturestart', geste);
+    f.addEventListener('gesturechange', geste);
+    return () => {
+      f.removeEventListener('touchstart', debut);
+      f.removeEventListener('touchmove', bouger);
+      f.removeEventListener('touchend', fin);
+      f.removeEventListener('touchcancel', fin);
+      f.removeEventListener('gesturestart', geste);
+      f.removeEventListener('gesturechange', geste);
+    };
+    // majAffichage et pointSalle ne lisent que des refs et des mises à jour
+    // fonctionnelles : les écouteurs n'ont besoin d'être reposés qu'en
+    // changeant de présentation.
+  }, [tel]);
 
   // ── Compteurs : une tablée compte une fois, sur toute la maison.
   const principales = [];
@@ -206,7 +333,7 @@ export default function PlanTables({
   function debutGeste(e, t, ticket) {
     if (e.button != null && e.button !== 0) return;
     const membres = tablees?.get(t.id)?.membres || [t];
-    const mode = deplacerActif ? 'deplacer' : (ticket && onTransferer && !choixSeul ? 'transfert' : null);
+    const mode = deplacerActif ? 'deplacer' : (ticket && onTransferer && !choixSeul && !tel ? 'transfert' : null);
     if (!mode) return;
     dragRef.current = { mode, t, ticket, membres, ids: new Set(membres.map((m) => m.id)), x0: e.clientX, y0: e.clientY, actif: false };
     const bouger = (ev) => {
@@ -281,22 +408,40 @@ export default function PlanTables({
 
   if (!tablesActives.length) return null;
 
+  const alertes = (
+    <>
+      {compte.prets > 0 && <Compteur couleur="var(--success-fill)" n={compte.prets} un="plats prêts" plusieurs="plats prêts" />}
+      {compte.commander > 0 && <Compteur couleur="var(--warning-bd)" n={compte.commander} un="à commander" plusieurs="à commander" />}
+    </>
+  );
+
   return (
     <div style={st.racine} data-caisse-plan="">
       {/* Barre du plan : salles, compteurs, déplacer, affichage. */}
       <div style={st.barre}>
         {onglets.length > 1 && <TabBar tabs={onglets} active={actif} onChange={choisirSalle} />}
-        <div style={st.compteurs} aria-live="polite">
+        {/* Au téléphone : une seule ligne qui défile, les alertes d'abord. */}
+        <div style={{ ...st.compteurs, ...(tel ? st.compteursTel : null) }} aria-live="polite">
+          {tel && alertes}
           <Compteur couleur="var(--border2)" n={compte.libres} un="libre" plusieurs="libres" />
           <Compteur couleur="var(--info-bd)" n={compte.reservees} un="réservée" plusieurs="réservées" />
           <Compteur couleur="var(--accent)" n={compte.occupees} un="occupée" plusieurs="occupées" />
-          {compte.prets > 0 && <Compteur couleur="var(--success-fill)" n={compte.prets} un="plats prêts" plusieurs="plats prêts" />}
-          {compte.commander > 0 && <Compteur couleur="var(--warning-bd)" n={compte.commander} un="à commander" plusieurs="à commander" />}
+          {!tel && alertes}
         </div>
         <div style={st.actionsBarre}>
-          {peutDeplacer && !choixSeul && !deplacer && (
+          {peutDeplacer && !choixSeul && !deplacer && (tel ? (
+            <button
+              type="button"
+              aria-label="Déplacer des tables"
+              title="Déplacer des tables"
+              onClick={() => { setDeplacer(true); setReglages(false); }}
+              style={st.rond}
+            >
+              <Move size={18} strokeWidth={2} aria-hidden="true" />
+            </button>
+          ) : (
             <Btn variant="ghost" onClick={() => { setDeplacer(true); setReglages(false); }} style={st.btn44}>Déplacer des tables</Btn>
-          )}
+          ))}
           <button
             type="button"
             aria-label="Affichage du plan"
@@ -344,9 +489,11 @@ export default function PlanTables({
         <div ref={colRef} style={st.colPlan}>
           <div className="caisse-plan-carte" data-cadre="" style={{ ...st.carte, padding: pad }}>
             <div
-              ref={canevasRef}
-              style={{ ...st.canevas, width: largeur, height: hauteur }}
+              ref={fenetreRef}
+              data-caisse-plan-fenetre={tel ? '' : undefined}
+              style={tel ? { ...st.fenetre, width: largeur, height: fenetreH } : { ...st.canevas, width: largeur, height: hauteur }}
             >
+            <div ref={canevasRef} style={{ position: 'relative', width: surfaceW, height: surfaceH }}>
               <div
                 ref={salleRef}
                 style={{ position: 'absolute', left: -origineX, top: -origineY, width: PLAN_W * k, height: PLAN_H * k }}
@@ -384,7 +531,7 @@ export default function PlanTables({
                 const h = Math.max(44, t.hauteur * k);
                 const etat = ticket ? 'occupee' : attendue ? 'reservee' : 'libre';
                 const commander = e && e.sansEnvoi != null && e.sansEnvoi >= ATTENTE_COMMANDE_MIN;
-                const touchAction = deplacerActif || (ticket && onTransferer && !choixSeul) ? 'none' : 'manipulation';
+                const touchAction = deplacerActif || (ticket && onTransferer && !choixSeul && !tel) ? 'none' : 'manipulation';
                 const contenu = estPrincipale ? (
                   <ContenuTable
                     t={principale} w={w} h={h} k={k} echelle={echelleTexte} ronde={ronde}
@@ -461,6 +608,26 @@ export default function PlanTables({
               })}
               </div>
             </div>
+            </div>
+            {tel && (
+              <div style={{ ...st.zoom, right: pad + 8, bottom: pad + 8 }} data-caisse-zoom="">
+                {zoom > 1.001 ? (
+                  <BoutonRond label="Voir toute la salle" onClick={() => zoomer(1)}>
+                    <Minimize2 size={18} strokeWidth={2} aria-hidden="true" />
+                  </BoutonRond>
+                ) : (
+                  <BoutonRond label="Agrandir le plan" onClick={() => zoomer(zoomLisible > 1.001 ? zoomLisible : zoomMax)} disabled={zoomMax <= 1.001}>
+                    <Maximize2 size={18} strokeWidth={2} aria-hidden="true" />
+                  </BoutonRond>
+                )}
+                <BoutonRond label="Zoom arrière" onClick={() => zoomer(zoom / 1.4)} disabled={zoom <= 1.001}>
+                  <Minus size={18} strokeWidth={2} aria-hidden="true" />
+                </BoutonRond>
+                <BoutonRond label="Zoom avant" onClick={() => zoomer(zoom * 1.4)} disabled={zoom >= zoomMax - 0.001}>
+                  <Plus size={18} strokeWidth={2} aria-hidden="true" />
+                </BoutonRond>
+              </div>
+            )}
           </div>
         </div>
 
@@ -600,6 +767,22 @@ function Compteur({ couleur, n, un, plusieurs }) {
   );
 }
 
+// Bouton rond à picto seul qui flotte sur le plan (zoom du téléphone).
+function BoutonRond({ label, onClick, disabled = false, children }) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onClick={onClick}
+      disabled={disabled}
+      style={{ ...st.rond, ...st.rondFlottant, ...(disabled ? st.rondEteint : null) }}
+    >
+      {children}
+    </button>
+  );
+}
+
 function Pilule({ choisi, onClick, children }) {
   return (
     <button type="button" aria-pressed={choisi} onClick={onClick} style={{ ...st.pilule, ...(choisi ? st.piluleChoisie : null) }}>
@@ -658,6 +841,17 @@ const st = {
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
   },
   rondActif: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
+  // Ce qui flotte sur le plan porte l'ombre des éléments flottants.
+  rondFlottant: { background: 'var(--surface)', color: 'var(--text)', boxShadow: 'var(--sh-lg)' },
+  rondEteint: { opacity: 0.65, cursor: 'default' },
+  compteursTel: { flex: '1 1 0', flexWrap: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none' },
+  // Téléphone : la fenêtre sur la salle défile au doigt dans les deux sens ;
+  // le pincement est pris par la page (touchAction), pas par le navigateur.
+  fenetre: {
+    position: 'relative', overflow: 'auto', background: 'var(--piste)', borderRadius: 'var(--r)', flexShrink: 0,
+    userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none',
+  },
+  zoom: { position: 'absolute', zIndex: 3, display: 'flex', gap: 8 },
   bandeau: {
     display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 'var(--r)',
     background: 'var(--info-bg-soft)', color: 'var(--info-text)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--info-bd)',
@@ -669,6 +863,7 @@ const st = {
   corps: { display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start', minWidth: 0 },
   colPlan: { flex: '1 1 720px', minWidth: 0 },
   carte: {
+    position: 'relative',
     display: 'flex', justifyContent: 'center', boxSizing: 'border-box', background: 'var(--zone)', borderRadius: 'var(--r-lg)',
     boxShadow: 'var(--sh)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   },

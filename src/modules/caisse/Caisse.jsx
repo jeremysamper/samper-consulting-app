@@ -3,6 +3,8 @@ import { ChevronsRight, ConciergeBell } from 'lucide-react';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
 import { Btn } from '../../components/ui/index.jsx';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { notify } from '../../components/toast/index.js';
 import { dbService } from '../../services/dbService.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
@@ -172,6 +174,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     if (!r.error) setConfig(r.data);
   }, [etabId]);
   const maintenant = useMaintenant();
+  const telephone = useIsMobile();
   // v7 : où en est la caisse (jours passés sans clôture). Lu pour les rôles
   // qui clôturent ; la base refuse les autres.
   const peutAnnuler = ['consultant', 'patron'].includes(user?.role);
@@ -677,14 +680,37 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             <span>{modeTest ? 'Tickets de test ouverts' : 'Tickets ouverts'}</span>
             <span style={st.compteBtn}>{tickets.length}</span>
           </Btn>
-          {!modeTest && (
-            <Btn onClick={() => setEcran('sans_ticket')} style={st.btn44}>
-              <span>Réservations sans ticket</span>
-              {sansTicket.length > 0 && <span style={st.compteBtn}>{sansTicket.length}</span>}
-            </Btn>
+          {/* Téléphone : les trois autres actions passent dans « Plus », la
+              barre tient sur une ligne et le plan garde la hauteur. Le compte
+              des réservations sans ticket reste lisible sur le bouton. */}
+          {telephone ? (
+            <BoutonActions
+              id="caisse-plus"
+              label={<><span>Plus</span>{!modeTest && sansTicket.length > 0 && <span style={st.compteBtn}>{sansTicket.length}</span>}</>}
+              style={st.plus}
+              titre="Caisse"
+              sections={[{ items: [
+                !modeTest && {
+                  titre: 'Réservations sans ticket',
+                  detail: sansTicket.length > 0 ? <><span style={st.num}>{sansTicket.length}</span> <span>en retard</span></> : null,
+                  onClick: () => setEcran('sans_ticket'),
+                },
+                !modeTest && { titre: 'Historique et quittances', onClick: () => setEcran('historique') },
+                !modeTest && peutHabiller && { titre: 'Clôture de caisse', onClick: () => setEcran('cloture') },
+              ] }]}
+            />
+          ) : (
+            <>
+              {!modeTest && (
+                <Btn onClick={() => setEcran('sans_ticket')} style={st.btn44}>
+                  <span>Réservations sans ticket</span>
+                  {sansTicket.length > 0 && <span style={st.compteBtn}>{sansTicket.length}</span>}
+                </Btn>
+              )}
+              {!modeTest && <Btn onClick={() => setEcran('historique')} style={st.btn44}>Historique et quittances</Btn>}
+              {!modeTest && peutHabiller && <Btn onClick={() => setEcran('cloture')} style={st.btn44}>Clôture de caisse</Btn>}
+            </>
           )}
-          {!modeTest && <Btn onClick={() => setEcran('historique')} style={st.btn44}>Historique et quittances</Btn>}
-          {!modeTest && peutHabiller && <Btn onClick={() => setEcran('cloture')} style={st.btn44}>Clôture de caisse</Btn>}
         </div>
         {avecTables ? vuePlan : (
           <p style={st.vide}>Aucune table dans le plan de salle. Dessinez la salle dans Réservations, ou vendez sans table par « Vente directe ».</p>
@@ -890,6 +916,13 @@ const st = {
   btn44: { minHeight: 44, flexShrink: 0 },
   // Compte porté par un bouton de la barre (tickets ouverts, réservations sans ticket).
   compteBtn: { fontFamily: 'var(--font-num)', color: 'var(--text2)' },
+  // « Plus » au téléphone : la pilule secondaire de Btn, écrite par les jetons.
+  plus: {
+    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 16px', flexShrink: 0, cursor: 'pointer',
+    borderRadius: 'var(--r-full)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap',
+  },
   // Liste dans une carte blanche (direction Galet) : les lignes se séparent
   // par leur filet doux, la dernière n'en porte pas (caisse.css).
   listeTickets: {

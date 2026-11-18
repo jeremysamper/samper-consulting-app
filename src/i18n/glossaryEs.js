@@ -5389,4 +5389,9 @@ export const UI_GLOSSARY_ES = {
   'La table a signalé cet allergène.': "La mesa ha indicado este alérgeno.",
   'La table a signalé ces allergènes.': "La mesa ha indicado estos alérgenos.",
   "Vérifiez avec le client avant d'envoyer.": "Compruébelo con el cliente antes de enviar.",
+  // Caisse, plan au téléphone (18.11.2026)
+  'Voir toute la salle': "Ver toda la sala",
+  'Agrandir le plan': "Ampliar el plano",
+  'Zoom arrière': "Alejar",
+  'Zoom avant': "Acercar",
 };
