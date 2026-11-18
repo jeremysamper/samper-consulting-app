@@ -1773,6 +1773,8 @@ export const UI_GLOSSARY_ES = {
   "Échanges de service réglés": "Intercambios de turno resueltos",
   "Cet horaire est déjà proposé à l'échange.": "Este turno ya está propuesto para intercambio.",
   "L'échange n'a pas pu être enregistré. Réessayez.": "No se ha podido guardar el intercambio. Inténtelo de nuevo.",
+  // Déclaration de perte simplifiée (lot B).
+  "Plus de détails : date, catégorie, commentaire": "Más detalles: fecha, categoría, comentario",
   // Temps gagné (lot T, tableau de bord du patron).
   "Temps gagné": "Tiempo ganado",
   "Temps gagné cette semaine": "Tiempo ganado esta semana",

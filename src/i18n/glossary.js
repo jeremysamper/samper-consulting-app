@@ -1797,6 +1797,8 @@ export const UI_GLOSSARY = {
   "Échanges de service réglés": "Shift swaps settled",
   "Cet horaire est déjà proposé à l'échange.": "This shift is already offered for a swap.",
   "L'échange n'a pas pu être enregistré. Réessayez.": "The swap could not be saved. Try again.",
+  // Déclaration de perte simplifiée (lot B).
+  "Plus de détails : date, catégorie, commentaire": "More details: date, category, comment",
   // Temps gagné (lot T, tableau de bord du patron).
   "Temps gagné": "Time saved",
   "Temps gagné cette semaine": "Time saved this week",

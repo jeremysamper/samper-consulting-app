@@ -60,7 +60,9 @@ function ChoixTuiles({ nom, libelle, valeur, options, onChange }) {
 // catégorie (pertes.css pour la grille, CartesPertes.jsx pour les cartes).
 const Pertes = ({ user, etablissement }) => {
   const etabId = etablissement?.id || 'etab-1';
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Jour de Zurich, pas d'UTC : une perte déclarée entre minuit et 1 h (2 h en
+  // été) prenait la date de la veille, et la date est repliée depuis le lot B.
+  const todayStr = zurichToday();
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
   // Pastille « +N » du geste qui rapporte (lot P3), seulement si le système
@@ -72,6 +74,11 @@ const Pertes = ({ user, etablissement }) => {
   const [search, setSearch] = React.useState('');
   const [motifFilter, setMotifFilter] = React.useState('Tous');
   const [form, setForm] = React.useState({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif:'DLC dépassée', categorie:'Légumes', commentaire:'' });
+  // Lot B (moitié des gestes) : un produit pris dans le catalogue apporte son
+  // prix et son unité ; la valeur unitaire, la date, la catégorie et le
+  // commentaire se replient alors sous « Plus de détails ».
+  const [prixDuCatalogue, setPrixDuCatalogue] = React.useState(false);
+  const [details, setDetails] = React.useState(false);
   const perms = getPermissionsForRole(user.role);
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
@@ -208,6 +215,8 @@ const Pertes = ({ user, etablissement }) => {
     setPertes([newPerte, ...pertes]);
     setShowForm(false);
     setForm({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif:'DLC dépassée', categorie:'Légumes', commentaire:'' });
+    setPrixDuCatalogue(false);
+    setDetails(false);
   };
 
   const valider = async (id) => {
@@ -419,6 +428,7 @@ const Pertes = ({ user, etablissement }) => {
                     autoComplete="off"
                     onChange={e => {
                       setForm({...form, produit: e.target.value});
+                      setPrixDuCatalogue(false);
                       setAutocompleteOpen(true);
                       setAutocompleteFocus(-1);
                     }}
@@ -446,6 +456,7 @@ const Pertes = ({ user, etablissement }) => {
                           unite: p.uniteRef || form.unite,
                           valeurUnit: p.prixUnitaire || form.valeurUnit,
                         });
+                        setPrixDuCatalogue(Boolean(p.prixUnitaire));
                         setAutocompleteOpen(false);
                         setAutocompleteFocus(-1);
                       } else if (e.key === 'Escape') {
@@ -480,6 +491,7 @@ const Pertes = ({ user, etablissement }) => {
                                 unite: p.uniteRef || form.unite,
                                 valeurUnit: p.prixUnitaire || form.valeurUnit,
                               });
+                              setPrixDuCatalogue(Boolean(p.prixUnitaire));
                               setAutocompleteOpen(false);
                               setAutocompleteFocus(-1);
                             }}
@@ -518,12 +530,20 @@ const Pertes = ({ user, etablissement }) => {
                   <label style={pts.fieldLabel}>Quantité *</label>
                   <input type="number" style={pts.fieldInput} placeholder="0" value={form.quantite} onChange={e=>setForm({...form,quantite:e.target.value})}/>
                 </div>
+                {(!prixDuCatalogue || details) && (
                 <div style={pts.field}>
                   <label style={pts.fieldLabel}>Valeur unitaire (CHF) *</label>
                   <input type="number" step="0.01" style={pts.fieldInput} placeholder="0.00" value={form.valeurUnit} onChange={e=>setForm({...form,valeurUnit:e.target.value})}/>
                 </div>
+                )}
                 <ChoixTuiles nom="unite" libelle="Unité" valeur={form.unite} options={UNITES} onChange={u => setForm({ ...form, unite: u })} />
                 <ChoixTuiles nom="motif" libelle="Motif *" valeur={form.motif} options={MOTIFS.slice(1)} onChange={m => setForm({ ...form, motif: m })} />
+                {!details && (
+                  <button type="button" style={pts.plusDetails} onClick={() => setDetails(true)} data-pertes-details="">
+                    Plus de détails : date, catégorie, commentaire
+                  </button>
+                )}
+                {details && <>
                 <div style={pts.field}>
                   <label style={pts.fieldLabel}>Date *</label>
                   <input type="date" style={pts.fieldInput} value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
@@ -538,6 +558,7 @@ const Pertes = ({ user, etablissement }) => {
                   <label style={pts.fieldLabel}>Commentaire</label>
                   <textarea style={{...pts.fieldInput, resize:'vertical', minHeight:70}} value={form.commentaire} onChange={e=>setForm({...form,commentaire:e.target.value})} placeholder="Précisions éventuelles…"/>
                 </div>
+                </>}
               </div>
               {form.quantite && form.valeurUnit && (
                 <div style={pts.previewVal}>
@@ -557,6 +578,7 @@ const Pertes = ({ user, etablissement }) => {
 };
 
 const pts = {
+  plusDetails:{gridColumn:'1/-1',justifySelf:'start',minHeight:44,padding:'0 4px',background:'transparent',borderWidth:0,borderStyle:'none',color:'var(--lien)',fontSize:'var(--t2)',fontFamily:'var(--font)',cursor:'pointer',textDecoration:'underline',textUnderlineOffset:3},
   root:{display:'flex',flexDirection:'column',gap:16},
   // Carte du registre (Panneau) : sans retrait, le tableau défile dedans.
   registre:{padding:0,overflow:'hidden',minWidth:0},

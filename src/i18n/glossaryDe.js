@@ -1770,6 +1770,8 @@ export const UI_GLOSSARY_DE = {
   "Échanges de service réglés": "Geregelte Diensttausche",
   "Cet horaire est déjà proposé à l'échange.": "Dieser Dienst wird bereits zum Tausch angeboten.",
   "L'échange n'a pas pu être enregistré. Réessayez.": "Der Tausch konnte nicht gespeichert werden. Versuchen Sie es erneut.",
+  // Déclaration de perte simplifiée (lot B).
+  "Plus de détails : date, catégorie, commentaire": "Mehr Details: Datum, Kategorie, Kommentar",
   // Temps gagné (lot T, tableau de bord du patron).
   "Temps gagné": "Gewonnene Zeit",
   "Temps gagné cette semaine": "Gewonnene Zeit diese Woche",
