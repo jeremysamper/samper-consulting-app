@@ -324,6 +324,8 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
     nbHaussesPrix: voitHaussesPrix && haussesPrix.statut === 'pret' ? haussesPrix.hausses.length : 0,
     avecTempsGagne: direction && tempsGagne.statut === 'pret',
     avecMiseEnRoute: miseEnRoute.statut === 'pret' && !miseEnRoute.termine,
+    avecBriefing: peutOuvrir('previsions') || peutOuvrir('planning'),
+    couvertsDuJour: (peutOuvrir('previsions') || peutOuvrir('planning')) ? (reperes.find((r) => r.id === 'couverts')?.valeur || 0) : 0,
     tempsGagneSecondes: direction && tempsGagne.statut === 'pret' ? tempsGagne.totalSecondes : 0,
     modulesDuMenu: menu,
   };

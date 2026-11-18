@@ -41,8 +41,15 @@ export const BAREME = {
     avant: 'Rédiger la passation de mémoire : pertes, relevés hors norme, tâches restantes, réservations à venir.',
     pourquoi: 'Une passation rédigée prend 3 à 5 minutes. On retient 3 minutes, relecture déduite.',
   },
-  // Les lots suivants ajoutent ici leur geste (briefing, échange de service,
-  // relevé par photo) le jour où il existe dans l'app.
+  briefing_prepare: {
+    secondes: 5 * 60,
+    libelle: 'Briefings d\'avant-service préparés',
+    unite: 'briefing',
+    avant: 'Réunir à la main les réservations, les notes des clients, les absents et les frigos à surveiller avant le service.',
+    pourquoi: 'Cette collecte prend 10 minutes dans plusieurs écrans. On retient 5 minutes, compté une fois par personne et par service.',
+  },
+  // Les lots suivants ajoutent ici leur geste (échange de service, relevé par
+  // photo) le jour où il existe dans l'app.
 };
 
 export const GESTES = Object.keys(BAREME);

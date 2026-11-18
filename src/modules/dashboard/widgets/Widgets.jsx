@@ -19,6 +19,7 @@ import { chiffresDuMois, formatPoints, libelleAction, prochainCadeau } from '../
 import { BAREME, GESTES, formatDuree, formatDureeGeste } from '../../../services/tempsGagneBareme.js';
 import { Fenetre } from '../../../components/ui/Fenetres.jsx';
 import CarteDemarrage from '../../demarrage/CarteDemarrage.jsx';
+import { Btn } from '../../../components/ui/index.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composants des widgets du tableau de bord. Chacun reçoit :
@@ -425,6 +426,23 @@ export function WidgetTempsGagne({ t, taille }) {
       ))}
       {tg.detail.length > n && <p style={w.reste}><span data-no-translate>{tg.detail.length - n}</span>{' '}<span>{tg.detail.length - n > 1 ? 'autres gestes' : 'autre geste'}</span></p>}
       {fenetre}
+    </Section>
+  );
+}
+
+// Briefing du service (lot C3) : les couverts du jour déjà lus, et l'entrée
+// vers la page du briefing.
+export function WidgetBriefing({ t }) {
+  const couverts = t.reperes?.find((r) => r.id === 'couverts')?.valeur || 0;
+  return (
+    <Section id="tdb-w-briefing" titre="Briefing du service">
+      <p style={w.detail}>
+        {couverts > 0
+          ? <><span data-no-translate>{couverts}</span>{' '}<span>{couverts > 1 ? "couverts réservés aujourd'hui." : "couvert réservé aujourd'hui."}</span>{' '}</>
+          : null}
+        <span>Les réservations, l'équipe et ce qu'il faut surveiller, en deux minutes.</span>
+      </p>
+      <div style={{ marginTop: 12 }}><Btn onClick={() => t.ouvrir('briefing')}>Ouvrir le briefing</Btn></div>
     </Section>
   );
 }

@@ -122,6 +122,20 @@ test('hausses de prix : la direction sous la garde de Factures & achats, posé �
   assert.ok(ids(origine('ordinateur', avec)).indexOf('hausses-prix') > ids(origine('ordinateur', avec)).indexOf('qui-travaille'));
 });
 
+test('briefing du service : posé à l\'origine seulement un jour avec des couverts', () => {
+  const lu = { ...CONSULTANT, avecBriefing: true, couvertsDuJour: 0 };
+  assert.equal(estVisible('briefing', lu), true);
+  POSTES.forEach((p) => assert.deepEqual(origine(p, lu), origine(p, CONSULTANT)));
+  const avec = { ...lu, couvertsDuJour: 34 };
+  POSTES.forEach((p) => {
+    const l = origine(p, avec);
+    const i = ids(l).indexOf('briefing');
+    assert.ok(i > 0, p);
+    assert.equal(l[i].taille, 'pleine');
+    assert.deepEqual(ids(l).filter((x) => x !== 'briefing'), ids(origine(p, CONSULTANT)));
+  });
+});
+
 test('mise en route : en tête à l\'origine tant qu\'elle n\'est pas terminée', () => {
   assert.equal(estVisible('mise-en-route', CONSULTANT), false, 'garde fermée sans lecture');
   const neuf = { ...CONSULTANT, avecMiseEnRoute: true };

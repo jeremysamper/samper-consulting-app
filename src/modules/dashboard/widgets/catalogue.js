@@ -55,6 +55,13 @@ export const CATALOGUE = [
     famille: 'aujourdhui', page: 'demarrage', tailles: ['moyen', 'pleine'], origine: partout('pleine'),
     visible: (c) => Boolean(c.avecMiseEnRoute),
   },
+  // Briefing du service (lot C3) : qui ouvre les réservations ou le planning.
+  // Posé à l'origine seulement quand des couverts sont réservés aujourd'hui.
+  {
+    id: 'briefing', nom: 'Briefing du service', description: "Les réservations, l'équipe et ce qu'il faut surveiller avant le service.",
+    famille: 'aujourdhui', page: 'briefing', tailles: ['moyen', 'pleine'], origine: partout('pleine'),
+    visible: (c) => Boolean(c.avecBriefing),
+  },
   {
     id: 'pointage', nom: 'Votre service', description: 'Pointer votre arrivée et votre départ.',
     famille: 'aujourdhui', page: 'planning', tailles: ['grand', 'pleine'], origine: { ordinateur: 'grand', tablette: 'grand', telephone: 'pleine' },

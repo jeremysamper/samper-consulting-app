@@ -15,6 +15,7 @@ const loadCompte = () => import('./compte/Compte.jsx');
 const loadConsultantTools = () => import('./consultant-tools/ConsultantTools.jsx');
 // Mise en route d'un établissement neuf (page hors menu, lot LD).
 const loadDemarrage = () => import('./demarrage/Demarrage.jsx');
+const loadBriefing = () => import('./briefing/Briefing.jsx');
 // Tableau de bord (les établissements de type Spa n'en ont pas, cf. moduleConfig).
 const loadTableauDeBord = () => import('./dashboard/TableauDeBord.jsx');
 const loadDocuments = () => import('./documents/Documents.jsx');
@@ -64,6 +65,7 @@ const Commande = lazy(loadCommande);
 const Compte = lazy(loadCompte);
 const ConsultantTools = lazy(loadConsultantTools);
 const Demarrage = lazy(loadDemarrage);
+const Briefing = lazy(loadBriefing);
 const TableauDeBord = lazy(loadTableauDeBord);
 const Documents = lazy(loadDocuments);
 const Factures = lazy(loadFactures);
@@ -381,6 +383,12 @@ export default function LegacyModuleHost({
       return peutOuvrirPage('compte', user, permissions)
         ? wrap('Réglages', <CompteComponent user={user} etablissement={etablissement} shellMode={shellMode} isActive={isActivePage} legacyVersion={legacyVersion} />)
         : accessDenied;
+    }
+    case 'briefing': {
+      // Briefing du service (lot C3) : hors menu, ouvert par le widget du
+      // tableau de bord ; toute l'équipe, chacun lit ce que ses droits lisent.
+      const BriefingComponent = Briefing;
+      return wrap('Briefing du service', <BriefingComponent user={user} etablissement={etablissement} />);
     }
     case 'demarrage': {
       // Mise en route (lot LD) : ouverte par la carte du tableau de bord,
