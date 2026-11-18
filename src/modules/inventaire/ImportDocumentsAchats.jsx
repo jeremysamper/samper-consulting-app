@@ -8,6 +8,7 @@ import { montantTvaAEnregistrer } from './tvaAchats.js';
 import { dateCH } from './inventaireLignes.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { ecartSignificatif } from './lectureControle.js';
+import { inscrireGeste } from '../../services/tempsGagne.js';
 
 // Phrases fixes, dans leur propre nœud : le glossaire les traduit sans appel IA.
 const ALERTE_PHOTO = 'Photo peu lisible. Reprenez-la à plat, bien éclairée, le document entier dans le cadre.';
@@ -136,6 +137,7 @@ export default function ImportDocumentsAchats({
         throw err;
       }
       onImporte(enregistre, pieceGardee);
+      inscrireGeste(etabId, 'facture_lue', doc.lignes.length);
       majTravail(travail.key, {
         statut: 'ok',
         message: `${doc.fournisseurNom || 'Fournisseur non lu'}, ${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''}`

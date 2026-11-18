@@ -4,6 +4,7 @@ import { ajouterJours } from './planningModeles.js';
 import { libellePeriode } from './planningExport.js';
 import { accord, planDuplication, planReprendre, planSemaines, planVersSuivante, resumeDuplication, semainesAReprendre } from './planningDuplication.js';
 import { zurichToday } from '../../utils/zurichTime.js';
+import { inscrireGeste } from '../../services/tempsGagne.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dupliquer : le cas fréquent en un geste, le reste rangé.
@@ -109,6 +110,7 @@ export default function DupliquerModal({ semaine, existants, employees, estAbsen
     setEnCours(action);
     try {
       await onDupliquer({ aCreer: plan.aCreer, aSupprimer: plan.aSupprimer });
+      inscrireGeste(etablissementId, 'horaire_copie', plan.aCreer.length);
       if (ouvertRef.current) {
         onFait?.(action);
         onClose();

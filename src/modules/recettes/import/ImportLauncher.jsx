@@ -7,6 +7,7 @@ import ImportPreview, { isRecipeValid } from './ImportPreview.jsx';
 import { getUnrecognizedUnits, resetUnrecognizedUnits } from './UnitParser.js';
 import { messageErreur } from '../../../utils/messageErreur.js';
 import { CATEGORIES_PLAT, categorieDuPlat } from '../../../utils/categoriesPlat.js';
+import { inscrireGeste } from '../../../services/tempsGagne.js';
 
 const BATCH_SIZE = 5;
 
@@ -261,6 +262,7 @@ export default function ImportLauncher({
     setEchecs(aReprendre);
     setStep('done');
     if (imported > 0) {
+      inscrireGeste(etabId, 'fiche_importee', imported);
       notify(`${imported} fiche(s) importée(s).`, aReprendre.length ? 'warning' : 'success');
       if (onImported) onImported();
     } else {

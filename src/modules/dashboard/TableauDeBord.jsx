@@ -57,6 +57,7 @@ import { usePointsEtat } from '../points/pointsEtat.js';
 import { useResumePoints } from '../points/useResumePoints.js';
 import { useHaussesTableau } from '../factures-achats/haussesTableau.js';
 import { demanderEcran } from '../../services/demandeEcran.js';
+import { useTempsGagne } from '../../hooks/useTempsGagne.js';
 
 // Heure de Zurich, rafraîchie toutes les 30 s (durée en poste, retards) et au
 // retour sur l'app. Le jour suit : passé minuit, tout se relit sur le nouveau.
@@ -130,6 +131,9 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   // module (factures-achats/haussesTableau.js), seule à lire ici les prix d'achat.
   const voitHaussesPrix = direction && actif('achats') && peutOuvrirPage('achats', user, perms) && canManageModule(role, 'factures_achat');
   const haussesPrix = useHaussesTableau({ etabId, userId: user?.id || null, enabled: voitHaussesPrix });
+  // Temps gagné de la semaine (lot T) : consultant et patron, seuls à lire la
+  // table temps_gagne (RLS).
+  const tempsGagne = useTempsGagne({ etabId, aujourdhui, enabled: direction });
   // Points & boutique : l'état est celui du filtre du menu (même lecture en
   // cache) ; le solde n'est lu que si le système est allumé et que la personne
   // participe.
@@ -313,12 +317,14 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
     avecPoints: pointsEtat.actif && pointsEtat.participant && points.lu,
     avecHaussesPrix: voitHaussesPrix && haussesPrix.statut === 'pret',
     nbHaussesPrix: voitHaussesPrix && haussesPrix.statut === 'pret' ? haussesPrix.hausses.length : 0,
+    avecTempsGagne: direction && tempsGagne.statut === 'pret',
+    tempsGagneSecondes: direction && tempsGagne.statut === 'pret' ? tempsGagne.totalSecondes : 0,
     modulesDuMenu: menu,
   };
 
   const t = {
     user, aujourdhui, maintenant, mobile, etabId, consultant, direction, d, absences, absencesLues, telephones, nbMessages,
-    nonLu, peutOuvrir, ouvrir, reperes, items, blocsGestion, regularite, publierMessage, points, haussesPrix,
+    nonLu, peutOuvrir, ouvrir, reperes, items, blocsGestion, regularite, publierMessage, points, haussesPrix, tempsGagne,
     avecPlanning, avecGroupes, avecCouvertsLus, avecGroupesLus,
     versPlanning: peutOuvrir('planning') ? () => ouvrir('planning') : null,
     versReservations: peutOuvrir('previsions') ? () => ouvrir('previsions') : null,

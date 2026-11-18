@@ -122,6 +122,24 @@ test('hausses de prix : la direction sous la garde de Factures & achats, posé �
   assert.ok(ids(origine('ordinateur', avec)).indexOf('hausses-prix') > ids(origine('ordinateur', avec)).indexOf('qui-travaille'));
 });
 
+test('temps gagné : la direction, posé avec les chiffres seulement quand la semaine a un gain', () => {
+  assert.equal(estVisible('temps-gagne', CONSULTANT), false, 'garde fermée sans lecture aboutie');
+  assert.equal(estVisible('temps-gagne', { ...CUISINIER, avecTempsGagne: true }), false, 'jamais hors direction');
+  const lu = { ...CONSULTANT, avecTempsGagne: true, tempsGagneSecondes: 0 };
+  assert.equal(estVisible('temps-gagne', lu), true);
+  // Semaine sans gain : l'origine ne change pas, le widget attend dans la galerie.
+  POSTES.forEach((p) => assert.deepEqual(origine(p, lu), origine(p, CONSULTANT)));
+  // Un gain : il rejoint le groupe des chiffres, en petit ou moyen, rien d'autre ne bouge.
+  const avec = { ...lu, tempsGagneSecondes: 900 };
+  POSTES.forEach((p) => {
+    const l = origine(p, avec);
+    const i = ids(l).indexOf('temps-gagne');
+    assert.ok(i > 0, p);
+    assert.ok(['petit', 'moyen'].includes(l[i].taille), p);
+    assert.deepEqual(ids(l).filter((x) => x !== 'temps-gagne'), ids(origine(p, CONSULTANT)));
+  });
+});
+
 test('garde fermée : un chiffre de gestion gardé ne se rend pas pour un cuisinier, et garde sa place', () => {
   const gardee = normaliserListe([{ id: 'chiffre-pertes', taille: 'moyen' }, { id: 'pointage', taille: 'grand' }], 'tablette');
   assert.deepEqual(ids(gardee), ['chiffre-pertes', 'pointage']);

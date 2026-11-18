@@ -1,5 +1,5 @@
 import React from 'react';
-import { CircleCheck } from 'lucide-react';
+import { CircleCheck, Timer } from 'lucide-react';
 import { Anneau, Barres, CarteRepere, ligneStyle, pictoCercleStyle } from '../../../components/ui/index.jsx';
 import { getModuleIcon } from '../../moduleIcons.js';
 import { metaMotif, periodeAbsence } from '../../../utils/absences.js';
@@ -16,6 +16,8 @@ import { Chiffre, LienModule, Parties, Repere, Section, StatutGroupe, Vide } fro
 import { absencesAVenir, absencesDuJour, jourRelatif, heureParlee, pertesParSemaine, relevesDuJour } from '../tableauLogique.js';
 import { CAPACITE_RACCOURCIS } from './dispositionLogique.js';
 import { chiffresDuMois, formatPoints, libelleAction, prochainCadeau } from '../../points/bareme.js';
+import { BAREME, GESTES, formatDuree, formatDureeGeste } from '../../../services/tempsGagneBareme.js';
+import { Fenetre } from '../../../components/ui/Fenetres.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Composants des widgets du tableau de bord. Chacun reçoit :
@@ -354,6 +356,74 @@ export function WidgetHaussesPrix({ t, taille }) {
         );
       })}
       {liste.length > n && <p style={w.reste}><span data-no-translate>{liste.length - n}</span>{' '}<span>{liste.length - n > 1 ? 'autres hausses' : 'autre hausse'}</span></p>}
+    </Section>
+  );
+}
+
+// Temps gagné de la semaine (lot T) : le total, puis les gestes du plus gros
+// gain au plus petit. Le détail du barème (ce qu'on faisait avant, la durée
+// retenue et pourquoi) s'ouvre dans une fenêtre, à toutes les tailles.
+const LIGNES_TEMPS = { moyen: 2, grand: 4 };
+
+function BaremeTempsGagne({ detail, onClose }) {
+  const parGeste = new Map(detail.map((d) => [d.geste, d]));
+  return (
+    <Fenetre id="tdb-temps-gagne" titre="Comment le temps gagné est compté" onClose={onClose} largeur={560}>
+      <p style={w.detail}>Chaque fois que l&apos;app fait un geste à votre place, il est compté avec une durée prudente. Le temps de relecture est déduit. Seuls les gestes de cette semaine sont additionnés.</p>
+      {GESTES.map((g) => {
+        const b = BAREME[g];
+        const d = parGeste.get(g);
+        return (
+          <div key={g} className="tdb-filet" style={{ ...w.ligne, alignItems: 'flex-start' }} data-bareme={g}>
+            <span style={{ minWidth: 0, flex: '1 1 auto' }}>
+              <span style={w.ligneTitre}>{b.libelle}</span>
+              <span style={w.ligneDetail}><span>Avant :</span>{' '}<span>{b.avant}</span></span>
+              <span style={w.ligneDetail}>{b.pourquoi}</span>
+            </span>
+            <span style={{ ...w.etat, color: 'var(--text2)' }} data-no-translate>{d ? `${d.quantite} × ${formatDureeGeste(b.secondes)}` : formatDureeGeste(b.secondes)}</span>
+          </div>
+        );
+      })}
+    </Fenetre>
+  );
+}
+
+export function WidgetTempsGagne({ t, taille }) {
+  const [bareme, setBareme] = React.useState(false);
+  const tg = t.tempsGagne || { totalSecondes: 0, detail: [] };
+  const total = formatDuree(tg.totalSecondes);
+  const fenetre = bareme ? <BaremeTempsGagne detail={tg.detail} onClose={() => setBareme(false)} /> : null;
+  if (taille === 'petit') {
+    return (
+      <>
+        <Chiffre id="temps-gagne" label="Temps gagné" valeur={<span data-no-translate>{total}</span>} detail="cette semaine" icone={Timer} onClick={() => setBareme(true)} />
+        {fenetre}
+      </>
+    );
+  }
+  const n = LIGNES_TEMPS[taille] || 2;
+  return (
+    <Section
+      id="tdb-w-temps-gagne"
+      titre="Temps gagné cette semaine"
+      action={<LienModule onClick={() => setBareme(true)}>Comment c&apos;est compté</LienModule>}
+    >
+      <p style={w.ligneChiffre}>
+        <span style={w.grandChiffre} data-no-translate>{total}</span>
+        <span style={w.sur}>gagnées depuis lundi</span>
+      </p>
+      {!tg.detail.length && <Vide>Les gestes que l&apos;app fait à votre place s&apos;additionnent ici chaque semaine.</Vide>}
+      {tg.detail.slice(0, n).map((d) => (
+        <div key={d.geste} className="tdb-filet" style={w.ligne} data-temps-gagne={d.geste}>
+          <span style={{ minWidth: 0, flex: '1 1 auto' }}>
+            <span style={w.ligneTitre}>{d.libelle}</span>
+            <span style={w.ligneDetail}><Parties parties={[{ n: d.quantite }, { t: 'fois cette semaine' }]} /></span>
+          </span>
+          <span style={{ ...w.etat, color: 'var(--text)' }} data-no-translate>{formatDuree(d.secondes)}</span>
+        </div>
+      ))}
+      {tg.detail.length > n && <p style={w.reste}><span data-no-translate>{tg.detail.length - n}</span>{' '}<span>{tg.detail.length - n > 1 ? 'autres gestes' : 'autre geste'}</span></p>}
+      {fenetre}
     </Section>
   );
 }

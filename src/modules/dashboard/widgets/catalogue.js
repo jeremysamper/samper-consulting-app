@@ -113,6 +113,14 @@ export const CATALOGUE = [
     famille: 'gestion', page: 'inventaire', tailles: ['petit', 'moyen'], origine: partout('petit'),
     visible: (c) => c.direction && c.avecStock,
   },
+  // Temps gagné de la semaine (lot T, services/tempsGagneBareme.js) :
+  // consultant et patron, lecture de temps_gagne aboutie. Posé à l'origine,
+  // dans le groupe des chiffres, seulement quand la semaine a déjà un gain.
+  {
+    id: 'temps-gagne', nom: 'Temps gagné', description: 'Le temps que l\'app vous a fait gagner cette semaine, geste par geste.',
+    famille: 'gestion', page: null, tailles: ['petit', 'moyen', 'grand'], origine: partout('petit'),
+    visible: (c) => c.direction && Boolean(c.avecTempsGagne),
+  },
   {
     id: 'regularite', nom: 'Régularité de l\'équipe', description: 'Les retards du jour et les soldes d\'heures négatifs.',
     famille: 'gestion', page: 'planning', tailles: ['moyen', 'pleine'], origine: partout('pleine'),

@@ -104,7 +104,10 @@ export function origine(poste, ctx) {
   pose('hotel', 'pleine');
   pose('mot-consultant', 'pleine');
   pose('a-venir', 'pleine');
-  const chiffres = ['chiffre-couverts', 'chiffre-heures', 'chiffre-pertes', 'chiffre-stock'].filter(vu);
+  // Temps gagné : avec les chiffres, seulement quand la semaine a déjà un gain.
+  const chiffres = ['chiffre-couverts', 'chiffre-heures', 'chiffre-pertes', 'chiffre-stock']
+    .concat(ctx.tempsGagneSecondes > 0 ? ['temps-gagne'] : [])
+    .filter(vu);
   taillesDeGroupe(chiffres.length, poste).forEach((taille, i) => liste.push({ id: chiffres[i], taille }));
   pose('regularite', 'pleine');
   return liste;

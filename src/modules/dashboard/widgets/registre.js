@@ -1,10 +1,10 @@
-import { CalendarDays, LayoutGrid, ListTodo, MessageSquareQuote } from 'lucide-react';
+import { CalendarDays, LayoutGrid, ListTodo, MessageSquareQuote, Timer } from 'lucide-react';
 import { getModuleIcon } from '../../moduleIcons.js';
 import { CATALOGUE } from './catalogue.js';
 import {
   WidgetAbsences, WidgetAFaire, WidgetAVenir, WidgetChiffre, WidgetEquipe, WidgetGroupes, WidgetHaussesPrix, WidgetHotel, WidgetMesPoints, WidgetMessages,
   WidgetMot, WidgetPertesSemaines, WidgetPointage, WidgetQuiTravaille, WidgetRaccourcis, WidgetRegularite, WidgetReleves,
-  WidgetRepere, WidgetReservations, WidgetSemaine,
+  WidgetRepere, WidgetReservations, WidgetSemaine, WidgetTempsGagne,
 } from './Widgets.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,6 +33,7 @@ const COMPOSANTS = {
   'chiffre-stock': WidgetChiffre,
   'regularite': WidgetRegularite,
   'hausses-prix': WidgetHaussesPrix,
+  'temps-gagne': WidgetTempsGagne,
   'haccp-releves': WidgetReleves,
   'pertes-semaines': WidgetPertesSemaines,
   'groupes': WidgetGroupes,
@@ -43,7 +44,7 @@ const COMPOSANTS = {
 };
 
 // Picto des widgets qui n'ouvrent pas un module (leurs lignes le font).
-const PICTOS = { 'a-faire': ListTodo, 'mot-consultant': MessageSquareQuote, 'a-venir': CalendarDays, 'raccourcis': LayoutGrid };
+const PICTOS = { 'a-faire': ListTodo, 'mot-consultant': MessageSquareQuote, 'a-venir': CalendarDays, 'raccourcis': LayoutGrid, 'temps-gagne': Timer };
 
 export const REGISTRE = CATALOGUE.map((w) => ({
   ...w,
