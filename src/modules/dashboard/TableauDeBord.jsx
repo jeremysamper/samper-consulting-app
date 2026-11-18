@@ -53,7 +53,8 @@ import { modulesDuMenu as filtrerMenu, raccourcisAffiches } from './widgets/disp
 import { messageErreur } from '../../utils/messageErreur.js';
 import { usePointsEtat } from '../points/pointsEtat.js';
 import { useResumePoints } from '../points/useResumePoints.js';
-import { useHaussesPrix } from '../catalogue/useHaussesPrix.js';
+import { useHaussesTableau } from '../factures-achats/haussesTableau.js';
+import { demanderEcran } from '../../services/demandeEcran.js';
 
 // Heure de Zurich, rafraîchie toutes les 30 s (durée en poste, retards) et au
 // retour sur l'app. Le jour suit : passé minuit, tout se relit sur le nouveau.
@@ -87,7 +88,13 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   // La page Pointage s'ouvre avec le droit du Planning (même module).
   const permDe = (page) => (page === 'pointage' ? 'planning' : page);
   const peutOuvrir = (page) => typeof setPage === 'function' && actif(page) && perms[permDe(page)] !== false;
-  const ouvrir = (page) => { if (typeof setPage === 'function') setPage(page); };
+  // `ecran` : écran du module à ouvrir (services/demandeEcran.js), pour un
+  // widget qui mène plus loin que l'accueil du module.
+  const ouvrir = (page, ecran) => {
+    if (typeof setPage !== 'function') return;
+    if (ecran) demanderEcran(page, ecran);
+    setPage(page);
+  };
 
   const avecPlanning = actif('planning');
   const avecCouverts = actif('previsions');
@@ -110,11 +117,12 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   // Régularité de l'équipe (direction, planning activé) : une ligne de plus
   // seulement si l'établissement a au moins un contrat.
   const regularite = useRegulariteEquipe(direction && avecPlanning);
-  // Hausses de prix fournisseur : la direction, sous la garde du Catalogue
-  // (module activé pour l'établissement, page permise : celle de
-  // LegacyModuleHost), seule à lire ici les prix d'achat.
-  const voitHaussesPrix = direction && actif('catalogue') && peutOuvrirPage('catalogue', user, perms);
-  const haussesPrix = useHaussesPrix({ etabId, aujourdhui, enabled: voitHaussesPrix });
+  // Hausses de prix fournisseur : la direction qui voit les hausses dans
+  // Factures & achats (module activé, page permise, droit « Régler les
+  // factures »). Mêmes hausses, même seuil, même état « vu » que l'écran du
+  // module (factures-achats/haussesTableau.js), seule à lire ici les prix d'achat.
+  const voitHaussesPrix = direction && actif('achats') && peutOuvrirPage('achats', user, perms) && canManageModule(role, 'factures_achat');
+  const haussesPrix = useHaussesTableau({ etabId, userId: user?.id || null, enabled: voitHaussesPrix });
   // Points & boutique : l'état est celui du filtre du menu (même lecture en
   // cache) ; le solde n'est lu que si le système est allumé et que la personne
   // participe.

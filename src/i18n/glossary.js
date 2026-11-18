@@ -5458,6 +5458,28 @@ export const UI_GLOSSARY = {
   "Le seuil n'a pas pu être lu. Réessayez dans un instant.": "The threshold could not be read. Try again in a moment.",
   "Le seuil n'a pas pu être enregistré. Réessayez dans un instant.": "The threshold could not be saved. Try again in a moment.",
   "La hausse n'a pas pu être enregistrée. Réessayez dans un instant.": "The price increase could not be saved. Try again in a moment.",
+  // ── Tableau de bord : widget « Hausses de prix » ──
+  'Les hausses de prix des factures et des bons, à voir, et leur effet sur le coût des fiches.': "Price increases from invoices and delivery notes to review, and their effect on recipe costs.",
+  "Prix d'achat en hausse de": "Purchase prices up by",
+  'ou plus, factures et bons à voir': "or more, invoices and delivery notes to review",
+  'Voir les hausses': "See the increases",
+  'Aucune hausse de prix à voir.': "No price increase to review.",
+  'Fournisseur non précisé': "Supplier not specified",
+  'le kg': "per kg",
+  'le litre': "per litre",
+  'la pièce': "per piece",
+  'Produit non relié au catalogue : effet sur les fiches non chiffré.': "Product not linked to the catalogue: effect on recipes not costed.",
+  "Aucune fiche n'utilise ce produit.": "No recipe uses this product.",
+  'fiches utilisent ce produit.': "recipes use this product.",
+  'fiche utilise ce produit.': "recipe uses this product.",
+  'Le catalogue retient un autre prix : effet sur les fiches non chiffré.': "The catalogue keeps another price: effect on recipes not costed.",
+  'moins de': "less than",
+  'par portion': "per portion",
+  'effet non chiffré': "effect not costed",
+  'autres fiches.': "other recipes.",
+  'autre fiche.': "other recipe.",
+  'autres hausses': "other increases",
+  'autre hausse': "other increase",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

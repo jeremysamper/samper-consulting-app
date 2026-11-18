@@ -101,7 +101,9 @@ test('mes points : seulement pour qui participe, posé avec les repères du jour
   assert.deepEqual(seul[0], { id: 'mes-points', taille: 'moyen' });
 });
 
-test('hausses de prix : la direction sous la garde du Catalogue, posé à l\'origine seulement avec une hausse', () => {
+test('hausses de prix : la direction sous la garde de Factures & achats, posé à l\'origine seulement avec une hausse à voir', () => {
+  // L'id reste « hausses-prix » : une disposition enregistrée garde sa case.
+  assert.ok(CATALOGUE.some((x) => x.id === 'hausses-prix' && x.page === 'achats' && x.ecran === 'hausses'));
   assert.equal(estVisible('hausses-prix', CONSULTANT), false, 'garde fermée sans lecture aboutie');
   assert.equal(estVisible('hausses-prix', { ...CUISINIER, avecHaussesPrix: true }), false, 'jamais hors direction');
   const lu = { ...CONSULTANT, avecHaussesPrix: true, nbHaussesPrix: 0 };

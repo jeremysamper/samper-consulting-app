@@ -257,13 +257,21 @@ export function prixParProduit(factures) {
 //     sans quantité totale (prix par colis seul) n'entre pas ;
 //   - plusieurs lignes du même article sur une pièce : leur prix moyen pondéré ;
 //   - « la fois précédente » : la pièce d'avant par date, puis par date
-//     d'enregistrement.
+//     d'enregistrement, datée de moins d'un an (ANCIENNETE_PRIX_JOURS) avant
+//     la pièce : un prix plus vieux n'est plus le prix du moment ;
 // `depuis` (jour ISO) : seules les hausses portées par une pièce datée de ce
 // jour ou après sont rendues ; la pièce d'avant peut être plus ancienne.
+// Avec cette borne, les pièces datées d'au plus FENETRE_HAUSSES_JOURS +
+// ANCIENNETE_PRIX_JOURS jours suffisent à rendre les mêmes hausses que tout
+// l'historique (lecture du tableau de bord, haussesTableau.js).
 // Rend les hausses, la plus récente d'abord. `cle` identifie la hausse pour
-// achats_hausses_vues (pièce, fournisseur, article, unité).
+// achats_hausses_vues (pièce, fournisseur, article, unité) ; `reference`,
+// `libelle` et `fournisseurId` servent à la relier au catalogue.
 export const SEUIL_HAUSSE_DEFAUT = 5;
 export const FENETRE_HAUSSES_JOURS = 90;
+export const ANCIENNETE_PRIX_JOURS = 365;
+const MS_JOUR = 86400000;
+const ecartJours = (a, b) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / MS_JOUR);
 const DOUTE_LECTURE = 'montant non retrouve sur la ligne';
 
 const conditionnementNorme = (c) => String(c || '').toLowerCase().replace(/[×*]/g, 'x').replace(/,/g, '.').replace(/\s+/g, '');
@@ -306,7 +314,8 @@ export function haussesPrix(docs, { seuilPct = SEUIL_HAUSSE_DEFAUT, depuis = nul
         docId: d.id, date: d.dateDocument, cree: String(d.createdAt || ''),
         prix: p.prix, unite: p.unite, montant: e.montant,
         nom: (l.lien === 'manuel' && l.produitNom) ? l.produitNom : nomDepuisLibelle(l.libelle, l.conditionnement),
-        fournisseur: String(d.fournisseurNom || '').trim(),
+        fournisseur: String(d.fournisseurNom || '').trim(), fournisseurId: d.fournisseurId || null,
+        reference: String(l.referenceFourn || '').trim() || null, libelle: String(l.libelle || '').trim(),
         typeDocument: d.typeDocument || 'facture', numero: String(d.numero || '').trim(),
         doute: e.doute,
       });
@@ -320,6 +329,7 @@ export function haussesPrix(docs, { seuilPct = SEUIL_HAUSSE_DEFAUT, depuis = nul
       const avant = points[i - 1];
       const p = points[i];
       if (depuis && p.date < depuis) continue;
+      if (ecartJours(avant.date, p.date) > ANCIENNETE_PRIX_JOURS) continue;
       const ecartPct = ((p.prix - avant.prix) / avant.prix) * 100;
       if (!(ecartPct >= seuil - 1e-9)) continue;
       // Quantité de la pièce dans l'unité de comparaison : son montant / son prix.
@@ -327,6 +337,7 @@ export function haussesPrix(docs, { seuilPct = SEUIL_HAUSSE_DEFAUT, depuis = nul
       hausses.push({
         cle: `${p.docId}|${cle}`,
         docId: p.docId, nom: p.nom, fournisseur: p.fournisseur, unite: p.unite,
+        fournisseurId: p.fournisseurId, reference: p.reference, libelle: p.libelle,
         typeDocument: p.typeDocument, numero: p.numero, doute: p.doute,
         date: p.date, dateAvant: avant.date,
         prixAvant: avant.prix,

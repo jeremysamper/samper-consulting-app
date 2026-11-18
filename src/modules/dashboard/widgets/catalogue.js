@@ -7,6 +7,7 @@
 //   description  une ligne pour la galerie
 //   famille      rangement de la galerie (FAMILLES)
 //   page         module ouvert par un toucher sur le widget, et son picto
+//   ecran        (facultatif) écran du module ouvert avec lui
 //   tailles      tailles que le widget sait rendre (TAILLES), dans l'ordre
 //   origine      taille dans la disposition d'origine, par poste ; null : le
 //                widget n'y est pas (il attend dans la galerie)
@@ -117,12 +118,14 @@ export const CATALOGUE = [
     famille: 'gestion', page: 'planning', tailles: ['moyen', 'pleine'], origine: partout('pleine'),
     visible: (c) => c.direction && c.avecRegularite,
   },
-  // Hausses de prix fournisseur (catalogue/haussesPrix.js) : la direction,
-  // sous la garde du Catalogue (module activé, page permise), lecture aboutie.
-  // Posé à l'origine seulement quand une hausse est à dire.
+  // Hausses de prix fournisseur : les hausses à voir de Factures & achats
+  // (factures-achats/haussesTableau.js), pour la direction qui les voit dans
+  // le module (droit « Régler les factures »), lecture aboutie. Un toucher
+  // ouvre leur écran. Posé à l'origine seulement quand une hausse est à dire.
+  // L'id reste celui du 18.11.2026 : les dispositions enregistrées le gardent.
   {
-    id: 'hausses-prix', nom: 'Hausses de prix', description: 'Les prix d\'achat en hausse sur 30 jours et leur effet sur le coût des fiches.',
-    famille: 'gestion', page: 'catalogue', tailles: ['moyen', 'grand', 'pleine'], origine: partout('pleine'),
+    id: 'hausses-prix', nom: 'Hausses de prix', description: 'Les hausses de prix des factures et des bons, à voir, et leur effet sur le coût des fiches.',
+    famille: 'gestion', page: 'achats', ecran: 'hausses', tailles: ['moyen', 'grand', 'pleine'], origine: partout('pleine'),
     visible: (c) => c.direction && Boolean(c.avecHaussesPrix),
   },
   // Widgets neufs (lot W), sur des données que le tableau de bord lit déjà.
