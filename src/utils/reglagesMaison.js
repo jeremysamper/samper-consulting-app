@@ -104,7 +104,9 @@ export const versBase = {
   pointage: (p) => ({ arrondi_min: p.arrondiMin, avance: p.avance }),
   objectifs: (o) => ({ matiere_pct: o.matierePct, personnel_pct: o.personnelPct, ca_mensuel_ht: o.caMensuelHt }),
 };
+// Où vit chaque bloc : les objectifs ont leur table, lue par la direction seule.
 export const COLONNES = { fermetures: 'fermetures', tempsTravail: 'temps_travail', pointage: 'pointage', objectifs: 'objectifs' };
+export const TABLES = { fermetures: 'reglages_maison', tempsTravail: 'reglages_maison', pointage: 'reglages_maison', objectifs: 'objectifs_maison' };
 
 // Règles du pointage retenues par établissement, posées par useReglagesMaison
 // à chaque lecture et lues par heuresPointees (modules/planning/pointageRegles.js).
