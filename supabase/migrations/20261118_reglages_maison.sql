@@ -1,7 +1,7 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Réglages de la maison (18.11.2026)
 --
---   reglages_maison   une ligne par établissement, quatre blocs jsonb :
+--   reglages_maison   une ligne par établissement, deux blocs jsonb :
 --     fermetures      jours fermés de la semaine, services fermés par jour,
 --                     périodes de fermeture datées (vacances, travaux)
 --     pointage        règles de calcul des heures pointées (arrondi, arrivée
