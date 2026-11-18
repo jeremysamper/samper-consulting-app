@@ -5736,8 +5736,6 @@ export const UI_GLOSSARY_ES = {
   "Douze recettes de bistrot, une carte et trente produits, pour voir l'app remplie. Un geste les efface, sans toucher à ce que vous avez saisi.": 'Doce recetas de bistró, una carta y treinta productos, para ver la app llena. Un gesto los borra, sin tocar lo que usted ha introducido.',
   'Terminer la mise en route': 'Terminar la puesta en marcha',
   "La carte du tableau de bord disparaît. Elle disparaît aussi d'elle-même quand les étapes 1 à 4 sont faites.": 'La tarjeta del panel desaparece. También desaparece sola cuando los pasos 1 a 4 están hechos.',
-  'Le modèle Excel se réimporte tel quel par « Importer des recettes ».': 'La plantilla Excel se importa tal cual con «Importar recetas».',
-  "Remplissez le modèle Excel et confiez-le à votre consultant pour l'import, ou écrivez vos fiches dans Cartes & Recettes.": 'Rellene la plantilla Excel y entréguela a su consultor para la importación, o escriba sus fichas en Cartas y recetas.',
   'Modèle Excel des recettes': 'Plantilla Excel de recetas',
   'Modèle Excel du catalogue': 'Plantilla Excel del catálogo',
   "Charger l'exemple": 'Cargar el ejemplo',

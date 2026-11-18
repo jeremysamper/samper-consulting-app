@@ -5755,8 +5755,6 @@ export const UI_GLOSSARY = {
   "Douze recettes de bistrot, une carte et trente produits, pour voir l'app remplie. Un geste les efface, sans toucher à ce que vous avez saisi.": 'Twelve bistro recipes, a menu and thirty products, to see the app filled in. One tap clears them, without touching what you entered.',
   'Terminer la mise en route': 'Finish getting started',
   "La carte du tableau de bord disparaît. Elle disparaît aussi d'elle-même quand les étapes 1 à 4 sont faites.": 'The dashboard card goes away. It also goes away on its own once steps 1 to 4 are done.',
-  'Le modèle Excel se réimporte tel quel par « Importer des recettes ».': 'The Excel template can be imported as is with “Import recipes”.',
-  "Remplissez le modèle Excel et confiez-le à votre consultant pour l'import, ou écrivez vos fiches dans Cartes & Recettes.": 'Fill in the Excel template and give it to your consultant to import, or write your recipe sheets in Menus & Recipes.',
   'Modèle Excel des recettes': 'Recipe Excel template',
   'Modèle Excel du catalogue': 'Catalogue Excel template',
   "Charger l'exemple": 'Load sample data',
