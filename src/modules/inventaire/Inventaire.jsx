@@ -42,6 +42,7 @@ import {
   construireReferencesPrix, coutUnitaireRecette, masseRecette, ligneDepuisRecette, lierLigne, fichesActives, cartesDesFiches, fichesManquantes,
 } from './produitsMaison.js';
 import { useAchatsDocuments } from './useAchatsDocuments.js';
+import { useHaussesPrix } from '../factures-achats/haussesPrixDonnees.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { Btn } from '../../components/ui/index.jsx';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
@@ -57,6 +58,7 @@ const FacturesPanel = React.lazy(() => import('./FacturesPanel.jsx'));
 // Factures & achats : échéances, à la demande. Les analyses des dépenses
 // sont parties dans Statistiques (S3) : la tuile ouvre le module préréglé.
 const Echeancier = React.lazy(() => import('../factures-achats/Echeancier.jsx'));
+const HaussesPrix = React.lazy(() => import('../factures-achats/HaussesPrix.jsx'));
 
 const aujourdhui = () => new Date().toISOString().slice(0, 10);
 
@@ -74,9 +76,9 @@ const parDateDesc = (a, b) => String(b.date || '').localeCompare(String(a.date |
 const ECRANS_REPRIS = ['comptage', 'ecarts'];
 // Vue « achats » (module Factures & achats, src/modules/factures-achats) :
 // même composant, son accueil et sa mémoire d'écran (sc_achats_ecran).
-const ECRANS_REPRIS_ACHATS = ['reglement', 'echeances'];
+const ECRANS_REPRIS_ACHATS = ['reglement', 'echeances', 'hausses'];
 // Écrans soumis au droit « Régler les factures » (factures_achat).
-const ECRANS_REGLEMENT = ['reglement', 'echeances'];
+const ECRANS_REGLEMENT = ['reglement', 'echeances', 'hausses'];
 // Clé des anciens onglets de vues : effacée à l'ouverture du module.
 const ANCIENNE_CLE_VUE = 'sc_inventaire_vue';
 
@@ -236,6 +238,10 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire', ecranReglage = nu
   // Factures et bons d'achat : une seule liste pour tout le module, lue dès
   // le montage (l'accueil compte les documents à compléter et à régler).
   const achats = useAchatsDocuments(etabId);
+  // Hausses de prix fournisseur (Factures & achats, droit « Régler les
+  // factures ») : calculées sur ces mêmes documents ; seuls le seuil et les
+  // hausses déjà vues sont lus en plus.
+  const hausses = useHaussesPrix(etabId, achats.tousLesDocs, user?.id || null, { actif: achatsVue && canRegler });
   // Fournisseurs connus : suggestions de « Vérifier la lecture », rattachement à l'import.
   const [fournisseurs, setFournisseurs] = React.useState([]);
   const importXlsxRef = React.useRef(null);
@@ -1746,6 +1752,8 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire', ecranReglage = nu
           onCompleter={ouvrirCompletion}
           onReglement={() => setEcran('reglement')}
           onEcheances={() => setEcran('echeances')}
+          onHausses={() => setEcran('hausses')}
+          haussesAVoir={achatsVue && canRegler && hausses.etat === 'ready' ? hausses.aVoir.length : null}
           onVerifierDates={(ids) => ouvrirVerification(ids, ECRAN_ACCUEIL)}
           onEcarts={() => setEcran('ecarts')}
           onChoisirPerimetre={setPerimetre}
@@ -1981,6 +1989,14 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire', ecranReglage = nu
         <EcranTache titre="Échéances" onRetour={retourAccueil}>
           <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement…</div>}>
             <Echeancier docs={achats.tousLesDocs} aujourdhui={zurichToday()} onRegler={() => setEcran('reglement')} />
+          </React.Suspense>
+        </EcranTache>
+      )}
+
+      {ecran === 'hausses' && canRegler && achatsVue && (
+        <EcranTache titre="Hausses de prix" onRetour={retourAccueil}>
+          <React.Suspense fallback={<div style={{ padding: 30, color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement…</div>}>
+            <HaussesPrix hausses={hausses} />
           </React.Suspense>
         </EcranTache>
       )}

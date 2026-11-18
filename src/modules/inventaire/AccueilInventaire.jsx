@@ -1,5 +1,5 @@
 import React from 'react';
-import { Banknote, CalendarClock, ChartColumn, ClipboardList, Receipt, Truck } from 'lucide-react';
+import { Banknote, CalendarClock, ChartColumn, ClipboardList, Receipt, TrendingUp, Truck } from 'lucide-react';
 import { Btn } from '../../components/ui/index.jsx';
 import { Choix, Fenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
@@ -30,7 +30,7 @@ import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 
 const TUILES_PAR_VUE = {
   inventaire: ['compte', 'ecarts'],
-  achats: ['livraison', 'facture', 'reglement', 'echeances'],
+  achats: ['livraison', 'facture', 'reglement', 'echeances', 'hausses'],
 };
 
 
@@ -38,8 +38,8 @@ const plusRecent = (docs) => docs.slice().sort((a, b) => String(b.dateDocument |
 
 export default function AccueilInventaire({
   vue = 'inventaire', perimetreActif, perimetres, pilesParPerimetre, inv, docs,
-  canRegler,
-  onJeCompte, onImport, onCompleter, onReglement, onEcheances, onVerifierDates, onEcarts, onChoisirPerimetre, onNouveauPerimetre,
+  canRegler, haussesAVoir = null,
+  onJeCompte, onImport, onCompleter, onReglement, onEcheances, onHausses, onVerifierDates, onEcarts, onChoisirPerimetre, onNouveauPerimetre,
 }) {
   const [fenetre, setFenetre] = React.useState(null); // 'perimetre' | null
   const pastilles = usePastillesPoints();
@@ -107,6 +107,14 @@ export default function AccueilInventaire({
       etat: !echeances ? null : enRetard
         ? <><span>{enRetard}</span> {enRetard > 1 ? 'factures en retard' : 'facture en retard'}</>
         : prochaine ? <>prochaine le <span>{dateCH(prochaine)}</span></> : <>aucune échéance à venir</>,
+    },
+    {
+      // Hausses de prix fournisseur (haussesPrixDonnees.js) : même droit que
+      // les échéances. Le compte n'est donné qu'une fois les hausses vues lues.
+      id: 'hausses', Icone: TrendingUp, libelle: 'Hausses de prix', onClick: onHausses, visible: canRegler && !!onHausses,
+      etat: haussesAVoir == null ? null : haussesAVoir
+        ? <><span>{haussesAVoir}</span> <span>{haussesAVoir > 1 ? 'hausses à voir' : 'hausse à voir'}</span></>
+        : <>aucune hausse à voir</>,
     },
     {
       id: 'ecarts', Icone: ChartColumn, libelle: 'Écarts et documents', onClick: onEcarts,

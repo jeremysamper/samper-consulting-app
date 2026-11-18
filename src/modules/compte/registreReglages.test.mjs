@@ -65,6 +65,9 @@ const AVANT = {
   // 14.11.2026 : la fenêtre « Gérer » de l'accueil de l'Inventaire (droit
   // « Modifier » du module, donné par défaut à ces trois rôles).
   inventaire_gerer: ['consultant', 'patron', 'resp_cuisine'],
+  // 18.11.2026 : seuil des hausses de prix fournisseur, réglage neuf, pour qui
+  // voit les hausses (Factures & achats et droit « Régler les factures »).
+  achats_hausses: DIRECTION,
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {
