@@ -11,12 +11,15 @@ import {
 import { messageErreurPoints, pointsService } from './pointsService.js';
 import { ecouterMouvements } from './usePointsRetour.js';
 import PhotoCadeau from './PhotoCadeau.jsx';
+import { NombrePoints, PodiumCartes } from './Podium.jsx';
+import { classerEquipe } from './classement.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Écran de l'employé : son solde et le prochain cadeau à portée (carte nuit),
 // trois repères du mois, la boutique, ses commandes, ce qui rapporte des
 // points (barème et plafonds) et son historique (50 derniers mouvements).
-// Aucun classement entre employés (D14).
+// Podium et classement de l'équipe depuis le 17.11.2026 (Jérémy lève D14) :
+// RPC points_classement, qui retire déjà les masqués et les soldes à zéro.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const nuit = carteAvantStyles('nuit');
@@ -26,17 +29,7 @@ const fmtDate = new Intl.DateTimeFormat('fr-CH', {
 });
 export const dateCourte = (iso) => (iso ? fmtDate.format(new Date(iso)) : '');
 
-// Nombre de points dans son nœud, le mot à côté (traduction du DOM).
-export function NombrePoints({ n, signe = false, style }) {
-  const v = Number(n) || 0;
-  const texte = (signe && v > 0 ? '+' : '') + formatPoints(v);
-  return (
-    <span style={{ whiteSpace: 'nowrap', ...style }}>
-      <span data-no-translate style={{ fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' }}>{texte}</span>
-      {' '}<span>{Math.abs(v) > 1 ? 'points' : 'point'}</span>
-    </span>
-  );
-}
+export { NombrePoints };
 
 function RaisonEteinte({ raison }) {
   if (!raison) return null;
@@ -65,14 +58,16 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
     if (!etabId || !userId) return;
     const lecture = lectures.lancer(`${userId}|${etabId}`);
     try {
-      const [solde, mouvements, cadeaux, commandes] = await Promise.all([
+      const [solde, mouvements, cadeaux, commandes, classement] = await Promise.all([
         pointsService.solde(etabId),
         pointsService.mesMouvements(etabId, userId),
         pointsService.cadeaux(etabId),
         pointsService.commandes(etabId, { userId }),
+        // Lecture à part : un classement non lu ne bloque pas le solde (null = non lu).
+        pointsService.classement(etabId).catch((err) => { console.warn('[points] classement', err); return null; }),
       ]);
       if (!lecture.appliquer()) return;
-      setDonnees({ solde, mouvements, cadeaux, commandes });
+      setDonnees({ solde, mouvements, cadeaux, commandes, classement });
       setEchec(false);
     } catch (err) {
       console.warn('[points] lecture', err);
@@ -120,7 +115,9 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
     );
   }
 
-  const { solde, mouvements, cadeaux, commandes } = donnees;
+  const { solde, mouvements, cadeaux, commandes, classement } = donnees;
+  const rangs = classement ? classerEquipe(classement, []) : null;
+  const maPlace = rangs ? [...rangs.podium, ...rangs.liste].find((p) => p.moi) : null;
   const proposes = cadeaux.filter((c) => c.actif);
   const visibles = filtrerCadeaux(proposes, filtre);
   const prochain = prochainCadeau(visibles, solde);
@@ -208,6 +205,37 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
           )}
         </section>
 
+        {rangs && <PodiumCartes podium={rangs.podium} />}
+        <Panneau>
+          <h2 className="points-section-titre">Classement</h2>
+          {!rangs ? (
+            <p className="points-aide" role="status">Le classement n'est pas lu pour le moment.</p>
+          ) : classement.length === 0 ? (
+            <p className="points-aide">Personne n'a encore de points. Le podium se remplit avec les premiers points gagnés.</p>
+          ) : (
+            <>
+              <p className="points-aide">
+                {maPlace
+                  ? <><span>Votre place au classement :</span>{' '}<span data-no-translate>{maPlace.rang}</span></>
+                  : <span>Vous entrez au classement avec vos premiers points.</span>}
+              </p>
+              {rangs.liste.length > 0 && (
+                <div className="points-liste">
+                  {rangs.liste.map((p) => (
+                    <div key={p.userId} style={{ ...ligneStyle(), padding: '6px 0' }}>
+                      <span className="points-rang" data-no-translate>{p.rang ?? ''}</span>
+                      <div style={{ flex: '1 1 0', minWidth: 0 }}>
+                        <div style={{ fontWeight: 'var(--g2)', overflowWrap: 'anywhere' }} data-no-translate>{[p.prenom, p.nom].filter(Boolean).join(' ')}</div>
+                        {p.moi && <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>Vous</div>}
+                      </div>
+                      <NombrePoints n={p.solde} style={{ flexShrink: 0 }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </Panneau>
         {commandes.length > 0 && (
           <Panneau>
             <h2 className="points-section-titre">Mes commandes</h2>

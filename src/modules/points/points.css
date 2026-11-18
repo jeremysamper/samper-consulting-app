@@ -44,11 +44,14 @@
 .points-podium-place[data-place="1"] { grid-column: 2; padding-top: 22px; padding-bottom: 20px; }
 .points-podium-place[data-place="2"] { grid-column: 1; }
 .points-podium-place[data-place="3"] { grid-column: 3; }
-.points-podium-place:hover { border-color: var(--btn-bord); }
-.points-podium-place:active { background: var(--selection); }
+/* Carte en bouton (gestion) seulement : la carte de l'équipe ne s'ouvre pas. */
+div.points-podium-place { cursor: default; }
+button.points-podium-place:hover { border-color: var(--btn-bord); }
+button.points-podium-place:active { background: var(--selection); }
 .points-podium-place:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .points-medaille { display: block; flex-shrink: 0; width: 40px; height: 50px; }
 .points-podium-place[data-place="1"] .points-medaille { width: 52px; height: 65px; }
+.points-podium-vous { font-size: var(--t1); color: var(--text3); }
 .points-podium-prenom { max-width: 100%; font-size: var(--t2); font-weight: var(--g3); line-height: 1.25; overflow-wrap: anywhere; }
 /* Rang d'une ligne du classement, à partir de la 4e place. */
 .points-rang { flex: 0 0 28px; font-family: var(--font-num); font-size: var(--t3); font-weight: var(--g-chiffre); font-variant-numeric: tabular-nums; color: var(--text3); text-align: center; }

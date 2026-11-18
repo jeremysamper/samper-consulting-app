@@ -118,6 +118,24 @@ export const pointsService = {
     }));
   },
 
+  // Classement de l'équipe (RPC points_classement, 17.11.2026) : prénom,
+  // initiale du nom, solde et « moi », masqués et soldes nuls déjà retirés.
+  // Aucun identifiant de profil : la clé de ligne est son ordre.
+  async classement(etabId) {
+    const data = verifier(await supabase.rpc('points_classement', { p_etab: etabId }));
+    return (data || []).map((r, i) => ({
+      userId: 'classement-' + i,
+      prenom: r.prenom || '',
+      nom: r.nom_initiale ? r.nom_initiale + '.' : '',
+      solde: Number(r.solde) || 0,
+      gagneMois: 0,
+      moi: Boolean(r.moi),
+      participant: true,
+      exclu: false,
+      actif: true,
+    }));
+  },
+
   async commander(cadeauId) {
     return verifier(await supabase.rpc('points_commander', { p_cadeau_id: cadeauId }));
   },
