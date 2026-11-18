@@ -14,8 +14,9 @@
 
 import { normalizeName } from '../../services/recipeProductMatching.js';
 import { estFacture, statutPaiement } from '../inventaire/facturesLogic.js';
-import { nomDepuisLibelle } from '../inventaire/achatsLogic.js';
+import { cleFournisseurArticle, nomDepuisLibelle } from '../inventaire/achatsLogic.js';
 import { AUTRES, classerProduit, contexteClassement } from '../commande/classerProduit.js';
+import { convertPrix } from '../../services/prixResolution.js';
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 const NON_CLASSE = 'Non classé';
@@ -186,17 +187,30 @@ export function parRayon(factures, catalogue = []) {
   return { rayons: liste, reparti: arrondi(reparti), nonRepartis, montantNonReparti: montantNonReparti == null ? null : arrondi(montantNonReparti) };
 }
 
+// Prix d'une ligne lue à l'unité de comparaison : montant / quantité totale
+// livrée (unité de base de la lecture : g, ml ou pcs), ramené au kilo, au
+// litre ou à la pièce par convertPrix (prixResolution.js, la seule conversion
+// de prix de l'app). Le colisage n'y entre pas : 6 x 850 g et 12 x 850 g au
+// même prix du kilo donnent le même prix. null sans montant, sans quantité
+// totale ou dans une autre unité.
+const UNITE_COMPARAISON = { g: 'kg', ml: 'L', pcs: 'pcs' };
+const LIBELLE_UNITE = { kg: 'kg', L: 'L', pcs: 'pièce' };
+function prixBaseLigne(l) {
+  const m = nombre(l?.montantLigne);
+  const total = nombre(l?.quantiteTotale);
+  const unite = UNITE_COMPARAISON[l?.uniteTotale];
+  if (m == null || m <= 0 || !total || total <= 0 || !unite) return null;
+  const prix = convertPrix(m / total, l.uniteTotale, unite);
+  return prix != null && Number.isFinite(prix) && prix > 0 ? { prix, unite: LIBELLE_UNITE[unite], montant: m, quantite: total } : null;
+}
+
 // Prix unitaire d'une ligne lue : montant / quantité totale, ramenée au kg,
 // au litre ou à la pièce ; sinon par colis. null si rien ne se divise.
 function prixLigne(l) {
   const m = nombre(l.montantLigne);
   if (m == null || m <= 0) return null;
-  const total = nombre(l.quantiteTotale);
-  if (total && total > 0) {
-    if (l.uniteTotale === 'g') return { prix: m / (total / 1000), unite: 'kg' };
-    if (l.uniteTotale === 'ml') return { prix: m / (total / 1000), unite: 'L' };
-    if (l.uniteTotale === 'pcs') return { prix: m / total, unite: 'pièce' };
-  }
+  const base = prixBaseLigne(l);
+  if (base) return { prix: base.prix, unite: base.unite };
   const colis = nombre(l.quantite);
   if (colis && colis > 0) return { prix: m / colis, unite: 'colis' };
   return null;
@@ -224,6 +238,118 @@ export function prixParProduit(factures) {
     const points = s.points.sort((a, b) => a.date.localeCompare(b.date));
     return { ...s, points, dates: new Set(points.map(x => x.date)).size };
   }).sort((a, b) => b.dates - a.dates || a.nom.localeCompare(b.nom));
+}
+
+// ── Hausses de prix fournisseur ──
+// Une hausse : un article payé plus cher, à l'unité (kilo, litre, pièce), que
+// la fois précédente chez le même fournisseur, d'au moins `seuilPct` pour cent.
+//   - pièces lues : factures et bons de livraison, pas les bons de commande
+//     (une commande n'est pas un prix payé), ni les pièces exclues à la main,
+//     ni celles sans date ou sans fournisseur lu ;
+//   - fournisseur : cleFournisseurArticle (« A. Walker AG » = « Walker AG ») ;
+//   - article : le numéro d'article du fournisseur quand il est lu (il désigne
+//     une référence et son colisage) ; sinon le produit rattaché à la main ou
+//     le libellé nettoyé, ET le conditionnement lu : un bidon de 5 L et une
+//     bouteille de 1 L n'ont pas le même prix du litre, passer de l'un à
+//     l'autre n'est pas une hausse ;
+//   - prix : prixBaseLigne, montant / quantité totale ramenés au kilo, au litre
+//     ou à la pièce. Deux unités différentes ne se comparent jamais, une ligne
+//     sans quantité totale (prix par colis seul) n'entre pas ;
+//   - plusieurs lignes du même article sur une pièce : leur prix moyen pondéré ;
+//   - « la fois précédente » : la pièce d'avant par date, puis par date
+//     d'enregistrement, datée de moins d'un an (ANCIENNETE_PRIX_JOURS) avant
+//     la pièce : un prix plus vieux n'est plus le prix du moment ;
+// `depuis` (jour ISO) : seules les hausses portées par une pièce datée de ce
+// jour ou après sont rendues ; la pièce d'avant peut être plus ancienne.
+// Avec cette borne, les pièces datées d'au plus FENETRE_HAUSSES_JOURS +
+// ANCIENNETE_PRIX_JOURS jours suffisent à rendre les mêmes hausses que tout
+// l'historique (lecture du tableau de bord, haussesTableau.js).
+// Rend les hausses, la plus récente d'abord. `cle` identifie la hausse pour
+// achats_hausses_vues (pièce, fournisseur, article, unité) ; `reference`,
+// `libelle` et `fournisseurId` servent à la relier au catalogue.
+export const SEUIL_HAUSSE_DEFAUT = 5;
+export const FENETRE_HAUSSES_JOURS = 90;
+export const ANCIENNETE_PRIX_JOURS = 365;
+const MS_JOUR = 86400000;
+const ecartJours = (a, b) => Math.round((Date.parse(`${b}T12:00:00Z`) - Date.parse(`${a}T12:00:00Z`)) / MS_JOUR);
+const DOUTE_LECTURE = 'montant non retrouve sur la ligne';
+
+const conditionnementNorme = (c) => String(c || '').toLowerCase().replace(/[×*]/g, 'x').replace(/,/g, '.').replace(/\s+/g, '');
+
+function cleArticle(l) {
+  const ref = String(l.referenceFourn || '').replace(/\s+/g, '').toUpperCase();
+  if (ref.length >= 3) return `ref:${ref}`;
+  const nom = (l.lien === 'manuel' && l.produitNom) ? l.produitNom : nomDepuisLibelle(l.libelle, l.conditionnement);
+  const n = normalizeName(nom);
+  return n ? `nom:${n}|${conditionnementNorme(l.conditionnement)}` : null;
+}
+
+export function haussesPrix(docs, { seuilPct = SEUIL_HAUSSE_DEFAUT, depuis = null } = {}) {
+  const seuil = Number(seuilPct) > 0 ? Number(seuilPct) : SEUIL_HAUSSE_DEFAUT;
+  const series = new Map();
+  (docs || []).forEach((d) => {
+    if (!d || d.exclu || !ISO.test(String(d.dateDocument || ''))) return;
+    if (!estFacture(d) && d.typeDocument !== 'bon_livraison') return;
+    const cf = cleFournisseurArticle(d.fournisseurNom);
+    if (!cf) return;
+    const parCle = new Map();
+    (d.lignes || []).forEach((l) => {
+      if (!l || (l.issues || []).includes('ligne non produit') || l.lien === 'ignore') return;
+      const p = prixBaseLigne(l);
+      const art = p && cleArticle(l);
+      if (!art) return;
+      const cle = `${cf}|${art}|${p.unite}`;
+      const e = parCle.get(cle) || { montant: 0, quantite: 0, uniteTotale: l.uniteTotale, ligne: l, doute: false };
+      e.montant += p.montant;
+      e.quantite += p.quantite;
+      if ((l.issues || []).includes(DOUTE_LECTURE)) e.doute = true;
+      parCle.set(cle, e);
+    });
+    parCle.forEach((e, cle) => {
+      const p = prixBaseLigne({ montantLigne: e.montant, quantiteTotale: e.quantite, uniteTotale: e.uniteTotale });
+      if (!p) return;
+      const l = e.ligne;
+      if (!series.has(cle)) series.set(cle, []);
+      series.get(cle).push({
+        docId: d.id, date: d.dateDocument, cree: String(d.createdAt || ''),
+        prix: p.prix, unite: p.unite, montant: e.montant,
+        nom: (l.lien === 'manuel' && l.produitNom) ? l.produitNom : nomDepuisLibelle(l.libelle, l.conditionnement),
+        fournisseur: String(d.fournisseurNom || '').trim(), fournisseurId: d.fournisseurId || null,
+        reference: String(l.referenceFourn || '').trim() || null, libelle: String(l.libelle || '').trim(),
+        typeDocument: d.typeDocument || 'facture', numero: String(d.numero || '').trim(),
+        doute: e.doute,
+      });
+    });
+  });
+
+  const hausses = [];
+  series.forEach((points, cle) => {
+    points.sort((a, b) => a.date.localeCompare(b.date) || a.cree.localeCompare(b.cree) || String(a.docId).localeCompare(String(b.docId)));
+    for (let i = 1; i < points.length; i += 1) {
+      const avant = points[i - 1];
+      const p = points[i];
+      if (depuis && p.date < depuis) continue;
+      if (ecartJours(avant.date, p.date) > ANCIENNETE_PRIX_JOURS) continue;
+      const ecartPct = ((p.prix - avant.prix) / avant.prix) * 100;
+      if (!(ecartPct >= seuil - 1e-9)) continue;
+      // Quantité de la pièce dans l'unité de comparaison : son montant / son prix.
+      const quantite = p.montant / p.prix;
+      hausses.push({
+        cle: `${p.docId}|${cle}`,
+        docId: p.docId, nom: p.nom, fournisseur: p.fournisseur, unite: p.unite,
+        fournisseurId: p.fournisseurId, reference: p.reference, libelle: p.libelle,
+        typeDocument: p.typeDocument, numero: p.numero, doute: p.doute,
+        date: p.date, dateAvant: avant.date,
+        prixAvant: avant.prix,
+        prix: p.prix,
+        ecartPct,
+        ecartUnite: p.prix - avant.prix,
+        // Ce que la pièce a coûté de plus qu'au prix d'avant.
+        surcout: arrondi((p.prix - avant.prix) * quantite),
+      });
+    }
+  });
+  return hausses.sort((a, b) => b.date.localeCompare(a.date) || b.ecartPct - a.ecartPct || a.nom.localeCompare(b.nom));
 }
 
 // Échéancier des factures non réglées, en TTC (le montant à payer, comme

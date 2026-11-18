@@ -10,7 +10,7 @@ import { Ligne, ui } from './reglagesUi.jsx';
 export default function SectionLangue({ etablissement }) {
   return (
     <div style={ui.liste}>
-      <Ligne derniere titre="Langue d'affichage" aide="Original garde le texte tel qu'il a été saisi. English et Español traduisent l'écran, pas les données. Le sélecteur de la barre du haut fait la même chose.">
+      <Ligne derniere titre="Langue d'affichage" aide="Original garde le texte tel qu'il a été saisi. English, Español et Deutsch traduisent l'écran, pas les données. Le sélecteur de la barre du haut fait la même chose.">
         <LanguageToggle etablissementId={etablissement?.id || null} />
       </Ligne>
     </div>

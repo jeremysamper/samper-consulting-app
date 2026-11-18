@@ -18,6 +18,7 @@ import * as caisse from '../../services/caisseService.js';
 import { lireFenetre } from '../caisse/rapports/lectureRapport.js';
 import { lireReferentiel, lireReservations } from '../previsions/rapport/useRapportReservations.js';
 import { GARDES_ECRANS, ecranOuvert } from './gardesStatistiques.js';
+import { canManageModule } from '../../data/demoData.js';
 import { lireContrats, lirePeriode } from '../planning/contratsService.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
 import { lireGroupes } from '../../hooks/useGroupes.js';
@@ -317,11 +318,12 @@ export const LECTURES = {
       return { recettes: recettes || [], plats: plats || [], cartes: cartes || [], produits: produits || [] };
     },
   },
-  // Chiffrage : les Outils consultant (peutOuvrirPage : consultant seul) ; ses
-  // fiches et le catalogue, comme l'écran.
+  // Chiffrage : l'écran Chiffrage de Cartes & Recettes (depuis le 18.11.2026),
+  // qui ouvre la page et a le droit d'action « chiffrage » ; ses fiches et le
+  // catalogue, comme l'écran.
   chiffrage: {
     sansFenetre: true,
-    visible: (ctx) => ecranOuvert('consultant_tools', ctx),
+    visible: (ctx) => ecranOuvert('cartes', ctx) && canManageModule(ctx.role, 'chiffrage'),
     async lire(etabId) {
       const db = pont();
       const [recettes, produits] = await Promise.all([db.listRecettes(etabId, { strict: true }), db.listProduits(etabId, { strict: true })]);

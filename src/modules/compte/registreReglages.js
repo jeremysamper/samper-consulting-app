@@ -73,6 +73,7 @@ export const MODULES = {
   planning: 'Planning',
   previsions: 'Réservations',
   inventaire: 'Inventaire',
+  achats: 'Factures & achats',
   comptabilite: 'Comptabilité',
   haccp: 'HACCP',
   cartes: 'Cartes & Recettes',
@@ -108,7 +109,7 @@ export const SECTIONS = [
     charger: () => import('./sections/SectionApparence.jsx'),
   },
   {
-    id: 'langue', libelle: 'Langue', detail: "Original, English ou Español, pour l'affichage",
+    id: 'langue', libelle: 'Langue', detail: "Original, English, Español ou Deutsch, pour l'affichage",
     motsCles: 'traduction anglais espagnol', groupe: 'appareil', portee: 'appareil', garde: toutLeMonde,
     charger: () => import('./sections/SectionLangue.jsx'),
   },
@@ -205,13 +206,6 @@ export const SECTIONS = [
     charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionContrats })),
   },
   {
-    id: 'planning_temps_travail', libelle: 'Planning : temps de travail', onglet: 'Temps de travail', detail: 'Repos, pauses, journée et semaine les plus longues, signalés dans la grille',
-    motsCles: 'loi ltr ccnt repos pause heures maximum', groupe: 'modules', portee: 'maison', module: 'planning',
-    garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
-    charger: () => import('../planning/SectionsReglesPlanning.jsx').then((m) => ({ default: m.SectionTempsTravail })),
-    signaux: ['reglages_maison'],
-  },
-  {
     id: 'planning_pointage', libelle: 'Planning : pointage', onglet: 'Pointage', detail: 'Arrivée en avance et arrondi des heures comptées',
     motsCles: 'pointer arrondi avance heures comptées salaires', groupe: 'modules', portee: 'maison', module: 'planning',
     garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
@@ -237,6 +231,14 @@ export const SECTIONS = [
     groupe: 'modules', portee: 'maison', module: 'inventaire',
     garde: (ctx) => ouvreLeModule('inventaire')(ctx) && peutGererInventaire(ctx.user?.role, ctx.permissions),
     charger: () => import('../inventaire/SectionGererInventaire.jsx'),
+  },
+  // Hausses de prix fournisseur (18.11.2026) : le seuil d'alerte de
+  // l'établissement, pour qui voit les hausses dans Factures & achats.
+  {
+    id: 'achats_hausses', libelle: 'Hausses de prix', detail: "Seuil d'alerte sur les prix des fournisseurs",
+    motsCles: 'alerte augmentation fournisseur seuil facture', groupe: 'modules', portee: 'maison', module: 'achats',
+    garde: (ctx) => ouvreLeModule('achats')(ctx) && peutReglerFactures(ctx.user?.role),
+    charger: () => import('../factures-achats/SectionHaussesPrix.jsx'),
   },
   {
     id: 'comptabilite', libelle: 'Comptabilité', detail: 'Méthode de TVA, charges sociales, coût horaire moyen',

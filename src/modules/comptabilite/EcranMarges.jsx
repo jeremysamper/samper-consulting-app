@@ -13,7 +13,7 @@ import { Chf, pctTexte, pluriel, st as ui } from './comptaUi.jsx';
 // ─────────────────────────────────────────────────────────────────────────────
 // Marges (D15) : coût matière, prix de vente et marge par plat et par carte,
 // puis par fiche. Lecture seule : aucun prix ne s'écrit d'ici (ils restent
-// tenus dans le Chiffrage des Outils consultant), aucune écriture vers les
+// tenus dans le Chiffrage de Cartes & Recettes), aucune écriture vers les
 // fiches ni les plats. Même calcul que le Chiffrage par construction
 // (chiffrerFiche de src/utils/chiffrage.js).
 //
@@ -23,7 +23,7 @@ import { Chf, pctTexte, pluriel, st as ui } from './comptaUi.jsx';
 // même dans son coût.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const PHRASE = 'Même calcul que le Chiffrage des Outils consultant : prix du catalogue, sinon prix noté dans la fiche. Prix de vente TVA comprise. La moyenne de la carte compte un plat de chaque, sans les quantités vendues.';
+const PHRASE = 'Même calcul que le Chiffrage de Cartes & Recettes : prix du catalogue, sinon prix noté dans la fiche. Prix de vente TVA comprise. La moyenne de la carte compte un plat de chaque, sans les quantités vendues.';
 const COULEURS = { succes: 'var(--success-text)', alerte: 'var(--warning-text)', danger: 'var(--danger-text)' };
 
 function FoodCost({ v }) {

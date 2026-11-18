@@ -1,12 +1,9 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Réglages de la maison (18.11.2026)
 --
---   reglages_maison   une ligne par établissement, quatre blocs jsonb :
+--   reglages_maison   une ligne par établissement, deux blocs jsonb :
 --     fermetures      jours fermés de la semaine, services fermés par jour,
 --                     périodes de fermeture datées (vacances, travaux)
---     temps_travail   règles du temps de travail contrôlées dans le planning
---                     (repos entre deux journées, pauses de la loi, journée et
---                     semaine maximales, jours de repos par semaine)
 --     pointage        règles de calcul des heures pointées (arrondi, arrivée
 --                     en avance) ; le pointage brut n'est jamais réécrit
 --
@@ -26,7 +23,6 @@
 create table if not exists public.reglages_maison (
   etablissement_id  text        primary key references public.etablissements(id) on delete cascade,
   fermetures        jsonb       not null default '{}'::jsonb check (jsonb_typeof(fermetures) = 'object'),
-  temps_travail     jsonb       not null default '{}'::jsonb check (jsonb_typeof(temps_travail) = 'object'),
   pointage          jsonb       not null default '{}'::jsonb check (jsonb_typeof(pointage) = 'object'),
   updated_at        timestamptz not null default now()
 );
@@ -129,6 +125,6 @@ begin
 end $$;
 
 comment on table public.reglages_maison is
-  'Réglages de la maison (18.11.2026) : fermetures, règles du temps de travail, règles de calcul du pointage. Une ligne par établissement ; ligne absente = valeurs par défaut du front.';
+  'Réglages de la maison (18.11.2026) : fermetures, règles de calcul du pointage. Une ligne par établissement ; ligne absente = valeurs par défaut du front.';
 comment on table public.objectifs_maison is
   'Objectifs de la maison (18.11.2026) : coût matière, coût du personnel et chiffre visés. Direction seule (consultant, patron), en lecture comme en écriture.';

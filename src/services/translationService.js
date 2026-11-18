@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════════════════════════
-// translationService - traduction FR → EN / ES d'un lot de chaînes.
+// translationService - traduction FR → EN / ES / DE d'un lot de chaînes.
 //
 // Utilisé par le moteur de traduction à la volée (src/i18n/domTranslator.js)
 // pour tout ce que le glossaire statique ne couvre pas : contenu saisi par les
@@ -28,7 +28,7 @@ const SHARED_LIMIT = 5000;
  *
  * @param {string} etablissementId
  * @param {string|null} since
- * @param {'en'|'es'} [langue='en']
+ * @param {'en'|'es'|'de'} [langue='en']
  * @returns {Promise<{pairs: [string,string][], latest: string|null}>}
  */
 export async function fetchSharedTranslations(etablissementId, since, langue = 'en') {
@@ -74,7 +74,7 @@ export async function pushSharedTranslations(etablissementId, entries, langue = 
 
 /**
  * @param {string[]} texts chaînes françaises
- * @param {'en'|'es'} [target='en'] langue cible
+ * @param {'en'|'es'|'de'} [target='en'] langue cible
  */
 export async function translateTexts(texts, target = 'en') {
   const list = (texts || []).map((s) => String(s || '')).filter(Boolean);
@@ -83,7 +83,7 @@ export async function translateTexts(texts, target = 'en') {
   const data = await callAiProxy('translate', { texts: list, target });
   // La fonction confirme la langue traitée. Une version antérieure d'ai-proxy
   // ignorait `target` et répondait en anglais : sans ce contrôle, de l'anglais
-  // serait rangé dans le cache espagnol, local ET partagé avec la brigade.
+  // serait rangé dans le cache espagnol ou allemand, local ET partagé avec la brigade.
   // (Seul 'en' est admis sans confirmation : c'était le comportement d'origine.)
   if (target !== 'en' && (!data || data.target !== target)) {
     throw new Error(`Service de traduction pas encore disponible pour « ${target} ».`);

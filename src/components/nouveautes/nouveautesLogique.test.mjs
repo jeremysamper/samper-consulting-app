@@ -4,7 +4,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { defaultPermissions, getDefaultManageRoles, isModuleActiveForEtab } from '../../modules/moduleConfig.js';
-import { lookupGlossary } from '../../i18n/glossary.js';
+import { loadGlossary, lookupGlossary } from '../../i18n/glossary.js';
 import {
   NOTE_ID, NOTE_DEBUT, cartesModules, composerNote, dansLaFenetre, fusionnerVues, marquerVues,
   memesVues, normaliserVues, pageExclue, rangDuJour, textesATraduire,
@@ -126,11 +126,14 @@ test('aucune ouverture sur le KDS ni sur le pointage', () => {
   assert.equal(pageExclue('accueil'), false);
 });
 
-test('chaque texte est dans les deux glossaires', () => {
+test('chaque texte est dans les trois glossaires', async () => {
+  // L'espagnol et l'allemand se chargent à la demande, comme dans l'app.
+  await Promise.all([loadGlossary('es'), loadGlossary('de')]);
   const manquants = [];
   textesATraduire().forEach((t) => {
     if (!lookupGlossary(t, 'en')) manquants.push(`en: ${t}`);
     if (!lookupGlossary(t, 'es')) manquants.push(`es: ${t}`);
+    if (!lookupGlossary(t, 'de')) manquants.push(`de: ${t}`);
   });
   assert.deepEqual(manquants, []);
   assert.ok(textesATraduire().length >= 30);

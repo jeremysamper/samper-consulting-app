@@ -18,7 +18,8 @@
 // Tâches : 'ocr-recipe' (vision), 'parse-facture' (vision), 'detect-allergens',
 //          'generate-haccp', 'suggest-recipe', 'match-product',
 //          'generate-fiche-salle', 'parse-catalogue', 'dedupe-commande',
-//          'translate' (texte ; payload.target = 'en' par défaut, ou 'es').
+//          'translate' (texte ; payload.target = 'en' par défaut, 'es' ou 'de'),
+//          'orientation-document' (vision : quatre rotations d'une photo, celle à l'endroit).
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { appliquerCors } from '../_shared/cors.ts';
@@ -217,7 +218,9 @@ Champs de l'en-tête (null si absent ou illisible, jamais deviné) :
   "zahlbar innert 30 Tagen"), ce nombre de jours, entier. null si une date est imprimée ou si
   rien n'est indiqué. Les deux champs sont null sur un bon de livraison ou de commande.
 - "totalHT" : total hors taxes de la marchandise ("Total HT", "Netto", "Total exkl. MWST", "Warenwert").
-  Jamais le TTC, jamais un sous-total de page. "tauxTva" : taux appliqué (2.6 pour l'alimentaire, 8.1 sinon)
+  Jamais le TTC, jamais un sous-total de page. Quand le pied du document montre un "Sous-total" ou
+  "Sub-total", puis des lignes de TVA, puis un "Total", le sous-total est le totalHT et le "Total" le
+  totalTTC. "tauxTva" : taux appliqué (2.6 pour l'alimentaire, 8.1 sinon)
 - "totalTTC" : le MONTANT À PAYER, TVA comprise : la dernière ligne du total, souvent intitulée
   "Total", "Total TTC", "Montant à payer", "Endbetrag", "Total CHF inkl. MWST", ou le montant du
   bulletin de versement / QR-facture. Ce n'est jamais un sous-total. null si absent (bon de
@@ -298,8 +301,9 @@ Règles STRICTES :
   seul en-tête et la totalité des lignes, dans l'ordre.
 - Vérifie enfin que la somme des "montantLigne" (lignes non produit comprises si elles entrent dans
   le total) est proche de "totalHT". Si l'écart dépasse quelques centimes, relis le tableau : une ligne
-  est oubliée, mal lue, ou le total lu n'est pas le bon. S'il reste un écart, baisse la confidence
-  des lignes douteuses.
+  est oubliée, mal lue, ou le total lu n'est pas le bon (le TTC pris pour le HT, le plus souvent).
+  Ne change JAMAIS un montant ou une quantité lus pour faire tomber la somme juste : recopie ce qui
+  est imprimé. S'il reste un écart, garde-le et baisse la confidence des lignes douteuses.
 - Si aucune ligne de produit n'est lisible, renvoie {"lignes":[]} avec l'en-tête que tu as pu lire.`;
 
 const DEDUPE_SYSTEM = `Tu nettoies une liste de produits à commander pour une cuisine professionnelle. Plusieurs lignes désignent souvent le MÊME produit écrit différemment (singulier/pluriel, accents, casse, ordre des mots, synonyme courant, faute de frappe). Tu regroupes uniquement ces vrais doublons.
@@ -345,12 +349,43 @@ Règles :
 - vocabulaire métier imposé : "mise en place" → "mise en place" ; "brigade" → "brigada" ; "carte" → "carta" ; "fiche technique" → "ficha técnica" ; "fiche salle" → "ficha de sala" ; "perte" → "merma" ; "pointage" → "fichaje" ; "inventaire" → "inventario" ; "établissement" → "establecimiento" ; "commande" → "pedido" ; "prévisions" → "previsiones" ; "dressage" → "emplatado" ; "conservation" → "conservación" ; "régénération" → "regeneración" ; "portion" → "ración" ; "préparation" (recette de base) → "elaboración" ; "chef de partie" → "jefe de partida" ; "commis" → "ayudante de cocina"
 - ne commente jamais, ne pose jamais de question : traduis.`;
 
+// Même contrat, cible allemande : allemand de Suisse, sans ß. Vocabulaire aligné
+// sur le glossaire statique du front (src/i18n/glossaryDe.js).
+const TRANSLATE_SYSTEM_DE = `Tu traduis du français vers l'allemand les textes d'une application de gestion de cuisine professionnelle (restauration, hôtellerie, HACCP, recettes, planning, inventaire).
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
+{"t":["Löschen","Rezepte"]}
+Règles :
+- "t" contient EXACTEMENT autant d'éléments que la liste fournie, dans le MÊME ordre. C'est impératif : un décalage casse l'affichage.
+- traduis chaque entrée indépendamment ; n'en fusionne, n'en ajoute et n'en supprime aucune
+- registre : allemand de Suisse (Schweizer Hochdeutsch) de cuisine et d'hôtellerie professionnelles, compréhensible en Allemagne et en Autriche ; JAMAIS de "ß", toujours "ss" ("Grösse", "schliessen", "Strasse") ; concis, ton d'interface logicielle (pas de phrase explicative) ; actions et boutons à l'infinitif ("Speichern", "Löschen") ; vouvoiement ("Sie") quand le texte s'adresse à l'utilisateur ; guillemets « » sans espace intérieur
+- garde TEL QUEL : noms propres, noms de personnes, d'établissements, de lieux et de plats signature, marques (Lightspeed, Metro, Transgourmet), sigles (HACCP, DLC, SOP, POS, KDS, MEP, CHF), unités (g, kg, ml, L, pcs, cs, cc), nombres, dates, heures et prix
+- conserve la casse d'origine (une entrée TOUT EN MAJUSCULES le reste) et la ponctuation finale ; un nom commun allemand garde sa majuscule
+- si une entrée est déjà en allemand, ou n'a rien à traduire, renvoie-la à l'identique
+- vocabulaire métier imposé : "mise en place" → "Mise en place" ; "brigade" → "Brigade" ; "carte" → "Karte" ; "fiche technique" → "Rezeptblatt" ; "fiche salle" → "Serviceblatt" ; "perte" → "Verlust" ; "pointage" → "Zeiterfassung" ; "pointer" → "stempeln" ; "inventaire" → "Inventur" ; "établissement" → "Betrieb" ; "commande" → "Bestellung" ; "prévisions" → "Prognosen" ; "dressage" → "Anrichten" ; "conservation" → "Lagerung" ; "régénération" → "Regenerieren" ; "portion" → "Portion" ; "préparation" (recette de base) → "Zubereitung" ; "temps de préparation" → "Rüstzeit" ; "réservation" → "Reservation" ; "planning" → "Dienstplan" ; "couverts" → "Gedecke" ; "chef de partie" → "Chef de partie" ; "commis" → "Commis" ; "TVA" → "MWST" ; "CCNT" → "L-GAV" ; "fiduciaire" → "Treuhand" ; "carte bancaire" → "Bankkarte"
+- ne commente jamais, ne pose jamais de question : traduis.`;
+
 // Langues cibles de la tâche translate. `target` absent = 'en' : les fronts
 // déjà ouverts (qui envoient 'en' ou rien) gardent exactement leur comportement.
 const TRANSLATE_TARGETS: Record<string, { system: string; nom: string }> = {
   en: { system: TRANSLATE_SYSTEM, nom: 'anglais' },
   es: { system: TRANSLATE_SYSTEM_ES, nom: 'espagnol' },
+  de: { system: TRANSLATE_SYSTEM_DE, nom: 'allemand' },
 };
+
+// Sens d'une photo de document. Une facture photographiée à plat sur un plan de
+// travail sort souvent de côté ou à l'envers : lue telle quelle, le modèle
+// invente des lignes en se disant sûr de lui (constaté le 18.11.2026 sur trois
+// photos prises de côté). Le front envoie la même photo sous ses quatre
+// rotations et le modèle désigne celle qui se lit à l'endroit : comparer est
+// fiable là où une question sur une seule image (« dans quel sens ? »)
+// confondait un quart de tour à gauche et un quart de tour à droite (essai du
+// 18.11.2026 : quatre sens sur quatre, et les trois photos du jour).
+const ORIENTATION_SYSTEM = `On te montre la même photo d'un document papier (facture, bon de livraison, ticket) sous
+quatre rotations, numérotées 1, 2, 3 et 4 dans l'ordre des images. Une seule montre le document à l'endroit :
+les lignes du texte principal sont horizontales et se lisent normalement, de gauche à droite, l'en-tête en haut
+et les totaux en bas. Les trois autres le montrent de côté ou à l'envers.
+Compare les quatre images et désigne celle qui est à l'endroit. Tu ne lis pas le contenu du document.
+Réponds UNIQUEMENT avec un objet JSON, sans texte autour : {"image":1}, {"image":2}, {"image":3} ou {"image":4}`;
 
 function translateTarget(payload: Record<string, unknown>): string {
   const raw = payload.target;
@@ -371,6 +406,7 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'analyse-simulation-carte':   { system: SIMULATION_SYSTEM,   maxTokens: 2048 },
   'parse-catalogue':            { system: CATALOGUE_SYSTEM,    maxTokens: 8192 },
   'parse-facture':              { system: FACTURE_SYSTEM,      maxTokens: 16000 },
+  'orientation-document':       { system: ORIENTATION_SYSTEM,  maxTokens: 64 },
   'dedupe-commande':            { system: DEDUPE_SYSTEM,       maxTokens: 4096 },
   'translate':                  { system: TRANSLATE_SYSTEM,    maxTokens: 4096 },
 };
@@ -401,6 +437,8 @@ const TASK_ROLES: Record<string, string[]> = {
   // Lecture des factures et bons de l'onglet Achats de l'inventaire : ouverte
   // à toute l'équipe (demande de Jérémy, octobre 2026).
   'parse-facture':            ALL_ROLES,
+  // Sens d'une photo de document, demandé avant sa lecture (parse-facture).
+  'orientation-document':     ALL_ROLES,
   'dedupe-commande':          CONSULTANT_ONLY,
   'translate':                ALL_ROLES,
 };
@@ -523,6 +561,19 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
           + `Extrais l'en-tête une seule fois et toutes les lignes de produits.${indice}`
         : `Extrais l'en-tête et les lignes de produits de ce document.${indice}`,
     });
+    return parts;
+  }
+  if (task === 'orientation-document') {
+    // Les quatre rotations de la même photo, dans l'ordre (0, 90, 180, 270 degrés).
+    const images = (Array.isArray(payload.images) ? payload.images as { imageBase64?: string; mediaType?: string }[] : [])
+      .filter(p => p && p.imageBase64 && p.mediaType);
+    if (images.length !== 4) throw new Error('Quatre images attendues.');
+    const parts: Part[] = [];
+    images.forEach((p, i) => {
+      parts.push({ kind: 'text', text: `Image ${i + 1} :` });
+      parts.push({ kind: 'image', mediaType: p.mediaType as string, base64: p.imageBase64 as string });
+    });
+    parts.push({ kind: 'text', text: "Laquelle de ces quatre images montre le document à l'endroit ?" });
     return parts;
   }
   if (task === 'detect-allergens') {
@@ -742,7 +793,7 @@ async function traiter(req: Request): Promise<Response> {
   // Lecture des factures et bons : modèle dédié (AI_MODEL_FACTURE, sinon
   // MODELE_FACTURE_ANTHROPIC). Un modèle que le compte refuse retombe sur le
   // modèle général au lieu de bloquer la lecture.
-  const modeleTache = task === 'parse-facture' && provider === 'anthropic'
+  const modeleTache = (task === 'parse-facture' || task === 'orientation-document') && provider === 'anthropic'
     ? (env('AI_MODEL_FACTURE') || MODELE_FACTURE_ANTHROPIC)
     : model;
   const appeler = async (sys: string, p: Part[]): Promise<string> => {

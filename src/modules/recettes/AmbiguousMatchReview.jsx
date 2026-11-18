@@ -27,8 +27,9 @@ const chip = (conf) => ({
 });
 
 // Écran de résolution des correspondances catalogue ambiguës (needsReview).
-// Props : recettes, catalogue, legacySB, onClose, onResolved
-export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, onClose, onResolved }) {
+// Props : recettes, catalogue, legacySB, onClose, onResolved, avecIA (bouton
+// « Auto », qui appelle l'IA : réservé au consultant, faux par défaut).
+export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, onClose, onResolved, avecIA = false }) {
   const [filterRecette, setFilterRecette] = React.useState('all');
   const [busy, setBusy] = React.useState(false);
   const [aiBusy, setAiBusy] = React.useState(false);
@@ -179,7 +180,7 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
                       </button>
                     );
                   })}
-                  <button
+                  {avecIA && <button
                     disabled={busy || aiBusy}
                     onClick={() => suggererIA(it)}
                     title="Choisir automatiquement le produit le plus pertinent"
@@ -188,7 +189,7 @@ export default function AmbiguousMatchReview({ recettes, catalogue, legacySB, on
                       cursor: (busy || aiBusy) ? 'wait' : 'pointer',
                       background: 'var(--ai-bg-soft)', border: '1px solid var(--ai-bd)', color: 'var(--ai-text)', fontWeight: 'var(--g3)',
                     }}
-                  >Auto</button>
+                  >Auto</button>}
                   <button
                     disabled={busy}
                     onClick={() => resolveOne(it, null)}

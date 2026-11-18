@@ -101,6 +101,27 @@ test('mes points : seulement pour qui participe, posé avec les repères du jour
   assert.deepEqual(seul[0], { id: 'mes-points', taille: 'moyen' });
 });
 
+test('hausses de prix : la direction sous la garde de Factures & achats, posé à l\'origine seulement avec une hausse à voir', () => {
+  // L'id reste « hausses-prix » : une disposition enregistrée garde sa case.
+  assert.ok(CATALOGUE.some((x) => x.id === 'hausses-prix' && x.page === 'achats' && x.ecran === 'hausses'));
+  assert.equal(estVisible('hausses-prix', CONSULTANT), false, 'garde fermée sans lecture aboutie');
+  assert.equal(estVisible('hausses-prix', { ...CUISINIER, avecHaussesPrix: true }), false, 'jamais hors direction');
+  const lu = { ...CONSULTANT, avecHaussesPrix: true, nbHaussesPrix: 0 };
+  assert.equal(estVisible('hausses-prix', lu), true);
+  // Aucune hausse : l'origine ne change pas, le widget attend dans la galerie.
+  POSTES.forEach((p) => assert.deepEqual(origine(p, lu), origine(p, CONSULTANT)));
+  // Une hausse : pleine largeur sous la rangée « maintenant », rien d'autre ne bouge.
+  const avec = { ...lu, nbHaussesPrix: 2 };
+  POSTES.forEach((p) => {
+    const l = origine(p, avec);
+    const i = ids(l).indexOf('hausses-prix');
+    assert.ok(i > 0, p);
+    assert.equal(l[i].taille, 'pleine');
+    assert.deepEqual(ids(l).filter((x) => x !== 'hausses-prix'), ids(origine(p, CONSULTANT)));
+  });
+  assert.ok(ids(origine('ordinateur', avec)).indexOf('hausses-prix') > ids(origine('ordinateur', avec)).indexOf('qui-travaille'));
+});
+
 test('garde fermée : un chiffre de gestion gardé ne se rend pas pour un cuisinier, et garde sa place', () => {
   const gardee = normaliserListe([{ id: 'chiffre-pertes', taille: 'moyen' }, { id: 'pointage', taille: 'grand' }], 'tablette');
   assert.deepEqual(ids(gardee), ['chiffre-pertes', 'pointage']);

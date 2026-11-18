@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════════════════════════
-// Glossaire statique FR → EN (le pendant espagnol vit dans glossaryEs.js).
+// Glossaire statique FR → EN (les pendants espagnol et allemand vivent dans
+// glossaryEs.js et glossaryDe.js, chargés à la demande : voir loadGlossary).
 //
 // Couvre le vocabulaire d'interface le plus fréquent (navigation, actions,
 // statuts, en-têtes de tableaux, catégories produits). Ces chaînes sont
@@ -18,7 +19,6 @@
 // ════════════════════════════════════════════════════════════════
 import { normalizeSearch } from '../utils/searchText.js';
 import { splitAffixes } from './affixes.js';
-import { UI_GLOSSARY_ES } from './glossaryEs.js';
 
 export const UI_GLOSSARY = {
   // ── Points : crédits des photos ──
@@ -1531,7 +1531,7 @@ export const UI_GLOSSARY = {
   'Un montant positif et une date de début ; la fin après le début.': 'A positive amount and a start date; the end after the start.',
   'Le nouveau salaire commence après le début du salaire actuel.': 'The new salary starts after the start of the current salary.',
   'Salaire enregistré.': 'Salary saved.',
-  'Même calcul que le Chiffrage des Outils consultant : prix du catalogue, sinon prix noté dans la fiche. Prix de vente TVA comprise. La moyenne de la carte compte un plat de chaque, sans les quantités vendues.': 'Same calculation as the Costing in the Consultant tools: catalogue price, otherwise the price noted in the recipe. Selling prices incl. VAT. The menu average counts one of each dish, without quantities sold.',
+  'Même calcul que le Chiffrage de Cartes & Recettes : prix du catalogue, sinon prix noté dans la fiche. Prix de vente TVA comprise. La moyenne de la carte compte un plat de chaque, sans les quantités vendues.': 'Same calculation as the Costing in Menus & Recipes: catalogue price, otherwise the price noted in the recipe. Selling prices incl. VAT. The menu average counts one of each dish, without quantities sold.',
   'fiche à prix de vente': 'recipe with a selling price',
   'fiches à prix de vente': 'recipes with a selling price',
   'food cost': 'food cost',
@@ -3012,6 +3012,7 @@ export const UI_GLOSSARY = {
   'Une autre pile d\'inventaires : cave, matériel, consommables…': 'Another stack of inventories: cellar, equipment, consumables…',
   'autre date, départ vierge ou catalogue, nouveau périmètre': 'another date, blank start or catalogue, new scope',
   'une page après l’autre, avec l’appareil photo': 'one page after another, with the camera',
+  'la feuille seule et droite dans le cadre, une page après l’autre': 'the sheet alone and straight in the frame, one page after another',
   'reçus par mail ou déjà sur l’appareil, plusieurs à la fois': 'received by email or already on the device, several at once',
   'Rouvrir cet inventaire': 'Reopen this inventory',
   'Il repassera « en cours » et redeviendra modifiable.': 'It will go back to « in progress » and become editable again.',
@@ -3167,6 +3168,14 @@ export const UI_GLOSSARY = {
   'Prix de vente du plat': 'Selling price of the dish',
   'Demande le droit Modifier': 'Requires the Edit right',
   'Créer et modifier les fiches': 'Create and edit sheets',
+  // ── Chiffrage dans Cartes & Recettes (18.11.2026) ──
+  'Chiffrer les fiches (coûts, prix de vente, marges)': 'Cost the recipe sheets (costs, selling prices, margins)',
+  'Coûts, prix de vente et marges': 'Costs, selling prices and margins',
+  'Coûts, prix de vente et marges des fiches et des plats': 'Costs, selling prices and margins of sheets and dishes',
+  'Coûts, prix de vente et marge de la fiche': 'Costs, selling price and margin of the sheet',
+  'Pour les exporter en Excel chiffré': 'To export them to a costed Excel file',
+  'Choisissez une recette dans la liste': 'Choose a recipe in the list',
+  'Aucun plat': 'No dish',
   'Rattacher la sélection à des plats': 'Link the selection to dishes',
   'Aucun plat. « Ajouter un plat » sur une carte en crée un.': 'No dishes. “Add a dish” on a menu creates one.',
   'Transférer': 'Transfer',
@@ -4874,7 +4883,7 @@ export const UI_GLOSSARY = {
   "Mode clair ou sombre, langue d'affichage": 'Light or dark mode, display language',
   'Sur cet appareil. Le bouton de la barre du haut fait la même chose.': 'On this device. The button in the top bar does the same.',
   "Langue d'affichage": 'Display language',
-  "Original garde le texte tel qu'il a été saisi. English et Español traduisent l'écran, pas les données.": 'Original keeps the text as it was typed. English and Español translate the screen, not the data.',
+  "Original garde le texte tel qu'il a été saisi. English, Español et Deutsch traduisent l'écran, pas les données.": 'Original keeps the text as it was typed. English, Español and Deutsch translate the screen, not the data.',
   'Tous les réglages': 'All settings',
   // ── Réglages : section Caisse ──
   'Catégories, produits, modes, paiement, terminal, TVA et clôture': 'Categories, products, modes, payment, terminal, VAT and closing',
@@ -5202,7 +5211,7 @@ export const UI_GLOSSARY = {
   "Casse": "Breakage",
   "Préparations": "Preparations",
   // ── Statistiques (S2) : Marges et Chiffrage ──
-  "Chiffrage (Outils consultant)": "Costing (Consultant tools)",
+  "Chiffrage (Cartes & Recettes)": "Costing (Menus & Recipes)",
   "aujourd'hui, aux prix et coûts actuels": "today, at current prices and costs",
   "Ensemble": "All",
   "valeur d'aujourd'hui": "today's value",
@@ -5308,7 +5317,7 @@ export const UI_GLOSSARY = {
   "E-mail d'envoi": "Sending email",
   "Nom, téléphone, mot de passe, double authentification, déconnexion": "Name, phone, password, two-factor authentication, sign out",
   "Thème, taille du texte, densité, couleur des actions, animations, contraste": "Theme, text size, density, action colour, animations, contrast",
-  "Original, English ou Español, pour l'affichage": "Original, English or Español, for display",
+  "Original, English, Español ou Deutsch, pour l'affichage": "Original, English, Español or Deutsch, for display",
   "La page qui s'ouvre au lancement de l'app": "The page that opens when the app starts",
   "Présentation, menu déplié, geste de retour par le bord": "Layout, expanded menu, edge swipe back",
   "Chercher un réglage": "Search settings",
@@ -5339,7 +5348,7 @@ export const UI_GLOSSARY = {
   "Le bouton principal, la pilule choisie et l'entrée choisie du menu. Pétrole est la couleur de la marque.": "The main button, the selected pill and the selected menu entry. Petrol is the brand colour.",
   "Plus de fondus ni de glissements : les écrans changent d'un coup.": "No more fades or slides: screens change at once.",
   "Textes secondaires plus foncés, filets et contours plus marqués.": "Darker secondary text, stronger rules and outlines.",
-  "Original garde le texte tel qu'il a été saisi. English et Español traduisent l'écran, pas les données. Le sélecteur de la barre du haut fait la même chose.": "Original keeps the text as it was typed. English and Español translate the screen, not the data. The selector in the top bar does the same.",
+  "Original garde le texte tel qu'il a été saisi. English, Español et Deutsch traduisent l'écran, pas les données. Le sélecteur de la barre du haut fait la même chose.": "Original keeps the text as it was typed. English, Español and Deutsch translate the screen, not the data. The selector in the top bar does the same.",
   "Ouvrir l'app sur": "Open the app on",
   "La dernière page ouverte": "The last page opened",
   "La page d'accueil": "The home page",
@@ -5495,6 +5504,125 @@ export const UI_GLOSSARY = {
   "atteint": "met",
   "dépassé": "exceeded",
   "pas atteint": "not met",
+  // ── Factures & achats : hausses de prix fournisseur ──
+  'Hausses de prix': "Price increases",
+  'hausses à voir': "price increases to review",
+  'hausse à voir': "price increase to review",
+  'aucune hausse à voir': "no price increase to review",
+  'Aucune hausse à voir.': "No price increase to review.",
+  'À voir': "To review",
+  'Déjà vues': "Already seen",
+  'Marquer comme vu': "Mark as seen",
+  'Remettre à voir': "Mark as unseen",
+  'vue le': "seen on",
+  'bon de livraison du': "delivery note of",
+  "prix d'avant du": "previous price from",
+  'soit': "that is",
+  'CHF de plus sur ce document': "CHF more on this document",
+  'CHF la pièce': "CHF per piece",
+  "Lecture à vérifier : le montant n'a pas été retrouvé sur la ligne imprimée.": "Reading to check: the amount was not found on the printed line.",
+  'Les hausses de prix ne sont pas encore activées sur la base de données.': "Price increases are not yet enabled in the database.",
+  "Les hausses de prix n'ont pas pu être lues. Réessayez dans un instant.": "Price increases could not be read. Try again in a moment.",
+  "Prix à l'unité (kilo, litre ou pièce) comparé au prix précédent du même article chez le même fournisseur, sur les factures et les bons de livraison des": "Unit price (kilo, litre or piece) compared with the previous price of the same item from the same supplier, on invoices and delivery notes from the last",
+  'derniers jours.': "days.",
+  'Alerte dès': "Alert from",
+  'Le seuil se règle dans les réglages de Factures & achats.': "The threshold is set in the Invoices & purchases settings.",
+  "Seuil d'alerte sur les prix des fournisseurs": "Alert threshold on supplier prices",
+  'Alerter dès une hausse de (%)': "Alert from an increase of (%)",
+  "Prix à l'unité (kilo, litre ou pièce) d'un article, comparé à son prix précédent chez le même fournisseur. Par défaut :": "Unit price (kilo, litre or piece) of an item, compared with its previous price from the same supplier. Default:",
+  'Un seuil entre 1 et 50 %.': "A threshold between 1 and 50%.",
+  'Seuil enregistré.': "Threshold saved.",
+  "Le seuil n'a pas pu être lu. Réessayez dans un instant.": "The threshold could not be read. Try again in a moment.",
+  "Le seuil n'a pas pu être enregistré. Réessayez dans un instant.": "The threshold could not be saved. Try again in a moment.",
+  "La hausse n'a pas pu être enregistrée. Réessayez dans un instant.": "The price increase could not be saved. Try again in a moment.",
+  // ── Tableau de bord : widget « Hausses de prix » ──
+  'Les hausses de prix des factures et des bons, à voir, et leur effet sur le coût des fiches.': "Price increases from invoices and delivery notes to review, and their effect on recipe costs.",
+  "Prix d'achat en hausse de": "Purchase prices up by",
+  'ou plus, factures et bons à voir': "or more, invoices and delivery notes to review",
+  'Voir les hausses': "See the increases",
+  'Aucune hausse de prix à voir.': "No price increase to review.",
+  'Fournisseur non précisé': "Supplier not specified",
+  'le kg': "per kg",
+  'le litre': "per litre",
+  'la pièce': "per piece",
+  'Produit non relié au catalogue : effet sur les fiches non chiffré.': "Product not linked to the catalogue: effect on recipes not costed.",
+  "Aucune fiche n'utilise ce produit.": "No recipe uses this product.",
+  'fiches utilisent ce produit.': "recipes use this product.",
+  'fiche utilise ce produit.': "recipe uses this product.",
+  'Le catalogue retient un autre prix : effet sur les fiches non chiffré.': "The catalogue keeps another price: effect on recipes not costed.",
+  'moins de': "less than",
+  'par portion': "per portion",
+  'effet non chiffré': "effect not costed",
+  'autres fiches.': "other recipes.",
+  'autre fiche.': "other recipe.",
+  'autres hausses': "other increases",
+  'autre hausse': "other increase",
+  // Dossier du contrôle (HACCP) et conformité CCNT du planning, 18.11.2026.
+  "Dossier du contrôle": "Inspection file",
+  "Le PDF à remettre à l'inspecteur du contrôle des denrées.": "The PDF to hand to the food safety inspector.",
+  "Du": "From",
+  "Au": "To",
+  "Par défaut, les": "By default, the last",
+  "derniers jours. Sur cette période :": "days. Over this period:",
+  "contrôles": "checks",
+  "contrôle": "check",
+  "Le dossier reprend les relevés, les contrôles, les actions correctives, les problèmes signalés, les photos de traçabilité et les durées de vie des étiquettes. Sa dernière page liste ce que vous devez fournir à côté.": "The file includes the readings, checks, corrective actions, reported issues, traceability photos and label shelf lives. Its last page lists what you must provide alongside it.",
+  "Préparation du dossier…": "Preparing the file…",
+  "Choisissez une date de début et une date de fin.": "Choose a start date and an end date.",
+  "La date de début doit venir avant la date de fin.": "The start date must come before the end date.",
+  "La période commence après aujourd'hui.": "The period starts after today.",
+  "Le dossier du contrôle est téléchargé.": "The inspection file has been downloaded.",
+  "Le dossier n'a pas pu être préparé.": "The file could not be prepared.",
+  "Repos court": "Short rest",
+  "Jours d'affilée": "Consecutive days",
+  "Amplitude": "Day span",
+  "Conformité CCNT": "CCNT compliance",
+  "infraction": "violation",
+  "infractions": "violations",
+  "point d'attention": "point to watch",
+  "points d'attention": "points to watch",
+  "Règles de la CCNT": "CCNT rules",
+  "Revenir sans enregistrer": "Go back without saving",
+  "Enregistrer quand même": "Save anyway",
+  "Autres points :": "Other points:",
+  "Aucun point à signaler sur la période affichée.": "Nothing to report for the period shown.",
+  "Repos entre deux journées": "Rest between two working days",
+  "Jours de travail d'affilée": "Consecutive working days",
+  "Jour de repos entier": "Full day off",
+  "Deux jours de repos par semaine": "Two days off per week",
+  "Pauses": "Breaks",
+  "Journée sur 14 heures au plus": "Working day within 14 hours at most",
+  "Durée de la semaine": "Weekly hours",
+  "Ces repères se calculent sur les horaires prévus de la période affichée : repos, jours de repos, jours d'affilée, pauses et durée de la journée.": "These markers are calculated from the planned shifts of the period shown: rest, days off, consecutive days, breaks and length of the working day.",
+  "Cet enregistrement ne respecte pas la règle suivante. Vous pouvez revenir pour corriger l'horaire, ou enregistrer quand même.": "This entry breaks the following rule. You can go back to correct the shift, or save anyway.",
+  "Cet enregistrement ne respecte pas les règles suivantes. Vous pouvez revenir pour corriger l'horaire, ou enregistrer quand même.": "This entry breaks the following rules. You can go back to correct the shift, or save anyway.",
+  "La loi demande 11 heures, ou 8 heures une fois par semaine.": "The law requires 11 hours, or 8 hours once a week.",
+  "C'est permis une fois par semaine, si la moyenne sur deux semaines atteint 11 heures.": "This is allowed once a week, if the two-week average reaches 11 hours.",
+  "Un seul repos de moins de 11 heures est permis par semaine.": "Only one rest period under 11 hours is allowed per week.",
+  "Septième jour d'affilée : permis si chaque journée reste sous 9 heures et si 83 heures de repos suivent.": "Seventh consecutive day: allowed if each day stays under 9 hours and 83 hours of rest follow.",
+  "Septième jour d'affilée : prévoyez ensuite 83 heures de repos d'affilée.": "Seventh consecutive day: plan 83 consecutive hours of rest afterwards.",
+  "Septième jour d'affilée avec une journée de plus de 9 heures. Six jours au plus, sept à titre d'exception.": "Seventh consecutive day with a working day of over 9 hours. Six days at most, seven as an exception.",
+  "Septième jour d'affilée sans 83 heures de repos à la suite. Six jours au plus, sept à titre d'exception.": "Seventh consecutive day without 83 hours of rest afterwards. Six days at most, seven as an exception.",
+  "Plus de sept jours de travail d'affilée. Six jours au plus, sept à titre d'exception.": "More than seven consecutive working days. Six days at most, seven as an exception.",
+  "Aucun jour de repos entier dans la semaine. Un jour d'au moins 24 heures est obligatoire.": "No full day off in the week. A day of at least 24 hours is mandatory.",
+  "Un seul jour de repos dans la semaine. Le second est à rendre dans les 4 semaines.": "Only one day off in the week. The second must be given back within 4 weeks.",
+  "Un seul jour de repos dans la semaine. Le second est à rendre dans les 12 semaines.": "Only one day off in the week. The second must be given back within 12 weeks.",
+  "Pause trop courte pour la journée : 15 min au-delà de 5 h 30, 30 min au-delà de 7 h, 1 h au-delà de 9 h.": "Break too short for the day: 15 min over 5 h 30, 30 min over 7 h, 1 h over 9 h.",
+  "Un service de plus de 5 h 30 sans pause. Une pause de 15 min au moins est demandée.": "A shift of more than 5 h 30 without a break. A break of at least 15 min is required.",
+  "La journée doit tenir dans 14 heures, pauses comprises.": "The working day must fit within 14 hours, breaks included.",
+  "Au-delà de la moyenne de la CCNT. Les heures en plus sont à compenser ou à payer.": "Above the CCNT average. Extra hours must be compensated or paid.",
+  // Clôture d'office des pointages oubliés (19.11.2026)
+  "Clore un pointage oublié après": "Close a forgotten clock-out after",
+  "Si le départ n'est pas pointé, l'horaire est clos à l'heure de fin prévue, une fois ce délai passé depuis l'arrivée. Le contrôle passe toutes les heures. Le planning affiche l'horaire comme clos d'office. Un départ pointé ensuite, ou une correction, remplace cette heure.": "If the departure is not clocked, the shift is closed at its planned end time once this delay has passed since arrival. The check runs every hour. The schedule shows the shift as closed automatically. A departure clocked later, or a correction, replaces this time.",
+  "Jamais": "Never",
+  "Départ non pointé, clos d'office": "Departure not clocked, closed automatically",
+  "Clos d'office": "Closed automatically",
+  "clos d'office": "closed automatically",
+  "8 h": "8 h",
+  "10 h": "10 h",
+  "12 h": "12 h",
+  "14 h": "14 h",
+  "16 h": "16 h",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
@@ -5506,7 +5634,45 @@ export const DO_NOT_TRANSLATE = new Set([
 ]);
 
 // Une table par langue cible, toutes indexées sur la même chaîne française.
-const TABLES = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES };
+// L'anglais est embarqué. L'espagnol et l'allemand (plus de 100 Ko gzip
+// chacun) arrivent par import() à la première bascule vers leur langue : un
+// appareil en Original ou en English ne les télécharge ni ne les analyse.
+// Tant qu'une table n'est pas chargée, lookupGlossary rend null pour sa
+// langue : le moteur attend donc loadGlossary avant d'appliquer la langue
+// (domTranslator.js, setLanguage), sinon tout partirait à l'IA.
+const TABLES = { en: UI_GLOSSARY };
+const LOADERS = {
+  es: () => import('./glossaryEs.js').then((m) => m.UI_GLOSSARY_ES),
+  de: () => import('./glossaryDe.js').then((m) => m.UI_GLOSSARY_DE),
+};
+const loading = {};
+
+/** La table de cette langue est-elle prête pour lookupGlossary ? */
+export function isGlossaryReady(lang) {
+  return !!TABLES[lang];
+}
+
+/**
+ * Charge la table d'une langue cible, une seule fois. Résout quand
+ * lookupGlossary peut s'en servir. Rejette si le fichier n'arrive pas ; un
+ * appel suivant retente. Aussi la voie des scripts Node (tests) :
+ * `await loadGlossary('es')` avant de chercher en espagnol.
+ * @param {'en'|'es'|'de'} lang
+ * @returns {Promise<void>}
+ */
+export function loadGlossary(lang) {
+  if (TABLES[lang]) return Promise.resolve();
+  if (!LOADERS[lang]) return Promise.reject(new Error(`Glossaire inconnu : ${lang}`));
+  if (!loading[lang]) {
+    loading[lang] = LOADERS[lang]().then((table) => {
+      TABLES[lang] = table;
+    }, (err) => {
+      delete loading[lang];
+      throw err;
+    });
+  }
+  return loading[lang];
+}
 
 /**
  * Forme indexée d'une entrée : la clé réduite à son cœur, comme le moteur
@@ -5563,7 +5729,7 @@ function glossaryIndex(lang) {
  * est découpée de la même façon et retrouve ses affixes autour de la traduction.
  * Préserve la casse tout-majuscules (« SUPPRIMER » → « DELETE » / « ELIMINAR »).
  * @param {string} source chaîne française
- * @param {'en'|'es'} [lang='en'] langue cible
+ * @param {'en'|'es'|'de'} [lang='en'] langue cible
  * @returns {string|null} la traduction, ou null si absente du glossaire.
  */
 export function lookupGlossary(source, lang = 'en') {

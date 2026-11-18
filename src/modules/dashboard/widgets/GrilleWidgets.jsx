@@ -63,7 +63,7 @@ function Cellule({ t, item, mode = false, children }) {
     if (!ouvrable || e.defaultPrevented) return;
     if (e.target.closest(INTERACTIF)) return;
     if (window.getSelection && String(window.getSelection()).length) return;
-    t.ouvrir(w.page);
+    t.ouvrir(w.page, w.ecran);
   };
   const { Composant } = w;
   return (

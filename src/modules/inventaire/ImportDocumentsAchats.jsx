@@ -118,9 +118,12 @@ export default function ImportDocumentsAchats({
       // La photo ou le PDF est gardé pour être revu (« Voir la photo »).
       // Enregistré AVANT le document : quand il apparaît sur une autre
       // tablette, sa pièce est déjà là. Un échec ici n'annule pas la lecture.
+      // Les pages telles que lues (photo redressée) quand la lecture les rend.
+      const fichiersLus = Array.isArray(res.fichiers) && res.fichiers.length === travail.fichiers.length
+        ? res.fichiers : travail.fichiers;
       let pieceGardee = false;
       try {
-        await legacySB.db.uploadAchatsPieces(etabId, doc.id, await preparerPieces(travail.fichiers));
+        await legacySB.db.uploadAchatsPieces(etabId, doc.id, await preparerPieces(fichiersLus));
         pieceGardee = true;
       } catch (err) {
         console.error('[import achats pièces]', err);
@@ -201,7 +204,7 @@ export default function ImportDocumentsAchats({
           <span className="accueil-tuile-picto" aria-hidden="true"><ScanLine size={24} strokeWidth={1.75} /></span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={st.libelle}>Photographier</span>
-            <span style={st.etat}>une page après l’autre, avec l’appareil photo</span>
+            <span style={st.etat}>la feuille seule et droite dans le cadre, une page après l’autre</span>
           </span>
         </button>
         <button type="button" className="accueil-tuile" data-cadre="" data-tuile-import="fichier" style={st.tuile} disabled={tableAbsente} onClick={() => fileRef.current?.click()}>
