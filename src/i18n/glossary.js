@@ -3012,6 +3012,7 @@ export const UI_GLOSSARY = {
   'Une autre pile d\'inventaires : cave, matériel, consommables…': 'Another stack of inventories: cellar, equipment, consumables…',
   'autre date, départ vierge ou catalogue, nouveau périmètre': 'another date, blank start or catalogue, new scope',
   'une page après l’autre, avec l’appareil photo': 'one page after another, with the camera',
+  'la feuille seule et droite dans le cadre, une page après l’autre': 'the sheet alone and straight in the frame, one page after another',
   'reçus par mail ou déjà sur l’appareil, plusieurs à la fois': 'received by email or already on the device, several at once',
   'Rouvrir cet inventaire': 'Reopen this inventory',
   'Il repassera « en cours » et redeviendra modifiable.': 'It will go back to « in progress » and become editable again.',
