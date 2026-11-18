@@ -449,7 +449,15 @@ const Chiffrage = ({ user, etablissement, ficheInitiale = null, onModifierFiche 
   // Cartes non archivées, par useCartes comme le reste du module : la carte
   // cachée n'y est servie qu'au consultant (filtrage à la source, jamais
   // refait ici). Les archivées gardent leurs liaisons en base.
-  const { cartes: cartesActivesLocal } = useCartes(etabId, { role: user?.role });
+  const { cartes: cartesActivesLocal, archivedCartes } = useCartes(etabId, { role: user?.role });
+  // Plats visibles : hors consultant, un plat rangé seulement sur des cartes
+  // que useCartes ne sert pas (cartes cachées) ne paraît pas, pas même dans
+  // « Non classés ». Un plat sans carte, ou sur une carte archivée, reste.
+  const platsVisibles = React.useMemo(() => {
+    if (isConsultant) return plats;
+    const connues = new Set([...(cartesActivesLocal || []), ...(archivedCartes || [])].map(c => c.id));
+    return (plats || []).filter(p => !(p.carteIds || []).length || (p.carteIds || []).some(id => connues.has(id)));
+  }, [plats, cartesActivesLocal, archivedCartes, isConsultant]);
 
   // Écran de résolution des correspondances catalogue ambiguës
   const [showMatchReview, setShowMatchReview] = React.useState(false);
@@ -558,11 +566,12 @@ const Chiffrage = ({ user, etablissement, ficheInitiale = null, onModifierFiche 
           {(() => {
             // Arborescence : Carte ▸ Plat ▸ Recettes (+ « Non classés » et orphelines)
             const recettesParPlat = {};
-            (plats || []).forEach(p => {
+            (platsVisibles || []).forEach(p => {
               const ids = (p.recettes || []).map(pr => pr.recetteId);
               recettesParPlat[p.id] = filtered.filter(r => ids.includes(r.id));
             });
-            // Une recette est orpheline SEULEMENT si elle n'apparaît dans aucun plat
+            // Une recette est orpheline SEULEMENT si elle n'apparaît dans aucun plat,
+            // plats des cartes cachées compris (elle n'est pas « sans plat »).
             const allLinkedRecetteIds = new Set();
             (plats || []).forEach(p => (p.recettes || []).forEach(pr => allLinkedRecetteIds.add(pr.recetteId)));
             const orphelines = filtered.filter(r => !allLinkedRecetteIds.has(r.id));
@@ -658,14 +667,14 @@ const Chiffrage = ({ user, etablissement, ficheInitiale = null, onModifierFiche 
             const folders = [
               ...cartesActivesLocal.map(c => ({
                 id: c.id, nom: c.nom,
-                plats: (plats || []).filter(p => (p.carteIds || []).includes(c.id) && platMatches(p)),
+                plats: (platsVisibles || []).filter(p => (p.carteIds || []).includes(c.id) && platMatches(p)),
               })),
-              { id: '__none__', nom: 'Non classés', plats: (plats || []).filter(p => !(p.carteIds || []).some(id => activeCarteIds.has(id)) && platMatches(p)) },
+              { id: '__none__', nom: 'Non classés', plats: (platsVisibles || []).filter(p => !(p.carteIds || []).some(id => activeCarteIds.has(id)) && platMatches(p)) },
             ];
 
             return (
               <>
-                {plats.length === 0 && (
+                {platsVisibles.length === 0 && (
                   <div style={{ padding: '12px 14px', fontSize: 'var(--t1)', color: 'var(--text2)', borderBottom: '1px solid var(--border)', fontStyle: 'italic' }}>
                     Aucun plat.
                   </div>
@@ -706,7 +715,7 @@ const Chiffrage = ({ user, etablissement, ficheInitiale = null, onModifierFiche 
                 {/* ─── Recettes orphelines (non rattachées à un plat) ─── */}
                 {orphelines.length > 0 && (
                   <>
-                    {plats.length > 0 && (
+                    {platsVisibles.length > 0 && (
                       <div style={cts.orphelinHeader}>
                         Recettes sans plat ({orphelines.length})
                       </div>
