@@ -10,6 +10,9 @@
 //               dès l'heure prévue (jamais l'inverse : un retard reste) ;
 //   arrondiMin  0, 5 ou 15 : arrivée et départ arrondis au plus proche, dans
 //               les deux sens, donc juste en moyenne.
+// Un départ clos d'office (clore_pointages_oublies, réglage clotureAutoH)
+// compte comme un départ à l'heure de fin prévue ; closDOffice le signale à
+// l'écran jusqu'au départ réel ou à la correction.
 // Sans règle connue pour l'établissement (réglages pas encore lus, ou jamais
 // touchés) : les défauts, soit le calcul d'avant à la minute près.
 //
@@ -31,6 +34,10 @@ const versHeure = (min) => {
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 };
 const arrondir = (min, pas) => (pas ? Math.round(min / pas) * pas : min);
+
+// Départ posé par la clôture d'office, pas pointé (shifts.pointage_fin_auto).
+export const LIBELLE_CLOS_D_OFFICE = "Départ non pointé, clos d'office";
+export const closDOffice = (s) => Boolean(s?.pointageFin && s?.pointageFinAuto === true);
 
 // Arrivée et départ retenus d'un horaire pointé, ou null s'il manque un
 // pointage. Une avance de plus de 6 h n'est pas une avance (horaire de nuit

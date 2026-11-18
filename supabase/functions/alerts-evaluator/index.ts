@@ -7,6 +7,11 @@
 //
 // Sécurité : verify_jwt=false - auth via header CRON_SECRET.
 //
+// Pointages oubliés : en tête de passage, clore_pointages_oublies() clôt
+// d'office les départs non pointés des établissements qui l'ont réglé
+// (reglages_maison.pointage.cloture_auto_h). Un échec est journalisé et ne
+// fait jamais échouer l'évaluation.
+//
 // Notifications : en fin de passage, la fonction notifications (action
 // alertes, secret interne de push_config) envoie les instances neuves
 // aux appareils abonnés de leurs destinataires. Un échec de cet appel
@@ -49,6 +54,29 @@ function adminClient() {
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     { auth: { persistSession: false } },
   );
+}
+
+// ── Clôture d'office des pointages oubliés ───────────────────────
+// Requête SQL courte (aucune attente) : le délai de l'appelant n'en
+// souffre pas. Fonction absente (migration pas encore appliquée), erreur
+// ou exception : journalisé, l'évaluation continue.
+async function clorePointagesOublies(
+  sb: ReturnType<typeof adminClient>,
+): Promise<{ clos: number } | { error: string }> {
+  try {
+    const { data, error } = await sb.rpc('clore_pointages_oublies');
+    if (error) {
+      console.error('[alerts] clôture des pointages oubliés :', error.message);
+      return { error: error.message };
+    }
+    const clos = typeof data === 'number' ? data : 0;
+    if (clos > 0) console.log(`[alerts] ${clos} pointage(s) clos d'office`);
+    return { clos };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[alerts] clôture des pointages oubliés :', message);
+    return { error: message };
+  }
 }
 
 // ── Dispatch évaluateur ───────────────────────────────────────────
@@ -154,6 +182,9 @@ async function traiter(req: Request): Promise<Response> {
 
   const sb = adminClient();
 
+  // Pointages oubliés clos d'office avant toute évaluation. Jamais bloquant.
+  const cloture = await clorePointagesOublies(sb);
+
   // Body optionnel - permet de cibler une règle précise en debug
   let ruleIdFilter: string | undefined;
   try {
@@ -258,5 +289,5 @@ async function traiter(req: Request): Promise<Response> {
   const push = await envoyerNotifications(sb);
   console.log('[alerts] notifications :', JSON.stringify(push).slice(0, 300));
 
-  return json({ ok: true, fired, resolved, skipped, details: results, push });
+  return json({ ok: true, fired, resolved, skipped, details: results, push, cloture });
 }

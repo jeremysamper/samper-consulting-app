@@ -528,6 +528,9 @@ export function installLegacySupabase() {
       if ('statut' in updates) m.statut = updates.statut;
       if ('pointageDebut' in updates) m.pointage_debut = updates.pointageDebut;
       if ('pointageFin' in updates) m.pointage_fin = updates.pointageFin;
+      // Envoyé seulement par une correction d'un départ clos d'office (la
+      // colonne existe alors forcément) : remet le drapeau à false.
+      if ('pointageFinAuto' in updates) m.pointage_fin_auto = updates.pointageFinAuto;
       if ('note' in updates) m.note = updates.note;
       const { data, error } = await client.from('shifts').update(m).eq('id', id).select().single();
       if (error) throw error;
@@ -589,6 +592,8 @@ export function installLegacySupabase() {
         statut: row.statut || 'confirmé',
         pointageDebut: row.pointage_debut ? row.pointage_debut.slice(0, 5) : null,
         pointageFin: row.pointage_fin ? row.pointage_fin.slice(0, 5) : null,
+        // Départ clos d'office (clore_pointages_oublies) ; absent = false.
+        pointageFinAuto: row.pointage_fin_auto === true,
         note: row.note || '',
       };
     },

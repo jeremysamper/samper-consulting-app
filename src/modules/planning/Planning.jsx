@@ -40,7 +40,7 @@ import { equipeParEtat, heuresPrevues } from './accueilPlanning.js';
 import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
 import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
 import MasquesModal from './MasquesModal.jsx';
-import { heuresPointees } from './pointageRegles.js';
+import { LIBELLE_CLOS_D_OFFICE, closDOffice, heuresPointees } from './pointageRegles.js';
 import { controlesTempsTravail } from './tempsTravail.js';
 import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
 import { maisonFermee, periodeDe } from '../../utils/reglagesMaison.js';
@@ -521,7 +521,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
     if (!legacySB) {
       // Mode démo sans bridge : comportement historique conservé.
       const t = nowTime();
-      applyPunchPatch(shift.id, type === 'arrivee' ? { pointageDebut: t } : { pointageFin: t });
+      applyPunchPatch(shift.id, type === 'arrivee' ? { pointageDebut: t } : { pointageFin: t, pointageFinAuto: false });
       return;
     }
     const cle = `${shift.id}:${type}`;
@@ -543,7 +543,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         // Hors-ligne : heure optimiste affichée, punch en file (rejeu auto).
         applyPunchPatch(shift.id, type === 'arrivee'
           ? { pointageDebut: res.queued.optimisticTime }
-          : { pointageFin: res.queued.optimisticTime });
+          : { pointageFin: res.queued.optimisticTime, pointageFinAuto: false });
         notifyLegacy('Pointage enregistré : il sera synchronisé au retour du réseau', 'warning');
       }
     } catch (err) {
@@ -634,13 +634,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const row = await legacySB.db.updateShift(selectedShift.id, {
           pointageDebut: newDebut,
           pointageFin: newFin,
+          // Une correction confirme ou remplace un départ clos d'office.
+          ...(selectedShift.pointageFinAuto ? { pointageFinAuto: false } : {}),
         });
         const mapped = legacySB.db.mapShiftFromDB(row);
         setPlanning(prev => prev.map(s => s.id === selectedShift.id ? mapped : s));
         setSelectedShift(mapped);
       } else {
-        setPlanning(prev => prev.map(s => s.id === selectedShift.id ? { ...s, pointageDebut: newDebut, pointageFin: newFin } : s));
-        setSelectedShift(prev => prev ? { ...prev, pointageDebut: newDebut, pointageFin: newFin } : prev);
+        setPlanning(prev => prev.map(s => s.id === selectedShift.id ? { ...s, pointageDebut: newDebut, pointageFin: newFin, pointageFinAuto: false } : s));
+        setSelectedShift(prev => prev ? { ...prev, pointageDebut: newDebut, pointageFin: newFin, pointageFinAuto: false } : prev);
       }
       setPointageEditMode(false);
       notifyLegacy('Pointage corrigé manuellement', 'success');
@@ -1156,7 +1158,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   ? () => toggleShiftSelected(shift.id)
                   : () => { if (canWrite) openEditShift(shift); };
                 const typeLabel = typeHoraire(shift.typeShift).label;
-                const statusLabel = enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : shift.pointageDebut ? 'Arrivé' : null;
+                const clos = closDOffice(shift);
+                const statusLabel = enPoste ? 'En poste' : clos ? "Clos d'office" : shift.pointageFin ? 'Terminé' : shift.pointageDebut ? 'Arrivé' : null;
                 return (
                   <div key={shift.id} style={{ ...pls.mobileCard, ...(selected ? pls.mobileCardSelected : {}) }} onClick={onCardClick}>
                     {/* Bandeau de couleur à gauche, codé par rôle → scan des postes d'un coup d'œil */}
@@ -1167,7 +1170,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                         <span style={pls.mobileHour}>{shift.debut} à {shift.fin}</span>
                         {selectionMode
                           ? <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected(shift.id)} onClick={(e) => e.stopPropagation()} style={pls.mobileCheckbox} />
-                          : (statusLabel && <span style={{ ...pls.mobileStatus, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{statusLabel}</span>)}
+                          : (statusLabel && <span style={{ ...pls.mobileStatus, background: enPoste ? 'var(--success-bg)' : shift.pointageFin && !clos ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin && !clos ? 'var(--info-text)' : 'var(--warning-text)' }}>{statusLabel}</span>)}
                       </div>
                       <div style={pls.mobileName} data-no-translate>{emp.name}</div>
                       <PhoneLink tel={phones[shift.userId]} style={pls.mobilePhone} />
@@ -1205,6 +1208,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           const role = emp.role ? demoData.roles[emp.role] : null;
           const heuresReel = heuresPointees(shift);
           const enPoste = shift.pointageDebut && !shift.pointageFin;
+          const clos = closDOffice(shift);
           return (
             <div key={shift.id} style={{ ...pls.mobileShiftCard, flexDirection: 'column', alignItems: 'stretch' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1213,13 +1217,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }} data-no-translate>{emp.name}</div>
                   <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>Prévu de {shift.debut} à {shift.fin}{shift.poste ? `, ${shift.poste}` : ''}</div>
                 </div>
-                <div style={{ ...pls.mobileBadge, background: 'transparent', paddingLeft: 0, paddingRight: 0, fontSize: 'var(--t1)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>
-                  {enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}
+                <div style={{ ...pls.mobileBadge, background: 'transparent', paddingLeft: 0, paddingRight: 0, fontSize: 'var(--t1)', color: enPoste ? 'var(--success-text)' : shift.pointageFin && !clos ? 'var(--info-text)' : 'var(--warning-text)' }}>
+                  {enPoste ? 'En poste' : clos ? "Clos d'office" : shift.pointageFin ? 'Terminé' : 'Non pointé'}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10, fontSize: 'var(--t1)' }}>
                 <div><div style={{ color: 'var(--text2)' }}>Arrivée</div><div style={{ fontWeight: 'var(--g2)' }}>{shift.pointageDebut || '-'}</div></div>
-                <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 'var(--g2)' }}>{shift.pointageFin || '-'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 'var(--g2)' }}>{shift.pointageFin || '-'}</div>{clos && <div style={{ color: 'var(--warning-text)' }}>{LIBELLE_CLOS_D_OFFICE}</div>}</div>
                 <div><div style={{ color: 'var(--text2)' }}>Réel</div><div style={{ fontWeight: 'var(--g2)' }}>{heuresReel ? dureeLisible(heuresReel) : '-'}</div></div>
               </div>
               {canPointShift(shift) && (
@@ -1541,14 +1545,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 // Écart à la minute près ; rien d'affiché sous la minute.
                 const ecartMin = heuresPrev && heuresReel ? Math.round((heuresReel - heuresPrev) * 60) : 0;
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
+                const clos = closDOffice(shift);
                 return (
                   <div key={shift.id} style={pls.ptRow} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
                     <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: 'var(--surface2)', color: 'var(--text2)' }} data-no-translate>{emp.avatar}</div><div><div style={pls.ptName} data-no-translate>{emp.name}</div><div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{shift.poste}</div></div></div>
                     <span style={pls.ptCell}>{shift.debut} à {shift.fin}<br /><span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{heuresPrev != null && <>{dureeLisible(heuresPrev)} prévues</>}</span></span>
                     <span style={pls.ptCell}>{shift.pointageDebut || '-'}</span>
-                    <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}</span>
+                    <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}{clos && <><br /><span style={{ fontSize: 'var(--t1)', color: 'var(--warning-text)' }}>{LIBELLE_CLOS_D_OFFICE}</span></>}</span>
                     <span style={pls.ptCell}>{heuresReel ? <>{dureeLisible(heuresReel)} {ecartMin !== 0 && <span style={{ color: ecartMin > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 'var(--t1)' }}>({ecartMin > 0 ? '+' : '-'}{dureeLisible(Math.abs(ecartMin) / 60)})</span>}</> : '-'}</span>
-                    <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
+                    <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin && !clos ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin && !clos ? 'var(--info-text)' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : clos ? "Clos d'office" : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
                     {/* Pointage en un geste depuis la liste (iPad du restaurant, compte partagé) */}
                     <span style={pls.ptAction} className="no-print" onClick={e => e.stopPropagation()}>
                       {canPointShift(shift) && !shift.pointageDebut && <button style={pls.ptPointBtn} onClick={() => pointerArrivee(shift)}>Arrivée</button>}
@@ -1589,6 +1594,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <>
                   <div><strong>Arrivée :</strong> {selectedShift.pointageDebut || '-'}</div>
                   <div><strong>Départ :</strong> {selectedShift.pointageFin || '-'}</div>
+                  {closDOffice(selectedShift) && (
+                    <div style={{ color: 'var(--warning-text)' }}>{LIBELLE_CLOS_D_OFFICE}. Corrigez l'heure si besoin, ou confirmez-la par « Corriger manuellement ».</div>
+                  )}
 
                   {canPointShift(selectedShift) && (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--border)' }}>

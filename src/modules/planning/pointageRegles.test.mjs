@@ -1,11 +1,21 @@
 // node --test : heures pointées retenues selon les règles du pointage.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bornesRetenues, heuresPointees } from './pointageRegles.js';
+import { bornesRetenues, closDOffice, heuresPointees } from './pointageRegles.js';
 import { heuresFaites } from './soldesHeures.js';
 import { DEFAUTS, retenirReglesPointage } from '../../utils/reglagesMaison.js';
 
 const s = (pointageDebut, pointageFin, debut = '08:00', pause = 0, etablissementId = 'e-test') => ({ debut, fin: '16:00', pause, pointageDebut, pointageFin, etablissementId });
+
+test("clos d'office : seulement un départ posé par la clôture", () => {
+  assert.equal(closDOffice({ pointageFin: '23:30', pointageFinAuto: true }), true);
+  assert.equal(closDOffice({ pointageFin: '23:30', pointageFinAuto: false }), false);
+  assert.equal(closDOffice({ pointageFin: '23:30' }), false);
+  assert.equal(closDOffice({ pointageFin: null, pointageFinAuto: true }), false);
+  assert.equal(closDOffice(null), false);
+  // Compté comme un départ ordinaire à l'heure posée.
+  assert.equal(heuresPointees({ ...s('08:00', '16:00'), pointageFinAuto: true }, DEFAUTS.pointage), 8);
+});
 
 test('défauts : le calcul d\'avant, à la minute', () => {
   assert.equal(heuresPointees(s('07:52', '16:07', '08:00', 30), DEFAUTS.pointage), 7.75);

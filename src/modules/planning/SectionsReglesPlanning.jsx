@@ -10,7 +10,9 @@ import { ChoixPilules, Ligne, ui } from '../compte/sections/reglagesUi.jsx';
 //   Temps de travail : les contrôles signalés sur les horaires prévus de la
 //     grille (tempsTravail.js), jamais bloquants.
 //   Pointage : comment les heures pointées se comptent (pointageRegles.js),
-//     le pointage brut n'étant jamais réécrit.
+//     le pointage brut n'étant jamais réécrit ; et la clôture d'office d'un
+//     départ oublié, faite par la base (clore_pointages_oublies, passage
+//     horaire de alerts-evaluator).
 // Écriture : consultant et patron (RLS de reglages_maison).
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -80,12 +82,20 @@ export function SectionPointage({ etablissement }) {
           onChange={(v) => enregistrer({ ...p, avance: v })}
         />
       </Ligne>
-      <Ligne colonne derniere titre="Arrondi" aide="Arrivée et départ arrondis au plus proche, vers le haut comme vers le bas : juste pour chacun sur le mois.">
+      <Ligne colonne titre="Arrondi" aide="Arrivée et départ arrondis au plus proche, vers le haut comme vers le bas : juste pour chacun sur le mois.">
         <ChoixPilules
           label="Arrondi"
           valeur={String(p.arrondiMin)}
           options={[{ id: '0', label: 'À la minute' }, { id: '5', label: '5 minutes' }, { id: '15', label: '15 minutes' }]}
           onChange={(v) => enregistrer({ ...p, arrondiMin: Number(v) })}
+        />
+      </Ligne>
+      <Ligne colonne derniere titre="Clore un pointage oublié après" aide="Si le départ n'est pas pointé, l'horaire est clos à l'heure de fin prévue, une fois ce délai passé depuis l'arrivée. Le contrôle passe toutes les heures. Le planning affiche l'horaire comme clos d'office. Un départ pointé ensuite, ou une correction, remplace cette heure.">
+        <ChoixPilules
+          label="Clore un pointage oublié après"
+          valeur={p.clotureAutoH == null ? 'jamais' : String(p.clotureAutoH)}
+          options={[{ id: 'jamais', label: 'Jamais' }, ...[8, 10, 12, 14, 16].map((h) => ({ id: String(h), label: `${h} h` }))]}
+          onChange={(v) => enregistrer({ ...p, clotureAutoH: v === 'jamais' ? null : Number(v) })}
         />
       </Ligne>
     </div>

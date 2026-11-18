@@ -12,6 +12,9 @@
 
 export const SERVICES = ['brunch', 'midi', 'soir'];
 export const ARRONDIS = [0, 5, 15];
+// Délais de clôture d'office d'un départ oublié, en heures après l'arrivée.
+export const CLOTURE_MIN_H = 8;
+export const CLOTURE_MAX_H = 16;
 
 export const DEFAUTS = {
   fermetures: { joursFermes: [], servicesFermes: {}, periodes: [] },
@@ -21,7 +24,9 @@ export const DEFAUTS = {
   // défaut.
   tempsTravail: { actif: true, reposMinH: 11, pausesLoi: true, journeeMaxH: null, semaineMaxH: 50, joursReposSemaine: 2 },
   // Aucun arrondi et l'arrivée comptée dès le pointage : le calcul d'avant.
-  pointage: { arrondiMin: 0, avance: 'pointee' },
+  // Aucune clôture d'office : un départ oublié reste ouvert jusqu'à la
+  // correction (sinon fonction clore_pointages_oublies, en base).
+  pointage: { arrondiMin: 0, avance: 'pointee', clotureAutoH: null },
   objectifs: { matierePct: null, personnelPct: null, caMensuelHt: null },
 };
 
@@ -70,6 +75,11 @@ export function normaliserPointage(brut) {
   return {
     arrondiMin: ARRONDIS.includes(Number(b.arrondi_min)) ? Number(b.arrondi_min) : DEFAUTS.pointage.arrondiMin,
     avance: b.avance === 'prevue' ? 'prevue' : DEFAUTS.pointage.avance,
+    // Un entier seulement, comme le lit la base (nombre jsonb) : toute autre
+    // valeur vaut « jamais ».
+    clotureAutoH: Number.isInteger(b.cloture_auto_h) && b.cloture_auto_h >= CLOTURE_MIN_H && b.cloture_auto_h <= CLOTURE_MAX_H
+      ? b.cloture_auto_h
+      : DEFAUTS.pointage.clotureAutoH,
   };
 }
 
@@ -101,7 +111,7 @@ export const versBase = {
     actif: t.actif, repos_min_h: t.reposMinH, pauses_loi: t.pausesLoi,
     journee_max_h: t.journeeMaxH, semaine_max_h: t.semaineMaxH, jours_repos_semaine: t.joursReposSemaine,
   }),
-  pointage: (p) => ({ arrondi_min: p.arrondiMin, avance: p.avance }),
+  pointage: (p) => ({ arrondi_min: p.arrondiMin, avance: p.avance, cloture_auto_h: p.clotureAutoH ?? null }),
   objectifs: (o) => ({ matiere_pct: o.matierePct, personnel_pct: o.personnelPct, ca_mensuel_ht: o.caMensuelHt }),
 };
 // Où vit chaque bloc : les objectifs ont leur table, lue par la direction seule.
