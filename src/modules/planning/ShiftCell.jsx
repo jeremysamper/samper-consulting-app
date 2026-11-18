@@ -103,7 +103,7 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
                 <div key={a.code} title={a.phrase} data-temps-travail={a.code} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 'var(--t1)', color: 'var(--warning-text)', lineHeight: 1.3 }}>
                   <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 'var(--r-full)', background: 'var(--warning-strong)', flexShrink: 0 }} />
                   <span>{a.libelle}</span>
-                  <span data-no-translate="" style={{ fontFamily: 'var(--font-num)' }}>{a.valeur}</span>
+                  <span data-no-translate="" style={{ fontFamily: 'var(--font-num)', whiteSpace: 'nowrap' }}>{a.valeur}</span>
                 </div>
               ))}
             </div>
