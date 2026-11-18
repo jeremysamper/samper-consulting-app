@@ -63,6 +63,25 @@ function mapAiRecipe(r) {
 
 // OCR : extrait la/les recette(s) d'une image (photo ou scan).
 // Renvoie { recipes: [...] } au format du module d'import.
+// Relevé HACCP par photo (lot C5) : la température lue sur l'afficheur.
+// → { valeur: number | null, unite, confiance }. La personne confirme toujours.
+export async function lireAfficheur(file) {
+  let img = file;
+  try {
+    img = await imageCompression(file, { maxSizeMB: 0.6, maxWidthOrHeight: 1280, useWebWorker: true });
+  } catch (e) {
+    img = file;
+  }
+  const imageBase64 = await fileToBase64(img);
+  if (!imageBase64) throw new Error('Image vide ou illisible.');
+  let mediaType = (img.type || file.type || 'image/jpeg').toLowerCase();
+  if (!ACCEPTED_MEDIA.includes(mediaType)) mediaType = 'image/jpeg';
+  const data = await callAi('lire-afficheur', { imageBase64, mediaType });
+  const r = (data && data.result) || {};
+  const valeur = r.valeur === null || r.valeur === undefined || r.valeur === '' ? null : Number(String(r.valeur).replace(',', '.'));
+  return { valeur: Number.isFinite(valeur) ? valeur : null, unite: r.unite || '°C', confiance: r.confiance || 'basse' };
+}
+
 export async function ocrRecipe(file) {
   // Compression pour réduire coût et latence (l'original est conservé en repli).
   let img = file;

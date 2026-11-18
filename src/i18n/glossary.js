@@ -1799,6 +1799,14 @@ export const UI_GLOSSARY = {
   "L'échange n'a pas pu être enregistré. Réessayez.": "The swap could not be saved. Try again.",
   // Déclaration de perte simplifiée (lot B).
   "Plus de détails : date, catégorie, commentaire": "More details: date, category, comment",
+  // Relevé HACCP par photo (lot C5).
+  "Lire l'afficheur en photo": "Read the display from a photo",
+  "Lecture de la photo en cours": "Reading the photo",
+  "L'afficheur n'a pas pu être lu. Tapez la valeur.": "The display could not be read. Type the value.",
+  "Valeur lue. Vérifiez-la, puis enregistrez.": "Value read. Check it, then save.",
+  "Valeur lue, à vérifier sur l'afficheur avant d'enregistrer.": "Value read, check it on the display before saving.",
+  "La lecture de la photo n'a pas abouti. Tapez la valeur.": "Reading the photo did not work. Type the value.",
+  "Relevés HACCP lus sur photo": "HACCP readings taken from a photo",
   // Temps gagné (lot T, tableau de bord du patron).
   "Temps gagné": "Time saved",
   "Temps gagné cette semaine": "Time saved this week",

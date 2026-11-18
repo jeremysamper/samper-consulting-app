@@ -387,6 +387,16 @@ et les totaux en bas. Les trois autres le montrent de côté ou à l'envers.
 Compare les quatre images et désigne celle qui est à l'endroit. Tu ne lis pas le contenu du document.
 Réponds UNIQUEMENT avec un objet JSON, sans texte autour : {"image":1}, {"image":2}, {"image":3} ou {"image":4}`;
 
+// Relevé HACCP par photo (lot C5, 18.11.2026) : la valeur affichée par un
+// thermomètre ou l'afficheur d'une chambre froide. Lecture seulement : la
+// personne confirme toujours la valeur avant l'enregistrement.
+const AFFICHEUR_SYSTEM = `On te montre la photo de l'afficheur d'un thermomètre, d'un frigo, d'une chambre froide ou d'un
+congélateur de cuisine professionnelle. Lis la température affichée, signe moins compris (un congélateur affiche
+souvent -18). N'invente rien : si l'afficheur est flou, coupé, éteint ou absent, réponds valeur null.
+Réponds UNIQUEMENT avec un objet JSON, sans texte autour :
+{"valeur": -18.5, "unite": "°C", "confiance": "haute"}
+valeur : nombre décimal avec un point, ou null ; unite : "°C" ou "°F" ; confiance : "haute", "moyenne" ou "basse".`;
+
 function translateTarget(payload: Record<string, unknown>): string {
   const raw = payload.target;
   const target = raw === undefined || raw === null || raw === '' ? 'en' : String(raw);
@@ -407,6 +417,7 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'parse-catalogue':            { system: CATALOGUE_SYSTEM,    maxTokens: 8192 },
   'parse-facture':              { system: FACTURE_SYSTEM,      maxTokens: 16000 },
   'orientation-document':       { system: ORIENTATION_SYSTEM,  maxTokens: 64 },
+  'lire-afficheur':             { system: AFFICHEUR_SYSTEM,    maxTokens: 64 },
   'dedupe-commande':            { system: DEDUPE_SYSTEM,       maxTokens: 4096 },
   'translate':                  { system: TRANSLATE_SYSTEM,    maxTokens: 4096 },
 };
@@ -439,6 +450,9 @@ const TASK_ROLES: Record<string, string[]> = {
   'parse-facture':            ALL_ROLES,
   // Sens d'une photo de document, demandé avant sa lecture (parse-facture).
   'orientation-document':     ALL_ROLES,
+  // Relevé HACCP par photo : ouvert le 18.11.2026 aux rôles qui relèvent
+  // (décision de Jérémy), comme l'écran du relevé.
+  'lire-afficheur':           ['consultant', 'patron', 'resp_cuisine', 'cuisinier'],
   'dedupe-commande':          CONSULTANT_ONLY,
   'translate':                ALL_ROLES,
 };
@@ -562,6 +576,15 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
         : `Extrais l'en-tête et les lignes de produits de ce document.${indice}`,
     });
     return parts;
+  }
+  if (task === 'lire-afficheur') {
+    const imageBase64 = payload.imageBase64 as string | undefined;
+    const mediaType = payload.mediaType as string | undefined;
+    if (!imageBase64 || !mediaType) throw new Error("Photo de l'afficheur manquante.");
+    return [
+      { kind: 'image', mediaType, base64: imageBase64 },
+      { kind: 'text', text: "Quelle température cet afficheur montre-t-il ?" },
+    ];
   }
   if (task === 'orientation-document') {
     // Les quatre rotations de la même photo, dans l'ordre (0, 90, 180, 270 degrés).

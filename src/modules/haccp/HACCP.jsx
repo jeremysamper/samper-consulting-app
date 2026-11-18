@@ -1010,6 +1010,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
           enregistrement={guideEnCours}
           onLigne={majLigne}
           onEnregistrer={enregistrerReleveGuide}
+          etabId={etabId}
         />
       ) : blocLecture)}
 

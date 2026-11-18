@@ -5,6 +5,9 @@ import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
 import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 import { creneauLePlusProche, parseHaccpNumber } from './HACCP.utils.js';
 import { verdictReleve } from './haccpJour.js';
+import { Camera } from 'lucide-react';
+import { notify } from '../../components/toast/index.js';
+import { inscrireGeste } from '../../services/tempsGagne.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Relevé guidé (écran « tournee ») : la tournée et l'ancienne saisie rapide en
@@ -36,8 +39,34 @@ import { verdictReleve } from './haccpJour.js';
 const lisible = (v) => v !== '' && v != null && !Number.isNaN(parseHaccpNumber(v));
 
 export default function ReleveGuide({
-  zones, creneaux, tournee, relevesDuJour, brouillon, etatLignes, enregistrement, onLigne, onEnregistrer,
+  zones, creneaux, tournee, relevesDuJour, brouillon, etatLignes, enregistrement, onLigne, onEnregistrer, etabId = null,
 }) {
+  // Relevé par photo (lot C5) : l'IA lit l'afficheur et remplit le champ ; la
+  // personne voit la valeur, la corrige si besoin, puis enregistre comme
+  // d'habitude. Sans la tâche en ligne, la saisie au clavier reste.
+  const photoRef = React.useRef(null);
+  // Zone visée gardée dans une référence : le choix du fichier peut revenir
+  // avant le rendu qui suit le toucher.
+  const photoZone = React.useRef(null);
+  const [lecture, setLecture] = React.useState(null);
+  const ouvrirPhoto = (zoneId) => { photoZone.current = zoneId; photoRef.current?.click(); };
+  const lirePhoto = async (file) => {
+    const zoneId = photoZone.current;
+    if (!file || !zoneId) return;
+    setLecture(zoneId);
+    try {
+      const { lireAfficheur } = await import('../../services/aiService.js');
+      const r = await lireAfficheur(file);
+      if (r.valeur == null) { notify("L'afficheur n'a pas pu être lu. Tapez la valeur.", 'warning'); return; }
+      onLigne(zoneId, { valeur: String(r.valeur) });
+      inscrireGeste(etabId, 'releve_photo');
+      notify(r.confiance === 'haute' ? 'Valeur lue. Vérifiez-la, puis enregistrez.' : "Valeur lue, à vérifier sur l'afficheur avant d'enregistrer.", 'info');
+    } catch {
+      notify("La lecture de la photo n'a pas abouti. Tapez la valeur.", 'warning');
+    } finally {
+      setLecture(null);
+    }
+  };
   const champs = React.useRef({});
   // Pastille « +N » par zone : la zone déjà payée pour la demi-journée (par
   // n'importe qui) n'en porte pas (lot P3).
@@ -76,6 +105,14 @@ export default function ReleveGuide({
 
   return (
     <div style={st.ecran}>
+      <input
+        ref={photoRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => { const file = e.target.files?.[0]; e.target.value = ''; lirePhoto(file); }}
+      />
       <span id="haccp-temperature-de" hidden>Température de</span>
       <p style={st.consigne}>
         Lisez le thermomètre de chaque frigo ou appareil et tapez le chiffre.
@@ -122,6 +159,17 @@ export default function ReleveGuide({
                     }}
                   />
                   <span data-no-translate="" style={st.unite}>{z.unite || '°C'}</span>
+                  <button
+                    type="button"
+                    style={st.photo}
+                    disabled={fige || lecture === z.id}
+                    onClick={() => ouvrirPhoto(z.id)}
+                    aria-label={lecture === z.id ? 'Lecture de la photo en cours' : "Lire l'afficheur en photo"}
+                    title="Lire l'afficheur en photo"
+                    data-haccp-photo=""
+                  >
+                    <Camera size={18} strokeWidth={1.8} aria-hidden="true" />
+                  </button>
                 </div>
               </div>
               {verdict?.ton === 'ok' && etat !== 'ok' && <div style={st.bon}>Bon</div>}
@@ -170,6 +218,7 @@ const st = {
   plage: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
   deja: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 },
   saisie: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
+  photo: { width: 44, height: 44, borderRadius: 'var(--r-full)', borderWidth: 0, borderStyle: 'none', background: 'var(--piste)', color: 'var(--text)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 },
   // 56 px de haut, chiffre en 28 px : une cible confortable au doigt, lisible
   // d'un coup d'œil, en chiffres tabulaires.
   champ: {

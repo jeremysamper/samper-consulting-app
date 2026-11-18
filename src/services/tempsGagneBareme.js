@@ -55,7 +55,13 @@ export const BAREME = {
     avant: 'Appeler ou écrire aux collègues pour trouver qui reprend un service, puis corriger le planning à la main.',
     pourquoi: 'Un échange réglé par téléphone prend 10 à 15 minutes. On retient 8 minutes, compté à la validation.',
   },
-  // Le relevé HACCP par photo ajoutera son geste le jour où il existe dans l'app.
+  releve_photo: {
+    secondes: 15,
+    libelle: 'Relevés HACCP lus sur photo',
+    unite: 'relevé',
+    avant: 'Lire l\'afficheur et taper la température, souvent avec des gants.',
+    pourquoi: 'La saisie prend 20 à 30 secondes. On retient 15 secondes, compté quand la valeur est lue.',
+  },
 };
 
 export const GESTES = Object.keys(BAREME);
