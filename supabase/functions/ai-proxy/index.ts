@@ -18,7 +18,7 @@
 // Tâches : 'ocr-recipe' (vision), 'parse-facture' (vision), 'detect-allergens',
 //          'generate-haccp', 'suggest-recipe', 'match-product',
 //          'generate-fiche-salle', 'parse-catalogue', 'dedupe-commande',
-//          'translate' (texte ; payload.target = 'en' par défaut, ou 'es'),
+//          'translate' (texte ; payload.target = 'en' par défaut, 'es' ou 'de'),
 //          'orientation-document' (vision : quatre rotations d'une photo, celle à l'endroit).
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -349,11 +349,27 @@ Règles :
 - vocabulaire métier imposé : "mise en place" → "mise en place" ; "brigade" → "brigada" ; "carte" → "carta" ; "fiche technique" → "ficha técnica" ; "fiche salle" → "ficha de sala" ; "perte" → "merma" ; "pointage" → "fichaje" ; "inventaire" → "inventario" ; "établissement" → "establecimiento" ; "commande" → "pedido" ; "prévisions" → "previsiones" ; "dressage" → "emplatado" ; "conservation" → "conservación" ; "régénération" → "regeneración" ; "portion" → "ración" ; "préparation" (recette de base) → "elaboración" ; "chef de partie" → "jefe de partida" ; "commis" → "ayudante de cocina"
 - ne commente jamais, ne pose jamais de question : traduis.`;
 
+// Même contrat, cible allemande : allemand de Suisse, sans ß. Vocabulaire aligné
+// sur le glossaire statique du front (src/i18n/glossaryDe.js).
+const TRANSLATE_SYSTEM_DE = `Tu traduis du français vers l'allemand les textes d'une application de gestion de cuisine professionnelle (restauration, hôtellerie, HACCP, recettes, planning, inventaire).
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
+{"t":["Löschen","Rezepte"]}
+Règles :
+- "t" contient EXACTEMENT autant d'éléments que la liste fournie, dans le MÊME ordre. C'est impératif : un décalage casse l'affichage.
+- traduis chaque entrée indépendamment ; n'en fusionne, n'en ajoute et n'en supprime aucune
+- registre : allemand de Suisse (Schweizer Hochdeutsch) de cuisine et d'hôtellerie professionnelles, compréhensible en Allemagne et en Autriche ; JAMAIS de "ß", toujours "ss" ("Grösse", "schliessen", "Strasse") ; concis, ton d'interface logicielle (pas de phrase explicative) ; actions et boutons à l'infinitif ("Speichern", "Löschen") ; vouvoiement ("Sie") quand le texte s'adresse à l'utilisateur ; guillemets « » sans espace intérieur
+- garde TEL QUEL : noms propres, noms de personnes, d'établissements, de lieux et de plats signature, marques (Lightspeed, Metro, Transgourmet), sigles (HACCP, DLC, SOP, POS, KDS, MEP, CHF), unités (g, kg, ml, L, pcs, cs, cc), nombres, dates, heures et prix
+- conserve la casse d'origine (une entrée TOUT EN MAJUSCULES le reste) et la ponctuation finale ; un nom commun allemand garde sa majuscule
+- si une entrée est déjà en allemand, ou n'a rien à traduire, renvoie-la à l'identique
+- vocabulaire métier imposé : "mise en place" → "Mise en place" ; "brigade" → "Brigade" ; "carte" → "Karte" ; "fiche technique" → "Rezeptblatt" ; "fiche salle" → "Serviceblatt" ; "perte" → "Verlust" ; "pointage" → "Zeiterfassung" ; "pointer" → "stempeln" ; "inventaire" → "Inventur" ; "établissement" → "Betrieb" ; "commande" → "Bestellung" ; "prévisions" → "Prognosen" ; "dressage" → "Anrichten" ; "conservation" → "Lagerung" ; "régénération" → "Regenerieren" ; "portion" → "Portion" ; "préparation" (recette de base) → "Zubereitung" ; "temps de préparation" → "Rüstzeit" ; "réservation" → "Reservation" ; "planning" → "Dienstplan" ; "couverts" → "Gedecke" ; "chef de partie" → "Chef de partie" ; "commis" → "Commis" ; "TVA" → "MWST" ; "CCNT" → "L-GAV" ; "fiduciaire" → "Treuhand" ; "carte bancaire" → "Bankkarte"
+- ne commente jamais, ne pose jamais de question : traduis.`;
+
 // Langues cibles de la tâche translate. `target` absent = 'en' : les fronts
 // déjà ouverts (qui envoient 'en' ou rien) gardent exactement leur comportement.
 const TRANSLATE_TARGETS: Record<string, { system: string; nom: string }> = {
   en: { system: TRANSLATE_SYSTEM, nom: 'anglais' },
   es: { system: TRANSLATE_SYSTEM_ES, nom: 'espagnol' },
+  de: { system: TRANSLATE_SYSTEM_DE, nom: 'allemand' },
 };
 
 // Sens d'une photo de document. Une facture photographiée à plat sur un plan de

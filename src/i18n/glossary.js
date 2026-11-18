@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════════════════════════
-// Glossaire statique FR → EN (le pendant espagnol vit dans glossaryEs.js).
+// Glossaire statique FR → EN (les pendants espagnol et allemand vivent dans
+// glossaryEs.js et glossaryDe.js).
 //
 // Couvre le vocabulaire d'interface le plus fréquent (navigation, actions,
 // statuts, en-têtes de tableaux, catégories produits). Ces chaînes sont
@@ -19,6 +20,7 @@
 import { normalizeSearch } from '../utils/searchText.js';
 import { splitAffixes } from './affixes.js';
 import { UI_GLOSSARY_ES } from './glossaryEs.js';
+import { UI_GLOSSARY_DE } from './glossaryDe.js';
 
 export const UI_GLOSSARY = {
   // ── Points : crédits des photos ──
@@ -4883,7 +4885,7 @@ export const UI_GLOSSARY = {
   "Mode clair ou sombre, langue d'affichage": 'Light or dark mode, display language',
   'Sur cet appareil. Le bouton de la barre du haut fait la même chose.': 'On this device. The button in the top bar does the same.',
   "Langue d'affichage": 'Display language',
-  "Original garde le texte tel qu'il a été saisi. English et Español traduisent l'écran, pas les données.": 'Original keeps the text as it was typed. English and Español translate the screen, not the data.',
+  "Original garde le texte tel qu'il a été saisi. English, Español et Deutsch traduisent l'écran, pas les données.": 'Original keeps the text as it was typed. English, Español and Deutsch translate the screen, not the data.',
   'Tous les réglages': 'All settings',
   // ── Réglages : section Caisse ──
   'Catégories, produits, modes, paiement, terminal, TVA et clôture': 'Categories, products, modes, payment, terminal, VAT and closing',
@@ -5317,7 +5319,7 @@ export const UI_GLOSSARY = {
   "E-mail d'envoi": "Sending email",
   "Nom, téléphone, mot de passe, double authentification, déconnexion": "Name, phone, password, two-factor authentication, sign out",
   "Thème, taille du texte, densité, couleur des actions, animations, contraste": "Theme, text size, density, action colour, animations, contrast",
-  "Original, English ou Español, pour l'affichage": "Original, English or Español, for display",
+  "Original, English, Español ou Deutsch, pour l'affichage": "Original, English, Español or Deutsch, for display",
   "La page qui s'ouvre au lancement de l'app": "The page that opens when the app starts",
   "Présentation, menu déplié, geste de retour par le bord": "Layout, expanded menu, edge swipe back",
   "Chercher un réglage": "Search settings",
@@ -5348,7 +5350,7 @@ export const UI_GLOSSARY = {
   "Le bouton principal, la pilule choisie et l'entrée choisie du menu. Pétrole est la couleur de la marque.": "The main button, the selected pill and the selected menu entry. Petrol is the brand colour.",
   "Plus de fondus ni de glissements : les écrans changent d'un coup.": "No more fades or slides: screens change at once.",
   "Textes secondaires plus foncés, filets et contours plus marqués.": "Darker secondary text, stronger rules and outlines.",
-  "Original garde le texte tel qu'il a été saisi. English et Español traduisent l'écran, pas les données. Le sélecteur de la barre du haut fait la même chose.": "Original keeps the text as it was typed. English and Español translate the screen, not the data. The selector in the top bar does the same.",
+  "Original garde le texte tel qu'il a été saisi. English, Español et Deutsch traduisent l'écran, pas les données. Le sélecteur de la barre du haut fait la même chose.": "Original keeps the text as it was typed. English, Español and Deutsch translate the screen, not the data. The selector in the top bar does the same.",
   "Ouvrir l'app sur": "Open the app on",
   "La dernière page ouverte": "The last page opened",
   "La page d'accueil": "The home page",
@@ -5467,7 +5469,7 @@ export const DO_NOT_TRANSLATE = new Set([
 ]);
 
 // Une table par langue cible, toutes indexées sur la même chaîne française.
-const TABLES = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES };
+const TABLES = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES, de: UI_GLOSSARY_DE };
 
 /**
  * Forme indexée d'une entrée : la clé réduite à son cœur, comme le moteur
@@ -5524,7 +5526,7 @@ function glossaryIndex(lang) {
  * est découpée de la même façon et retrouve ses affixes autour de la traduction.
  * Préserve la casse tout-majuscules (« SUPPRIMER » → « DELETE » / « ELIMINAR »).
  * @param {string} source chaîne française
- * @param {'en'|'es'} [lang='en'] langue cible
+ * @param {'en'|'es'|'de'} [lang='en'] langue cible
  * @returns {string|null} la traduction, ou null si absente du glossaire.
  */
 export function lookupGlossary(source, lang = 'en') {

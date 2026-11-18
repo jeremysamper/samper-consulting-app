@@ -1,6 +1,6 @@
 // ════════════════════════════════════════════════════════════════
 // Moteur de traduction à la volée du DOM (modes « Original », « English »,
-// « Español »).
+// « Español », « Deutsch »).
 //
 // Principe, identique aux widgets de traduction des sites web : on ne réécrit
 // AUCUN module. Le moteur traduit le DOM rendu et se remet à jour à chaque
@@ -8,13 +8,13 @@
 //
 // Trois niveaux, du moins cher au plus cher, chacun tenu PAR LANGUE :
 //   1. glossaire statique  → instantané, hors-ligne, gratuit (glossary.js,
-//                            glossaryEs.js)
+//                            glossaryEs.js, glossaryDe.js)
 //   2. cache localStorage  → instantané, hors-ligne, gratuit (déjà traduit ici)
 //   3. edge function IA    → une seule fois par phrase, puis mis en cache
 //
 // La source est TOUJOURS le français d'origine : passer d'English à Español
-// restaure d'abord le français, puis retraduit. On ne traduit jamais une
-// traduction.
+// restaure d'abord le français, puis retraduit ; de même vers Deutsch. On ne
+// traduit jamais une traduction.
 //
 // FLUIDITÉ - deux règles qui gouvernent tout ce fichier :
 //
@@ -42,14 +42,14 @@ import { DO_NOT_TRANSLATE, lookupGlossary } from './glossary.js';
 import { fetchSharedTranslations, pushSharedTranslations, translateTexts } from '../services/translationService.js';
 
 // Langues cibles. 'fr' n'en est pas une : c'est le mode Original, sans moteur.
-export const TARGET_LANGS = ['en', 'es'];
+export const TARGET_LANGS = ['en', 'es', 'de'];
 
 // Clé du cache local par langue. L'anglais garde sa clé historique : les
 // appareils déjà en English ne reperdent pas ce qu'ils ont traduit.
 const CACHE_KEY_PREFIX = 'sc_i18n_';
 const cacheKey = (lang) => `${CACHE_KEY_PREFIX}${lang}_v1`;
 // Repère de synchro du cache partagé : + id d'établissement pour l'anglais
-// (clé historique), + 'es_' + id pour l'espagnol.
+// (clé historique), + 'es_' + id pour l'espagnol, + 'de_' + id pour l'allemand.
 const SYNC_KEY = 'sc_i18n_sync_';
 const CACHE_MAX = 5000;      // entrées conservées en localStorage, par langue
 const BATCH_SIZE = 40;       // phrases par appel IA
@@ -74,7 +74,7 @@ const ATTRS = ['placeholder', 'title', 'aria-label', 'alt'];
 const ATTR_SELECTOR = '[placeholder],[title],[aria-label],[alt]';
 
 // ── État ──────────────────────────────────────────────────────────
-// Cache mémoire par langue : { en: 'Supprimer' → 'Delete', es: 'Supprimer' → 'Eliminar' }
+// Cache mémoire par langue : { en: 'Supprimer' → 'Delete', es: 'Supprimer' → 'Eliminar', de: 'Supprimer' → 'Löschen' }
 const memCaches = Object.fromEntries(TARGET_LANGS.map((l) => [l, new Map()]));
 const cacheLoaded = new Set();              // langues dont le cache local est chargé
 const originals = new WeakMap();            // nœud texte  → source française
@@ -585,7 +585,7 @@ export function clearTranslationCache() {
     for (let i = localStorage.length - 1; i >= 0; i -= 1) {
       const k = localStorage.key(i);
       if (!k) continue;
-      // Couvre sc_i18n_en_v1, sc_i18n_es_v1 et tous les repères sc_i18n_sync_*.
+      // Couvre sc_i18n_en_v1, sc_i18n_es_v1, sc_i18n_de_v1 et tous les repères sc_i18n_sync_*.
       if (k.startsWith(SYNC_KEY) || TARGET_LANGS.some((l) => k === cacheKey(l))) {
         localStorage.removeItem(k);
       }
@@ -596,7 +596,7 @@ export function clearTranslationCache() {
 }
 
 /**
- * Bascule l'app en 'en' ou 'es' (traduction à la volée) ou 'fr' (texte
+ * Bascule l'app en 'en', 'es' ou 'de' (traduction à la volée) ou 'fr' (texte
  * d'origine). Toute autre valeur vaut 'fr'.
  */
 export function setLanguage(lang) {
@@ -612,7 +612,8 @@ export function setLanguage(lang) {
   }
 
   // Quitter une langue traduite, c'est d'abord revenir au français d'origine :
-  // English → Español retraduit depuis la source, jamais depuis l'anglais.
+  // English → Español ou Deutsch retraduit depuis la source, jamais depuis
+  // l'anglais.
   // L'observateur est coupé avant restore() pour ne pas recevoir nos propres
   // réécritures (disconnect jette les enregistrements en attente).
   stopObserver();
