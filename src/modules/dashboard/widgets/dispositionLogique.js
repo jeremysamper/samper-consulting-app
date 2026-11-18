@@ -98,6 +98,9 @@ export function origine(poste, ctx) {
     pose('qui-travaille', 'pleine');
   }
 
+  // Hausses de prix : sous la rangée « maintenant », seulement quand il y en
+  // a une à dire (une carte vide n'a rien à faire à l'origine).
+  if (ctx.nbHaussesPrix > 0) pose('hausses-prix', 'pleine');
   pose('hotel', 'pleine');
   pose('mot-consultant', 'pleine');
   pose('a-venir', 'pleine');
