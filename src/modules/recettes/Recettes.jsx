@@ -47,6 +47,9 @@ import './recettes.css';
 // Import de fiches (Gérer > Importer des fiches) : chargé à l'ouverture
 // seulement, avec le lecteur Excel qu'il appelle.
 const ImportLauncher = React.lazy(() => import('./import/ImportLauncher.jsx'));
+// Chiffrage (droit d'action « chiffrage ») : chargé à l'ouverture de son
+// écran seulement, la brigade ne reçoit jamais ce code.
+const Chiffrage = React.lazy(() => import('./chiffrage/Chiffrage.jsx'));
 
 
 // CARTES & RECETTES
@@ -383,7 +386,9 @@ const DuplicateRecetteModal = ({ recette, user, sourceEtab, onClose }) => {
 // Ordre de lecture du service : héros, allergènes, puis ingrédients à gauche
 // et étapes à droite dès 760 px de fiche (iPad portrait compris) ; la
 // conservation (congélation, durées de vie : des réglages) vient ensuite.
-const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, canEtiqueter = false, canFiches = false, onModifier, onDupliquer, onDesarchiver }) => {
+// canChiffrer : droit « chiffrage » ; le menu de la fiche ouvre alors son
+// chiffrage (onChiffrer).
+const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, canEtiqueter = false, canFiches = false, canChiffrer = false, onModifier, onDupliquer, onDesarchiver, onChiffrer }) => {
   const [showDuplicate, setShowDuplicate] = React.useState(false);
   const [showEtiquette, setShowEtiquette] = React.useState(false);
   const isMobile = useIsMobile();
@@ -532,12 +537,12 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
   // Qui peut dupliquer ? consultant + patron + responsable cuisine
   // (cuisinier/serveur cachés ; chef de production peut être un alias de resp_cuisine)
   const canDuplicate = ['consultant', 'patron', 'resp_cuisine'].includes(user?.role);
-  const gereLaFiche = canFiches || canDuplicate;
+  const gereLaFiche = canFiches || canDuplicate || canChiffrer;
 
   // Données fiche pour l'export jsPDF natif (helper module buildRecettePdfData).
   // On reflète les portions affichées (quantités mises à l'échelle).
   // Pas de food cost : la fiche sortie d'ici est une fiche de production pour la
-  // brigade. Le chiffrage reste dans Outils consultant, qui appelle le même
+  // brigade. L'écran Chiffrage du module (droit « chiffrage ») appelle le même
   // helper avec isConsultant.
   // Arrondi : une échelle posée depuis une quantité donne des portions
   // décimales (6,666…), qui partiraient telles quelles dans l'entête du PDF.
@@ -622,6 +627,7 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
               canFiches && recette.statut === 'archivée' && { titre: 'Désarchiver', onClick: onDesarchiver },
               canFiches && { titre: 'Dupliquer', onClick: onDupliquer },
               canDuplicate && { titre: 'Dupliquer vers…', onClick: () => setShowDuplicate(true) },
+              canChiffrer && { titre: 'Chiffrage', detail: 'Coûts, prix de vente et marge de la fiche.', onClick: onChiffrer },
             ] },
           ]}
         />
@@ -1413,6 +1419,13 @@ const Recettes = ({ user, etablissement }) => {
   // module. Garde de présentation : la base n'en vérifie pas d'autre que
   // l'établissement.
   const canFiches = canManageCartes && canManageModule(user.role, 'fiches');
+  // Chiffrer (coûts, prix de vente, marges) : droit d'action « chiffrage »,
+  // consultant et patron par défaut, réglable par personne (une comptable,
+  // une directrice). Écran à part, jamais dans la carte ni dans la fiche.
+  const canChiffrer = canManageModule(user.role, 'chiffrage');
+  // Fiche ouverte à l'arrivée sur l'écran Chiffrage (depuis une fiche, ou au
+  // retour de l'éditeur ouvert depuis le Chiffrage).
+  const [ficheChiffrage, setFicheChiffrage] = React.useState(null);
   // Cacher une carte est réservé au consultant : lui seul continue de la voir.
   const isConsultant = user.role === 'consultant';
   // Le raccourci suit aussi l'accès au module HACCP : un rôle à qui on a retiré
@@ -1717,6 +1730,17 @@ const Recettes = ({ user, etablissement }) => {
     }
   };
 
+  // Chiffrage d'une fiche ouverte, depuis son menu « Actions » : le menu se
+  // referme d'abord, puis la fiche, puis l'écran Chiffrage s'ouvre. Chaque
+  // calque attend le retour du précédent : changés dans le même geste, ils
+  // laisseraient une entrée d'historique orpheline.
+  const chiffrerDepuisFiche = (id) => {
+    setTimeout(() => quandRetoursArrives(() => {
+      setSelectedRecette(null);
+      setTimeout(() => quandRetoursArrives(() => { setFicheChiffrage(id); setEcran('chiffrage'); }), 0);
+    }), 0);
+  };
+
   const surSuppression = (id) => {
     setRecettes(prev => prev.filter(r => r.id !== id));
     setEdition(null);
@@ -1724,8 +1748,9 @@ const Recettes = ({ user, etablissement }) => {
     reloadDataRef.current && reloadDataRef.current();
   };
 
-  // « Modifier la fiche » du Chiffrage (Outils consultant) : clé ponctuelle
-  // lue à l'arrivée, ou événement quand le module est déjà monté.
+  // Clé ponctuelle ou événement « ouvrir l'éditeur sur cette fiche », écrits
+  // autrefois par le Chiffrage des Outils consultant (monté ici depuis le
+  // 18.11.2026, il ouvre l'éditeur directement). Gardé pour un lien d'avant.
   React.useEffect(() => {
     if (!canFiches) return undefined;
     const ouvrir = (id) => { if (id) setEdition({ id, nomEnMain: false }); };
@@ -1900,6 +1925,8 @@ const Recettes = ({ user, etablissement }) => {
         etablissement={etablissement}
         canEtiqueter={canEtiqueter}
         canFiches={canFiches}
+        canChiffrer={canChiffrer}
+        onChiffrer={() => chiffrerDepuisFiche(ouverte.id)}
         onModifier={() => setEdition({ id: ouverte.id, nomEnMain: false })}
         onDupliquer={() => dupliquerFiche(ouverte)}
         onDesarchiver={() => desarchiverFiche(ouverte)}
@@ -1993,6 +2020,21 @@ const Recettes = ({ user, etablissement }) => {
     </>
   );
 
+  if (ecran === 'chiffrage' && canChiffrer) return (
+    <div style={rs.root}>
+      {fenetres}
+      <EcranTache titre="Chiffrage" etat={<>Coûts, prix de vente et marges</>} onRetour={retourAccueil} />
+      <React.Suspense fallback={<div style={{ padding: 24, color: 'var(--text2)', fontSize: 'var(--t2)' }}>Chargement…</div>}>
+        <Chiffrage
+          user={user}
+          etablissement={etablissement}
+          ficheInitiale={ficheChiffrage}
+          onModifierFiche={canFiches ? (id) => { setFicheChiffrage(id); setEdition({ id, nomEnMain: false }); } : null}
+        />
+      </React.Suspense>
+    </div>
+  );
+
   if (ecran === 'etiquette') return (
     <div style={rs.root}>
       {fenetres}
@@ -2042,6 +2084,7 @@ const Recettes = ({ user, etablissement }) => {
           {!selection.active && (
             <div className="module-actions rc-actions">
               {canFiches && <Btn variant="primary" onClick={creerFiche}>Nouvelle fiche</Btn>}
+              {canChiffrer && <Btn onClick={() => { setFicheChiffrage(null); setEcran('chiffrage'); }} title="Coûts, prix de vente et marges des fiches et des plats">Chiffrage</Btn>}
               <Btn onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</Btn>
               <Btn onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</Btn>
               {canEtiqueter && <Btn onClick={() => setEcran('etiquette')} title="DLC d'une préparation">Une étiquette</Btn>}
