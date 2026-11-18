@@ -15,6 +15,7 @@ import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useAbsences } from '../../hooks/useAbsences.js';
 import { absenceDe, absencesDuJour, metaMotif, resteAbsence } from '../../utils/absences.js';
 import { zurichClock, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
+import { useEchanges } from './echanges.js';
 import AbsencesModal from './AbsencesModal.jsx';
 import SaisieRapide from './SaisieRapide.jsx';
 import DupliquerModal from './DupliquerModal.jsx';
@@ -274,6 +275,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   // Planning de cet établissement uniquement
   const planningEtab = React.useMemo(() => planning.filter(s => (s.etablissementId || 'etab-1') === etabId), [planning, etabId]);
+  // Échanges de services (lot C2) : proposés dans Mes horaires, validés à
+  // l'accueil par qui gère le planning.
+  const echanges = useEchanges(etabId);
   // Ce qui s'affiche. planningEtab reste la base des écritures et des contrôles
   // de chevauchement : un horaire masqué existe toujours.
   const planningVisible = planningEtab.filter(s => !estMasque(s.userId));
@@ -1373,6 +1377,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
           absents={absentsDuJour}
           canWrite={canWrite}
           sansEquipe={canWrite && !employees.some(u => !['consultant', 'patron'].includes(u.role))}
+          aValider={canWrite && echanges.statut === 'pret' ? echanges.echanges.filter(e => e.statut === 'repris') : []}
+          shifts={planningEtab}
+          nomDe={nomDe}
+          onDecider={echanges.decider}
           gerer={[
             // Sur téléphone, les cartes du pointage n'ouvrent pas le détail : pas de correction.
             !isMobile && { titre: 'Corriger un pointage', detail: 'Touchez ensuite la ligne de la personne.', onClick: () => setEcran('equipe') },
@@ -1496,6 +1504,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
           maintenant={zurichClock()}
           solde={monSolde}
           onExporter={() => setExportOuvert(true)}
+          echanges={echanges}
+          nomDe={nomDe}
         />
       ) : activeTab === 'planning' ? (
         <>

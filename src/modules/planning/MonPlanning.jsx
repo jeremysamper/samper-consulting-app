@@ -2,6 +2,8 @@ import React from 'react';
 import { ajouterJours, filetType, formatDuree, heuresSegment, typeHoraire } from './planningModeles.js';
 import { jourLong, libellePeriode } from './planningExport.js';
 import { formatSolde } from './soldesHeures.js';
+import { Btn, Panneau } from '../../components/ui/index.jsx';
+import { notify } from '../../components/toast/index.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mon planning : ce qu'un employé veut savoir en ouvrant le module. Quand est
@@ -17,7 +19,22 @@ const quand = (date, aujourdhui) => {
   return jourLong(date).toLowerCase();
 };
 
-export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale, aujourdhui, maintenant, solde, onExporter }) {
+export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale, aujourdhui, maintenant, solde, onExporter, echanges = null, nomDe = () => '' }) {
+  // Échanges de services (lot C2) : sans la migration, echanges.statut vaut
+  // 'absent' et rien ne change à l'écran.
+  const avecEchanges = echanges?.statut === 'pret';
+  const ouverts = avecEchanges ? echanges.echanges : [];
+  const parShift = new Map(ouverts.map((e) => [e.shift_id, e]));
+  const shiftParId = new Map(shifts.map((x) => [x.id, x]));
+  const aReprendre = ouverts.filter((e) => e.demandeur !== userId && (e.statut === 'propose' || e.repreneur === userId))
+    .map((e) => ({ e, x: shiftParId.get(e.shift_id) })).filter(({ x }) => x && x.date >= aujourdhui);
+  const [enCours, setEnCours] = React.useState(null);
+  const agir = async (cle, action, succes) => {
+    setEnCours(cle);
+    const err = await action();
+    setEnCours(null);
+    notify(err || succes, err ? 'error' : 'success');
+  };
   const [semaine, setSemaine] = React.useState(semaineInitiale);
   const mesShifts = shifts.filter(s => s.userId === userId);
   const jours = Array.from({ length: 7 }, (_, i) => ajouterJours(semaine, i));
@@ -47,6 +64,24 @@ export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale
       </div>
 
       {solde && <LigneSolde solde={solde} />}
+
+      {aReprendre.length > 0 && (
+        <Panneau style={s.echanges} data-echanges-a-reprendre="">
+          <div style={s.echangesTitre}>Services à reprendre</div>
+          {aReprendre.map(({ e, x }) => (
+            <div key={e.id} style={s.echangeLigne}>
+              <span style={{ minWidth: 0, flex: '1 1 220px' }}>
+                {e.repreneur === userId
+                  ? <>Vous reprenez le service de <span data-no-translate>{nomDe(e.demandeur)}</span>, {jourLong(x.date).toLowerCase()} de <span data-no-translate>{x.debut} à {x.fin}</span>. La personne qui gère le planning doit encore valider.</>
+                  : <><span data-no-translate>{nomDe(e.demandeur)}</span> propose son service du {jourLong(x.date).toLowerCase()}, de <span data-no-translate>{x.debut} à {x.fin}</span>.</>}
+              </span>
+              {e.repreneur === userId
+                ? <Btn small disabled={enCours === e.id} onClick={() => agir(e.id, () => echanges.retirer(e.id), 'Vous ne reprenez plus ce service.')}>Me retirer</Btn>
+                : <Btn small disabled={enCours === e.id} onClick={() => agir(e.id, () => echanges.reprendre(e.id), 'Demande envoyée. La personne qui gère le planning va valider.')}>Je reprends</Btn>}
+            </div>
+          ))}
+        </Panneau>
+      )}
 
       <div style={s.navigation}>
         <button type="button" style={s.fleche} onClick={() => setSemaine(ajouterJours(semaine, -7))} aria-label="Semaine précédente">‹</button>
@@ -80,6 +115,18 @@ export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale
                       <span style={{ ...s.type, color: 'var(--text2)', boxShadow: filetType(t), paddingLeft: 8 }}>{t.label}</span>
                       <span style={s.heures}>{x.debut} à {x.fin}</span>
                       <span style={s.duree}>{formatDuree(heuresSegment(x))}</span>
+                      {avecEchanges && x.date >= aujourdhui && (() => {
+                        const e = parShift.get(x.id);
+                        if (!e) return <Btn small disabled={enCours === x.id} onClick={() => agir(x.id, () => echanges.proposer(x.id), "Service proposé à l'équipe. Vous restez au planning tant que l'échange n'est pas validé.")}>Proposer l'échange</Btn>;
+                        return (
+                          <span style={s.echangeEtat}>
+                            {e.statut === 'repris'
+                              ? <><span data-no-translate>{nomDe(e.repreneur)}</span> reprend ce service, en attente de validation.</>
+                              : "Proposé à l'équipe."}
+                            {' '}<Btn small disabled={enCours === e.id} onClick={() => agir(e.id, () => echanges.retirer(e.id), 'Échange annulé.')}>Annuler l'échange</Btn>
+                          </span>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -120,6 +167,10 @@ function LigneSolde({ solde }) {
 }
 
 const s = {
+  echanges: { display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 },
+  echangesTitre: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  echangeLigne: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text)' },
+  echangeEtat: { flexBasis: '100%', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 'var(--t2)', color: 'var(--text2)' },
   racine: { display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 640 },
   solde: { display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: '2px 12px', padding: '0 0 12px', borderBottom: '1px solid var(--rule-soft)' },
   soldeLabel: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text2)' },

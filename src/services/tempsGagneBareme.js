@@ -48,8 +48,14 @@ export const BAREME = {
     avant: 'Réunir à la main les réservations, les notes des clients, les absents et les frigos à surveiller avant le service.',
     pourquoi: 'Cette collecte prend 10 minutes dans plusieurs écrans. On retient 5 minutes, compté une fois par personne et par service.',
   },
-  // Les lots suivants ajoutent ici leur geste (échange de service, relevé par
-  // photo) le jour où il existe dans l'app.
+  echange_valide: {
+    secondes: 8 * 60,
+    libelle: 'Échanges de service réglés',
+    unite: 'échange',
+    avant: 'Appeler ou écrire aux collègues pour trouver qui reprend un service, puis corriger le planning à la main.',
+    pourquoi: 'Un échange réglé par téléphone prend 10 à 15 minutes. On retient 8 minutes, compté à la validation.',
+  },
+  // Le relevé HACCP par photo ajoutera son geste le jour où il existe dans l'app.
 };
 
 export const GESTES = Object.keys(BAREME);
