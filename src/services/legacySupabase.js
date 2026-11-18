@@ -753,9 +753,12 @@ export function installLegacySupabase() {
       return ingredients;
     },
 
+    // RLS (20261118) : seul l'auteur de la fiche, ou le consultant, la supprime.
+    // Un refus RLS ne lève pas d'erreur : il supprime zéro ligne.
     async deleteRecette(id) {
-      const { error } = await client.from('recettes').delete().eq('id', id);
+      const { data, error } = await client.from('recettes').delete().eq('id', id).select('id');
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Seule la personne qui a créé cette fiche peut la supprimer.');
     },
 
     // ═══════════════════════════════════════════════════════════════
@@ -1186,6 +1189,9 @@ export function installLegacySupabase() {
         ingredients: (row.ingredients || []).map(i => ({ ...i, prixUnit: i.prixUnit || i.prix_unit || 0 })),
         etapes: row.etapes || [],
         modifiePar: row.modifie_par,
+        // Auteur de la fiche (migration 20261118), posé et figé par la base.
+        // null = auteur inconnu (fiche plus ancienne) : seul le consultant la supprime.
+        createdBy: row.created_by ?? null,
         modifie: row.updated_at ? row.updated_at.slice(0, 10) : null,
         photoUrl: row.photo_url || null,
         // null volontairement preserve (= « a qualifier », traite comme non congelable).

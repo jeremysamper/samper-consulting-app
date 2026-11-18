@@ -88,6 +88,17 @@ export function copieRecette(recette, userId) {
   copie.masquee = false;
   copie.modifie = new Date().toISOString().slice(0, 10);
   copie.modifiePar = userId || null;
+  // La copie appartient à qui l'a faite (la base pose la même valeur).
+  copie.createdBy = userId || null;
   copie.ingredients = (copie.ingredients || []).map((i, idx) => ({ ...i, id: 'i' + t + '_' + idx }));
   return copie;
+}
+
+// Suppression d'une fiche : son auteur, ou le consultant. Reflet de la
+// politique recettes_delete (migration 20261118) ; une fiche sans auteur
+// connu (antérieure) ne se supprime que par le consultant.
+export function peutSupprimerRecette(recette, user) {
+  if (!recette || !user) return false;
+  if (user.role === 'consultant') return true;
+  return !!recette.createdBy && recette.createdBy === user.id;
 }

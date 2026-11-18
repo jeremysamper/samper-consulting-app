@@ -17,6 +17,7 @@ import { normalizeSearch } from '../../../utils/searchText.js';
 import { messageErreur } from '../../../utils/messageErreur.js';
 import {
   effacerBrouillon, ecrireBrouillon, empreinteRecette, fusionnerChampsExternes, lireBrouillon,
+  peutSupprimerRecette,
 } from '../../../utils/brouillonRecette.js';
 import PhotoUploader from '../../consultant-tools/PhotoUploader.jsx';
 import { ALLERGENES_OPTIONS, CATEGORIES_REC, UNITES_REC, convertFactor } from '../../consultant-tools/ConsultantTools.constants.js';
@@ -526,7 +527,7 @@ export default function FicheEditeur({
                   !iaHaccp && { titre: 'Analyse HACCP', detail: 'Points de contrôle proposés, à valider par un responsable.', onClick: genererHaccp },
                   !iaSuggestions && { titre: 'Suggestions', detail: 'Ce qui manque à la fiche pour être complète.', onClick: suggerer },
                 ] },
-                { items: [
+                peutSupprimerRecette(fiche, user) && { items: [
                   { titre: 'Supprimer la recette', danger: true, onClick: () => setSupprimer(true) },
                 ] },
               ].filter(Boolean)}

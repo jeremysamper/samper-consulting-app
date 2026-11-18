@@ -32,7 +32,7 @@ import PlatPicker from './editeur/PlatPicker.jsx';
 import DetectionAllergenes from './editeur/DetectionAllergenes.jsx';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
-import { copieRecette, effacerBrouillon } from '../../utils/brouillonRecette.js';
+import { copieRecette, effacerBrouillon, peutSupprimerRecette } from '../../utils/brouillonRecette.js';
 import { quandRetoursArrives } from '../../services/historyNav.js';
 import { readText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { confirmLegacy, getBrowserWindow } from '../../legacy/legacyApi.js';
@@ -1683,6 +1683,8 @@ const Recettes = ({ user, etablissement }) => {
       notesConsultant: '',
       modifie: new Date().toISOString().slice(0, 10),
       modifiePar: user.id,
+      // Posé aussi par la base : la fiche neuve se supprime sans relecture.
+      createdBy: user.id,
       ingredients: [],
       etapes: [],
       dressage: '',
@@ -1754,20 +1756,34 @@ const Recettes = ({ user, etablissement }) => {
     notifyLegacy(`${ok} fiche(s) archivée(s).`, 'success');
   };
 
+  // Seules les fiches créées par la personne partent (le consultant : toutes).
   const supprimerSelection = async () => {
     if (!selection.count) return;
-    if (!confirmLegacy(`Supprimer ${selection.count} fiche(s) ? La suppression est définitive.`)) return;
+    const aSupprimer = recettes.filter(r => selection.ids.has(r.id) && peutSupprimerRecette(r, user)).map(r => r.id);
+    const gardees = selection.count - aSupprimer.length;
+    if (!aSupprimer.length) {
+      notifyLegacy('Vous ne pouvez supprimer que les fiches que vous avez créées.', 'warning');
+      return;
+    }
+    const question = gardees
+      ? `Supprimer ${aSupprimer.length} fiche(s) ? La suppression est définitive.\n\n${gardees} fiche(s) créée(s) par une autre personne resteront en place.`
+      : `Supprimer ${aSupprimer.length} fiche(s) ? La suppression est définitive.`;
+    if (!confirmLegacy(question)) return;
     setSelectionOccupee(true);
-    let ok = 0;
-    for (const id of selection.ids) {
-      try { if (legacySB) await legacySB.db.deleteRecette(id); effacerBrouillon(id); ok += 1; }
+    const supprimees = new Set();
+    for (const id of aSupprimer) {
+      try { if (legacySB) await legacySB.db.deleteRecette(id); effacerBrouillon(id); supprimees.add(id); }
       catch (err) { console.error('[supprimerSelection]', err); }
     }
-    setRecettes(prev => prev.filter(r => !selection.ids.has(r.id)));
+    setRecettes(prev => prev.filter(r => !supprimees.has(r.id)));
     setSelectionOccupee(false);
     selection.exit();
     reloadDataRef.current && reloadDataRef.current();
-    notifyLegacy(`${ok} fiche(s) supprimée(s).`, 'success');
+    const refusees = aSupprimer.length - supprimees.size;
+    notifyLegacy(
+      `${supprimees.size} fiche(s) supprimée(s).` + (refusees ? ` ${refusees} refusée(s) : seule la personne qui a créé une fiche peut la supprimer.` : ''),
+      refusees ? 'warning' : 'success',
+    );
   };
 
   const rattacherSelectionAuxPlats = async (platsCibles) => {
