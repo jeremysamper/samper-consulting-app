@@ -2993,6 +2993,7 @@ export const UI_GLOSSARY_ES = {
   'Une autre pile d\'inventaires : cave, matériel, consommables…': 'Otra pila de inventarios: bodega, material, consumibles…',
   'autre date, départ vierge ou catalogue, nouveau périmètre': 'otra fecha, inicio en blanco o catálogo, nueva área',
   'une page après l’autre, avec l’appareil photo': 'una página tras otra, con la cámara',
+  'la feuille seule et droite dans le cadre, une page après l’autre': 'la hoja sola y derecha en el encuadre, una página tras otra',
   'reçus par mail ou déjà sur l’appareil, plusieurs à la fois': 'recibidos por correo o ya en el dispositivo, varios a la vez',
   'Rouvrir cet inventaire': 'Reabrir este inventario',
   'Il repassera « en cours » et redeviendra modifiable.': 'Volverá a « en curso » y podrá modificarse de nuevo.',
