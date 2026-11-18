@@ -27,6 +27,8 @@ import { telechargerTableaux } from './exportStatistiques.js';
 import VuesNommees from './VuesNommees.jsx';
 import ChiffresDenses, { Ecart, TableauDense } from './ChiffresDenses.jsx';
 import TuilesMesures from './TuilesMesures.jsx';
+import { objectifsDe } from './objectifs.js';
+import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
 import { perimetreDe } from '../factures-achats/analysesAchats.js';
 import { SERVICES_LABELS } from '../previsions/rapport/computeReservationStats.js';
 import { dateComparable } from '../previsions/rapport/periodesRapport.js';
@@ -217,7 +219,7 @@ function Filtres({ vue, bornes, bornesComp, aujourdhui, perimetres, services, on
 //   l'appelant les pose dans leur propre carte, sous les tuiles.
 function CarteGraphique({
   rang, nb, graphique, composition, tableau, tranches, mesures, familles, hauteur, libelleComparaison, options = null, resume = null, compact = false, tableauDedans = true,
-  onChange, onRetirer, onReessayer, onAjouterGraphique, peutAjouter,
+  objectifs = null, onChange, onRetirer, onReessayer, onAjouterGraphique, peutAjouter,
 }) {
   const [casesOuvertes, setCasesOuvertes] = useState(false);
   const seule = graphique.mesures.length === 1 ? mesures.find((m) => m.id === graphique.mesures[0]) : null;
@@ -295,7 +297,7 @@ function CarteGraphique({
           {composition.enAttente.length ? <div style={st.etat} data-stat-attente="">Lecture en cours</div> : null}
           {composition.series.length ? (
             <>
-              <Graphique composition={composition} tranches={axe} hauteur={hauteur} libelleComparaison={etat ? '' : libelleComparaison} />
+              <Graphique composition={composition} tranches={axe} hauteur={hauteur} libelleComparaison={etat ? '' : libelleComparaison} objectifs={objectifs} />
               <div style={st.note} data-stat-phrases="">
                 {composition.phrases.map((p) => (
                   <div key={p.id}><strong style={{ fontWeight: 'var(--g3)' }}>{p.libelle}</strong> : <span>{p.phrase}</span></div>
@@ -325,6 +327,9 @@ function CarteGraphique({
 
 export default function Statistiques({ user, etablissement }) {
   const etabId = etablissement?.id || null;
+  // Objectifs de la maison (Réglages > La maison > Objectifs) ; le hook retient
+  // aussi les règles du pointage, que suivent les heures de la famille Planning.
+  const maison = useReglagesMaison(etabId);
   const role = user?.role;
   const aujourdhui = zurichToday();
   const direction = estDirection(role);
@@ -516,6 +521,7 @@ export default function Statistiques({ user, etablissement }) {
   // Tuiles sous le graphique principal : ses mesures tracées, puis leurs
   // voisines de la même famille. Aucune quand la vue porte déjà ses lignes de
   // chiffres (une analyse venue d'un module), ni pour des valeurs d'aujourd'hui.
+  const objectifs = useMemo(() => objectifsDe(maison.objectifs, pas), [maison.objectifs, pas]);
   const tuiles = useMemo(() => {
     const g = vue?.graphiques[0];
     if (!g || (vue.chiffres || []).length) return [];
@@ -533,9 +539,9 @@ export default function Statistiques({ user, etablissement }) {
       const rang = tracees.indexOf(m);
       // Avec une ventilation, les séries tracées sont des catégories : la tuile
       // de la mesure ne porte pas de marqueur de série.
-      return { id: m.id, libelle: m.libelle, unite: m.unite, total: s.total, totalComparaison: s.totalComparaison, ecart: s.ecartTotal, valeurs: s.valeurs, tracee: rang >= 0, rang: rang >= 0 && !g.ventilation ? rang : null };
+      return { id: m.id, libelle: m.libelle, unite: m.unite, total: s.total, totalComparaison: s.totalComparaison, ecart: s.ecartTotal, valeurs: s.valeurs, tracee: rang >= 0, rang: rang >= 0 && !g.ventilation ? rang : null, objectif: objectifs[m.id] || null };
     }).filter(Boolean);
-  }, [vue, mesures, pas, tranches, tranchesComp, sources]);
+  }, [vue, mesures, pas, tranches, tranchesComp, sources, objectifs]);
 
   // Tableau dense : les catégories et valeurs telles que les rend la fonction
   // d'origine (ventilation sur la période, ou valeurs d'aujourd'hui).
@@ -794,6 +800,7 @@ export default function Statistiques({ user, etablissement }) {
                   compact={etroit}
                   tableauDedans={!(i === 0 && seul)}
                   libelleComparaison={libelleComparaison}
+                  objectifs={objectifs}
                   onChange={(maj) => setVue(majGraphique(vue, i, maj))}
                   onRetirer={() => setVue(retirerGraphique(vue, i))}
                   onReessayer={relancer}

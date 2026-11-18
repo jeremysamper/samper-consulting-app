@@ -2,6 +2,7 @@ import React from 'react';
 import { pls } from './Planning.styles.js';
 import { metaMotif } from '../../utils/absences.js';
 import { filetType, formatDuree, typeHoraire } from './planningModeles.js';
+import { closDOffice } from './pointageRegles.js';
 
 // Absence (congé, formation, absence) posée en tête de case.
 const PuceAbsence = ({ absence }) => {
@@ -63,7 +64,7 @@ const ShiftCell = ({ userId, date, getShiftsDay, canWrite, openAddPrefill, openE
         // Fond neutre pour tous les types ; seuls la sélection et le pointage en
         // cours teintent la case. Le type se lit au filet gauche.
         const bg = selected ? 'var(--selection)' : enPoste ? 'var(--success-bg)' : 'var(--surface2)';
-        const etat = enPoste ? 'en poste' : shift.pointageFin ? 'pointé' : null;
+        const etat = enPoste ? 'en poste' : closDOffice(shift) ? "clos d'office" : shift.pointageFin ? 'pointé' : null;
         const attrapable = Boolean(glisser) && !selectionMode && !onRemplir;
         const origine = attrapable && glisser.origineId === shift.id;
         const souleve = attrapable && glisser.souleveId === shift.id;

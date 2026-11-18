@@ -2,19 +2,18 @@ import React from 'react';
 import { EnSection } from '../../components/ui/Fenetres.jsx';
 import { getDemoData } from '../../data/demoData.js';
 import { usePlanningGroupes } from '../../hooks/usePlanningGroupes.js';
-import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
 import { usePlanningModeles } from '../../hooks/usePlanningModeles.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import ContratsModal from './ContratsModal.jsx';
 import GroupesModal from './GroupesModal.jsx';
-import MasquesModal from './MasquesModal.jsx';
 import ModelesModal from './ModelesModal.jsx';
 import { useContrats } from './contratsService.js';
 import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Les quatre réglages du Planning, sections de la page des réglages : modèles
-// d'horaires, groupes, personnes masquées, contrats. Chaque section monte la
+// Les réglages du Planning, sections de la page des réglages : modèles
+// d'horaires, groupes, contrats (les personnes masquées sont revenues dans le
+// menu « Gérer » du Planning le 18.11.2026). Chaque section monte la
 // fenêtre d'origine telle quelle (posée dans la page) et lui lit ce que
 // Planning.jsx lui passait, par les mêmes hooks et la même équipe
 // (gardesPlanning.js). Le Planning resté monté relit au signal de changement.
@@ -71,24 +70,6 @@ export function SectionGroupes({ user, etablissement }) {
       comptes={equipeEtab}
       canGerer={peutEcrirePlanning(user?.role)}
       canPostes={estDirectionPlanning(user?.role)}
-      roles={roles}
-    />
-  );
-}
-
-export function SectionMasques({ etablissement }) {
-  const etabId = etablissement?.id || null;
-  const { groupesEtab, equipe, roles } = useEquipe(etabId);
-  const masquesEtab = usePlanningMasques(etabId);
-  if (!etabId) return null;
-  if (masquesEtab.status === 'loading' || groupesEtab.status === 'loading') return <Attente />;
-  if (masquesEtab.status === 'absent') return <Absent />;
-  return (
-    <MasquesModal
-      employees={equipe}
-      masques={masquesEtab.masques}
-      masquer={masquesEtab.masquer}
-      afficher={masquesEtab.afficher}
       roles={roles}
     />
   );

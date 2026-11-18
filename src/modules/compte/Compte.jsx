@@ -1,16 +1,17 @@
 import React from 'react';
-import { ArrowLeft, ChevronRight, Search, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronRight, Search, X } from 'lucide-react';
 import SafeModule from '../../legacy/SafeModule.jsx';
 import { getBrowserWindow } from '../../legacy/legacyApi.js';
 import { Btn } from '../../components/ui/index.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { goBack } from '../../services/historyNav.js';
+import { navigateToPage } from '../../services/navigationService.js';
 import { signalerReglage } from '../../services/reglagesSignal.js';
 import { getPermissionsForRole } from '../../data/demoData.js';
 import { readText, writeText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { ongletCompteDepuisOutils } from '../moduleConfig.js';
-import { chercherSections, cheminDe, entreesParGroupe, idEntree, sectionsVisibles, signauxDe } from './registreReglages.js';
+import { chercherRenvois, chercherSections, cheminDe, entreesParGroupe, idEntree, renvoisVisibles, sectionsVisibles, signauxDe } from './registreReglages.js';
 import './reglages.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -175,6 +176,8 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
   const entree = section ? toutesEntrees.find((e) => e.id === idEntree(section)) : null;
   if (section && entree) dernieres.current.set(entree.id, section.id);
   const resultats = chercherSections(sections, requete);
+  // Petits réglages rendus à leur module : trouvés ici, réglés là-bas.
+  const renvois = chercherRenvois(renvoisVisibles(ctx), requete);
   const enRecherche = requete.trim().length > 0;
 
   const choisirSection = (id) => setOuverte({ id, direct: false });
@@ -248,7 +251,7 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
   const listeResultats = (
     <div role="group" aria-label="Résultats" data-cadre="" style={etroit ? st.groupeEtroit : st.groupe}>
       <div style={etroit ? st.groupeTitreEtroit : st.groupeTitre}>Résultats</div>
-      {resultats.length === 0 && <p style={st.vide}>Aucun réglage ne correspond.</p>}
+      {resultats.length === 0 && renvois.length === 0 && <p style={st.vide}>Aucun réglage ne correspond.</p>}
       {resultats.map((s) => boutonEntree({
         cle: s.id,
         libelle: s.libelle,
@@ -257,6 +260,18 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
         onClick: () => choisirSection(s.id),
         attribut: { 'data-reglage': s.id },
       }))}
+      {renvois.map((r) => (
+        <button key={r.id} type="button" data-renvoi={r.id} style={{ ...st.entree, ...(etroit ? st.entreeEtroite : null) }} onClick={() => navigateToPage(r.page)}>
+          <span style={st.entreeTexte}>
+            <span style={st.entreeLibelle}>{r.libelle}</span>
+            <span style={st.entreeDetail}>{r.ou}</span>
+          </span>
+          <span style={st.yAller}>
+            <span>Y aller</span>
+            <ArrowRight size={16} strokeWidth={1.75} aria-hidden="true" />
+          </span>
+        </button>
+      ))}
     </div>
   );
 
@@ -446,6 +461,7 @@ const st = {
   },
   nombreActif: { background: 'transparent', color: 'var(--on-accent)' },
   chevron: { flexShrink: 0, color: 'var(--text3)' },
+  yAller: { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--lien)' },
   vide: { margin: 0, padding: '8px 10px 12px', fontSize: 'var(--t2)', color: 'var(--text2)' },
   volet: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 },
   enTeteLarge: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },

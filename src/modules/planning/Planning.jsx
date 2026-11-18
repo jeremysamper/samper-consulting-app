@@ -38,11 +38,21 @@ import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcra
 import AccueilPlanning from './AccueilPlanning.jsx';
 import { equipeParEtat, heuresPrevues } from './accueilPlanning.js';
 import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
-import { equipeDuPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
+import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
+import MasquesModal from './MasquesModal.jsx';
+import { LIBELLE_CLOS_D_OFFICE, closDOffice, heuresPointees } from './pointageRegles.js';
+import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
+import { maisonFermee, periodeDe } from '../../utils/reglagesMaison.js';
 import { useContrats } from './contratsService.js';
 import { calcHeures, periodeEnCours, soldePersonne } from './soldesHeures.js';
 import { analyserEquipe, cleCaseCcnt, constatsParCase, decaler as decalerCcnt, infractionsCreees, lundiDe as lundiCcnt } from './conformiteCcnt.js';
 import { ConfirmationCcnt, MarqueCcnt, PanneauCcnt } from './ConformiteCcnt.jsx';
+import { estDirection } from '../comptabilite/gardesCompta.js';
+import { ecranOuvert } from '../statistiques/gardesStatistiques.js';
+
+// Coût du personnel (direction seulement) : chargé à la demande, la lecture de
+// la Comptabilité ne part que pour qui voit les salaires.
+const CarteCoutPersonnel = React.lazy(() => import('./CarteCoutPersonnel.jsx'));
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -128,6 +138,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const perms = getPermissionsForRole(user.role);
   const canWrite = peutEcrirePlanning(user.role);
   const canExport = ['consultant', 'patron'].includes(user.role);
+  // Coût du personnel : la garde des salaires de la Comptabilité, telle
+  // quelle (page Comptabilité ouverte, comme LegacyModuleHost, puis direction).
+  const voitCoutPersonnel = estDirection(user.role)
+    && ecranOuvert('comptabilite', { role: user.role, permissions: perms, etablissement });
 
   const etabId = etablissement?.id || 'etab-1';
 
@@ -244,6 +258,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Absences de l'équipe (congé, formation, absence), posées par la direction.
   const absencesEtab = useAbsences(etabId);
   const [showAbsences, setShowAbsences] = React.useState(false);
+  // Personnes masquées (18.11.2026) : petit réglage rendu au module, dans le
+  // menu « Gérer », direction seule ; il a quitté la page des réglages.
+  const [showMasques, setShowMasques] = React.useState(false);
   const { assurerDepuis: assurerAbsencesDepuis } = absencesEtab;
   React.useEffect(() => { assurerAbsencesDepuis(selectedDate); }, [selectedDate, assurerAbsencesDepuis]);
   React.useEffect(() => { assurerAbsencesDepuis(mobileDate); }, [mobileDate, assurerAbsencesDepuis]);
@@ -260,6 +277,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Ce qui s'affiche. planningEtab reste la base des écritures et des contrôles
   // de chevauchement : un horaire masqué existe toujours.
   const planningVisible = planningEtab.filter(s => !estMasque(s.userId));
+  // Réglages de la maison (18.11.2026) : jours fermés et règles du pointage
+  // (retenues au passage pour heuresPointees). La conformité CCNT de la
+  // grille vient de conformiteCcnt.js.
+  const maison = useReglagesMaison(etabId);
 
   // ─── Conformité CCNT (conformiteCcnt.js) ───
   // Avant chaque écriture d'horaires : les infractions que l'écriture crée.
@@ -380,6 +401,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   const getShift = (userId, date) => planningVisible.find(s => s.userId === userId && s.date === date);
   const getShiftsDay = (userId, date) => planningVisible.filter(s => s.userId === userId && s.date === date);
+  const libelleFermeture = (date) => {
+    if (!maisonFermee(maison.fermetures, date)) return null;
+    return periodeDe(maison.fermetures, date)?.motif || 'Fermé';
+  };
 
   // calcHeures (durée du relevé CCNT) vient de soldesHeures.js : le solde du
   // mois et l'export salaires comptent les heures faites avec la même mesure.
@@ -548,7 +573,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
     if (!legacySB) {
       // Mode démo sans bridge : comportement historique conservé.
       const t = nowTime();
-      applyPunchPatch(shift.id, type === 'arrivee' ? { pointageDebut: t } : { pointageFin: t });
+      applyPunchPatch(shift.id, type === 'arrivee' ? { pointageDebut: t } : { pointageFin: t, pointageFinAuto: false });
       return;
     }
     const cle = `${shift.id}:${type}`;
@@ -570,7 +595,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         // Hors-ligne : heure optimiste affichée, punch en file (rejeu auto).
         applyPunchPatch(shift.id, type === 'arrivee'
           ? { pointageDebut: res.queued.optimisticTime }
-          : { pointageFin: res.queued.optimisticTime });
+          : { pointageFin: res.queued.optimisticTime, pointageFinAuto: false });
         notifyLegacy('Pointage enregistré : il sera synchronisé au retour du réseau', 'warning');
       }
     } catch (err) {
@@ -661,13 +686,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
         const row = await legacySB.db.updateShift(selectedShift.id, {
           pointageDebut: newDebut,
           pointageFin: newFin,
+          // Une correction confirme ou remplace un départ clos d'office.
+          ...(selectedShift.pointageFinAuto ? { pointageFinAuto: false } : {}),
         });
         const mapped = legacySB.db.mapShiftFromDB(row);
         setPlanning(prev => prev.map(s => s.id === selectedShift.id ? mapped : s));
         setSelectedShift(mapped);
       } else {
-        setPlanning(prev => prev.map(s => s.id === selectedShift.id ? { ...s, pointageDebut: newDebut, pointageFin: newFin } : s));
-        setSelectedShift(prev => prev ? { ...prev, pointageDebut: newDebut, pointageFin: newFin } : prev);
+        setPlanning(prev => prev.map(s => s.id === selectedShift.id ? { ...s, pointageDebut: newDebut, pointageFin: newFin, pointageFinAuto: false } : s));
+        setSelectedShift(prev => prev ? { ...prev, pointageDebut: newDebut, pointageFin: newFin, pointageFinAuto: false } : prev);
       }
       setPointageEditMode(false);
       notifyLegacy('Pointage corrigé manuellement', 'success');
@@ -1141,6 +1168,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <div style={pls.mobileDayNavCenter}>
               <span style={{ ...pls.mobileDayName, color: isToday ? 'var(--onglet)' : 'var(--text)' }}>{dayLabelCap}</span>
               {isToday && <span style={pls.mobileTodayChip}>Aujourd'hui</span>}
+              {libelleFermeture(mobileDate) && <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>{libelleFermeture(mobileDate)}</span>}
             </div>
             <button style={pls.mobileNavArrow} onClick={() => shiftMobileDay(1)} aria-label="Jour suivant">›</button>
           </div>
@@ -1186,7 +1214,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   ? () => toggleShiftSelected(shift.id)
                   : () => { if (canWrite) openEditShift(shift); };
                 const typeLabel = typeHoraire(shift.typeShift).label;
-                const statusLabel = enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : shift.pointageDebut ? 'Arrivé' : null;
+                const clos = closDOffice(shift);
+                const statusLabel = enPoste ? 'En poste' : clos ? "Clos d'office" : shift.pointageFin ? 'Terminé' : shift.pointageDebut ? 'Arrivé' : null;
                 return (
                   <div key={shift.id} style={{ ...pls.mobileCard, ...(selected ? pls.mobileCardSelected : {}) }} onClick={onCardClick}>
                     {/* Bandeau de couleur à gauche, codé par rôle → scan des postes d'un coup d'œil */}
@@ -1197,7 +1226,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                         <span style={pls.mobileHour}>{shift.debut} à {shift.fin}</span>
                         {selectionMode
                           ? <input type="checkbox" checked={!!selected} onChange={() => toggleShiftSelected(shift.id)} onClick={(e) => e.stopPropagation()} style={pls.mobileCheckbox} />
-                          : (statusLabel && <span style={{ ...pls.mobileStatus, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{statusLabel}</span>)}
+                          : (statusLabel && <span style={{ ...pls.mobileStatus, background: enPoste ? 'var(--success-bg)' : shift.pointageFin && !clos ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin && !clos ? 'var(--info-text)' : 'var(--warning-text)' }}>{statusLabel}</span>)}
                       </div>
                       <div style={pls.mobileName} data-no-translate>{emp.name}</div>
                       <PhoneLink tel={phones[shift.userId]} style={pls.mobilePhone} />
@@ -1233,8 +1262,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
           {sec.items.map(shift => {
           const emp = userDisplay(shift.userId);
           const role = emp.role ? demoData.roles[emp.role] : null;
-          const heuresReel = shift.pointageDebut && shift.pointageFin ? calcHeures(shift.pointageDebut, shift.pointageFin, shift.pause) : null;
+          const heuresReel = heuresPointees(shift);
           const enPoste = shift.pointageDebut && !shift.pointageFin;
+          const clos = closDOffice(shift);
           return (
             <div key={shift.id} style={{ ...pls.mobileShiftCard, flexDirection: 'column', alignItems: 'stretch' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1243,13 +1273,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
                   <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }} data-no-translate>{emp.name}</div>
                   <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>Prévu de {shift.debut} à {shift.fin}{shift.poste ? `, ${shift.poste}` : ''}</div>
                 </div>
-                <div style={{ ...pls.mobileBadge, background: 'transparent', paddingLeft: 0, paddingRight: 0, fontSize: 'var(--t1)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>
-                  {enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}
+                <div style={{ ...pls.mobileBadge, background: 'transparent', paddingLeft: 0, paddingRight: 0, fontSize: 'var(--t1)', color: enPoste ? 'var(--success-text)' : shift.pointageFin && !clos ? 'var(--info-text)' : 'var(--warning-text)' }}>
+                  {enPoste ? 'En poste' : clos ? "Clos d'office" : shift.pointageFin ? 'Terminé' : 'Non pointé'}
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginTop: 10, fontSize: 'var(--t1)' }}>
                 <div><div style={{ color: 'var(--text2)' }}>Arrivée</div><div style={{ fontWeight: 'var(--g2)' }}>{shift.pointageDebut || '-'}</div></div>
-                <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 'var(--g2)' }}>{shift.pointageFin || '-'}</div></div>
+                <div><div style={{ color: 'var(--text2)' }}>Départ</div><div style={{ fontWeight: 'var(--g2)' }}>{shift.pointageFin || '-'}</div>{clos && <div style={{ color: 'var(--warning-text)' }}>{LIBELLE_CLOS_D_OFFICE}</div>}</div>
                 <div><div style={{ color: 'var(--text2)' }}>Réel</div><div style={{ fontWeight: 'var(--g2)' }}>{heuresReel ? dureeLisible(heuresReel) : '-'}</div></div>
               </div>
               {canPointShift(shift) && (
@@ -1273,7 +1303,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const maintenantZ = zurichClock();
   const mesHoraires = planningEtab.filter(s => s.userId === user.id);
   const mesHorairesDuJour = mesHoraires.filter(s => s.date === aujourdhuiZ);
-  const dureePointee = mesHorairesDuJour.reduce((t, s) => t + (calcHeures(s.pointageDebut, s.pointageFin, s.pause) || 0), 0);
+  const dureePointee = mesHorairesDuJour.reduce((t, s) => t + (heuresPointees(s) || 0), 0);
   const jour = pointePourMoi ? { ...pointageDuJour(mesHorairesDuJour), duree: dureeLisible(dureePointee), enCours: enCoursAccueil } : null;
   // Prochain service : le premier qui n'est pas encore terminé (même règle que MonPlanning).
   const prochainService = mesHoraires
@@ -1418,6 +1448,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           sections={[{ items: [
             canWrite && activeTab === 'planning' && { titre: 'Sélectionner plusieurs horaires', detail: 'Pour les supprimer ou les recopier ailleurs.', onClick: () => { setRemplissage(null); if (!selectionMode) toggleSelectionMode(); } },
             activeTab === 'planning' && choixAbsences,
+            activeTab === 'planning' && estDirectionPlanning(user?.role) && masquesEtab.status !== 'absent' && { titre: 'Personnes masquées', detail: "Retirer quelqu'un de l'affichage du planning.", onClick: () => setShowMasques(true) },
           ] }]}
         />
       </div>
@@ -1487,7 +1518,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <div style={{ overflowX: 'auto' }} ref={glisser.zoneRef}>
               <div style={{ ...pls.grid, gridTemplateColumns: `200px repeat(${DAYS.length}, minmax(90px,1fr))`, minWidth: 200 + DAYS.length * 90 }}>
                 <div style={pls.empColHeader} />
-                {DAYS.map(d => <div key={d.date} style={pls.dayHeader}><div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)' }}>{d.label}</div></div>)}
+                {DAYS.map(d => {
+                  const ferme = libelleFermeture(d.date);
+                  return (
+                    <div key={d.date} style={pls.dayHeader} data-jour-ferme={ferme ? '' : undefined}>
+                      <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)' }}>{d.label}</div>
+                      {ferme && <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text3)' }}>{ferme}</div>}
+                    </div>
+                  );
+                })}
                 {enSections(employees.filter(e => passeFiltre(e.id)), e => e.id).map(sec => (
                   <React.Fragment key={sec.id || 'tous'}>
                   {sec.nom && <div style={pls.groupeTitreGrille}>{sec.nom} <span style={pls.groupeCompte}>{sec.items.length}</span></div>}
@@ -1545,6 +1584,19 @@ const Planning = ({ user, etablissement, initialTab }) => {
             </div>
           </Panneau>
         )}
+        {voitCoutPersonnel && (
+          <React.Suspense fallback={null}>
+            <CarteCoutPersonnel
+              etablissement={etablissement}
+              debut={lundiCcnt(isMobile ? mobileDate : selectedDate)}
+              fin={decalerCcnt(lundiCcnt(isMobile ? mobileDate : selectedDate), 6)}
+              shifts={planningEtab}
+              aujourdhui={zurichToday()}
+              nomDe={nomDe}
+              heuresEtab={heuresContractuelles(etablissement)}
+            />
+          </React.Suspense>
+        )}
         {canWrite && (
           <div className="no-print">
             <PanneauCcnt constats={constatsCcnt} personnes={employees.filter(e => passeFiltre(e.id))} nomDe={nomDe} />
@@ -1565,18 +1617,19 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const emp = userDisplay(shift.userId);
                 const role = emp.role ? demoData.roles[emp.role] : null;
                 const heuresPrev = calcHeures(shift.debut, shift.fin, shift.pause);
-                const heuresReel = shift.pointageDebut && shift.pointageFin ? calcHeures(shift.pointageDebut, shift.pointageFin, shift.pause) : null;
+                const heuresReel = heuresPointees(shift);
                 // Écart à la minute près ; rien d'affiché sous la minute.
                 const ecartMin = heuresPrev && heuresReel ? Math.round((heuresReel - heuresPrev) * 60) : 0;
                 const enPoste = shift.pointageDebut && !shift.pointageFin;
+                const clos = closDOffice(shift);
                 return (
                   <div key={shift.id} style={pls.ptRow} onClick={() => { setSelectedShift(shift); setShowDetailModal(true); }}>
                     <div style={pls.ptEmp}><div style={{ ...pls.ptAvatar, background: 'var(--surface2)', color: 'var(--text2)' }} data-no-translate>{emp.avatar}</div><div><div style={pls.ptName} data-no-translate>{emp.name}</div><div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{shift.poste}</div></div></div>
                     <span style={pls.ptCell}>{shift.debut} à {shift.fin}<br /><span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{heuresPrev != null && <>{dureeLisible(heuresPrev)} prévues</>}</span></span>
                     <span style={pls.ptCell}>{shift.pointageDebut || '-'}</span>
-                    <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}</span>
+                    <span style={pls.ptCell}>{shift.pointageFin || (enPoste ? 'En cours' : '-')}{clos && <><br /><span style={{ fontSize: 'var(--t1)', color: 'var(--warning-text)' }}>{LIBELLE_CLOS_D_OFFICE}</span></>}</span>
                     <span style={pls.ptCell}>{heuresReel ? <>{dureeLisible(heuresReel)} {ecartMin !== 0 && <span style={{ color: ecartMin > 0 ? 'var(--success-strong)' : 'var(--danger-strong)', fontSize: 'var(--t1)' }}>({ecartMin > 0 ? '+' : '-'}{dureeLisible(Math.abs(ecartMin) / 60)})</span>}</> : '-'}</span>
-                    <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin ? 'var(--info-text)' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
+                    <span style={pls.ptCell}><span style={{ ...pls.statusBadge, background: enPoste ? 'var(--success-bg)' : shift.pointageFin && !clos ? 'var(--info-bg)' : 'var(--warning-bg)', color: enPoste ? 'var(--success-text)' : shift.pointageFin && !clos ? 'var(--info-text)' : 'var(--warning-text)' }}>{enPoste ? 'En poste' : clos ? "Clos d'office" : shift.pointageFin ? 'Terminé' : 'Non pointé'}</span></span>
                     {/* Pointage en un geste depuis la liste (iPad du restaurant, compte partagé) */}
                     <span style={pls.ptAction} className="no-print" onClick={e => e.stopPropagation()}>
                       {canPointShift(shift) && !shift.pointageDebut && <button style={pls.ptPointBtn} onClick={() => pointerArrivee(shift)}>Arrivée</button>}
@@ -1617,6 +1670,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 <>
                   <div><strong>Arrivée :</strong> {selectedShift.pointageDebut || '-'}</div>
                   <div><strong>Départ :</strong> {selectedShift.pointageFin || '-'}</div>
+                  {closDOffice(selectedShift) && (
+                    <div style={{ color: 'var(--warning-text)' }}>{LIBELLE_CLOS_D_OFFICE}. Corrigez l'heure si besoin, ou confirmez-la par « Corriger manuellement ».</div>
+                  )}
 
                   {canPointShift(selectedShift) && (
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
@@ -2021,8 +2077,23 @@ const Planning = ({ user, etablissement, initialTab }) => {
         />
       )}
 
-      {/* Modèles d'horaires, groupes, personnes masquées et contrats : dans la
-          page des réglages (SectionsPlanning.jsx), le menu « Gérer » y mène. */}
+      {/* Modèles d'horaires, groupes et contrats : dans la page des réglages
+          (SectionsPlanning.jsx). Les personnes masquées restent ici. */}
+      {showMasques && (
+        <Fenetre id="planning-masques" titre="Personnes masquées" onClose={() => setShowMasques(false)} largeur={520}>
+          {masquesEtab.status === 'loading'
+            ? <p style={{ margin: 0, padding: 18, fontSize: 'var(--t2)', color: 'var(--text2)' }}>Chargement…</p>
+            : (
+              <MasquesModal
+                employees={equipe}
+                masques={masquesEtab.masques}
+                masquer={masquesEtab.masquer}
+                afficher={masquesEtab.afficher}
+                roles={demoData.roles}
+              />
+            )}
+        </Fenetre>
+      )}
 
       {/* ═════════ MODALE CONFIRMATION SUPPRESSION MULTIPLE ═════════ */}
       {showAbsences && (

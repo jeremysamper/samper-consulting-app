@@ -1470,7 +1470,8 @@ const Recettes = ({ user, etablissement }) => {
   // Carte d'accueil = préférence utilisateur par établissement (user_settings,
   // synchro multi-device, cache hydraté au login → lecture instantanée). Un
   // seul état, partagé avec la section « Carte d'accueil » de la page des
-  // réglages (carteAccueil.js) : le bouton de la carte en est le raccourci.
+  // réglages (carteAccueil.js) jusqu'au 18.11.2026 ; depuis, le bouton de la
+  // carte est le seul endroit (la recherche des réglages y renvoie).
   const { carteId: defaultCarteId, choisir: choisirCarteAccueil } = useCarteAccueil(etabId);
 
   // Écran du module : l'écran d'arrivée (la carte du moment, la recherche, les

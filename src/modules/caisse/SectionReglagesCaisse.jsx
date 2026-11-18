@@ -106,7 +106,6 @@ export default function SectionReglagesCaisse({ user, etablissement, signaler })
       poste={poste}
       peutLireJournalTests={['consultant', 'patron'].includes(role)}
       onTestsVides={signaler}
-      onModeTest={signaler}
       role={role}
       terminaux={terminaux}
       lectureTerminaux={lectureTerminaux}

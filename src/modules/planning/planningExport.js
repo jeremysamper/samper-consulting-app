@@ -4,6 +4,7 @@
 // passe le résultat à pdfUtils.exportPlanningPdf ou à XLSX.
 // ─────────────────────────────────────────────────────────────────────────────
 import { ajouterJours, formatDuree, heuresSegment, typeHoraire } from './planningModeles.js';
+import { heuresPointees as heuresPointeesRetenues } from './pointageRegles.js';
 import { MOTIFS_ABSENCE } from '../../utils/absences.js';
 
 export const datesEntre = (debut, fin) => {
@@ -32,9 +33,8 @@ export const libellePeriode = (debut, fin) => {
 };
 
 const triHeure = (a, b) => (a.debut || '').localeCompare(b.debut || '');
-const heuresPointees = (s) => (s.pointageDebut && s.pointageFin
-  ? heuresSegment({ debut: s.pointageDebut, fin: s.pointageFin, pause: s.pause })
-  : 0);
+// Heures pointées retenues (règles du pointage de la maison, pointageRegles.js).
+const heuresPointees = (s) => (s.pointageDebut && s.pointageFin ? (heuresPointeesRetenues(s) || 0) : 0);
 
 // ─── Planning de l'équipe : une semaine par page ───────────────────────────
 // sections = [{ nom | null, personnes: [user] }]

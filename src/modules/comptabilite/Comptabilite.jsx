@@ -30,6 +30,7 @@ import { useCompta } from './useCompta.js';
 import { estDirection, peutReglerFactures } from './gardesCompta.js';
 import { ventesComparables } from './syntheseCompta.js';
 import { Chf, pluriel, st as ui } from './comptaUi.jsx';
+import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
 import {
   TYPES_PERIODE, libellePeriode, periodeAnnee, periodeCourante, periodeMois, periodePrecedente, periodeSuivante,
   periodeTrimestre, periodesInventaire,
@@ -86,6 +87,10 @@ export default function Comptabilite({ user, etablissement, setPage }) {
 
 function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
   const etabId = etablissement?.id || null;
+  // Règles du pointage de la maison : retenues par ce hook, suivies par les
+  // heures du personnel (personnelCompta, heuresPointees) ; l'écran se
+  // redessine quand elles arrivent.
+  useReglagesMaison(etabId);
   const aujourdhui = zurichToday();
   const legacySB = dbService.getBridge();
   const perms = getPermissionsForRole(user.role);

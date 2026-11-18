@@ -1,6 +1,7 @@
 import { isPageActiveForEtab, peutAdministrerCompte, peutOuvrirPage } from '../moduleConfig.js';
 import { peutChangerLogo, peutOrganiserMenu } from '../../components/nav/gardesCoque.js';
 import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
+import { ROLES_MODE_TEST } from '../caisse/modeTest.js';
 import { peutGererReservations, peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
 import { peutGererCartes } from '../recettes/gardesRecettes.js';
 import { peutGererInventaire } from '../inventaire/gardesInventaire.js';
@@ -12,6 +13,7 @@ import { peutGererPassations } from '../passations/gardesPassations.js';
 import { peutGererTechnique } from '../technique/gardesTechnique.js';
 import { estDirectionPlanning, peutEcrirePlanning, peutOuvrirGroupes } from '../planning/gardesPlanning.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
+import { estDirectionMaison } from './gardesMaison.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -44,7 +46,15 @@ import { makeSearchMatcher } from '../../utils/searchText.js';
 // Ajouter un réglage : exporter sa garde d'un fichier léger du module (pas
 // d'import d'écran : ce registre est dans le bundle de départ), écrire sa
 // section dans le dossier du module, l'inscrire ici avec son module et son
-// onglet. Aucun raccourci dans le module : un réglage n'a qu'un endroit.
+// onglet. Un réglage n'a qu'un endroit : jamais de raccourci en double.
+//
+// Règle de tri (18.11.2026) : un réglage vit dans son module, et non ici,
+// seulement s'il est un seul contrôle (case, choix, geste sur un objet),
+// propre à l'écran où l'on est, sans formulaire ni liste à gérer. Il entre
+// alors dans le menu « Gérer » ou « Plus » du module, ou sur l'objet qu'il
+// règle, jamais en bouton visible de plus. Tout le reste est approfondi et vit
+// ici. Un réglage rendu à son module laisse un renvoi (RENVOIS) : la recherche
+// le trouve encore et mène au module.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Ordre d'affichage : ce qui concerne chacun d'abord (son compte, son poste),
@@ -135,6 +145,23 @@ export const SECTIONS = [
     motsCles: 'équipe personnes droits permissions', groupe: 'maison', portee: 'maison', garde: administre,
     charger: () => import('./sections/SectionRoles.jsx'),
   },
+  // Réglages de la maison (18.11.2026, table reglages_maison) : direction,
+  // comme la RLS de la table. Lus par l'évaluateur d'alertes, le planning, le
+  // tableau de bord et Statistiques.
+  {
+    id: 'horaires_fermetures', libelle: 'Horaires et fermetures', detail: 'Jours de fermeture et vacances : ni alerte ni relevé attendu ces jours-là',
+    motsCles: 'fermé fermeture vacances congés jour de repos ouverture', groupe: 'maison', portee: 'maison',
+    garde: (ctx) => Boolean(ctx.etablissement?.id) && estDirectionMaison(ctx.user?.role),
+    charger: () => import('./sections/SectionsMaison.jsx').then((m) => ({ default: m.SectionHorairesFermetures })),
+    signaux: ['reglages_maison'],
+  },
+  {
+    id: 'objectifs', libelle: 'Objectifs', detail: 'Coût matière, coût du personnel et chiffre visés, tracés dans Statistiques',
+    motsCles: 'cible budget food cost ratio masse salariale chiffre affaires', groupe: 'maison', portee: 'maison',
+    garde: (ctx) => Boolean(ctx.etablissement?.id) && estDirectionMaison(ctx.user?.role),
+    charger: () => import('./sections/SectionsMaison.jsx').then((m) => ({ default: m.SectionObjectifs })),
+    signaux: ['reglages_maison'],
+  },
   {
     id: 'logo', libelle: "Logo de l'établissement", detail: "Dans la barre latérale, sur la page d'accueil et sur les factures",
     motsCles: 'image marque', groupe: 'maison', portee: 'maison',
@@ -173,16 +200,17 @@ export const SECTIONS = [
     charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionGroupes })),
   },
   {
-    id: 'planning_masques', libelle: 'Planning : personnes masquées', onglet: 'Personnes masquées', detail: "Retirer quelqu'un de l'affichage du planning",
-    groupe: 'modules', portee: 'maison', module: 'planning',
-    garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
-    charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionMasques })),
-  },
-  {
     id: 'planning_contrats', libelle: 'Planning : contrats', onglet: 'Contrats', detail: 'Taux, heures par semaine et vacances de chacun',
     groupe: 'modules', portee: 'maison', module: 'planning',
     garde: (ctx) => ouvreLeModule('planning')(ctx) && peutEcrirePlanning(ctx.user?.role),
     charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionContrats })),
+  },
+  {
+    id: 'planning_pointage', libelle: 'Planning : pointage', onglet: 'Pointage', detail: 'Arrivée en avance et arrondi des heures comptées',
+    motsCles: 'pointer arrondi avance heures comptées salaires', groupe: 'modules', portee: 'maison', module: 'planning',
+    garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
+    charger: () => import('../planning/SectionsReglesPlanning.jsx').then((m) => ({ default: m.SectionPointage })),
+    signaux: ['reglages_maison'],
   },
   {
     id: 'reservation_en_ligne', libelle: 'Réservation en ligne', onglet: 'Réservation en ligne', detail: "Boîte d'envoi, SMS, horaires, capacité, lien à partager",
@@ -223,12 +251,6 @@ export const SECTIONS = [
     motsCles: 'température relevé', groupe: 'modules', portee: 'maison', module: 'haccp',
     garde: (ctx) => ouvreLeModule('haccp')(ctx) && peutConfigurerHaccp(ctx.user?.role),
     charger: () => import('../haccp/SectionReglagesHaccp.jsx'),
-  },
-  {
-    id: 'carte_accueil', libelle: "Carte d'accueil des recettes", detail: "La carte qui s'ouvre à votre arrivée dans Cartes & Recettes",
-    groupe: 'modules', portee: 'personne', module: 'cartes',
-    garde: (ctx) => ouvreLeModule('cartes')(ctx) && peutGererCartes(ctx.user?.role),
-    charger: () => import('../recettes/SectionCarteAccueil.jsx'),
   },
   {
     id: 'spa_en_ligne', libelle: 'Spa : réservation en ligne', onglet: 'Réservation en ligne', detail: 'Ouverture, horaires, délais, praticiens, lien à partager',
@@ -301,6 +323,45 @@ export const SECTIONS = [
     charger: () => import('../factures/SectionsFactures.jsx').then((m) => ({ default: m.SectionFacturesEmail })),
   },
 ];
+
+// Renvois : les petits réglages rendus à leur module (règle de tri en tête).
+// Ils ne sont pas des sections : rien à charger, aucune place dans la liste
+// des espaces. La recherche les rend avec leur endroit (`ou`, une phrase
+// entière, traduite d'un bloc) et « Y aller » ouvre la page du module. Même
+// garde que la section d'avant : la recherche ne montre à personne un
+// réglage qu'il ne peut pas toucher.
+export const RENVOIS = [
+  {
+    id: 'renvoi_carte_accueil', libelle: "Carte d'accueil des recettes", page: 'cartes',
+    ou: 'Dans Cartes & Recettes, le bouton « Définir par défaut » de la carte',
+    motsCles: 'carte par défaut arrivée recettes',
+    garde: (ctx) => ouvreLeModule('cartes')(ctx) && peutGererCartes(ctx.user?.role),
+  },
+  {
+    id: 'renvoi_planning_masques', libelle: 'Personnes masquées du planning', page: 'planning',
+    ou: 'Dans le Planning, le menu « Gérer »',
+    motsCles: 'masquer cacher retirer équipier affichage',
+    garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
+  },
+  {
+    id: 'renvoi_caisse_mode_test', libelle: 'Passer un poste en mode test', page: 'caisse',
+    ou: 'Dans la Caisse, le menu « Plus »',
+    motsCles: 'essai formation test poste caisse',
+    garde: (ctx) => ouvreLeModule('caisse')(ctx) && ROLES_MODE_TEST.includes(ctx.user?.role),
+  },
+];
+
+export function renvoisVisibles(ctx) {
+  return RENVOIS.filter((renvoi) => {
+    try { return renvoi.garde(ctx) === true; } catch { return false; }
+  });
+}
+
+export function chercherRenvois(renvois, requete) {
+  const correspond = makeSearchMatcher(requete);
+  if (!correspond.active) return [];
+  return renvois.filter((r) => correspond(r.libelle, r.ou, r.motsCles));
+}
 
 // Signaux de changement d'une section (services/reglagesSignal.js).
 export function signauxDe(id) {

@@ -41,6 +41,8 @@ import { userDisplay } from '../../utils/userDisplay.js';
 import { derniersParPerimetre, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import BandeauNonActualise from '../previsions/BandeauNonActualise.jsx';
 import { useDonneesTableau } from './useDonneesTableau.js';
+import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
+import { maisonFermee } from '../../utils/reglagesMaison.js';
 import {
   aFaire, absencesDuJour, chiffresGestion, couvertsDu, dateLongue, decaler, equipeDu, etatDuService, groupesDu,
   prochainShift, relevesDuJour, reperesDuJour, shiftsDu,
@@ -109,6 +111,11 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
 
   const d = useDonneesTableau({ etablissementId: etabId, aujourdhui, avecHaccp, avecPertes, avecStock, avecCouverts, avecGroupes });
   const abs = useAbsences(avecPlanning ? etabId : null, { depuis: aujourdhui });
+  // Maison fermée aujourd'hui (Réglages > Horaires et fermetures) : pas de
+  // compte à rebours de service ni de relevé HACCP attendu ; les heures
+  // pointées suivent les règles du pointage (retenues par ce hook).
+  const maison = useReglagesMaison(etabId);
+  const fermeAujourdhui = maisonFermee(maison.fermetures, aujourdhui);
   const avecAbsences = avecPlanning && abs.status !== 'absent';
   const absences = avecAbsences ? abs.absences : [];
   const nbMessages = useUnreadPrivateMessages(actif('messages') ? user?.id : null);
@@ -231,7 +238,8 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   const avecGroupesLus = avecGroupes && d.statuts.groupes !== 'absent';
   const service = avecCouvertsLus && !nonLu('couverts')
     ? etatDuService({
-      couverts: couvertsJour, couvertsDemain: couvertsDu(d.couverts, decaler(aujourdhui, 1)), parametres: d.parametres, aujourdhui, maintenant,
+      couverts: couvertsJour, couvertsDemain: couvertsDu(d.couverts, decaler(aujourdhui, 1)), aujourdhui, maintenant,
+      parametres: fermeAujourdhui ? { ...(d.parametres || {}), jours_fermes: [...(d.parametres?.jours_fermes || []), aujourdhui] } : d.parametres,
     })
     : null;
   const reperes = reperesDuJour({
@@ -240,7 +248,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   });
   const items = aFaire({
     aujourdhui, maintenant, haccp: d.haccp, groupes: d.groupes, shifts: d.shifts, absences,
-    nbMessages, pertes: d.pertes, avecHaccp, avecGroupes, avecPlanning, direction, nomDe,
+    nbMessages, pertes: d.pertes, avecHaccp: avecHaccp && !fermeAujourdhui, avecGroupes, avecPlanning, direction, nomDe,
   });
   const chiffres = chiffresGestion({ pertes: d.pertes, shifts: d.shifts, couverts: d.couverts, aujourdhui });
   const derniers = derniersParPerimetre(d.inventaires || []);

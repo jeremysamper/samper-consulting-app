@@ -1,5 +1,6 @@
 import { Marqueur, Valeur } from './Graphique.jsx';
 import { Ecart } from './ChiffresDenses.jsx';
+import { verdictObjectif } from './objectifs.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tuiles de chiffres sous le graphique principal : les mesures tracées, puis
@@ -26,6 +27,8 @@ const st = {
   libelle: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--t1)', color: 'var(--text3)', minWidth: 0 },
   chiffre: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t5)', lineHeight: 1.15, minWidth: 0, overflowWrap: 'anywhere' },
   ecart: { fontSize: 'var(--t1)', color: 'var(--text2)', minHeight: 16 },
+  objectif: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--t1)', color: 'var(--text2)', flexWrap: 'wrap' },
+  point: { width: 8, height: 8, borderRadius: 'var(--r-full)', flexShrink: 0 },
   barres: { display: 'flex', alignItems: 'stretch', gap: 2, height: 40, marginTop: 8 },
   colonne: { flex: '1 1 0', minWidth: 0, position: 'relative' },
 };
@@ -58,8 +61,24 @@ function PetitesBarres({ valeurs }) {
   );
 }
 
+// Objectif de la mesure (Réglages > Objectifs) : sa valeur, et pour un coût
+// le verdict sur la période, dit en mots avec un point de couleur.
+function LigneObjectif({ objectif, total, unite }) {
+  const verdict = verdictObjectif(total, objectif);
+  return (
+    <span style={st.objectif} data-stat-tuile-objectif={verdict || 'rappel'}>
+      {verdict && <span aria-hidden="true" style={{ ...st.point, background: verdict === 'atteint' ? 'var(--success-strong)' : 'var(--danger-strong)' }} />}
+      <span>Objectif</span>
+      <span data-no-translate><Valeur v={objectif.valeur} unite={unite} /></span>
+      {objectif.parMois && <span>par mois</span>}
+      {verdict === 'atteint' && <span>atteint</span>}
+      {verdict === 'manque' && <span>{objectif.sens === 'bas' ? 'dépassé' : 'pas atteint'}</span>}
+    </span>
+  );
+}
+
 //   tuiles : [{ id, libelle, unite, total, totalComparaison, ecart, valeurs,
-//              tracee, rang }], rendues par Statistiques.jsx
+//              tracee, rang, objectif }], rendues par Statistiques.jsx
 //   colonnes : 2 ou 4, selon la largeur du module
 export default function TuilesMesures({ tuiles, colonnes = 4, libelleComparaison = '', onChoisir }) {
   if (!tuiles || !tuiles.length) return null;
@@ -83,6 +102,7 @@ export default function TuilesMesures({ tuiles, colonnes = 4, libelleComparaison
           <span style={st.ecart}>
             {libelleComparaison && estNombre(t.totalComparaison) ? <span data-no-translate><Ecart e={t.ecart} unite={t.unite} /></span> : null}
           </span>
+          {t.objectif && <LigneObjectif objectif={t.objectif} total={t.total} unite={t.unite} />}
           <PetitesBarres valeurs={t.valeurs} />
         </button>
       ))}

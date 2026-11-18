@@ -23,6 +23,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { calcHeures } from '../planning/soldesHeures.js';
+import { heuresPointees } from '../planning/pointageRegles.js';
 import { round2 } from '../inventaire/tvaAchats.js';
 import { coutSurPeriode } from './chargesFixes.js';
 
@@ -52,7 +53,7 @@ export function heuresHoraire(s, aujourdhui) {
   const pointe = !!(s.pointageDebut && s.pointageFin);
   let h = null;
   let prevues = false;
-  if (pointe) h = calcHeures(s.pointageDebut, s.pointageFin, s.pause);
+  if (pointe) h = heuresPointees(s);
   else if (s.date < aujourdhui) { h = calcHeures(s.debut, s.fin, s.pause); prevues = true; }
   if (h == null || !Number.isFinite(h)) return null;
   return { heures: h, prevues, apresMinuit: false };
