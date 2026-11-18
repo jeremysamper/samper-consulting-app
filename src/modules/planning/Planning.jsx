@@ -47,6 +47,12 @@ import { useContrats } from './contratsService.js';
 import { calcHeures, periodeEnCours, soldePersonne } from './soldesHeures.js';
 import { analyserEquipe, cleCaseCcnt, constatsParCase, decaler as decalerCcnt, infractionsCreees, lundiDe as lundiCcnt } from './conformiteCcnt.js';
 import { ConfirmationCcnt, MarqueCcnt, PanneauCcnt } from './ConformiteCcnt.jsx';
+import { estDirection } from '../comptabilite/gardesCompta.js';
+import { ecranOuvert } from '../statistiques/gardesStatistiques.js';
+
+// Coût du personnel (direction seulement) : chargé à la demande, la lecture de
+// la Comptabilité ne part que pour qui voit les salaires.
+const CarteCoutPersonnel = React.lazy(() => import('./CarteCoutPersonnel.jsx'));
 
 // ─────────────────────────────────────────────────────
 // PLANNING & POINTAGE - Module unifié, par établissement, responsive
@@ -132,6 +138,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const perms = getPermissionsForRole(user.role);
   const canWrite = peutEcrirePlanning(user.role);
   const canExport = ['consultant', 'patron'].includes(user.role);
+  // Coût du personnel : la garde des salaires de la Comptabilité, telle
+  // quelle (page Comptabilité ouverte, comme LegacyModuleHost, puis direction).
+  const voitCoutPersonnel = estDirection(user.role)
+    && ecranOuvert('comptabilite', { role: user.role, permissions: perms, etablissement });
 
   const etabId = etablissement?.id || 'etab-1';
 
@@ -1569,6 +1579,19 @@ const Planning = ({ user, etablissement, initialTab }) => {
               </div>
             </div>
           </Panneau>
+        )}
+        {voitCoutPersonnel && (
+          <React.Suspense fallback={null}>
+            <CarteCoutPersonnel
+              etablissement={etablissement}
+              debut={lundiCcnt(isMobile ? mobileDate : selectedDate)}
+              fin={decalerCcnt(lundiCcnt(isMobile ? mobileDate : selectedDate), 6)}
+              shifts={planningEtab}
+              aujourdhui={zurichToday()}
+              nomDe={nomDe}
+              heuresEtab={heuresContractuelles(etablissement)}
+            />
+          </React.Suspense>
         )}
         {canWrite && (
           <div className="no-print">
