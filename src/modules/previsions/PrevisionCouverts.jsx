@@ -207,11 +207,10 @@ function Composition({ jour, cellule, svc }) {
 function TempsDuJour({ jour }) {
   const m = jour.meteoJour;
   if (!m || m.tmin === null || m.tmax === null) return null;
+  // Minimum et maximum dans un seul nœud sans mot : rien à traduire.
   return (
-    <div style={{ ...texteDoux, marginTop: 2 }}>
-      <span data-no-translate="">{degres(m.tmin)}</span>
-      <span> à </span>
-      <span data-no-translate="">{degres(m.tmax)}</span>
+    <div title="Minimum et maximum du jour" data-no-translate="" style={{ ...texteDoux, marginTop: 2 }}>
+      {`${degres(m.tmin)} / ${degres(m.tmax)}`}
     </div>
   );
 }
@@ -262,7 +261,7 @@ function Constats({ prevision }) {
         : `${RAISONS[cle] || RAISONS.ecart_non_significatif} La météo s'affiche sans corriger la prévision.`;
       lignes.push(
         <div key={`e-${cle}`} style={texteCourant}>
-          {qui ? <><span>{qui}</span><span> : </span></> : <span>Pour les deux services : </span>}
+          <span>{qui ? `${qui} :` : 'Pour les deux services :'}</span>{' '}
           <span>{phrase}</span>
         </div>,
       );
@@ -387,16 +386,15 @@ export default function PrevisionCouverts({ etablissement, refreshKey }) {
         )}
 
         {prevision?.meteo && (
-          <div style={{ ...texteDoux, padding: isMobile ? '10px 14px 12px' : '10px 18px 12px', borderTop: '1px solid var(--rule-soft)' }}>
-            <span>Météo prévue par</span>{' '}<span data-no-translate="">MétéoSuisse</span>{' '}<span>(données ouvertes), point</span>{' '}
-            <span data-no-translate="">{prevision.meteo.point.nom}</span>
+          <div style={{
+            ...texteDoux, display: 'flex', flexWrap: 'wrap', columnGap: 16, rowGap: 2,
+            padding: isMobile ? '10px 14px 12px' : '10px 18px 12px', borderTop: '1px solid var(--rule-soft)',
+          }}>
+            <span>Source de la météo : MétéoSuisse, données ouvertes</span>
+            <span><span>Point de prévision :</span>{' '}<span data-no-translate="">{prevision.meteo.point.nom}</span></span>
             {prevision.meteo.station && (
-              <>
-                <span>. Mesures passées : station</span>{' '}
-                <span data-no-translate="">{prevision.meteo.station.nom}</span>
-              </>
+              <span><span>Station de mesure :</span>{' '}<span data-no-translate="">{prevision.meteo.station.nom}</span></span>
             )}
-            <span>.</span>
           </div>
         )}
       </section>
