@@ -5413,6 +5413,9 @@ export const UI_GLOSSARY = {
   'Agrandir le plan': "Enlarge the plan",
   'Zoom arrière': "Zoom out",
   'Zoom avant': "Zoom in",
+  'Aucune ligne de produit lisible.': "No readable product line.",
+  'Photo peu lisible. Reprenez-la à plat, bien éclairée, le document entier dans le cadre.': "Photo hard to read. Retake it flat, well lit, with the whole document in the frame.",
+  'Les lignes lues ne donnent pas le total du document. Vérifiez la lecture.': "The lines read do not add up to the document total. Check the reading.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

@@ -11,6 +11,8 @@
 //   OPENAI_API_KEY      (requis si provider = openai)
 //   AI_MODEL            (optionnel) - id de modèle ; doit correspondre au
 //                       fournisseur choisi. Sinon défaut par fournisseur.
+//   AI_MODEL_FACTURE    (optionnel) - modèle Anthropic de la lecture des factures
+//                       et bons (parse-facture). Sinon MODELE_FACTURE_ANTHROPIC.
 // SUPABASE_URL / SUPABASE_ANON_KEY sont injectés automatiquement.
 //
 // Tâches : 'ocr-recipe' (vision), 'parse-facture' (vision), 'detect-allergens',
@@ -149,7 +151,7 @@ Règles :
 - "impact_si_simplifie" : nouveau score estimé si suggestion appliquée, null si pas de suggestion
 - "score_moyen" : moyenne des scores (1 décimale)
 - "couverts_min" / "couverts_max" : estimation selon brigade et durée de service
-  Capacité de base par cuisinier : complexité 1-2 → 8-10 cov/h · complexité 3 → 5-7 · complexité 4 → 3-5 · complexité 5 → 1-3
+  Capacité de base par cuisinier : complexité 1-2 → 8-10 cov/h, complexité 3 → 5-7, complexité 4 → 3-5, complexité 5 → 1-3
   Malus ×0.85 si variance des scores > 2 niveaux d'écart
 - "charge_brigade" : % de saturation estimé (entier 0-100)
 - "alerte" : true si charge_brigade > 85 ou si ≥ 2 plats ont score ≥ 4
@@ -187,13 +189,26 @@ Règles :
 - ne renvoie aucun produit inventé : uniquement ce qui est réellement dans le fichier
 - si aucun produit exploitable, renvoie {"produits":[]}`;
 
-const FACTURE_SYSTEM = `Tu lis une facture, un bon de livraison ou une confirmation de commande d'un fournisseur alimentaire suisse (montants en CHF) et tu en extrais les lignes de produits.
+const FACTURE_SYSTEM = `Tu lis une facture, un bon de livraison ou une confirmation de commande d'un fournisseur alimentaire suisse (montants en CHF), en français ou en allemand, et tu en extrais les lignes de produits.
 Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
-{"fournisseur":"A. Walker AG","numeroFacture":"170587","dateFacture":"2026-08-05","dateEcheance":null,"delaiPaiementJours":30,"totalHT":443.00,"totalTTC":454.50,"devise":"CHF","tauxTva":2.6,"lignes":[{"libelle":"Parmadoro Purée de tomates, 6 x 850 g","referenceFourn":"100389","quantite":1,"conditionnement":"6 x 850 g","quantiteTotale":5100,"uniteTotale":"g","montantLigne":38.80,"confidence":92,"issues":[]}]}
+{"fournisseur":"...","numeroFacture":"...","dateFacture":"AAAA-MM-JJ","dateEcheance":null,"delaiPaiementJours":null,"totalHT":0,"totalTTC":null,"devise":"CHF","tauxTva":null,"lisibilite":"bonne","remarqueLecture":"","colonnes":["Art.-Nr.","Bezeichnung","Menge","Einheit","Preis","Betrag"],"lignes":[{"brut":"...","libelle":"...","referenceFourn":null,"quantite":1,"conditionnement":null,"quantiteTotale":0,"uniteTotale":"g","montantLigne":0,"confidence":90,"issues":[]}]}
+Les valeurs ci-dessus ne montrent que la forme. Ne recopie jamais un exemple de cette consigne : tout ce que tu renvoies doit être lu sur le document fourni.
+
+MÉTHODE, dans cet ordre :
+1. Repère le tableau des articles et relève les titres de ses colonnes tels qu'imprimés dans "colonnes"
+   (par exemple "Art.-Nr.", "Artikel", "Bezeichnung", "Menge", "ME", "Einheit", "Preis", "Betrag",
+   "Désignation", "Quantité", "Prix unitaire", "Montant"). Note dans quelle colonne se trouve chaque nombre.
+2. Parcours le tableau ligne imprimée par ligne imprimée, de la première à la dernière, sans en sauter.
+   Une ligne d'article = une entrée dans "lignes". Une désignation qui continue sur la ligne du dessous
+   (deuxième ligne de texte sans prix) appartient à l'article du dessus.
+3. Pour chaque article, recopie d'abord dans "brut" le texte COMPLET de la ligne imprimée, toutes
+   colonnes comprises, de gauche à droite, chiffres compris, sans rien corriger. Remplis ensuite les
+   autres champs UNIQUEMENT à partir de ce texte et des titres de colonnes.
+4. Lis l'en-tête et les totaux.
 
 Champs de l'en-tête (null si absent ou illisible, jamais deviné) :
-- "fournisseur" : raison sociale de l'émetteur du document, pas du destinataire
-- "numeroFacture" : numéro de facture, de bon de livraison ou de commande
+- "fournisseur" : raison sociale de l'émetteur du document (logo, en-tête, pied de page), pas du destinataire
+- "numeroFacture" : numéro de facture, de bon de livraison ("Lieferschein") ou de commande
 - "dateFacture" : date du document au format ISO AAAA-MM-JJ. Les dates suisses s'écrivent
   JJ.MM.AAAA : 05.08.2026 devient "2026-08-05". Ne confonds jamais jour et mois.
 - "dateEcheance" : date limite de paiement au format ISO AAAA-MM-JJ, seulement si une DATE est
@@ -201,59 +216,77 @@ Champs de l'en-tête (null si absent ou illisible, jamais deviné) :
 - "delaiPaiementJours" : si le document ne donne qu'un délai ("30 jours net", "payable à 10 jours",
   "zahlbar innert 30 Tagen"), ce nombre de jours, entier. null si une date est imprimée ou si
   rien n'est indiqué. Les deux champs sont null sur un bon de livraison ou de commande.
-- "totalHT" : total hors taxes. "tauxTva" : taux appliqué (2.6 pour l'alimentaire, 8.1 sinon)
+- "totalHT" : total hors taxes de la marchandise ("Total HT", "Netto", "Total exkl. MWST", "Warenwert").
+  Jamais le TTC, jamais un sous-total de page. "tauxTva" : taux appliqué (2.6 pour l'alimentaire, 8.1 sinon)
 - "totalTTC" : le MONTANT À PAYER, TVA comprise : la dernière ligne du total, souvent intitulée
   "Total", "Total TTC", "Montant à payer", "Endbetrag", "Total CHF inkl. MWST", ou le montant du
   bulletin de versement / QR-facture. Ce n'est jamais un sous-total. null si absent (bon de
   livraison sans prix, par exemple).
 - "devise" : "CHF" sauf mention contraire explicite
+- "lisibilite" : "bonne", "moyenne" ou "mauvaise", ta capacité réelle à lire les chiffres du tableau
+  (photo floue, de travers, coupée, reflets, pli, texte trop petit).
+- "remarqueLecture" : une phrase courte en français quand la lisibilité n'est pas bonne
+  ("bas de page coupé", "photo floue sur la colonne des montants"), sinon "".
 
 Champs par ligne :
-- "libelle" : le libellé produit EXACTEMENT tel qu'imprimé, abréviations, majuscules et
-  conditionnement compris. Ne le corrige pas, ne le traduis pas, ne le complète pas : il sert
+- "brut" : voir la méthode, le texte complet de la ligne imprimée.
+- "libelle" : la désignation du produit EXACTEMENT telle qu'imprimée, abréviations, majuscules et
+  conditionnement compris, SANS le numéro d'article de la colonne de référence, sans la quantité
+  livrée et sans les prix. Ne la corrige pas, ne la traduis pas, ne la complète pas : elle sert
   à reconnaître le produit d'un document à l'autre.
-- "referenceFourn" : numéro d'article du fournisseur si imprimé, sinon null
-- "quantite" : nombre de colis, cartons, sacs ou pièces commandés
-- "conditionnement" : le conditionnement tel qu'écrit, le plus souvent DANS le libellé
-  ("6 x 850 g", "2 x 2.5 kg", "10 kg", "250g"), sinon null
+- "referenceFourn" : numéro d'article du fournisseur (colonne "Art.-Nr.", "Artikel-Nr.", "Réf.",
+  "Code") si imprimé, sinon null
+- "quantite" : nombre de colis, cartons, sacs, pièces ou kilos livrés, lu dans la colonne de quantité
+  ("Menge", "Quantité", "Qté", "Liefermenge"), pas dans la désignation
+- "conditionnement" : le conditionnement tel qu'écrit, le plus souvent DANS la désignation
+  ("6 x 850 g", "2 x 2.5 kg", "10 kg", "250g", "Krt à 12"), sinon null
 
 LES DEUX CHAMPS QUI COMPTENT LE PLUS, lis attentivement :
 
 - "montantLigne" : le TOTAL de la ligne, hors taxes. C'est la colonne la plus à droite,
-  souvent intitulée "Montant", "Total" ou "Somme". PAS le prix unitaire.
+  souvent intitulée "Montant", "Total", "Betrag" ou "Somme". PAS le prix unitaire. Ce nombre doit
+  figurer tel quel dans "brut".
 - "quantiteTotale" + "uniteTotale" : la quantité TOTALE de marchandise de cette ligne,
   ramenée en unité de base. "uniteTotale" vaut obligatoirement "g", "ml" ou "pcs".
   Convertis toi-même : 1 kg = 1000 g, 1 L = 1000 ml, 1 dl = 100 ml, 1 cl = 10 ml.
 
-  Exemples réels, à suivre à la lettre :
-  · "Parmadoro Purée de tomates, 6 x 850 g", 1 carton, montant 38.80
-    -> 1 x 6 x 850 = quantiteTotale 5100, uniteTotale "g"
-  · "Cuisse de poulet Halal - surg., 10 kg", 1 carton, montant 92.00
-    -> 10 kg = quantiteTotale 10000, uniteTotale "g"
-  · "Ditzler Petit pois, 2 x 2.5 kg", 1 carton, montant 22.50
-    -> 2 x 2.5 kg = 5 kg = quantiteTotale 5000, uniteTotale "g"
-  · "Nectaflor Amandes moulues, 1 kg", 2 sacs, montant 35.30
-    -> 2 x 1 kg = quantiteTotale 2000, uniteTotale "g"
-  · "Nectaflor Sirop de sureau, 5 dl.", 1 bouteille, montant 5.30
-    -> 5 dl = quantiteTotale 500, uniteTotale "ml"
-  · "Concombres CH pc", 1 pièce, montant 2.19
-    -> quantiteTotale 1, uniteTotale "pcs"
+  Exemples de calcul (ces produits n'existent pas sur ton document, ne les renvoie jamais) :
+  - "Purée de tomates, 6 x 850 g", 1 carton -> 1 x 6 x 850 = quantiteTotale 5100, uniteTotale "g"
+  - "Cuisse de poulet surg., 10 kg", 1 carton -> quantiteTotale 10000, uniteTotale "g"
+  - "Petits pois, 2 x 2.5 kg", 1 carton -> 2 x 2.5 kg = quantiteTotale 5000, uniteTotale "g"
+  - "Amandes moulues, 1 kg", 2 sacs -> quantiteTotale 2000, uniteTotale "g"
+  - "Sirop de sureau, 5 dl", 1 bouteille -> quantiteTotale 500, uniteTotale "ml"
+  - "Concombres CH pc", 1 pièce -> quantiteTotale 1, uniteTotale "pcs"
+  - "Viande hachée de boeuf", quantité 3.45, unité "kg" dans la colonne d'unité -> la quantité est
+    déjà en kilos : quantiteTotale 3450, uniteTotale "g". Quand la colonne d'unité dit "kg"
+    ou "l", la quantité livrée est un poids ou un volume, pas un nombre de colis.
+  - "Mini quiches 18 g", 2 cartons de 50 pièces -> 18 g est le poids d'UNE pièce : quantiteTotale 100,
+    uniteTotale "pcs". Si le nombre de pièces par colis n'est pas imprimé, quantiteTotale null et
+    "conditionnement illisible" dans issues. Ne multiplie jamais le poids d'une pièce par le nombre
+    de colis.
 
-  PIÈGE À ÉVITER ABSOLUMENT : sur beaucoup de documents, la colonne "Prix" est le prix de
-  l'unité livrée, et cette unité change d'une ligne à l'autre — tantôt le kilo, tantôt la
-  bouteille, tantôt le sac entier. Ne la prends jamais pour le prix du colis. Ne renseigne
-  que "montantLigne", le total, qui lui ne prête pas à confusion.
+  PIÈGE À ÉVITER ABSOLUMENT : un nombre suivi de "/kg", "/l", "/pce", "/Stk", "par kg",
+  "le kg", "CHF/kg" est un PRIX par unité, jamais un poids ni une quantité : "ROSTI 2.20/kg"
+  ne pèse pas 2,2 kg. De même, la colonne "Prix" est le prix de l'unité livrée, et cette unité change
+  d'une ligne à l'autre : tantôt le kilo, tantôt la bouteille, tantôt le sac entier. Ne la prends
+  jamais pour le prix du colis. Ne renseigne que "montantLigne", le total.
   Contrôle systématique : montantLigne doit valoir prix unitaire x quantité de la colonne
   d'unité livrée. Si ça ne tombe pas juste, mets "montant incoherent" dans issues.
 
-- "confidence" : entier 0-100, ta certitude sur cette ligne
+- "confidence" : entier 0-100, ta certitude sur cette ligne. Au-dessus de 80 seulement si tu lis
+  nettement chaque chiffre de la ligne.
 - "issues" : libellés courts en français pour toute anomalie ("montant illisible",
   "quantite ambigue", "conditionnement illisible", "ligne partiellement masquee",
   "montant incoherent", "prix absent", "ligne non produit"). Liste vide si la ligne est fiable.
 
 Règles STRICTES :
-- N'invente RIEN. Un champ que tu ne lis pas est null, accompagné d'une entrée dans "issues".
+- N'invente RIEN. Chaque ligne renvoyée correspond à une ligne réellement imprimée, que tu as
+  recopiée dans "brut". Un champ que tu ne lis pas est null, accompagné d'une entrée dans "issues".
   Une valeur plausible mais devinée est pire qu'un null : elle ira écraser un prix en base.
+  Une photo illisible donne peu de lignes ou aucune, avec "lisibilite" "mauvaise", jamais des lignes
+  imaginées.
+- Un bon de livraison sans colonne de prix : montantLigne à null et "prix absent" dans issues,
+  totalHT et totalTTC à null.
 - "Prix s.d.", "sur demande", un montant vide ou une quantité 0 signifient qu'il n'y a pas de
   prix : montantLigne à null et "prix absent" dans issues.
 - Ignore les lignes qui ne sont pas des produits : frais de port, consigne, emballage, remise
@@ -263,8 +296,10 @@ Règles STRICTES :
   suisse devient un point : 1'234,50 devient 1234.50
 - Si plusieurs images ou plusieurs pages sont fournies, c'est un SEUL document : renvoie un
   seul en-tête et la totalité des lignes, dans l'ordre.
-- Vérifie enfin que la somme des "montantLigne" est proche de "totalHT". Si l'écart dépasse
-  quelques centimes, c'est qu'une ligne est mal lue : baisse sa confidence.
+- Vérifie enfin que la somme des "montantLigne" (lignes non produit comprises si elles entrent dans
+  le total) est proche de "totalHT". Si l'écart dépasse quelques centimes, relis le tableau : une ligne
+  est oubliée, mal lue, ou le total lu n'est pas le bon. S'il reste un écart, baisse la confidence
+  des lignes douteuses.
 - Si aucune ligne de produit n'est lisible, renvoie {"lignes":[]} avec l'en-tête que tu as pu lire.`;
 
 const DEDUPE_SYSTEM = `Tu nettoies une liste de produits à commander pour une cuisine professionnelle. Plusieurs lignes désignent souvent le MÊME produit écrit différemment (singulier/pluriel, accents, casse, ordre des mots, synonyme courant, faute de frappe). Tu regroupes uniquement ces vrais doublons.
@@ -274,10 +309,10 @@ Règles STRICTES :
 - "variantes" : au moins 2 chaînes, reprises EXACTEMENT (caractère pour caractère) de la liste fournie
 - "canonique" : le nom le plus clair et standard du produit (français, au singulier), de préférence l'une des variantes
 - ne regroupe QUE des produits réellement identiques à l'achat. NE REGROUPE JAMAIS :
-  · des variétés ou qualités différentes (tomate cerise ≠ tomate grappe ; citron ≠ citron vert ; farine ≠ farine complète)
-  · des découpes ou parties différentes (cuisse de poulet ≠ blanc de poulet, et aucun des deux avec "poulet")
-  · des préparations ou états différents (tomate fraîche ≠ tomate séchée ≠ concentré de tomate ; crème ≠ crème fouettée ; ail ≠ ail en poudre)
-  · un produit frais et sa version sèche/transformée
+  - des variétés ou qualités différentes (tomate cerise ≠ tomate grappe ; citron ≠ citron vert ; farine ≠ farine complète)
+  - des découpes ou parties différentes (cuisse de poulet ≠ blanc de poulet, et aucun des deux avec "poulet")
+  - des préparations ou états différents (tomate fraîche ≠ tomate séchée ≠ concentré de tomate ; crème ≠ crème fouettée ; ail ≠ ail en poudre)
+  - un produit frais et sa version sèche/transformée
 - synonymes acceptés car même produit : "blanc de poulet" ↔ "escalope de poulet" ; "fécule de maïs" ↔ "maïzena" ; "huile d'olive" ↔ "huile olive" ; "St-Marcellin" ↔ "Saint-Marcellin"
 - dans le doute, NE REGROUPE PAS (mieux vaut un doublon qu'une fusion erronée)
 - n'inclus que les groupes contenant un vrai doublon (≥ 2 variantes). Si aucun doublon, renvoie {"groupes":[]}`;
@@ -335,7 +370,7 @@ const TASKS: Record<string, { system: string; maxTokens: number }> = {
   'generate-fiche-salle':       { system: FICHE_SALLE_SYSTEM,  maxTokens: 2048 },
   'analyse-simulation-carte':   { system: SIMULATION_SYSTEM,   maxTokens: 2048 },
   'parse-catalogue':            { system: CATALOGUE_SYSTEM,    maxTokens: 8192 },
-  'parse-facture':              { system: FACTURE_SYSTEM,      maxTokens: 8192 },
+  'parse-facture':              { system: FACTURE_SYSTEM,      maxTokens: 16000 },
   'dedupe-commande':            { system: DEDUPE_SYSTEM,       maxTokens: 4096 },
   'translate':                  { system: TRANSLATE_SYSTEM,    maxTokens: 4096 },
 };
@@ -376,6 +411,64 @@ type Part = { kind: 'text'; text: string } | { kind: 'image'; mediaType: string;
 // la charge utile devient énorme et le modèle perd en précision sur les montants.
 const MAX_PAGES_FACTURE = 5;
 
+// Lecture des factures et bons : la tâche où une erreur coûte le plus (elle finit
+// en prix et en quantités), confiée au modèle le plus sûr en lecture d'images.
+const MODELE_FACTURE_ANTHROPIC = 'claude-opus-5-5';
+
+// Une relecture n'est lancée que si la première lecture a pris moins que ce
+// délai : les deux doivent tenir dans le délai de réponse de la fonction (150 s).
+const DELAI_RELECTURE_MS = 60_000;
+
+// Écart entre la somme des lignes lues et le total HT lu, arrondi au centime.
+// null quand le document ne donne pas de total (bon de livraison sans prix).
+// deno-lint-ignore no-explicit-any
+function ecartFacture(r: any): number | null {
+  const total = Number(r?.totalHT);
+  if (!r || !Array.isArray(r.lignes) || !Number.isFinite(total) || total <= 0) return null;
+  // deno-lint-ignore no-explicit-any
+  const somme = r.lignes.reduce((s: number, l: any) => s + (Number(l?.montantLigne) || 0), 0);
+  return Math.round((somme - total) * 100) / 100;
+}
+
+// Tolérance : 10 centimes, ou un demi pour cent du total (arrondis par ligne).
+// deno-lint-ignore no-explicit-any
+const ecartAdmis = (r: any, ecart: number | null) =>
+  ecart == null || Math.abs(ecart) <= Math.max(0.1, Number(r.totalHT) * 0.005);
+
+// Seconde passe sur une facture dont les lignes ne recoupent pas le total : le
+// modèle reçoit le même document, sa première lecture et l'écart chiffré, et
+// relit le tableau. La relecture n'est gardée que si elle réduit l'écart ; le
+// résultat dit dans `verification` ce qui a été fait. Un échec garde la première.
+async function relireFacture(
+  premiere: unknown,
+  parts: Part[],
+  appeler: (sys: string, p: Part[]) => Promise<string>,
+): Promise<unknown> {
+  // deno-lint-ignore no-explicit-any
+  const r = premiere as any;
+  const ecart = ecartFacture(r);
+  if (ecartAdmis(r, ecart)) return premiere;
+  const total = Number(r.totalHT);
+  const somme = Math.round((total + (ecart as number)) * 100) / 100;
+  const consigne = `Première lecture de ce document : ${JSON.stringify(r)}\n\n`
+    + `Contrôle : la somme des montantLigne fait ${somme} CHF et le total HT lu ${total} CHF, `
+    + `soit un écart de ${ecart} CHF. Cette lecture est fausse quelque part. Reprends le document `
+    + `depuis le titre des colonnes, ligne imprimée par ligne imprimée : ajoute les lignes oubliées, `
+    + `corrige les montants et les quantités mal lus, retire toute ligne qui n'est pas imprimée, et `
+    + `vérifie que le total HT retenu est le total hors taxes de la marchandise, pas un sous-total ni `
+    + `le TTC. Si un écart reste après relecture, garde-le et baisse la confidence des lignes douteuses. `
+    + `Renvoie le JSON complet corrigé, au même format.`;
+  try {
+    const seconde = JSON.parse(await appeler(FACTURE_SYSTEM, [...parts, { kind: 'text', text: consigne }]));
+    const ecart2 = ecartFacture(seconde);
+    const relue = Array.isArray(seconde?.lignes) && ecart2 != null && Math.abs(ecart2) < Math.abs(ecart as number);
+    return { ...(relue ? seconde : r), verification: { ecartAvant: ecart, ecartApres: ecart2, relue } };
+  } catch (e) {
+    console.error('[ai-proxy] relecture de facture', e);
+    return { ...r, verification: { ecartAvant: ecart, ecartApres: null, relue: false } };
+  }
+}
+
 // Construit le contenu utilisateur (texte + image) selon la tâche.
 function buildParts(task: string, payload: Record<string, unknown>): Part[] {
   if (task === 'ocr-recipe') {
@@ -395,7 +488,7 @@ function buildParts(task: string, payload: Record<string, unknown>): Part[] {
       : '';
 
     // Voie TEXTE : le document est un PDF natif dont le texte est extractible.
-    // On ne passe alors pas par la vision — c'est plus fidèle sur les chiffres,
+    // On ne passe alors pas par la vision : c'est plus fidèle sur les chiffres,
     // et une colonne de montants mal alignée à l'oeil reste juste dans le texte.
     const texte = typeof payload.texte === 'string' ? payload.texte.trim() : '';
     if (texte) {
@@ -646,11 +739,28 @@ async function traiter(req: Request): Promise<Response> {
   }
 
   // ── Appel IA ──
+  // Lecture des factures et bons : modèle dédié (AI_MODEL_FACTURE, sinon
+  // MODELE_FACTURE_ANTHROPIC). Un modèle que le compte refuse retombe sur le
+  // modèle général au lieu de bloquer la lecture.
+  const modeleTache = task === 'parse-facture' && provider === 'anthropic'
+    ? (env('AI_MODEL_FACTURE') || MODELE_FACTURE_ANTHROPIC)
+    : model;
+  const appeler = async (sys: string, p: Part[]): Promise<string> => {
+    if (provider === 'openai') return await callOpenAI(apiKey, model, sys, p, cfg.maxTokens);
+    try {
+      return await callAnthropic(apiKey, modeleTache, sys, p, cfg.maxTokens);
+    } catch (e) {
+      const m = (e as Error).message || '';
+      if (modeleTache === model || !/^Anthropic (400|404) /.test(m) || !/model/i.test(m)) throw e;
+      console.error('[ai-proxy] modèle de lecture refusé, repli sur le modèle général', m.slice(0, 200));
+      return await callAnthropic(apiKey, model, sys, p, cfg.maxTokens);
+    }
+  };
+
+  const debut = Date.now();
   let text: string;
   try {
-    text = provider === 'openai'
-      ? await callOpenAI(apiKey, model, system, parts, cfg.maxTokens)
-      : await callAnthropic(apiKey, model, system, parts, cfg.maxTokens);
+    text = await appeler(system, parts);
   } catch (e) {
     console.error('[ai-proxy]', e);
     return json({ error: 'Erreur du service de lecture.' }, 502);
@@ -661,6 +771,12 @@ async function traiter(req: Request): Promise<Response> {
     result = JSON.parse(text);
   } catch {
     return json({ error: 'Réponse non exploitable.', raw: text.slice(0, 400) }, 502);
+  }
+
+  // Facture dont les lignes ne recoupent pas le total : une relecture, si la
+  // première lecture a laissé le temps d'en faire une avant le délai de la fonction.
+  if (task === 'parse-facture' && Date.now() - debut < DELAI_RELECTURE_MS) {
+    result = await relireFacture(result, parts, appeler);
   }
 
   // `target` renvoyé pour translate : le front vérifie que la langue traitée est

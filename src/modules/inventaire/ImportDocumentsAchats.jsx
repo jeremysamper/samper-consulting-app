@@ -7,6 +7,11 @@ import { estPdfFichier, preparerPieces } from './achatsPieces.jsx';
 import { montantTvaAEnregistrer } from './tvaAchats.js';
 import { dateCH } from './inventaireLignes.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { ecartSignificatif } from './lectureControle.js';
+
+// Phrases fixes, dans leur propre nœud : le glossaire les traduit sans appel IA.
+const ALERTE_PHOTO = 'Photo peu lisible. Reprenez-la à plat, bien éclairée, le document entier dans le cadre.';
+const ALERTE_TOTAL = 'Les lignes lues ne donnent pas le total du document. Vérifiez la lecture.';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Dépôt des bons et des factures : deux grandes tuiles, « Photographier »
@@ -93,13 +98,16 @@ export default function ImportDocumentsAchats({
           uniteTotale: l.uniteTotale,
           montantLigne: l.montantLigne,
           issues: l.issues || [],
+          // Ligne imprimée telle que recopiée par la lecture : la preuve de ce
+          // que le modèle a vu, pour revoir une ligne contestée.
+          ...(l.brut ? { brut: l.brut } : {}),
         })),
         source: res.source,
         nomFichier: travail.nom,
         createdBy: user?.id || null,
       };
       if (!doc.lignes.length) {
-        majTravail(travail.key, { statut: 'erreur', message: 'Aucune ligne de produit lisible.' });
+        majTravail(travail.key, { statut: 'erreur', message: 'Aucune ligne de produit lisible.', alerte: res.lisibilite && res.lisibilite !== 'bonne' ? ALERTE_PHOTO : '' });
         return;
       }
       const doublon = trouverDoublon(docsRef.current || [], doc);
@@ -130,6 +138,8 @@ export default function ImportDocumentsAchats({
         message: `${doc.fournisseurNom || 'Fournisseur non lu'}, ${doc.lignes.length} ligne${doc.lignes.length > 1 ? 's' : ''}`
           + (doc.dateDocument ? `, ${dateCH(doc.dateDocument)}` : ', date non lue')
           + (pieceGardee ? '' : estPdfFichier(travail.fichiers[0]) ? ', PDF non conservé' : ', photo non conservée'),
+        alerte: res.lisibilite === 'mauvaise' ? ALERTE_PHOTO
+          : ecartSignificatif(res.ecartTotal, res.totalHT) ? ALERTE_TOTAL : '',
       });
     } catch (err) {
       majTravail(travail.key, { statut: 'erreur', message: messageErreur(err, 'import des achats') });
@@ -171,7 +181,7 @@ export default function ImportDocumentsAchats({
   };
 
   const relancer = (travail) => {
-    majTravail(travail.key, { statut: 'attente', message: '' });
+    majTravail(travail.key, { statut: 'attente', message: '', alerte: '' });
     attenteRef.current.push(travail);
     pomper();
   };
@@ -240,6 +250,7 @@ export default function ImportDocumentsAchats({
                 {t.statut === 'attente' ? 'en attente' : t.statut === 'lecture' ? 'lecture en cours…' : t.message}
               </span>
               {t.statut === 'erreur' && <button type="button" style={st.btnMini} onClick={() => relancer(t)}>Réessayer</button>}
+              {t.alerte && <span style={st.alerteLecture}>{t.alerte}</span>}
             </div>
           ))}
           {enAttente === 0 && <button type="button" style={{ ...st.lien, marginTop: 4 }} onClick={() => setFile([])}>Effacer cette liste</button>}
@@ -267,4 +278,5 @@ const st = {
   btnMini: { padding: '6px 10px', borderRadius: 'var(--r)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontWeight: 'var(--g2)', fontSize: 'var(--t1)', cursor: 'pointer', fontFamily: 'var(--font)', minHeight: 36, whiteSpace: 'nowrap' },
   file: { display: 'flex', flexDirection: 'column', gap: 4, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r)', padding: '12px 16px', minWidth: 0 },
   travail: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 'var(--t1)', padding: '4px 0', color: 'var(--text)' },
+  alerteLecture: { flex: '1 1 100%', paddingLeft: 28, color: 'var(--warning-text)', lineHeight: 1.4 },
 };

@@ -8,7 +8,8 @@
 // Les achats viennent des factures et bons lus par l'IA (achats_documents).
 // Chaque ligne de document est rattachée à un produit de l'inventaire :
 //   1. décision manuelle mémorisée sur la ligne (lien 'manuel' / 'ignore')
-//   2. même libellé déjà rattaché à la main sur un autre document
+//   2. même libellé déjà rattaché à la main sur un autre document, ou même
+//      numéro d'article du même fournisseur
 //   3. alias du catalogue (appris par le scan de factures du Catalogue)
 //   4. rapprochement flou local, gratuit
 // Rien de tout ça n'appelle l'IA : elle n'intervient qu'à la lecture.
@@ -136,11 +137,14 @@ export function quantiteEnUniteInventaire(ligneDoc, uniteInventaire) {
 // Nom de produit lisible depuis un libellé de facture :
 // « PARMADORO PUREE TOMATES, 6 x 850 g » → « Parmadoro puree tomates ».
 // Sert aussi au rapprochement : le conditionnement et le poids n'aident pas à
-// reconnaître un produit, ils le brouillent.
+// reconnaître un produit, ils le brouillent. Un numéro d'article en tête
+// (« 16682 Fingerfood ») et un prix au kilo (« ROSTI 2.20/kg ») non plus.
 export function nomDepuisLibelle(libelle, conditionnement) {
   let n = String(libelle || '');
   if (conditionnement) n = n.split(conditionnement).join(' ');
   n = n
+    .replace(/^\s*\d{5,}\s+(?=\D)/, ' ')
+    .replace(/\b\d+(?:[.,]\d+)?\s*\/\s*(?:kg|g|l|lt|pce|pc|pcs|stk|st)\b\.?/gi, ' ')
     .replace(/\b\d+(?:[.,]\d+)?\s*[x×]\s*\d+(?:[.,]\d+)?\s*(?:g|kg|ml|cl|dl|l|pce|pcs|st)\b\.?/gi, ' ')
     .replace(/\b(?:env|ca|approx)\.?\s*(?=\d)/gi, ' ')
     .replace(/\b\d+(?:[.,]\d+)?\s*(?:g|kg|ml|cl|dl|l)\b\.?/gi, ' ')
@@ -188,10 +192,27 @@ export function construireContexteRapprochement({ produits, documents, aliasCata
   // Décisions manuelles déjà prises sur d'autres documents : un libellé
   // rattaché une fois l'est pour toujours, chez tous les fournisseurs.
   const appris = new Map();
-  (documents || []).forEach(d => (d.lignes || []).forEach(l => {
-    if (l.lien === 'manuel' && l.produitNom) appris.set(normalizeName(l.libelle), normalizeName(l.produitNom));
-    if (l.lien === 'ignore') appris.set(normalizeName(l.libelle), '__ignore__');
-  }));
+  // Même décision par numéro d'article, propre à un fournisseur : le numéro
+  // reste le même d'une livraison à l'autre quand la lecture du libellé varie
+  // (abréviation, majuscules, numéro collé ou non). Un numéro rattaché à deux
+  // produits différents ne décide plus rien.
+  const apprisRef = new Map();
+  const fournisseurDeLigne = new WeakMap();
+  (documents || []).forEach(d => {
+    const cf = cleFournisseurArticle(d.fournisseurNom);
+    (d.lignes || []).forEach(l => {
+      if (l.lien === 'manuel' && l.produitNom) appris.set(normalizeName(l.libelle), normalizeName(l.produitNom));
+      if (l.lien === 'ignore') appris.set(normalizeName(l.libelle), '__ignore__');
+      if (!cf || !l || typeof l !== 'object') return;
+      fournisseurDeLigne.set(l, cf);
+      const ref = String(l.referenceFourn || '').trim();
+      if (ref.length >= 3 && l.lien === 'manuel' && l.produitNom) {
+        const k = cf + '|' + ref;
+        const v = normalizeName(l.produitNom);
+        apprisRef.set(k, apprisRef.has(k) && apprisRef.get(k) !== v ? '__conflit__' : v);
+      }
+    });
+  });
   // Alias du catalogue : libellé de facture → produit du catalogue → produit
   // de l'inventaire du même nom.
   const catalogueParId = new Map((catalogue || []).map(p => [p.id, p]));
@@ -202,7 +223,15 @@ export function construireContexteRapprochement({ produits, documents, aliasCata
   });
   const candidats = produits.map(p => ({ id: p.cle, nom: p.nom }));
   const tokensProduits = produits.map(p => ({ produit: p, tokens: tokenize(p.nom).filter(t => !MOTS_QUALIFICATIFS.has(t)) }));
-  return { parCle, appris, aliasParLibelle, candidats, tokensProduits, cache: new Map() };
+  return { parCle, appris, apprisRef, fournisseurDeLigne, aliasParLibelle, candidats, tokensProduits, cache: new Map() };
+}
+
+// Clé d'un fournisseur pour le rapprochement par numéro d'article : nom
+// normalisé sans forme juridique, « A. Walker AG » et « Walker AG » donnent
+// « walker ».
+const FORMES_JURIDIQUES = new Set(['ag', 'sa', 'sarl', 'gmbh', 'co', 'cie', 'und', 'ltd', 'kg', 'snc']);
+export function cleFournisseurArticle(nom) {
+  return tokenize(nom).filter(t => t.length > 1 && !FORMES_JURIDIQUES.has(t)).join(' ');
 }
 
 // Renvoie { produit, mode, suggestions } :
@@ -215,6 +244,14 @@ export function rapprocherLigneDoc(ligne, ctx) {
     if (p) return { produit: p, mode: 'manuel', suggestions: [] };
   }
   const norm = normalizeName(ligne.libelle);
+  // Numéro d'article déjà rattaché chez ce fournisseur, quand le libellé n'a
+  // pas sa propre décision. Avant le cache : il dépend du document.
+  if (!ctx.appris.has(norm) && ctx.apprisRef && ctx.fournisseurDeLigne) {
+    const cf = ctx.fournisseurDeLigne.get(ligne);
+    const ref = String(ligne.referenceFourn || '').trim();
+    const v = cf && ref ? ctx.apprisRef.get(cf + '|' + ref) : null;
+    if (v && v !== '__conflit__' && ctx.parCle.get(v)) return { produit: ctx.parCle.get(v), mode: 'appris', suggestions: [] };
+  }
   if (ctx.cache.has(norm)) return ctx.cache.get(norm);
 
   let res;

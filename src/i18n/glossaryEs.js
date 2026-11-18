@@ -5394,4 +5394,7 @@ export const UI_GLOSSARY_ES = {
   'Agrandir le plan': "Ampliar el plano",
   'Zoom arrière': "Alejar",
   'Zoom avant': "Acercar",
+  'Aucune ligne de produit lisible.': "Ninguna línea de producto legible.",
+  'Photo peu lisible. Reprenez-la à plat, bien éclairée, le document entier dans le cadre.': "Foto poco legible. Vuelva a tomarla en plano, bien iluminada, con todo el documento en el encuadre.",
+  'Les lignes lues ne donnent pas le total du document. Vérifiez la lecture.': "Las líneas leídas no suman el total del documento. Verifique la lectura.",
 };

@@ -8,6 +8,7 @@
 import imageCompression from 'browser-image-compression';
 import { callAiProxy as callAi } from './aiProxy.js';
 import { normalizeUnit, toAppUnit } from '../modules/recettes/import/UnitParser.js';
+import { montantRetrouve } from '../modules/inventaire/lectureControle.js';
 
 let tmpCounter = 0;
 const tid = (prefix) => `${prefix}-${Date.now()}-${tmpCounter++}`;
@@ -364,17 +365,27 @@ function normaliserFacture(data, meta) {
       const totale = conv && quantiteTotale != null ? quantiteTotale * conv[1] : quantiteTotale;
       const issues = Array.isArray(l && l.issues) ? l.issues.map(x => String(x || '')).filter(Boolean) : [];
       if (conv) issues.push('unite convertie en ' + conv[0]);
+      // Ligne imprimée recopiée par le modèle : le montant retenu doit y figurer.
+      // Absent, il a été calculé ou pris ailleurs, et la ligne passe à vérifier.
+      const brut = l && l.brut ? String(l.brut).trim() : '';
+      const montantLigne = num(l && l.montantLigne);
+      let confidence = Math.max(0, Math.min(100, Math.round(num(l && l.confidence) ?? 0)));
+      if (montantLigne != null && montantRetrouve(montantLigne, brut) === false) {
+        issues.push('montant non retrouve sur la ligne');
+        confidence = Math.min(confidence, 40);
+      }
       return {
         id: `fl-${i}`,
         libelle: String((l && l.libelle) || '').trim(),
+        brut,
         referenceFourn: l && l.referenceFourn ? String(l.referenceFourn).trim() : '',
         // Nombre de colis : au moins 1, sinon la répartition du montant est impossible.
         quantite: quantite != null && quantite > 0 ? quantite : null,
         conditionnement: l && l.conditionnement ? String(l.conditionnement).trim() : '',
         quantiteTotale: totale != null && totale > 0 ? totale : null,
         uniteTotale,
-        montantLigne: num(l && l.montantLigne),
-        confidence: Math.max(0, Math.min(100, Math.round(num(l && l.confidence) ?? 0))),
+        montantLigne,
+        confidence,
         issues,
       };
     })
@@ -404,6 +415,12 @@ function normaliserFacture(data, meta) {
     devise: r.devise ? String(r.devise).trim() : 'CHF',
     sommeLignes: Math.round(somme * 100) / 100,
     ecartTotal,
+    // Lisibilité jugée par le modèle ('bonne', 'moyenne', 'mauvaise') et sa
+    // remarque ; relecture faite par la fonction quand les lignes ne recoupaient
+    // pas le total. Vides avec une fonction ai-proxy plus ancienne.
+    lisibilite: ['bonne', 'moyenne', 'mauvaise'].includes(r.lisibilite) ? r.lisibilite : '',
+    remarqueLecture: r.remarqueLecture ? String(r.remarqueLecture).trim() : '',
+    relue: !!(r.verification && r.verification.relue),
     lignes,
   };
 }
