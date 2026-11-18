@@ -1731,17 +1731,6 @@ export const UI_GLOSSARY_DE = {
   "horaires cette semaine": "Dienste diese Woche",
   "horaire cette semaine": "Dienst diese Woche",
   "aucun horaire cette semaine": "diese Woche kein Dienst",
-  // Coût du personnel dans le planning (lot C1).
-  "Coût du personnel prévu cette semaine :": "Geplante Personalkosten diese Woche:",
-  ", soit": ", also",
-  "du chiffre de référence": "des Referenzumsatzes",
-  ". Aucun chiffre de ventes sur les quatre semaines d'avant : la part ne se calcule pas.": ". Keine Verkaufszahlen in den vier Wochen davor: Der Anteil lässt sich nicht berechnen.",
-  "Coût du personnel, jour par jour": "Personalkosten, Tag für Tag",
-  "Le chiffre de référence est la moyenne des quatre mêmes jours précédents qui ont un chiffre. Ce n'est pas une prévision. Le coût suit les salaires et les réglages de la Comptabilité, charges sociales comprises.": "Der Referenzumsatz ist der Durchschnitt der vier gleichen Vortage mit einer Zahl. Es ist keine Prognose. Die Kosten folgen den Löhnen und Einstellungen der Buchhaltung, Sozialabgaben inbegriffen.",
-  "personnes n'ont ni salaire ni coût horaire moyen : leur temps n'est pas compté. Réglez-les dans la Comptabilité.": "Personen haben weder Lohn noch durchschnittliche Stundenkosten: Ihre Zeit wird nicht gezählt. Erfassen Sie sie in der Buchhaltung.",
-  "personne n'a ni salaire ni coût horaire moyen : son temps n'est pas compté. Réglez-le dans la Comptabilité.": "Person hat weder Lohn noch durchschnittliche Stundenkosten: Ihre Zeit wird nicht gezählt. Erfassen Sie sie in der Buchhaltung.",
-  "référence": "Referenz",
-  "sans référence": "ohne Referenz",
   // Passation préparée depuis le service (lot C4).
   "Préparation du texte depuis le service…": "Text wird aus dem Service vorbereitet…",
   "L'app a préparé ce texte depuis le service. Relisez-le, complétez-le, puis enregistrez.": "Die App hat diesen Text aus dem Service vorbereitet. Lesen Sie ihn, ergänzen Sie ihn und speichern Sie dann.",
