@@ -9,7 +9,11 @@ import { BoutonActions, Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import EnTeteSection from '../../components/parcours/EnTeteSection.jsx';
 import { peutGererPassations } from './gardesPassations.js';
-import { zurichAjouterJours, zurichToday } from '../../utils/zurichTime.js';
+import { zurichAjouterJours, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
+import { isModuleActiveForEtab } from '../moduleConfig.js';
+import { inscrireGeste } from '../../services/tempsGagne.js';
+import { serviceDeLHeure } from './brouillonPassation.js';
+import { preparerPassation } from './donneesPassation.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
 import { Champ, Liste, PageHotel, ReperesHotel, Vide, h } from '../hebergement/hotelUi.jsx';
 import {
@@ -39,10 +43,30 @@ function useAujourdhui() {
   return jour;
 }
 
-function PassationForm({ passation, pole, aujourdhui, passations, onClose }) {
-  const [f, setF] = React.useState(() => (passation ? { ...passation } : { pole, jour: aujourdhui, service: 'matin', contenu: '', important: false }));
+function PassationForm({ passation, pole, aujourdhui, passations, onClose, etablissement = null, restantes = [] }) {
+  // Nouvelle passation (lot C4) : le service vient de l'heure, et le texte est
+  // préparé depuis le service (pertes, relevés hors norme, tâches restantes,
+  // réservations du prochain service). La personne relit, corrige, enregistre.
+  const [f, setF] = React.useState(() => (passation ? { ...passation } : { pole, jour: aujourdhui, service: serviceDeLHeure(zurichNowMinutes()), contenu: '', important: false }));
   const [erreur, setErreur] = React.useState('');
   const [enCours, setEnCours] = React.useState(false);
+  const [brouillon, setBrouillon] = React.useState(passation ? null : { etat: 'chargement' });
+  const etabId = etablissement?.id || null;
+  React.useEffect(() => {
+    if (passation || !etabId) { setBrouillon(null); return undefined; }
+    let vivant = true;
+    preparerPassation({
+      etabId, jour: aujourdhui, minutes: zurichNowMinutes(),
+      tachesRestantes: restantes.map((t) => t.titre).filter(Boolean),
+      avecReservations: isModuleActiveForEtab(etablissement, 'previsions'),
+    }).then((b) => {
+      if (!vivant) return;
+      setF((p) => (p.contenu.trim() ? p : { ...p, contenu: b.texte }));
+      setBrouillon({ etat: 'pret', sections: b.sections });
+    }).catch(() => { if (vivant) setBrouillon(null); });
+    return () => { vivant = false; };
+  // Préparé une fois, à l'ouverture de la fenêtre.
+  }, []);
   const champ = (k) => (ev) => setF((p) => ({ ...p, [k]: ev.target.value }));
   const enregistrer = async () => {
     setErreur('');
@@ -52,6 +76,7 @@ function PassationForm({ passation, pole, aujourdhui, passations, onClose }) {
     const res = passation ? await passations.modifier(passation.id, valeurs) : await passations.inserer(valeurs);
     setEnCours(false);
     if (res.error) { setErreur(res.error); return; }
+    if (!passation && brouillon?.etat === 'pret' && brouillon.sections > 0) inscrireGeste(etabId, 'passation_preparee');
     notify(passation ? 'Passation modifiée.' : 'Passation notée.', 'success');
     onClose();
   };
@@ -80,6 +105,13 @@ function PassationForm({ passation, pole, aujourdhui, passations, onClose }) {
             {SERVICES_PASSATION.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
         </Champ>
+        {brouillon && (
+          <p style={{ gridColumn: '1 / -1', margin: 0, fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text2)' }} aria-live="polite" data-brouillon-passation="">
+            {brouillon.etat === 'chargement'
+              ? 'Préparation du texte depuis le service…'
+              : "L'app a préparé ce texte depuis le service. Relisez-le, complétez-le, puis enregistrez."}
+          </p>
+        )}
         <Champ label="À transmettre" large><textarea style={{ ...h.saisie, minHeight: 110 }} value={f.contenu} onChange={champ('contenu')} placeholder="Ce que l'équipe suivante doit savoir." autoFocus /></Champ>
       </div>
       <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer' }}>
@@ -409,7 +441,7 @@ export default function Passations({ user, etablissement, ecranReglage = null })
         </>
       )}
 
-      {form && <PassationForm passation={form.passation} pole={pole} aujourdhui={aujourdhui} passations={passations} onClose={() => setForm(null)} />}
+      {form && <PassationForm passation={form.passation} pole={pole} aujourdhui={aujourdhui} passations={passations} etablissement={etablissement} restantes={restantes} onClose={() => setForm(null)} />}
       {tacheForm && <TacheForm tache={tacheForm.tache} pole={pole} taches={taches} onClose={() => setTacheForm(null)} />}
     </section>
   );

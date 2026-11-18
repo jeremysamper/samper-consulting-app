@@ -34,8 +34,15 @@ export const BAREME = {
     avant: 'Taper chaque ligne de la facture : produit, quantité, prix.',
     pourquoi: 'Une ligne se tape en 45 secondes à une minute. On retient 30 secondes, contrôle de la lecture déduit.',
   },
-  // Les lots suivants ajoutent ici leur geste (passation préparée, briefing,
-  // échange de service, relevé par photo) le jour où il existe dans l'app.
+  passation_preparee: {
+    secondes: 3 * 60,
+    libelle: 'Passations préparées',
+    unite: 'passation',
+    avant: 'Rédiger la passation de mémoire : pertes, relevés hors norme, tâches restantes, réservations à venir.',
+    pourquoi: 'Une passation rédigée prend 3 à 5 minutes. On retient 3 minutes, relecture déduite.',
+  },
+  // Les lots suivants ajoutent ici leur geste (briefing, échange de service,
+  // relevé par photo) le jour où il existe dans l'app.
 };
 
 export const GESTES = Object.keys(BAREME);

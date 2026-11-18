@@ -1758,6 +1758,21 @@ export const UI_GLOSSARY = {
   "Aucune fiche pour l'instant. Importez vos fiches depuis le modèle Excel, ou créez-en une avec « Nouvelle fiche ».": "No recipe sheet yet. Import your sheets from the Excel template, or create one with \"New sheet\".",
   "Votre équipe n'est pas encore dans l'app. Votre consultant crée le compte de chaque personne : envoyez-lui la liste, avec le rôle de chacun. Le planning se remplit ensuite ici.": "Your team is not in the app yet. Your consultant creates an account for each person: send them the list, with each person's role. The schedule then fills in here.",
   "Importer des fiches": "Import recipe sheets",
+  // Coût du personnel dans le planning (lot C1).
+  "Coût du personnel prévu cette semaine :": "Staff cost planned this week:",
+  ", soit": ", that is",
+  "du chiffre de référence": "of the reference revenue",
+  ". Aucun chiffre de ventes sur les quatre semaines d'avant : la part ne se calcule pas.": ". No sales figure in the previous four weeks: the share cannot be calculated.",
+  "Coût du personnel, jour par jour": "Staff cost, day by day",
+  "Le chiffre de référence est la moyenne des quatre mêmes jours précédents qui ont un chiffre. Ce n'est pas une prévision. Le coût suit les salaires et les réglages de la Comptabilité, charges sociales comprises.": "The reference revenue is the average of the same four previous weekdays that have a figure. It is not a forecast. The cost follows the salaries and settings in Accounting, social charges included.",
+  "personnes n'ont ni salaire ni coût horaire moyen : leur temps n'est pas compté. Réglez-les dans la Comptabilité.": "people have neither a salary nor an average hourly cost: their time is not counted. Set them in Accounting.",
+  "personne n'a ni salaire ni coût horaire moyen : son temps n'est pas compté. Réglez-le dans la Comptabilité.": "person has neither a salary nor an average hourly cost: their time is not counted. Set it in Accounting.",
+  "référence": "reference",
+  "sans référence": "no reference",
+  // Passation préparée depuis le service (lot C4).
+  "Préparation du texte depuis le service…": "Preparing the text from the service…",
+  "L'app a préparé ce texte depuis le service. Relisez-le, complétez-le, puis enregistrez.": "The app prepared this text from the service. Read it, complete it, then save.",
+  "Passations préparées": "Prepared handovers",
   // Temps gagné (lot T, tableau de bord du patron).
   "Temps gagné": "Time saved",
   "Temps gagné cette semaine": "Time saved this week",

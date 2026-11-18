@@ -1734,6 +1734,21 @@ export const UI_GLOSSARY_ES = {
   'horaires cette semaine': 'turnos esta semana',
   'horaire cette semaine': 'turno esta semana',
   'aucun horaire cette semaine': 'ningún turno esta semana',
+  // Coût du personnel dans le planning (lot C1).
+  "Coût du personnel prévu cette semaine :": "Coste de personal previsto esta semana:",
+  ", soit": ", es decir",
+  "du chiffre de référence": "de la facturación de referencia",
+  ". Aucun chiffre de ventes sur les quatre semaines d'avant : la part ne se calcule pas.": ". No hay cifra de ventas en las cuatro semanas anteriores: la parte no se puede calcular.",
+  "Coût du personnel, jour par jour": "Coste de personal, día a día",
+  "Le chiffre de référence est la moyenne des quatre mêmes jours précédents qui ont un chiffre. Ce n'est pas une prévision. Le coût suit les salaires et les réglages de la Comptabilité, charges sociales comprises.": "La facturación de referencia es la media de los cuatro mismos días anteriores que tienen una cifra. No es una previsión. El coste sigue los salarios y los ajustes de Contabilidad, cargas sociales incluidas.",
+  "personnes n'ont ni salaire ni coût horaire moyen : leur temps n'est pas compté. Réglez-les dans la Comptabilité.": "personas no tienen ni salario ni coste horario medio: su tiempo no se cuenta. Ajústelas en Contabilidad.",
+  "personne n'a ni salaire ni coût horaire moyen : son temps n'est pas compté. Réglez-le dans la Comptabilité.": "persona no tiene ni salario ni coste horario medio: su tiempo no se cuenta. Ajústela en Contabilidad.",
+  "référence": "referencia",
+  "sans référence": "sin referencia",
+  // Passation préparée depuis le service (lot C4).
+  "Préparation du texte depuis le service…": "Preparando el texto a partir del servicio…",
+  "L'app a préparé ce texte depuis le service. Relisez-le, complétez-le, puis enregistrez.": "La app ha preparado este texto a partir del servicio. Reléalo, complételo y guarde.",
+  "Passations préparées": "Traspasos preparados",
   // Temps gagné (lot T, tableau de bord du patron).
   "Temps gagné": "Tiempo ganado",
   "Temps gagné cette semaine": "Tiempo ganado esta semana",
