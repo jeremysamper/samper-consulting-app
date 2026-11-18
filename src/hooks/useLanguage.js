@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  getLanguage, initTranslator, setEtablissement, setLanguage, subscribe, TARGET_LANGS,
+  getLanguage, initTranslator, preloadGlossary, setEtablissement, setLanguage, subscribe, TARGET_LANGS,
 } from '../i18n/domTranslator.js';
 import { readText, UI_STORAGE_KEYS, writeText } from '../utils/storage.js';
 
@@ -14,6 +14,11 @@ const normalizeLang = (lang) => (TARGET_LANGS.includes(lang) ? lang : 'fr');
 function readInitialLang() {
   return normalizeLang(readText(UI_STORAGE_KEYS.lang, 'fr'));
 }
+
+// Glossaire de la langue mémorisée (espagnol, allemand) demandé dès le
+// chargement de l'app : il arrive pendant le démarrage, et initTranslator le
+// trouve prêt. Un appareil en Original ou en English ne charge rien.
+preloadGlossary(readInitialLang());
 
 /**
  * Mode d'affichage « Original » (français, tel que saisi), « English »,
