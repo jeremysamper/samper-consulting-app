@@ -8,6 +8,7 @@ import ReservationDetailModal from './ReservationDetailModal.jsx';
 import RechercheResas from './RechercheResas.jsx';
 import VueSemaine from './VueSemaine.jsx';
 import VueJour from './VueJour.jsx';
+import PrevisionCouverts from './PrevisionCouverts.jsx';
 import DemandesEnLigne from './DemandesEnLigne.jsx';
 import { peutGererReservations } from './gardeEnLigne.js';
 import ClientsResa from './ClientsResa.jsx';
@@ -193,6 +194,11 @@ export default function Previsions({ user, etablissement }) {
               onOpenResa={setResaTrouvee}
               refreshKey={refreshKey}
             />
+          )}
+          {/* Prévision des couverts des 7 prochains jours, sous le planning :
+              elle accompagne les réservations, elle ne les remplace pas. */}
+          {!enRecherche && !selectedDate && (
+            <PrevisionCouverts etablissement={etablissement} refreshKey={refreshKey} />
           )}
           {!enRecherche && selectedDate && (
             <VueJour
