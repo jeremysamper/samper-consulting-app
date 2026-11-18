@@ -37,6 +37,23 @@ create table if not exists public.objectifs_maison (
   updated_at        timestamptz not null default now()
 );
 
+-- Une première version de ce fichier (jamais appliquée en production) portait
+-- les objectifs dans reglages_maison : s'ils y sont, ils passent dans leur
+-- table, puis la colonne part. Sans elle, rien ne se passe.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'reglages_maison' and column_name = 'objectifs'
+  ) then
+    execute 'insert into public.objectifs_maison (etablissement_id, objectifs)
+             select etablissement_id, objectifs from public.reglages_maison
+             where objectifs is not null and objectifs <> ''{}''::jsonb
+             on conflict (etablissement_id) do nothing';
+    alter table public.reglages_maison drop column objectifs;
+  end if;
+end $$;
+
 create or replace trigger trg_objectifs_maison_updated_at
   before update on public.objectifs_maison
   for each row execute function public.set_updated_at();
