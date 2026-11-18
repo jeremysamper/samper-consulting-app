@@ -8,7 +8,7 @@
 //
 // Trois niveaux, du moins cher au plus cher, chacun tenu PAR LANGUE :
 //   1. glossaire statique  → instantané, hors-ligne, gratuit (glossary.js,
-//                            glossaryEs.js, glossaryDe.js)
+//                            glossaryEs.js, glossaryDe.js chargés à la demande)
 //   2. cache localStorage  → instantané, hors-ligne, gratuit (déjà traduit ici)
 //   3. edge function IA    → une seule fois par phrase, puis mis en cache
 //
@@ -29,6 +29,13 @@
 //     donc jamais le français pour du contenu déjà connu - plus de clignotement.
 //     Seul l'appel IA (contenu jamais rencontré) reste différé, par nature.
 //
+// GLOSSAIRE À LA DEMANDE. Les tables espagnole et allemande arrivent par
+// import() (glossary.js, loadGlossary). Tant que celle de la langue demandée
+// n'est pas là, rien ne change : l'écran et le moteur restent dans la langue
+// en cours, sans balayage ni appel IA dans la nouvelle. Puis tout bascule dans
+// la microtâche qui reçoit le fichier : retour au français et traduction se
+// suivent sans peinture entre les deux, comme avant.
+//
 // GARDE-FOUS (aucune donnée métier ne doit pouvoir être corrompue) :
 //   · on n'écrit JAMAIS dans la value d'un input/textarea/select : seul le
 //     texte affiché et quelques attributs d'affichage sont touchés ;
@@ -38,7 +45,7 @@
 //     commande) partent des données, pas du DOM : ils restent en français.
 // ════════════════════════════════════════════════════════════════
 import { splitAffixes } from './affixes.js';
-import { DO_NOT_TRANSLATE, lookupGlossary } from './glossary.js';
+import { DO_NOT_TRANSLATE, isGlossaryReady, loadGlossary, lookupGlossary } from './glossary.js';
 import { fetchSharedTranslations, pushSharedTranslations, translateTexts } from '../services/translationService.js';
 
 // Langues cibles. 'fr' n'en est pas une : c'est le mode Original, sans moteur.
@@ -90,6 +97,7 @@ let deferredAttrs = [];
 const pendingStrings = new Set();
 
 let currentLang = 'fr';
+let pendingLang = null;                     // langue choisie dont le glossaire est en route
 let observer = null;
 let fetchTimer = null;
 let busy = 0;                               // requêtes IA en vol
@@ -532,7 +540,10 @@ function stopObserver() {
 // ── État exposé (bouton de bascule) ───────────────────────────────
 let lastSignature = '';
 
+// Pendant le chargement d'un glossaire, le sélecteur montre déjà la langue
+// choisie, avec son indicateur de traduction en cours.
 function snapshot() {
+  if (pendingLang) return { lang: pendingLang, translating: true, degraded: false };
   return { lang: currentLang, translating: busy > 0, degraded };
 }
 
@@ -552,8 +563,9 @@ export function subscribe(fn) {
   return () => listeners.delete(fn);
 }
 
+/** Langue choisie, celle que montre le sélecteur (voir snapshot). */
 export function getLanguage() {
-  return currentLang;
+  return pendingLang || currentLang;
 }
 
 /**
@@ -601,7 +613,39 @@ export function clearTranslationCache() {
  */
 export function setLanguage(lang) {
   const next = isTarget(lang) ? lang : 'fr';
-  if (next === currentLang) return;
+
+  // Glossaire pas encore chargé (espagnol, allemand) : on n'applique rien
+  // avant lui. Sinon le premier balayage enverrait tout l'écran à l'IA.
+  if (isTarget(next) && !isGlossaryReady(next)) {
+    if (pendingLang === next) return;
+    pendingLang = next;
+    emit();
+    loadGlossary(next).then(() => {
+      if (pendingLang !== next) return;   // autre choix entre-temps
+      pendingLang = null;
+      applyLanguage(next);
+    }, () => {
+      if (pendingLang !== next) return;
+      // Fichier injoignable : on reste dans la langue en cours plutôt que de
+      // tout envoyer à l'IA. Le choix suivant retentera le chargement.
+      pendingLang = null;
+      emit();
+    });
+    return;
+  }
+
+  // Un choix connu annule celui qui attendait son glossaire.
+  const wasPending = pendingLang !== null;
+  pendingLang = null;
+  if (next === currentLang) {
+    if (wasPending) emit();
+    return;
+  }
+  applyLanguage(next);
+}
+
+/** Applique une langue dont le glossaire est prêt. Synchrone. */
+function applyLanguage(next) {
   const prev = currentLang;
   currentLang = next;
 
@@ -635,7 +679,19 @@ export function setLanguage(lang) {
   }
 }
 
-/** Appelé au démarrage : réapplique la langue mémorisée. */
+/**
+ * Demande à l'avance le glossaire d'une langue (la langue mémorisée, dès le
+ * chargement de l'app) : quand initTranslator l'applique, il est déjà là.
+ * Sans effet en Original et en anglais.
+ */
+export function preloadGlossary(lang) {
+  if (isTarget(lang) && !isGlossaryReady(lang)) loadGlossary(lang).catch(() => {});
+}
+
+/**
+ * Appelé au démarrage : réapplique la langue mémorisée. En espagnol ou en
+ * allemand, la langue s'applique quand son glossaire est chargé.
+ */
 export function initTranslator(lang) {
   if (isTarget(lang)) setLanguage(lang);
   else if (typeof document !== 'undefined' && document.documentElement) {

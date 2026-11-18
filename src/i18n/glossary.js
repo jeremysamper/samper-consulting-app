@@ -1,6 +1,6 @@
 // ════════════════════════════════════════════════════════════════
 // Glossaire statique FR → EN (les pendants espagnol et allemand vivent dans
-// glossaryEs.js et glossaryDe.js).
+// glossaryEs.js et glossaryDe.js, chargés à la demande : voir loadGlossary).
 //
 // Couvre le vocabulaire d'interface le plus fréquent (navigation, actions,
 // statuts, en-têtes de tableaux, catégories produits). Ces chaînes sont
@@ -19,8 +19,6 @@
 // ════════════════════════════════════════════════════════════════
 import { normalizeSearch } from '../utils/searchText.js';
 import { splitAffixes } from './affixes.js';
-import { UI_GLOSSARY_ES } from './glossaryEs.js';
-import { UI_GLOSSARY_DE } from './glossaryDe.js';
 
 export const UI_GLOSSARY = {
   // ── Points : crédits des photos ──
@@ -5545,7 +5543,45 @@ export const DO_NOT_TRANSLATE = new Set([
 ]);
 
 // Une table par langue cible, toutes indexées sur la même chaîne française.
-const TABLES = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES, de: UI_GLOSSARY_DE };
+// L'anglais est embarqué. L'espagnol et l'allemand (plus de 100 Ko gzip
+// chacun) arrivent par import() à la première bascule vers leur langue : un
+// appareil en Original ou en English ne les télécharge ni ne les analyse.
+// Tant qu'une table n'est pas chargée, lookupGlossary rend null pour sa
+// langue : le moteur attend donc loadGlossary avant d'appliquer la langue
+// (domTranslator.js, setLanguage), sinon tout partirait à l'IA.
+const TABLES = { en: UI_GLOSSARY };
+const LOADERS = {
+  es: () => import('./glossaryEs.js').then((m) => m.UI_GLOSSARY_ES),
+  de: () => import('./glossaryDe.js').then((m) => m.UI_GLOSSARY_DE),
+};
+const loading = {};
+
+/** La table de cette langue est-elle prête pour lookupGlossary ? */
+export function isGlossaryReady(lang) {
+  return !!TABLES[lang];
+}
+
+/**
+ * Charge la table d'une langue cible, une seule fois. Résout quand
+ * lookupGlossary peut s'en servir. Rejette si le fichier n'arrive pas ; un
+ * appel suivant retente. Aussi la voie des scripts Node (tests) :
+ * `await loadGlossary('es')` avant de chercher en espagnol.
+ * @param {'en'|'es'|'de'} lang
+ * @returns {Promise<void>}
+ */
+export function loadGlossary(lang) {
+  if (TABLES[lang]) return Promise.resolve();
+  if (!LOADERS[lang]) return Promise.reject(new Error(`Glossaire inconnu : ${lang}`));
+  if (!loading[lang]) {
+    loading[lang] = LOADERS[lang]().then((table) => {
+      TABLES[lang] = table;
+    }, (err) => {
+      delete loading[lang];
+      throw err;
+    });
+  }
+  return loading[lang];
+}
 
 /**
  * Forme indexée d'une entrée : la clé réduite à son cœur, comme le moteur
