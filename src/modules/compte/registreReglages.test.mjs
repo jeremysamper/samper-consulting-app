@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  GROUPES, MODULES, SECTIONS, cheminDe, chercherSections, entreesParGroupe, idEntree, sectionsParGroupe, sectionsVisibles, signauxDe,
+  GROUPES, MODULES, RENVOIS, SECTIONS, cheminDe, chercherRenvois, chercherSections, entreesParGroupe, idEntree, renvoisVisibles, sectionsParGroupe, sectionsVisibles, signauxDe,
 } from './registreReglages.js';
 import { defaultPermissions, navItems, roles } from '../moduleConfig.js';
 import { getPermissionsForRole } from '../../data/demoData.js';
@@ -36,7 +36,6 @@ const AVANT = {
   caisse: ['consultant', 'patron', 'resp_cuisine'],
   planning_modeles: ['consultant', 'patron', 'resp_cuisine'],
   planning_groupes: ['consultant', 'patron', 'resp_cuisine'],
-  planning_masques: DIRECTION,
   planning_contrats: ['consultant', 'patron', 'resp_cuisine'],
   reservation_en_ligne: DIRECTION,
   comptabilite: DIRECTION,
@@ -56,7 +55,6 @@ const AVANT = {
   menu_gestes: ROLES,
   notifications: ['consultant', 'patron', 'resp_cuisine', 'serveur', 'hote', 'receptionniste'],
   // Lot R3 : réglages sortis de leur écran de travail.
-  carte_accueil: ['consultant', 'patron', 'resp_cuisine'],
   spa_emails: DIRECTION,
   factures_textes: ['consultant'],
   factures_email: ['consultant'],
@@ -97,7 +95,7 @@ test('toute personne a au moins ses préférences : la page s\'ouvre à tous', (
 test('un module non activé pour l\'établissement ferme ses réglages, même au consultant', () => {
   const sansCaisse = etab(TOUS_LES_MODULES.filter((k) => !['caisse', 'spa', 'hebergement', 'planning'].includes(k)));
   const vues = visibles('consultant', { etablissement: sansCaisse });
-  for (const id of ['caisse', 'spa_en_ligne', 'hebergement_tarifs', 'hebergement_chambres', 'planning_modeles', 'planning_groupes', 'planning_masques', 'planning_contrats']) {
+  for (const id of ['caisse', 'spa_en_ligne', 'hebergement_tarifs', 'hebergement_chambres', 'planning_modeles', 'planning_groupes', 'planning_contrats']) {
     assert.equal(vues.includes(id), false, id);
   }
   assert.ok(vues.includes('haccp') && vues.includes('parametres'));
@@ -125,7 +123,6 @@ test('un droit personnel qui diffère du rôle : la section suit la personne, co
   avecEcart('serveur', { 'manage:planning': true }, () => {
     const vues = visibles('serveur');
     for (const id of ['planning_modeles', 'planning_groupes', 'planning_contrats']) assert.ok(vues.includes(id), id);
-    assert.equal(vues.includes('planning_masques'), false, 'les personnes masquées restent à la direction');
     assert.equal(vues.includes('caisse'), false, 'la caisse se règle par rôle, pas par ce droit');
   });
   // Un patron à qui l'on a retiré la Caisse et le droit de régler les factures.
@@ -162,8 +159,8 @@ test('hiérarchie : une entrée par module, ses sections en pilules nommées', (
   const groupes = entreesParGroupe(sectionsVisibles({ user: { id: 'u', role: 'consultant' }, permissions: getPermissionsForRole('consultant'), etablissement: etab(), shellMode: 'ordinateur' }));
   const modules = groupes.find((g) => g.id === 'modules').entrees;
   const planning = modules.find((e) => e.id === 'module:planning');
-  assert.deepEqual(planning.sections.map((s) => s.id), ['planning_modeles', 'planning_groupes', 'planning_masques', 'planning_contrats']);
-  assert.deepEqual(planning.detail, ["Modèles d'horaires", 'Groupes', 'Personnes masquées', 'Contrats']);
+  assert.deepEqual(planning.sections.map((s) => s.id), ['planning_modeles', 'planning_groupes', 'planning_contrats']);
+  assert.deepEqual(planning.detail, ["Modèles d'horaires", 'Groupes', 'Contrats']);
   // Chaque section d'un module à plusieurs sections a sa pilule.
   for (const e of modules.filter((x) => x.sections.length > 1)) {
     for (const s of e.sections) assert.ok(s.onglet, `${s.id} : onglet`);
@@ -187,4 +184,31 @@ test('recherche : libellé, mots-clés, nom du module, sans accents ; vide sans 
   assert.ok(ids('tablette').includes('menu_gestes'));
   assert.deepEqual(cheminDe(SECTIONS.find((s) => s.id === 'plan_salle')), ['Les modules', 'Réservations']);
   assert.deepEqual(cheminDe(SECTIONS.find((s) => s.id === 'apparence')), ['Cet appareil']);
+});
+
+// 18.11.2026 : petits réglages rendus à leur module. La recherche les trouve
+// encore, pour les mêmes rôles qu'avant, et mène au module ; ils ne sont plus
+// des sections.
+const RENVOI_AVANT = {
+  renvoi_carte_accueil: ['consultant', 'patron', 'resp_cuisine'],
+  renvoi_planning_masques: DIRECTION,
+  renvoi_caisse_mode_test: ['consultant', 'patron', 'resp_cuisine'],
+};
+
+test('renvois : mêmes rôles qu\'avant, trouvés par la recherche, jamais des sections', () => {
+  assert.deepEqual(RENVOIS.map((r) => r.id).sort(), Object.keys(RENVOI_AVANT).sort());
+  for (const r of RENVOIS) {
+    assert.ok(r.page && r.ou && r.libelle, r.id);
+    assert.equal(r.charger, undefined, r.id);
+    assert.equal(SECTIONS.some((s) => s.id === r.id), false, r.id);
+  }
+  for (const role of ROLES) {
+    const vus = renvoisVisibles({ user: { id: 'u', role }, permissions: getPermissionsForRole(role), etablissement: etab(), shellMode: 'ordinateur' }).map((r) => r.id).sort();
+    const attendu = Object.keys(RENVOI_AVANT).filter((id) => RENVOI_AVANT[id].includes(role)).sort();
+    assert.deepEqual(vus, attendu, role);
+  }
+  const tout = renvoisVisibles({ user: { id: 'u', role: 'patron' }, permissions: getPermissionsForRole('patron'), etablissement: etab(), shellMode: 'ordinateur' });
+  assert.deepEqual(chercherRenvois(tout, 'masquées').map((r) => r.id), ['renvoi_planning_masques']);
+  assert.deepEqual(chercherRenvois(tout, 'mode test').map((r) => r.id), ['renvoi_caisse_mode_test']);
+  assert.deepEqual(chercherRenvois(tout, ''), []);
 });

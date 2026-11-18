@@ -1,6 +1,7 @@
 import { isPageActiveForEtab, peutAdministrerCompte, peutOuvrirPage } from '../moduleConfig.js';
 import { peutChangerLogo, peutOrganiserMenu } from '../../components/nav/gardesCoque.js';
 import { peutHabillerCaisse } from '../caisse/gardesCaisse.js';
+import { ROLES_MODE_TEST } from '../caisse/modeTest.js';
 import { peutGererReservations, peutReglerEnLigne } from '../previsions/gardeEnLigne.js';
 import { peutGererCartes } from '../recettes/gardesRecettes.js';
 import { peutGererInventaire } from '../inventaire/gardesInventaire.js';
@@ -44,7 +45,15 @@ import { makeSearchMatcher } from '../../utils/searchText.js';
 // Ajouter un réglage : exporter sa garde d'un fichier léger du module (pas
 // d'import d'écran : ce registre est dans le bundle de départ), écrire sa
 // section dans le dossier du module, l'inscrire ici avec son module et son
-// onglet. Aucun raccourci dans le module : un réglage n'a qu'un endroit.
+// onglet. Un réglage n'a qu'un endroit : jamais de raccourci en double.
+//
+// Règle de tri (18.11.2026) : un réglage vit dans son module, et non ici,
+// seulement s'il est un seul contrôle (case, choix, geste sur un objet),
+// propre à l'écran où l'on est, sans formulaire ni liste à gérer. Il entre
+// alors dans le menu « Gérer » ou « Plus » du module, ou sur l'objet qu'il
+// règle, jamais en bouton visible de plus. Tout le reste est approfondi et vit
+// ici. Un réglage rendu à son module laisse un renvoi (RENVOIS) : la recherche
+// le trouve encore et mène au module.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Ordre d'affichage : ce qui concerne chacun d'abord (son compte, son poste),
@@ -172,12 +181,6 @@ export const SECTIONS = [
     charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionGroupes })),
   },
   {
-    id: 'planning_masques', libelle: 'Planning : personnes masquées', onglet: 'Personnes masquées', detail: "Retirer quelqu'un de l'affichage du planning",
-    groupe: 'modules', portee: 'maison', module: 'planning',
-    garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
-    charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionMasques })),
-  },
-  {
     id: 'planning_contrats', libelle: 'Planning : contrats', onglet: 'Contrats', detail: 'Taux, heures par semaine et vacances de chacun',
     groupe: 'modules', portee: 'maison', module: 'planning',
     garde: (ctx) => ouvreLeModule('planning')(ctx) && peutEcrirePlanning(ctx.user?.role),
@@ -214,12 +217,6 @@ export const SECTIONS = [
     motsCles: 'température relevé', groupe: 'modules', portee: 'maison', module: 'haccp',
     garde: (ctx) => ouvreLeModule('haccp')(ctx) && peutConfigurerHaccp(ctx.user?.role),
     charger: () => import('../haccp/SectionReglagesHaccp.jsx'),
-  },
-  {
-    id: 'carte_accueil', libelle: "Carte d'accueil des recettes", detail: "La carte qui s'ouvre à votre arrivée dans Cartes & Recettes",
-    groupe: 'modules', portee: 'personne', module: 'cartes',
-    garde: (ctx) => ouvreLeModule('cartes')(ctx) && peutGererCartes(ctx.user?.role),
-    charger: () => import('../recettes/SectionCarteAccueil.jsx'),
   },
   {
     id: 'spa_en_ligne', libelle: 'Spa : réservation en ligne', onglet: 'Réservation en ligne', detail: 'Ouverture, horaires, délais, praticiens, lien à partager',
@@ -292,6 +289,45 @@ export const SECTIONS = [
     charger: () => import('../factures/SectionsFactures.jsx').then((m) => ({ default: m.SectionFacturesEmail })),
   },
 ];
+
+// Renvois : les petits réglages rendus à leur module (règle de tri en tête).
+// Ils ne sont pas des sections : rien à charger, aucune place dans la liste
+// des espaces. La recherche les rend avec leur endroit (`ou`, une phrase
+// entière, traduite d'un bloc) et « Y aller » ouvre la page du module. Même
+// garde que la section d'avant : la recherche ne montre à personne un
+// réglage qu'il ne peut pas toucher.
+export const RENVOIS = [
+  {
+    id: 'renvoi_carte_accueil', libelle: "Carte d'accueil des recettes", page: 'cartes',
+    ou: 'Dans Cartes & Recettes, le bouton « Définir par défaut » de la carte',
+    motsCles: 'carte par défaut arrivée recettes',
+    garde: (ctx) => ouvreLeModule('cartes')(ctx) && peutGererCartes(ctx.user?.role),
+  },
+  {
+    id: 'renvoi_planning_masques', libelle: 'Personnes masquées du planning', page: 'planning',
+    ou: 'Dans le Planning, le menu « Gérer »',
+    motsCles: 'masquer cacher retirer équipier affichage',
+    garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
+  },
+  {
+    id: 'renvoi_caisse_mode_test', libelle: 'Passer un poste en mode test', page: 'caisse',
+    ou: 'Dans la Caisse, le menu « Plus »',
+    motsCles: 'essai formation test poste caisse',
+    garde: (ctx) => ouvreLeModule('caisse')(ctx) && ROLES_MODE_TEST.includes(ctx.user?.role),
+  },
+];
+
+export function renvoisVisibles(ctx) {
+  return RENVOIS.filter((renvoi) => {
+    try { return renvoi.garde(ctx) === true; } catch { return false; }
+  });
+}
+
+export function chercherRenvois(renvois, requete) {
+  const correspond = makeSearchMatcher(requete);
+  if (!correspond.active) return [];
+  return renvois.filter((r) => correspond(r.libelle, r.ou, r.motsCles));
+}
 
 // Signaux de changement d'une section (services/reglagesSignal.js).
 export function signauxDe(id) {

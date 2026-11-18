@@ -11,8 +11,8 @@ import { notifyLegacy } from '../../legacy/legacyApi.js';
 // continue de voir les siens pour pointer, et le relevé CCNT la garde.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Depuis le 12.11.2026 : une section de la page des réglages
-// (SectionsPlanning.jsx), le même contenu sans fenêtre ni voile.
+// Le contenu seul, sans fenêtre : le Planning le pose dans sa fenêtre
+// « Personnes masquées » (menu « Gérer », 18.11.2026).
 export default function MasquesModal({ employees, masques, masquer, afficher, roles }) {
   const [enCours, setEnCours] = React.useState(null);
 

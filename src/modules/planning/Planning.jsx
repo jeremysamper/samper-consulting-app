@@ -38,7 +38,8 @@ import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcra
 import AccueilPlanning from './AccueilPlanning.jsx';
 import { equipeParEtat, heuresPrevues } from './accueilPlanning.js';
 import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
-import { equipeDuPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
+import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
+import MasquesModal from './MasquesModal.jsx';
 import { useContrats } from './contratsService.js';
 import { calcHeures, periodeEnCours, soldePersonne } from './soldesHeures.js';
 
@@ -242,6 +243,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Absences de l'équipe (congé, formation, absence), posées par la direction.
   const absencesEtab = useAbsences(etabId);
   const [showAbsences, setShowAbsences] = React.useState(false);
+  // Personnes masquées (18.11.2026) : petit réglage rendu au module, dans le
+  // menu « Gérer », direction seule ; il a quitté la page des réglages.
+  const [showMasques, setShowMasques] = React.useState(false);
   const { assurerDepuis: assurerAbsencesDepuis } = absencesEtab;
   React.useEffect(() => { assurerAbsencesDepuis(selectedDate); }, [selectedDate, assurerAbsencesDepuis]);
   React.useEffect(() => { assurerAbsencesDepuis(mobileDate); }, [mobileDate, assurerAbsencesDepuis]);
@@ -1364,6 +1368,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           sections={[{ items: [
             canWrite && activeTab === 'planning' && { titre: 'Sélectionner plusieurs horaires', detail: 'Pour les supprimer ou les recopier ailleurs.', onClick: () => { setRemplissage(null); if (!selectionMode) toggleSelectionMode(); } },
             activeTab === 'planning' && choixAbsences,
+            activeTab === 'planning' && estDirectionPlanning(user?.role) && masquesEtab.status !== 'absent' && { titre: 'Personnes masquées', detail: "Retirer quelqu'un de l'affichage du planning.", onClick: () => setShowMasques(true) },
           ] }]}
         />
       </div>
@@ -1954,8 +1959,23 @@ const Planning = ({ user, etablissement, initialTab }) => {
         />
       )}
 
-      {/* Modèles d'horaires, groupes, personnes masquées et contrats : dans la
-          page des réglages (SectionsPlanning.jsx), le menu « Gérer » y mène. */}
+      {/* Modèles d'horaires, groupes et contrats : dans la page des réglages
+          (SectionsPlanning.jsx). Les personnes masquées restent ici. */}
+      {showMasques && (
+        <Fenetre id="planning-masques" titre="Personnes masquées" onClose={() => setShowMasques(false)} largeur={520}>
+          {masquesEtab.status === 'loading'
+            ? <p style={{ margin: 0, padding: 18, fontSize: 'var(--t2)', color: 'var(--text2)' }}>Chargement…</p>
+            : (
+              <MasquesModal
+                employees={equipe}
+                masques={masquesEtab.masques}
+                masquer={masquesEtab.masquer}
+                afficher={masquesEtab.afficher}
+                roles={demoData.roles}
+              />
+            )}
+        </Fenetre>
+      )}
 
       {/* ═════════ MODALE CONFIRMATION SUPPRESSION MULTIPLE ═════════ */}
       {showAbsences && (

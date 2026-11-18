@@ -19,7 +19,7 @@ import BandeauTest from './BandeauTest.jsx';
 import InvitationAvisPret from './InvitationAvisPret.jsx';
 import Historique from './Historique.jsx';
 import Cloture from './Cloture.jsx';
-import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest } from './modeTest.js';
+import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
 import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
@@ -412,9 +412,29 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     if (modeTest && ecran === 'sans_ticket') retourAccueil();
   }, [modeTest, ecran, retourAccueil]);
 
-  // L'entrée en mode test se fait dans la page des réglages (section Caisse,
-  // « Mode test ») depuis le 14.11.2026 ; cet écran la reprend au signal de la
-  // section (voir useReglageModifie plus haut) ou à son ouverture.
+  // Entrée en mode test (18.11.2026) : un geste de cet écran, rendu au module
+  // (menu « Plus »), pour les rôles de ROLES_MODE_TEST. Les autres réglages du
+  // mode test (envoi en cuisine, purge, journal) restent dans la page des
+  // réglages, section Caisse. L'écran repart sans ticket, sur la clé rendue.
+  async function entrerEnTest() {
+    if (testEnCours || modeTest || !peutActiverTest) return;
+    if (!window.confirm('Passer ce poste en mode test ? Les tickets ouverts ici ne compteront pas dans les chiffres. Les autres postes continuent de vendre normalement.')) return;
+    setTestEnCours(true);
+    try {
+      const { data, error } = await caisse.testEntrer(etabId, poste);
+      if (error) { notify(error, 'error'); return; }
+      if (!data?.cle) { notify("Le mode test n'a pas pu être activé. Réessayez.", 'error'); return; }
+      retenirModeTest(etabId, data.cle);
+      lectureTickets.current += 1;
+      setTickets([]);
+      setTicketId(null);
+      setProposerVider(false);
+      setCleTest(data.cle);
+      notify('Mode test activé sur ce poste', 'success');
+    } finally {
+      setTestEnCours(false);
+    }
+  }
 
   // Sortie en un tap. Les tickets de test restent en base jusqu'à leur purge :
   // un responsable se voit proposer de les vider tout de suite.
@@ -642,6 +662,11 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
 
   if (ecran === ECRAN_ACCUEIL || (ecran === 'tables' && !deplacement)) {
     const enRetard = !modeTest && peutHabiller ? (etatJour?.a_cloturer || []) : [];
+    const choixModeTest = peutActiverTest && !modeTest && {
+      titre: 'Passer ce poste en mode test',
+      detail: 'Les tickets de ce poste ne comptent plus dans les chiffres.',
+      onClick: entrerEnTest,
+    };
     return (
       <>
         {bandeauTest}
@@ -697,6 +722,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
                 },
                 !modeTest && { titre: 'Historique et quittances', onClick: () => setEcran('historique') },
                 !modeTest && peutHabiller && { titre: 'Clôture de caisse', onClick: () => setEcran('cloture') },
+                choixModeTest,
               ] }]}
             />
           ) : (
@@ -709,6 +735,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
               )}
               {!modeTest && <Btn onClick={() => setEcran('historique')} style={st.btn44}>Historique et quittances</Btn>}
               {!modeTest && peutHabiller && <Btn onClick={() => setEcran('cloture')} style={st.btn44}>Clôture de caisse</Btn>}
+              {choixModeTest && (
+                <BoutonActions id="caisse-plus" label="Plus" style={st.plus} titre="Caisse" sections={[{ items: [choixModeTest] }]} />
+              )}
             </>
           )}
         </div>

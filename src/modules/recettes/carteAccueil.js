@@ -6,9 +6,8 @@ import { dbService } from '../../services/dbService.js';
 // le module. Préférence de la personne, par établissement (user_settings,
 // clé cartes_default:<etab>, cache hydraté à la connexion).
 //
-// Un seul état pour deux endroits : le bouton « Définir par défaut » de la
-// carte affichée (Recettes.jsx) et la section « Carte d'accueil » de la page
-// des réglages lisent et écrivent ici, ils sont toujours d'accord.
+// Un seul endroit depuis le 18.11.2026 : le bouton « Définir par défaut » de
+// la carte affichée (Recettes.jsx). La recherche des réglages y renvoie.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const cle = (etabId) => 'cartes_default:' + etabId;
