@@ -13,6 +13,7 @@ import { peutGererPassations } from '../passations/gardesPassations.js';
 import { peutGererTechnique } from '../technique/gardesTechnique.js';
 import { estDirectionPlanning, peutEcrirePlanning, peutOuvrirGroupes } from '../planning/gardesPlanning.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
+import { estDirectionMaison } from './gardesMaison.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -143,6 +144,23 @@ export const SECTIONS = [
     motsCles: 'équipe personnes droits permissions', groupe: 'maison', portee: 'maison', garde: administre,
     charger: () => import('./sections/SectionRoles.jsx'),
   },
+  // Réglages de la maison (18.11.2026, table reglages_maison) : direction,
+  // comme la RLS de la table. Lus par l'évaluateur d'alertes, le planning, le
+  // tableau de bord et Statistiques.
+  {
+    id: 'horaires_fermetures', libelle: 'Horaires et fermetures', detail: 'Jours de fermeture et vacances : ni alerte ni relevé attendu ces jours-là',
+    motsCles: 'fermé fermeture vacances congés jour de repos ouverture', groupe: 'maison', portee: 'maison',
+    garde: (ctx) => Boolean(ctx.etablissement?.id) && estDirectionMaison(ctx.user?.role),
+    charger: () => import('./sections/SectionsMaison.jsx').then((m) => ({ default: m.SectionHorairesFermetures })),
+    signaux: ['reglages_maison'],
+  },
+  {
+    id: 'objectifs', libelle: 'Objectifs', detail: 'Coût matière, coût du personnel et chiffre visés, tracés dans Statistiques',
+    motsCles: 'cible budget food cost ratio masse salariale chiffre affaires', groupe: 'maison', portee: 'maison',
+    garde: (ctx) => Boolean(ctx.etablissement?.id) && estDirectionMaison(ctx.user?.role),
+    charger: () => import('./sections/SectionsMaison.jsx').then((m) => ({ default: m.SectionObjectifs })),
+    signaux: ['reglages_maison'],
+  },
   {
     id: 'logo', libelle: "Logo de l'établissement", detail: "Dans la barre latérale, sur la page d'accueil et sur les factures",
     motsCles: 'image marque', groupe: 'maison', portee: 'maison',
@@ -185,6 +203,20 @@ export const SECTIONS = [
     groupe: 'modules', portee: 'maison', module: 'planning',
     garde: (ctx) => ouvreLeModule('planning')(ctx) && peutEcrirePlanning(ctx.user?.role),
     charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionContrats })),
+  },
+  {
+    id: 'planning_temps_travail', libelle: 'Planning : temps de travail', onglet: 'Temps de travail', detail: 'Repos, pauses, journée et semaine les plus longues, signalés dans la grille',
+    motsCles: 'loi ltr ccnt repos pause heures maximum', groupe: 'modules', portee: 'maison', module: 'planning',
+    garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
+    charger: () => import('../planning/SectionsReglesPlanning.jsx').then((m) => ({ default: m.SectionTempsTravail })),
+    signaux: ['reglages_maison'],
+  },
+  {
+    id: 'planning_pointage', libelle: 'Planning : pointage', onglet: 'Pointage', detail: 'Arrivée en avance et arrondi des heures comptées',
+    motsCles: 'pointer arrondi avance heures comptées salaires', groupe: 'modules', portee: 'maison', module: 'planning',
+    garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
+    charger: () => import('../planning/SectionsReglesPlanning.jsx').then((m) => ({ default: m.SectionPointage })),
+    signaux: ['reglages_maison'],
   },
   {
     id: 'reservation_en_ligne', libelle: 'Réservation en ligne', onglet: 'Réservation en ligne', detail: "Boîte d'envoi, SMS, horaires, capacité, lien à partager",

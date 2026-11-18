@@ -63,6 +63,12 @@ const AVANT = {
   // 14.11.2026 : la fenêtre « Gérer » de l'accueil de l'Inventaire (droit
   // « Modifier » du module, donné par défaut à ces trois rôles).
   inventaire_gerer: ['consultant', 'patron', 'resp_cuisine'],
+  // 18.11.2026 : réglages neufs de la maison, à la direction (RLS de
+  // reglages_maison : consultant et patron).
+  horaires_fermetures: DIRECTION,
+  objectifs: DIRECTION,
+  planning_temps_travail: DIRECTION,
+  planning_pointage: DIRECTION,
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {
@@ -95,7 +101,7 @@ test('toute personne a au moins ses préférences : la page s\'ouvre à tous', (
 test('un module non activé pour l\'établissement ferme ses réglages, même au consultant', () => {
   const sansCaisse = etab(TOUS_LES_MODULES.filter((k) => !['caisse', 'spa', 'hebergement', 'planning'].includes(k)));
   const vues = visibles('consultant', { etablissement: sansCaisse });
-  for (const id of ['caisse', 'spa_en_ligne', 'hebergement_tarifs', 'hebergement_chambres', 'planning_modeles', 'planning_groupes', 'planning_contrats']) {
+  for (const id of ['caisse', 'spa_en_ligne', 'hebergement_tarifs', 'hebergement_chambres', 'planning_modeles', 'planning_groupes', 'planning_contrats', 'planning_temps_travail', 'planning_pointage']) {
     assert.equal(vues.includes(id), false, id);
   }
   assert.ok(vues.includes('haccp') && vues.includes('parametres'));
@@ -159,8 +165,8 @@ test('hiérarchie : une entrée par module, ses sections en pilules nommées', (
   const groupes = entreesParGroupe(sectionsVisibles({ user: { id: 'u', role: 'consultant' }, permissions: getPermissionsForRole('consultant'), etablissement: etab(), shellMode: 'ordinateur' }));
   const modules = groupes.find((g) => g.id === 'modules').entrees;
   const planning = modules.find((e) => e.id === 'module:planning');
-  assert.deepEqual(planning.sections.map((s) => s.id), ['planning_modeles', 'planning_groupes', 'planning_contrats']);
-  assert.deepEqual(planning.detail, ["Modèles d'horaires", 'Groupes', 'Contrats']);
+  assert.deepEqual(planning.sections.map((s) => s.id), ['planning_modeles', 'planning_groupes', 'planning_contrats', 'planning_temps_travail', 'planning_pointage']);
+  assert.deepEqual(planning.detail, ["Modèles d'horaires", 'Groupes', 'Contrats', 'Temps de travail', 'Pointage']);
   // Chaque section d'un module à plusieurs sections a sa pilule.
   for (const e of modules.filter((x) => x.sections.length > 1)) {
     for (const s of e.sections) assert.ok(s.onglet, `${s.id} : onglet`);

@@ -10,6 +10,8 @@ import { hcfg, hs } from './HACCP.styles.js';
 import { isReleveConforme, parseHaccpNumber, trierCreneaux } from './HACCP.utils.js';
 import { commentaireActions, compteControles, etatDuJour, verdictReleve } from './haccpJour.js';
 import { zurichAjouterJours, zurichClock, zurichToday } from '../../utils/zurichTime.js';
+import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
+import { maisonFermee, periodeDe } from '../../utils/reglagesMaison.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
@@ -93,6 +95,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   // se serait rangé sur le mauvais jour.
   useTicMinute();
   const todayStr = zurichToday();
+  // Maison fermée aujourd'hui (Réglages > Horaires et fermetures) : aucun
+  // relevé n'est attendu, la carte « Maintenant » le dit ; relever reste possible.
+  const maison = useReglagesMaison(etablissement?.id || null);
+  const fermeAujourdhui = maisonFermee(maison.fermetures, todayStr) ? (periodeDe(maison.fermetures, todayStr)?.motif || 'Fermé aujourd\'hui') : null;
   const maintenant = zurichClock();
 
   // Jour regardé dans le registre et les contrôles (l'accueil est toujours
@@ -915,6 +921,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
               enEchecRelecture={enEchecRelecture}
               derniereMaj={derniereMaj}
               etat={etatJour}
+              ferme={fermeAujourdhui}
               maintenant={maintenant}
               canWrite={canWrite}
               isConsultant={isConsultant}

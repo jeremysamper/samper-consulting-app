@@ -19,6 +19,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { createInstanceIfNeeded } from './helpers/create-instance.ts';
 import { resolveStaleInstances } from './helpers/resolve-stale.ts';
+import { REGLES_DU_JOUR, aujourdhuiZurich, lireFermetures, maisonFermee } from './helpers/fermetures.ts';
 import { evalPointage }       from './evaluators/pointage.ts';
 import { evalHaccp }          from './evaluators/haccp.ts';
 import { evalReservation }    from './evaluators/reservation.ts';
@@ -179,10 +180,19 @@ async function traiter(req: Request): Promise<Response> {
     action: 'fired' | 'resolved' | 'skipped' | 'error';
   }> = [];
 
+  // Fermetures de la maison (reglages_maison) : un jour fermé, les règles
+  // liées au jour ne s'évaluent pas (aucune instance créée ni résolue).
+  const fermetures = await lireFermetures(sb);
+  const aujourdhui = aujourdhuiZurich();
+
   for (const rule of (rules as AlertRule[])) {
     try {
       // Filtrage horaire pour les règles daily
       if (rule.schedule_type === 'daily' && !shouldRunDaily(rule)) {
+        results.push({ ruleId: rule.id, name: rule.name, action: 'skipped' });
+        continue;
+      }
+      if (REGLES_DU_JOUR.has(rule.rule_type) && maisonFermee(fermetures.get(rule.etablissement_id), aujourdhui)) {
         results.push({ ruleId: rule.id, name: rule.name, action: 'skipped' });
         continue;
       }

@@ -102,7 +102,7 @@ function Tournees({ tournees }) {
 
 export default function MaintenantHaccp({
   lecture, enEchecRelecture, derniereMaj, etat, maintenant,
-  canWrite, isConsultant, onReleve, onReessayer,
+  canWrite, isConsultant, onReleve, onReessayer, ferme = null,
 }) {
   const [reessaiEnCours, setReessaiEnCours] = React.useState(false);
   const monteRef = React.useRef(true);
@@ -145,6 +145,17 @@ export default function MaintenantHaccp({
         <div style={{ ...st.surtitre, color: ENCRES.neutre }}>Pas encore prêt</div>
         <div style={st.ligne}>Aucun frigo à relever n'est réglé pour cet établissement.</div>
         {!isConsultant && <div style={st.ligne}>Le consultant ajoute les frigos à relever. En attendant, les étiquettes et les contrôles fonctionnent.</div>}
+      </Carte>
+    );
+  }
+
+  // ─── Maison fermée (Réglages > Horaires et fermetures) ───
+  // Aucun relevé attendu ; un frigo à revoir reste rappelé plus bas.
+  if (ferme && etat.statut !== 'a_jour' && !(etat.aRevoir || []).length) {
+    return (
+      <Carte ton="neutre" bouton={canWrite ? <button type="button" data-haccp-action="releve" data-cadre="" style={st.secondaire} onClick={onReleve}>Faire un relevé quand même</button> : null}>
+        <div style={{ ...st.surtitre, color: ENCRES.neutre }} data-haccp-ferme="">{ferme}</div>
+        <div style={st.ligne}>La maison est fermée : aucun relevé n'est attendu aujourd'hui.</div>
       </Carte>
     );
   }

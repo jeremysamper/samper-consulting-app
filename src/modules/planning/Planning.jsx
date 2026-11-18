@@ -40,6 +40,10 @@ import { equipeParEtat, heuresPrevues } from './accueilPlanning.js';
 import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
 import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
 import MasquesModal from './MasquesModal.jsx';
+import { heuresPointees } from './pointageRegles.js';
+import { controlesTempsTravail } from './tempsTravail.js';
+import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
+import { maisonFermee, periodeDe } from '../../utils/reglagesMaison.js';
 import { useContrats } from './contratsService.js';
 import { calcHeures, periodeEnCours, soldePersonne } from './soldesHeures.js';
 
@@ -262,6 +266,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // Ce qui s'affiche. planningEtab reste la base des écritures et des contrôles
   // de chevauchement : un horaire masqué existe toujours.
   const planningVisible = planningEtab.filter(s => !estMasque(s.userId));
+  // Réglages de la maison (18.11.2026) : jours fermés, contrôles du temps de
+  // travail, règles du pointage (retenues au passage pour heuresPointees).
+  const maison = useReglagesMaison(etabId);
 
   // Écritures des gestes de la grille (modèle posé, glisser, duplication) et
   // leur retour arrière : useEcrituresHoraires.js.
@@ -353,6 +360,18 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   const getShift = (userId, date) => planningVisible.find(s => s.userId === userId && s.date === date);
   const getShiftsDay = (userId, date) => planningVisible.filter(s => s.userId === userId && s.date === date);
+  // Temps de travail : ce qui est à vérifier, horaire par horaire, montré à
+  // qui écrit le planning. Jamais bloquant. Les semaines entières de la grille
+  // comptent aussi leurs jours de repos.
+  const periodeGrille = DAYS.length ? { debut: DAYS[0].date, fin: DAYS[DAYS.length - 1].date } : null;
+  const alertesTemps = React.useMemo(
+    () => (canWrite ? controlesTempsTravail({ shifts: planningEtab, regles: maison.tempsTravail, periode: periodeGrille }) : null),
+    [canWrite, planningEtab, maison.tempsTravail, periodeGrille?.debut, periodeGrille?.fin]
+  );
+  const libelleFermeture = (date) => {
+    if (!maisonFermee(maison.fermetures, date)) return null;
+    return periodeDe(maison.fermetures, date)?.motif || 'Fermé';
+  };
 
   // calcHeures (durée du relevé CCNT) vient de soldesHeures.js : le solde du
   // mois et l'export salaires comptent les heures faites avec la même mesure.
@@ -1091,6 +1110,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <div style={pls.mobileDayNavCenter}>
               <span style={{ ...pls.mobileDayName, color: isToday ? 'var(--onglet)' : 'var(--text)' }}>{dayLabelCap}</span>
               {isToday && <span style={pls.mobileTodayChip}>Aujourd'hui</span>}
+              {libelleFermeture(mobileDate) && <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>{libelleFermeture(mobileDate)}</span>}
             </div>
             <button style={pls.mobileNavArrow} onClick={() => shiftMobileDay(1)} aria-label="Jour suivant">›</button>
           </div>
@@ -1183,7 +1203,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
           {sec.items.map(shift => {
           const emp = userDisplay(shift.userId);
           const role = emp.role ? demoData.roles[emp.role] : null;
-          const heuresReel = shift.pointageDebut && shift.pointageFin ? calcHeures(shift.pointageDebut, shift.pointageFin, shift.pause) : null;
+          const heuresReel = heuresPointees(shift);
           const enPoste = shift.pointageDebut && !shift.pointageFin;
           return (
             <div key={shift.id} style={{ ...pls.mobileShiftCard, flexDirection: 'column', alignItems: 'stretch' }}>
@@ -1223,7 +1243,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const maintenantZ = zurichClock();
   const mesHoraires = planningEtab.filter(s => s.userId === user.id);
   const mesHorairesDuJour = mesHoraires.filter(s => s.date === aujourdhuiZ);
-  const dureePointee = mesHorairesDuJour.reduce((t, s) => t + (calcHeures(s.pointageDebut, s.pointageFin, s.pause) || 0), 0);
+  const dureePointee = mesHorairesDuJour.reduce((t, s) => t + (heuresPointees(s) || 0), 0);
   const jour = pointePourMoi ? { ...pointageDuJour(mesHorairesDuJour), duree: dureeLisible(dureePointee), enCours: enCoursAccueil } : null;
   // Prochain service : le premier qui n'est pas encore terminé (même règle que MonPlanning).
   const prochainService = mesHoraires
@@ -1437,7 +1457,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
             <div style={{ overflowX: 'auto' }} ref={glisser.zoneRef}>
               <div style={{ ...pls.grid, gridTemplateColumns: `200px repeat(${DAYS.length}, minmax(90px,1fr))`, minWidth: 200 + DAYS.length * 90 }}>
                 <div style={pls.empColHeader} />
-                {DAYS.map(d => <div key={d.date} style={pls.dayHeader}><div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)' }}>{d.label}</div></div>)}
+                {DAYS.map(d => {
+                  const ferme = libelleFermeture(d.date);
+                  return (
+                    <div key={d.date} style={pls.dayHeader} data-jour-ferme={ferme ? '' : undefined}>
+                      <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)' }}>{d.label}</div>
+                      {ferme && <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text3)' }}>{ferme}</div>}
+                    </div>
+                  );
+                })}
                 {enSections(employees.filter(e => passeFiltre(e.id)), e => e.id).map(sec => (
                   <React.Fragment key={sec.id || 'tous'}>
                   {sec.nom && <div style={pls.groupeTitreGrille}>{sec.nom} <span style={pls.groupeCompte}>{sec.items.length}</span></div>}
@@ -1482,7 +1510,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                         const vise = glisser.glisse && glisser.glisse.cle === cle ? glisser.glisse.etat : null;
                         return (
                           <div key={d.date} data-planning-case={cle} data-etat-depot={vise || undefined} style={vise ? { ...pls.dayCell, ...pls.caseVisee[vise] } : pls.dayCell}>
-                            <ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected} absence={absenceDe(absencesVisibles, emp.id, d.date)} onRemplir={remplissage && canWrite ? remplirCase : null} glisser={glisserCase}/>
+                            <ShiftCell key={`${emp.id}-${d.date}`} userId={emp.id} date={d.date} getShiftsDay={getShiftsDay} canWrite={canWrite} openAddPrefill={openAddPrefill} openEditShift={openEditShift} calcHeures={calcHeures} selectionMode={selectionMode} selectedIds={selectedIds} toggleShiftSelected={toggleShiftSelected} absence={absenceDe(absencesVisibles, emp.id, d.date)} onRemplir={remplissage && canWrite ? remplirCase : null} glisser={glisserCase} alertes={alertesTemps}/>
                           </div>
                         );
                       })}
@@ -1509,7 +1537,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 const emp = userDisplay(shift.userId);
                 const role = emp.role ? demoData.roles[emp.role] : null;
                 const heuresPrev = calcHeures(shift.debut, shift.fin, shift.pause);
-                const heuresReel = shift.pointageDebut && shift.pointageFin ? calcHeures(shift.pointageDebut, shift.pointageFin, shift.pause) : null;
+                const heuresReel = heuresPointees(shift);
                 // Écart à la minute près ; rien d'affiché sous la minute.
                 const ecartMin = heuresPrev && heuresReel ? Math.round((heuresReel - heuresPrev) * 60) : 0;
                 const enPoste = shift.pointageDebut && !shift.pointageFin;

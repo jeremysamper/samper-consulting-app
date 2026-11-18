@@ -12,7 +12,8 @@
 //                   créditée (congé, vacances, formation, jour férié) ;
 //                   « absence » ne crédite pas ;
 //   heures faites = la mesure du relevé CCNT : arrivée et départ pointés,
-//                   pause déduite, coupures comprises ;
+//                   retenus selon les règles du pointage de la maison
+//                   (pointageRegles.js), pause déduite, coupures comprises ;
 //   solde         = faites moins dues ; sans contrat sur la période, pas de
 //                   solde (null), jamais 0 ;
 //   retard        = arrivée pointée plus de 5 minutes après le début prévu.
@@ -21,6 +22,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { dureeHeures } from './dureeHoraire.js';
+import { heuresPointees } from './pointageRegles.js';
 
 export const MOTIFS_CREDITES = new Set(['conge', 'vacances', 'formation', 'ferie']);
 export const SEUIL_RETARD_MIN = 5;
@@ -81,7 +83,7 @@ export function contratDuJour(contrats, jour) {
 
 // Heures faites : même boucle que buildCCNTData du relevé.
 export const heuresFaites = (shifts) => (shifts || []).reduce((t, s) => (
-  s.pointageDebut && s.pointageFin ? t + (parseFloat(calcHeures(s.pointageDebut, s.pointageFin, s.pause)) || 0) : t
+  s.pointageDebut && s.pointageFin ? t + (heuresPointees(s) || 0) : t
 ), 0);
 
 // Minutes de retard d'un horaire pointé (0 si à l'heure, en avance, ou dans
@@ -199,7 +201,7 @@ export function serieHeures({ shifts, contrats, absences, tranches }) {
       const h = parseFloat(calcHeures(s.debut, s.fin, s.pause));
       const p = parPersonne[s.userId] || (parPersonne[s.userId] = { prevues: 0, pointees: 0 });
       if (!Number.isNaN(h)) { prevues += h; p.prevues += h; }
-      if (s.pointageDebut && s.pointageFin) p.pointees += parseFloat(calcHeures(s.pointageDebut, s.pointageFin, s.pause)) || 0;
+      if (s.pointageDebut && s.pointageFin) p.pointees += heuresPointees(s) || 0;
     });
     const tropLong = versNumero(t.fin) - versNumero(t.debut) + 1 > 400;
     const soldes = {};

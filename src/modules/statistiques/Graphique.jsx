@@ -108,7 +108,11 @@ function colonnesDe({ type, series, tranches, ventilation }) {
 }
 
 // composition : rendue par composer() ; tranches : celles de la période.
-export default function Graphique({ composition, tranches, hauteur = 260, libelleComparaison = '' }) {
+// objectifs : { [id de mesure]: { valeur, trace } } (objectifs.js) ; une
+// mesure tracée seule (sans ventilation) reçoit un trait pointillé à la
+// hauteur de son objectif, s'il tient dans l'échelle. Le chiffre se lit dans
+// la tuile de la mesure.
+export default function Graphique({ composition, tranches, hauteur = 260, libelleComparaison = '', objectifs = null }) {
   const { type, series, echelles, ventilation, comparaison } = composition;
   const [sel, setSel] = useState(null);
   const { genre, colonnes } = useMemo(() => colonnesDe({ type, series, tranches, ventilation }), [type, series, tranches, ventilation]);
@@ -177,6 +181,12 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
               <path d={chemin(s, s.valeurs)} vectorEffect="non-scaling-stroke" style={{ fill: 'none', stroke: couleurSerie(s.rang), strokeWidth: 2.2, strokeLinejoin: 'round' }} />
             </g>
           ))}
+          {objectifs && genre === 'temps' && series.filter((s) => s.id === s.mesure && objectifs[s.mesure]?.trace).map((s) => {
+            const p = positionSur(echelleDe(s), objectifs[s.mesure].valeur);
+            if (p == null || p < 0 || p > 1) return null;
+            const yy = 100 - p * 100;
+            return <line key={`objectif-${s.id}`} x1={0} x2={Math.max(n, 1) * 10} y1={yy} y2={yy} vectorEffect="non-scaling-stroke" style={{ stroke: couleurSerie(s.rang), strokeWidth: 1.5, strokeDasharray: '2 4' }} data-stat-objectif={s.mesure} />;
+          })}
           {/* Plusieurs mesures en barres : seules les valeurs d'aujourd'hui le permettent
               (typesValides) ; une barre par mesure, côte à côte dans la colonne. */}
           {type === 'barres' && genre === 'temps' && series.length > 1 && colonnes.map((c, i) => c.barres.map(({ s, v }, k) => {
