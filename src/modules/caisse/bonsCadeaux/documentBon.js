@@ -5,13 +5,14 @@
 //
 // Charte des documents : bleu pétrole de la marque, ni gras ni capitales.
 // Le téléphone de la personne n'est jamais imprimé : il sert à retrouver le
-// bon, pas à le décorer. Le QR porte le code seul (codeBon.js).
+// bon, pas à le décorer. Le QR porte le lien du bon (codeBon.js) : l'appareil
+// photo d'un téléphone ouvre le bon dans l'app.
 // Polices standard du PDF (Helvetica, Courier) : apostrophe droite.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { PDF } from '../../../design/brandTokens.js';
 import { matriceQr } from '../../../services/qrFacture.js';
-import { dateCH } from './codeBon.js';
+import { dateCH, lienDuBon } from './codeBon.js';
 
 const chf = (n) => {
   const v = Number(n || 0);
@@ -68,7 +69,7 @@ export async function construireBonCadeau({ bon, maison }) {
   texte('Présentez ce bon à la caisse. Il se dépense en une ou plusieurs fois.', x, qy + 74, { taille: 7.5, c: PDF.stone, largeur: qx - x - 12 });
   if (bon.emis_at) texte(`Émis le ${dateCH(String(bon.emis_at).slice(0, 10))}`, x, qy + 95, { taille: 7.5, c: PDF.stone });
 
-  const m = await matriceQr(bon.code);
+  const m = await matriceQr(lienDuBon(bon.code));
   const marge = 2;
   const pas = cote / (m.taille + marge * 2);
   couleur(PDF.ink, 'fond');

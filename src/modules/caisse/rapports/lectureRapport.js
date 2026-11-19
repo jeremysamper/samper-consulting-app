@@ -7,6 +7,7 @@
 
 import * as caisse from '../../../services/caisseService.js';
 import * as tpe from '../../../services/caisseTpeService.js';
+import { listMouvementsRapport } from '../../../services/caisseBonsCadeauxService.js';
 import { telechargerFichier } from '../../inventaire/exportXlsxInventaire.js';
 import { comparaison, fusionnerDonnees, rapportCaisse } from './calculRapports.js';
 import { nomFichierDossier, nomFichierRapport, csvRapport, xlsxRapport, zipCsvRapport, zipDossier } from './exportsRapport.js';
@@ -36,7 +37,17 @@ export async function lireFenetre(etablissementId, debut, fin) {
     }
     morceaux.push(data);
   }
-  return { data: fusionnerDonnees(morceaux), error: null };
+  const donnees = fusionnerDonnees(morceaux);
+  // Bons cadeaux (19.11.2026), direction seulement, comme les paiements : le
+  // registre jusqu'à la fin de la fenêtre (en circulation se rejoue depuis
+  // l'origine). Une lecture en échec fait échouer le rapport, comme les liens
+  // des terminaux : jamais une dette de bons comptée à moitié.
+  if (donnees?.niveau === 'direction') {
+    const bons = await listMouvementsRapport(etablissementId, fin);
+    if (bons.error) return { data: null, error: bons.error };
+    donnees.bons = bons.data;
+  }
+  return { data: donnees, error: null };
 }
 
 // Le rapport d'une période, et sa comparaison quand elle a un sens : la

@@ -5874,6 +5874,14 @@ export const UI_GLOSSARY = {
   'Actifs': 'Active',
   'Épuisés': 'Used up',
   'Annulés': 'Cancelled',
+  "Bons cadeaux, hors chiffre d'affaires": 'Gift vouchers, not revenue',
+  'Bons cadeaux vendus': 'Gift vouchers sold',
+  'Nombre de bons cadeaux vendus': 'Number of gift vouchers sold',
+  'Bons cadeaux dépensés': 'Gift vouchers redeemed',
+  'Bons cadeaux remboursés': 'Gift vouchers refunded',
+  'Bons cadeaux en circulation': 'Gift vouchers outstanding',
+  'Dépensés sur les tickets': 'Redeemed on tickets',
+  'soldes à honorer au': 'balances still owed on',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

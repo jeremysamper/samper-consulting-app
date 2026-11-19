@@ -1,7 +1,7 @@
 import React from 'react';
 import { Camera } from 'lucide-react';
 import { Btn, Input } from '../../../components/ui/index.jsx';
-import { formaterSaisie, normaliserCode } from './codeBon.js';
+import { normaliserCode, saisieDuCode } from './codeBon.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Lire un bon cadeau : la caméra arrière s'ouvre d'elle-même et cherche un QR
@@ -144,7 +144,7 @@ export default function LecteurBon({ onCode, enCours = false }) {
           <span style={st.sousTitre}>Ou tapez le code</span>
           <Input
             value={saisie}
-            onChange={(e) => setSaisie(formaterSaisie(e.target.value))}
+            onChange={(e) => setSaisie(saisieDuCode(e.target.value))}
             placeholder="ABCD-EFGH"
             autoCapitalize="characters"
             autoComplete="off"

@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js';
+import { toutesLesPages } from '../utils/lirePages.js';
 import { MESSAGES_BONS_CADEAUX, normaliserCode } from '../modules/caisse/bonsCadeaux/codeBon.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -43,6 +44,23 @@ export async function listMouvementsDepuis(etablissementId, depuisIso) {
     .gte('created_at', depuisIso)
     .order('created_at', { ascending: false })
     .limit(2000);
+  if (error) return { data: null, error: mapError(error, 'Le registre des bons ne se lit pas.') };
+  return { data: data || [], error: null };
+}
+
+// Le registre d'argent des bons jusqu'à un jour d'exploitation compris, pour
+// les rapports de la caisse : ventes, rendus, dépenses et recrédits ; « en
+// circulation » se rejoue depuis le premier mouvement. Toutes les pages, ou
+// une erreur : jamais un registre tronqué.
+export async function listMouvementsRapport(etablissementId, fin) {
+  const { data, error } = await toutesLesPages((de, a) => supabase
+    .from('caisse_bons_cadeaux_mouvements')
+    .select('id, genre, montant, moyen, libelle, jour_exploitation')
+    .eq('etablissement_id', etablissementId)
+    .in('genre', ['emission', 'annulation', 'utilisation', 'recredit'])
+    .lte('jour_exploitation', fin)
+    .order('id', { ascending: true })
+    .range(de, a));
   if (error) return { data: null, error: mapError(error, 'Le registre des bons ne se lit pas.') };
   return { data: data || [], error: null };
 }

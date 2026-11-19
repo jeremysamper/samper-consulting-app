@@ -12,6 +12,8 @@
 import { serieRapports } from '../../caisse/rapports/calculRapports.js';
 
 const sauf = (p, f) => (p.vide ? null : f(p));
+// Bons cadeaux : un pas sans ticket ni mouvement de bon vaut « n/a ».
+const bons = (p, f) => (!p.bons || (p.vide && !p.bons.mouvements) ? null : f(p.bons));
 const partsTaux = (p, cle) => (p.synthese.parTaux || []).map((t) => ({ cle: `t${t.taux}`, libelle: `${String(t.taux).replace('.', ',')} %`, brut: true, valeur: t[cle] }));
 
 // Par personne, comme l'onglet Personnes des Rapports (niveau direction) :
@@ -138,6 +140,34 @@ export const familleCaisse = {
       id: 'caisse.ecarts_caisse', libelle: 'Écarts de caisse', unite: 'chf', nature: 'flux', niveau: 'direction',
       valeur: (p) => (p.ecartsCaisse && p.ecartsCaisse.lignes.length ? p.ecartsCaisse.total : null),
       phrase: 'Écart entre les espèces comptées et les espèces attendues, à la dernière clôture de chaque jour.',
+    },
+    // Bons cadeaux (19.11.2026) : le registre des bons, hors chiffre
+    // d'affaires (bonsCadeaux de calculRapports.js), au jour d'exploitation.
+    {
+      id: 'caisse.bons_vendus', libelle: 'Bons cadeaux vendus', unite: 'chf', nature: 'flux', niveau: 'direction',
+      valeur: (p) => bons(p, (b) => b.vendus.montant),
+      ventilations: [{ id: 'moyen', libelle: 'Par moyen de paiement', parts: (p) => (p.bons ? p.bons.vendus.moyens.map((l) => ({ cle: `${l.moyen}|${l.libelle}`, libelle: l.nom, valeur: l.montant })) : []) }],
+      phrase: "Valeur des bons vendus à la caisse, au jour de la vente. Hors chiffre d'affaires : un bon compte quand il paie un ticket.",
+    },
+    {
+      id: 'caisse.bons_vendus_nombre', libelle: 'Nombre de bons cadeaux vendus', unite: 'nombre', nature: 'flux', niveau: 'direction',
+      valeur: (p) => bons(p, (b) => b.vendus.nombre),
+      phrase: 'Bons vendus à la caisse, au jour de la vente.',
+    },
+    {
+      id: 'caisse.bons_depenses', libelle: 'Bons cadeaux dépensés', unite: 'chf', nature: 'flux', niveau: 'direction',
+      valeur: (p) => bons(p, (b) => b.depenses),
+      phrase: 'Montants réglés par des bons sur les tickets, moins ceux des tickets annulés depuis, rendus aux bons.',
+    },
+    {
+      id: 'caisse.bons_rendus', libelle: 'Bons cadeaux remboursés', unite: 'chf', nature: 'flux', niveau: 'direction',
+      valeur: (p) => bons(p, (b) => b.rendus.montant),
+      phrase: "Bons annulés avant tout usage, l'argent rendu au client, au jour du remboursement.",
+    },
+    {
+      id: 'caisse.bons_circulation', libelle: 'Bons cadeaux en circulation', unite: 'chf', nature: 'stock', niveau: 'direction',
+      valeur: (p) => (p.bons ? p.bons.circulation : null),
+      phrase: 'Somme des soldes des bons à la fin de chaque pas : ce que la maison doit encore en repas.',
     },
     {
       id: 'caisse.plats_qte', libelle: 'Plats vendus', unite: 'nombre', nature: 'flux',

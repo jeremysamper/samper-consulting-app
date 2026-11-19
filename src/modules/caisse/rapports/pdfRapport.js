@@ -88,6 +88,24 @@ export async function construireSynthese({ rapport, etablissement, reglages, com
       paire(`Écarts de caisse (${nb(rapport.ecartsCaisse.lignes.length, 'clôture', 'clôtures')})`, chf(rapport.ecartsCaisse.total), { gras: true });
       rapport.ecartsCaisse.lignes.filter((e) => e.ecart).forEach((e) => paire(`${dateCH(e.jour)}, clôture n° ${e.numeroRetenu}`, chf(e.ecart), { gris: true }));
     }
+
+    // Bons cadeaux (19.11.2026) : hors chiffre d'affaires, après les paiements.
+    const b = rapport.bons;
+    if (b) {
+      const auJour = rapport.jourCourant && rapport.periode.fin > rapport.jourCourant ? rapport.jourCourant : rapport.periode.fin;
+      bloc("Bons cadeaux, hors chiffre d'affaires");
+      b.vendus.moyens.forEach((l) => paire(`Vendus, ${l.nom} (${nb(l.nombre, 'bon', 'bons')})`, chf(l.montant)));
+      if (!b.vendus.nombre) paire('Vendus', chf(0));
+      if (b.recredites.nombre) {
+        paire(`Réglés par des bons sur les tickets (${nb(b.utilises.nombre, 'paiement', 'paiements')})`, chf(b.utilises.montant));
+        paire(`Rendus aux bons, tickets annulés (${b.recredites.nombre})`, chf(-b.recredites.montant), { gris: true });
+        paire('Dépensés, net', chf(b.depenses));
+      } else {
+        paire(`Dépensés sur les tickets (${nb(b.utilises.nombre, 'paiement', 'paiements')})`, chf(b.depenses));
+      }
+      b.rendus.moyens.forEach((l) => paire(`Remboursés, ${l.nom} (${nb(l.nombre, 'bon', 'bons')})`, chf(-l.montant)));
+      if (b.circulation != null) paire(`En circulation au ${dateCH(auJour)}`, chf(b.circulation), { gras: true });
+    }
   }
 
   bloc('Par service');

@@ -1,14 +1,15 @@
 import React from 'react';
 import { matriceQr } from '../../../services/qrFacture.js';
+import { lienDuBon } from './codeBon.js';
 
-// Le QR d'un bon, en SVG : il porte le code seul. Encre du texte sur la
+// Le QR d'un bon, en SVG : il porte le lien du bon (lienDuBon). Encre du texte sur la
 // surface : en thème sombre il s'inverse, et le lecteur de la caisse lit les
 // deux sens (LecteurBon.jsx).
 export default function QrBon({ code, taille = 168 }) {
   const [chemin, setChemin] = React.useState(null);
   React.useEffect(() => {
     let vivant = true;
-    matriceQr(code).then((m) => {
+    matriceQr(lienDuBon(code)).then((m) => {
       if (!vivant) return;
       let d = '';
       for (let l = 0; l < m.taille; l += 1) {

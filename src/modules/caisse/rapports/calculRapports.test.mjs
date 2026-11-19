@@ -43,7 +43,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { strFromU8, unzipSync } from 'fflate';
 import {
-  comparaison, fusionnerDonnees, mouvements, periodeComplete, rapportCaisse, serieRapports, trierPlats,
+  bonsCadeaux, comparaison, fusionnerDonnees, mouvements, periodeComplete, rapportCaisse, serieRapports, trierPlats,
 } from './calculRapports.js';
 import {
   csvRapport, feuillesDossier, feuillesRapport, nomFichierDossier, nomFichierRapport, texteLisezMoi, xlsxRapport, zipCsvRapport, zipDossier,
@@ -653,4 +653,65 @@ test('série : produits, personnes et tickets abandonnés de chaque tranche refo
   assert.equal(somme((j) => parPersonne(j.personnes, 'ttc')), parPersonne(r.personnes, 'ttc'));
   assert.equal(parPersonne(r.personnes, 'ttc'), r.synthese.ventesTtc);
   assert.equal(parPersonne(r.personnes, 'annulationsTtc'), r.synthese.annulationsTtc);
+});
+
+// ── Bons cadeaux (19.11.2026) : le registre des bons, hors chiffre d'affaires ──
+const REGISTRE_BONS = [
+  { id: 'm1', genre: 'emission', montant: 100, moyen: 'especes', libelle: null, jour_exploitation: '2026-10-30' },
+  { id: 'm2', genre: 'emission', montant: 50, moyen: 'carte', libelle: null, jour_exploitation: J1 },
+  { id: 'm3', genre: 'utilisation', montant: 30, moyen: null, libelle: null, jour_exploitation: J1 },
+  { id: 'm4', genre: 'recredit', montant: 30, moyen: null, libelle: null, jour_exploitation: J2 },
+  { id: 'm5', genre: 'utilisation', montant: 20.5, moyen: null, libelle: null, jour_exploitation: J2 },
+  { id: 'm6', genre: 'annulation', montant: 50, moyen: 'especes', libelle: null, jour_exploitation: J2 },
+  { id: 'm7', genre: 'emission', montant: 40, moyen: 'autre', libelle: 'Twint', jour_exploitation: '2026-11-05' },
+];
+
+test('bons cadeaux : jour d\'exploitation, dépensés nets des recrédits, circulation rejouée depuis l\'origine', () => {
+  const r = rapportCaisse({ ...jeuEssai(), bons: REGISTRE_BONS }, { type: 'libre', debut: J1, fin: J2 });
+  const b = r.bons;
+  assert.equal(b.mouvements, 5);
+  assert.deepEqual(b.vendus, { nombre: 1, montant: 50, moyens: [{ moyen: 'carte', libelle: '', nom: 'Carte bancaire', nombre: 1, montant: 50 }] });
+  assert.deepEqual(b.utilises, { nombre: 2, montant: 50.5 });
+  assert.deepEqual(b.recredites, { nombre: 1, montant: 30 });
+  assert.equal(b.depenses, 20.5);
+  assert.equal(b.rendus.montant, 50);
+  assert.equal(b.especes, -50);
+  // 100 + 50 - 30 + 30 - 20.5 - 50 ; la vente du 5 novembre est après la fin.
+  assert.equal(b.circulation, 79.5);
+  // Les chiffres d'affaires ne bougent pas : un bon n'est pas une vente.
+  assert.equal(r.synthese.ttc, rapportCaisse(jeuEssai(), { type: 'libre', debut: J1, fin: J2 }).synthese.ttc);
+});
+
+test('bons cadeaux : rien pour la cuisine, pour un service, ni sans registre', () => {
+  const periode = { type: 'libre', debut: J1, fin: J2 };
+  assert.equal(rapportCaisse({ ...jeuEssai({ niveau: 'cuisine' }), bons: REGISTRE_BONS }, periode).bons, null);
+  assert.equal(rapportCaisse({ ...jeuEssai(), bons: REGISTRE_BONS }, periodeService(J1, 'midi')).bons, null);
+  assert.equal(rapportCaisse(jeuEssai(), periode).bons, null);
+  assert.equal(bonsCadeaux([], periode), null);
+  // Une période qui commence après aujourd'hui n'a pas de circulation.
+  assert.equal(bonsCadeaux(REGISTRE_BONS, { debut: '2026-12-01', fin: '2026-12-31' }, '2026-11-19').circulation, null);
+});
+
+test('bons cadeaux : la série par jour refait la période, la circulation suit chaque fin de jour', () => {
+  const donnees = { ...jeuEssai(), bons: REGISTRE_BONS };
+  const s = serieRapports(donnees, { type: 'libre', debut: J1, fin: J2 }, [{ debut: J1, fin: J1 }, { debut: J2, fin: J2 }]);
+  assert.deepEqual(s.map((p) => p.bons.vendus.montant), [50, 0]);
+  assert.deepEqual(s.map((p) => p.bons.depenses), [30, -9.5]);
+  assert.deepEqual(s.map((p) => p.bons.circulation), [120, 79.5]);
+});
+
+test('bons cadeaux : une feuille dans l\'export et dans le dossier, une règle et un point à valider au lisez-moi', () => {
+  const donnees = { ...jeuEssai(), bons: REGISTRE_BONS };
+  const r = rapportCaisse(donnees, { type: 'libre', debut: J1, fin: J2 });
+  const f = feuillesRapport(r).find((x) => x.id === 'bons');
+  assert.ok(f);
+  assert.deepEqual(f.rangs.at(-1).cellules, ['En circulation au 04.11.2026', null, 79.5]);
+  assert.ok(feuillesDossier({ donnees, rapport: r }).some((x) => x.fichier === 'bons-cadeaux.csv'));
+  const texte = texteLisezMoi({ rapport: r, etablissement: 'Maison', date: new Date('2026-11-19T10:00:00Z') });
+  assert.match(texte, /bons-cadeaux\.csv/);
+  assert.match(texte, /Trois points ne sont pas confirmés/);
+  // Sans bon, le dossier ne change pas.
+  const sans = rapportCaisse(jeuEssai(), { type: 'libre', debut: J1, fin: J2 });
+  assert.equal(feuillesRapport(sans).some((x) => x.id === 'bons'), false);
+  assert.match(texteLisezMoi({ rapport: sans, etablissement: 'Maison', date: new Date('2026-11-19T10:00:00Z') }), /Deux points ne sont pas confirmés/);
 });

@@ -4,13 +4,28 @@
 // (migration 20261119_caisse_bons_cadeaux) : l'écran ne fait que les refléter.
 //
 // Code : 8 signes d'un alphabet sans 0, O, 1, I ni L, écrit XXXX-XXXX. Le QR
-// porte le code seul : un téléphone qui le lit n'affiche rien de plus que ce
-// qui est imprimé en clair.
+// porte le lien de l'app vers le bon (lienDuBon, 19.11.2026) : l'appareil
+// photo d'un téléphone l'ouvre directement, et le lien ne dit rien de plus
+// que le code imprimé en clair. Le lecteur de la caisse lit le lien comme le
+// code seul des premiers bons.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const SIGNE = '[A-HJKMNP-Z2-9]';
 const CODE_DANS_TEXTE = new RegExp(`(${SIGNE}{4})[\\s-]?(${SIGNE}{4})`);
+
+// L'origine publique de l'app, comme la réservation en ligne : un bon imprimé
+// depuis une préversion mène quand même à l'app de production.
+export const ORIGINE_APP = 'https://samperconsulting-app.com';
+export const lienDuBon = (code) => `${ORIGINE_APP}/?bon=${encodeURIComponent(code)}`;
+
+// Le code porté par un lien (« ?bon= »), ou null : le paramètre passe avant
+// la fouille du texte, où le nom de domaine pourrait faire huit signes.
+function codeDuLien(texte) {
+  const m = String(texte).match(/[?&]bon=([^&#\s]+)/i);
+  if (!m) return null;
+  try { return decodeURIComponent(m[1]); } catch { return m[1]; }
+}
 
 export const MONTANTS_RAPIDES = [20, 50, 100, 150, 200];
 export const MONTANT_MAX = 5000;
@@ -24,13 +39,25 @@ export const VALIDITE_DEFAUT = '24';
 
 // Ce qu'on tape ou ce que lit le QR → « ABCD-EFGH », ou null. Les minuscules,
 // les espaces et le tiret sont tolérés ; un texte plus long (un QR qui
-// porterait autre chose autour) est fouillé.
+// porterait autre chose autour) est fouillé. Un lien de bon rend son code.
 export function normaliserCode(texte) {
   if (texte == null) return null;
-  const brut = String(texte).toUpperCase();
-  const m = brut.match(CODE_DANS_TEXTE);
+  const lien = codeDuLien(texte);
+  const brut = String(lien ?? texte).toUpperCase();
+  const m = lien != null ? brut.match(new RegExp(`^\\s*(${SIGNE}{4})[\\s-]?(${SIGNE}{4})\\s*$`)) : brut.match(CODE_DANS_TEXTE);
   if (!m) return null;
   return `${m[1]}-${m[2]}`;
+}
+
+// Une saisie au clavier qui ressemble à un lien (une douchette qui tape le
+// lien du QR, un lien collé) : son code, sinon la saisie mise en forme.
+export function saisieDuCode(texte) {
+  const v = String(texte || '');
+  if (/[/?=:.]/.test(v) || v.replace(/[\s-]/g, '').length > 8) {
+    const code = normaliserCode(v);
+    if (code) return code;
+  }
+  return formaterSaisie(v);
 }
 
 // Saisie au clavier : majuscules, signes hors alphabet retirés, tiret posé

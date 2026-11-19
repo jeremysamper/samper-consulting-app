@@ -20,6 +20,7 @@ import InvitationAvisPret from './InvitationAvisPret.jsx';
 import Historique from './Historique.jsx';
 import Cloture from './Cloture.jsx';
 import BonsCadeaux from './bonsCadeaux/BonsCadeaux.jsx';
+import { bonEnAttente, oublierBonEnAttente } from './bonsCadeaux/bonEnAttente.js';
 import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
 import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
@@ -141,6 +142,17 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const [cleTest, setCleTest] = React.useState(() => lireModeTest(etabId));
   const modeTest = Boolean(cleTest);
   const peutActiverTest = ROLES_MODE_TEST.includes(user?.role);
+  // Bon cadeau ouvert depuis son QR (bonEnAttente, App.jsx) : l'écran des bons
+  // s'ouvre sur sa fiche. Jamais en mode test, qui ne montre aucun vrai bon.
+  const [bonAOuvrir, setBonAOuvrir] = React.useState(null);
+  React.useEffect(() => {
+    const code = bonEnAttente();
+    if (!code || !etabId) return;
+    oublierBonEnAttente();
+    if (modeTest) { notify('Quittez le mode test pour ouvrir ce bon cadeau.', 'info'); return; }
+    setBonAOuvrir(code);
+    setEcran('bons_cadeaux');
+  }, [etabId, modeTest, setEcran]);
   const [testEnCours, setTestEnCours] = React.useState(false);
   const [proposerVider, setProposerVider] = React.useState(false);
   // Terminaux de paiement de la maison (v9), reliés et retirés. Une maison
@@ -821,7 +833,16 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // ── Bons cadeaux (19.11.2026) : vendre, retrouver, suivre. Hors mode test :
   // l'écran ne montre que de vrais bons. ──
   if (ecran === 'bons_cadeaux' && !modeTest) {
-    return <BonsCadeaux etablissement={etablissement} reglages={reglages} role={user?.role} onRetour={retourAccueil} />;
+    return (
+      <BonsCadeaux
+        etablissement={etablissement}
+        reglages={reglages}
+        role={user?.role}
+        codeAOuvrir={bonAOuvrir}
+        onCodeOuvert={() => setBonAOuvrir(null)}
+        onRetour={retourAccueil}
+      />
+    );
   }
 
   // ── Historique et quittances (v7) ──

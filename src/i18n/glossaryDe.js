@@ -5805,4 +5805,12 @@ export const UI_GLOSSARY_DE = {
   'Actifs': 'Aktiv',
   'Épuisés': 'Aufgebraucht',
   'Annulés': 'Storniert',
+  "Bons cadeaux, hors chiffre d'affaires": 'Gutscheine, ausserhalb des Umsatzes',
+  'Bons cadeaux vendus': 'Verkaufte Gutscheine',
+  'Nombre de bons cadeaux vendus': 'Anzahl verkaufter Gutscheine',
+  'Bons cadeaux dépensés': 'Eingelöste Gutscheine',
+  'Bons cadeaux remboursés': 'Erstattete Gutscheine',
+  'Bons cadeaux en circulation': 'Offene Gutscheine',
+  'Dépensés sur les tickets': 'Auf Tickets eingelöst',
+  'soldes à honorer au': 'offene Guthaben am',
 };

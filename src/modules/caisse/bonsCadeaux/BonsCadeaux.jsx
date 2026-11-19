@@ -31,7 +31,8 @@ const FILTRES = [
   { id: 'tous', label: 'Tous' },
 ];
 
-export default function BonsCadeaux({ etablissement, reglages, role, onRetour }) {
+// codeAOuvrir : un bon ouvert depuis son QR (Caisse.jsx) ; sa fiche s'ouvre une fois.
+export default function BonsCadeaux({ etablissement, reglages, role, codeAOuvrir = null, onCodeOuvert, onRetour }) {
   const etabId = etablissement?.id;
   const maison = React.useMemo(() => coordonneesMaison(etablissement, reglages), [etablissement, reglages]);
   const peutGerer = ['consultant', 'patron'].includes(role);
@@ -82,6 +83,16 @@ export default function BonsCadeaux({ etablissement, reglages, role, onRetour })
       setRecherchant(false);
     }
   }
+
+  const codeLuRef = React.useRef(codeLu);
+  codeLuRef.current = codeLu;
+  const onCodeOuvertRef = React.useRef(onCodeOuvert);
+  onCodeOuvertRef.current = onCodeOuvert;
+  React.useEffect(() => {
+    if (!codeAOuvrir || !etabId) return;
+    onCodeOuvertRef.current?.();
+    codeLuRef.current(codeAOuvrir);
+  }, [codeAOuvrir, etabId]);
 
   function bonChange(b) {
     setBons((liste) => (liste || []).map((x) => (x.id === b.id ? b : x)));

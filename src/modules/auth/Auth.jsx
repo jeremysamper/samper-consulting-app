@@ -8,7 +8,10 @@ import { authStyles as as } from './authStyles.js';
 // mfa : { factorId } quand le compte a un facteur vérifié et que la session
 // est encore aal1 (juste après le mot de passe, ou à l'ouverture de l'app) ;
 // l'écran passe alors à l'étape « code ».
-export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard, mfa, onVerifyMfa, onCancelMfa }) {
+// bonCadeau : code d'un bon ouvert depuis son QR par l'appareil photo d'un
+// téléphone (App.jsx). Un client qui le lit apprend où le présenter ; un
+// membre de l'équipe se connecte et la Caisse ouvre le bon.
+export default function Auth({ bonCadeau = null, onSignIn, onResetPassword, onNavigateToDashboard, mfa, onVerifyMfa, onCancelMfa }) {
   const [mode, setMode] = useState('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -169,6 +172,12 @@ export default function Auth({ onSignIn, onResetPassword, onNavigateToDashboard,
 
         {error && <div style={as.errorBox}>{error}</div>}
         {info && <div style={as.infoBox}>{info}</div>}
+        {bonCadeau && mode === 'signin' && (
+          <div style={as.infoBox} data-bon-lien="">
+            <div><span>Bon cadeau</span> <span data-no-translate style={{ fontFamily: 'var(--font-num)', letterSpacing: '0.06em' }}>{bonCadeau}</span></div>
+            <div>Présentez ce bon à la caisse de la maison. L'équipe l'ouvre ici en se connectant.</div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit}>
           <div style={as.field}>

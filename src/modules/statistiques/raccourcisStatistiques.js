@@ -38,6 +38,10 @@ export const RACCOURCIS = {
         graphiques: [{ mesures: ['caisse.net_encaisse'], ventilation: 'moyen' }] },
       { id: 'personnes', libelle: 'Personnes', periode: 'mois', pas: 'jour', comparaison: 'precedente',
         graphiques: [{ mesures: ['caisse.ventes'], ventilation: 'personne' }] },
+      // Bons cadeaux (19.11.2026) : direction seulement, comme les paiements.
+      { id: 'bons', libelle: 'Bons cadeaux', court: 'Bons', periode: 'mois', pas: 'jour', comparaison: 'precedente', explications: true,
+        chiffres: ['caisse.bons_vendus', 'caisse.bons_vendus_nombre', 'caisse.bons_depenses', 'caisse.bons_rendus', 'caisse.bons_circulation'],
+        graphiques: [{ mesures: ['caisse.bons_vendus', 'caisse.bons_depenses'] }] },
       { id: 'rapport', libelle: 'Rapport complet', court: 'Rapport', ecran: 'rapport_caisse', periode: 'mois', pas: 'jour',
         graphiques: [{ mesures: ['caisse.ca_ttc'] }] },
     ],

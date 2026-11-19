@@ -103,6 +103,21 @@ function feuilleMoyens(r) {
   };
 }
 
+// Bons cadeaux (19.11.2026), hors chiffre d'affaires : vendus par moyen,
+// dépensés sur les tickets, remboursés, en circulation à la fin.
+function feuilleBons(r) {
+  const b = r.bons;
+  const auJour = r.jourCourant && r.periode.fin > r.jourCourant ? r.jourCourant : r.periode.fin;
+  const rangs = b.vendus.moyens.map((l) => rang([`Vendus, ${l.nom}`, l.nombre, l.montant]));
+  rangs.push(rang(['Vendus', b.vendus.nombre, b.vendus.montant], true));
+  rangs.push(rang(['Réglés par des bons sur les tickets', b.utilises.nombre, b.utilises.montant]));
+  if (b.recredites.nombre) rangs.push(rang(['Rendus aux bons, tickets annulés', b.recredites.nombre, -b.recredites.montant]));
+  rangs.push(rang(['Dépensés, net', null, b.depenses], true));
+  b.rendus.moyens.forEach((l) => rangs.push(rang([`Remboursés, ${l.nom}`, l.nombre, -l.montant])));
+  if (b.circulation != null) rangs.push(vide(), rang([`En circulation au ${dateCH(auJour)}`, null, b.circulation], true));
+  return { id: 'bons', nom: 'Bons cadeaux', fichier: 'bons-cadeaux.csv', colonnes: [T('Rubrique', 44), M('Nombre', 10), M('Montant', 14)], rangs };
+}
+
 function feuillePlats(r, tri) {
   const p = r.plats;
   const rangs = trierPlats(p.lignes, tri).map((l) => rang([
@@ -189,6 +204,7 @@ export function feuillesRapport(rapport, { tri = 'qte', noShow = null } = {}) {
   return [
     direction && feuilleSynthese(rapport, { noShow }),
     direction && feuilleMoyens(rapport),
+    direction && rapport.bons && feuilleBons(rapport),
     feuillePlats(rapport, tri),
     feuilleServices(rapport),
     direction && feuilleHeures(rapport),
@@ -368,6 +384,7 @@ export function feuillesDossier({ donnees, rapport }) {
       colonnes: [T('Numéro', 13), T('Jour de la vente', 12), T('Annulé le', 17), T('Jour d\'annulation', 12), T('Par', 22), T('Motif', 40), M('Total TTC'), M('TVA')],
       rangs: annulations,
     },
+    ...(rapport.bons ? [feuilleBons(rapport)] : []),
   ];
 }
 
@@ -409,6 +426,7 @@ export function texteLisezMoi({ rapport, etablissement = '', date = new Date() }
     '- clotures.csv : chaque clôture de caisse, avec le comptage des espèces, l\'écart de caisse et son empreinte.',
     '- journal-des-tickets.csv : chaque ticket numéroté (numéro, date, total, taux, moyen, état).',
     '- annulations.csv : chaque annulation, avec son auteur et son motif.',
+    ...(rapport.bons ? ["- bons-cadeaux.csv : bons vendus, dépensés et remboursés, au jour d'exploitation, et leur solde en circulation à la fin."] : []),
     '- integrite.txt : le résultat du contrôle de la chaîne d\'intégrité à la date de l\'export.',
     '- dossier-caisse.xlsx : les mêmes tableaux dans un classeur.',
     '- synthese.pdf : la synthèse de la période.',
@@ -419,6 +437,7 @@ export function texteLisezMoi({ rapport, etablissement = '', date = new Date() }
     '- Une clôture complémentaire recompte les espèces d\'un jour : elle ne s\'additionne jamais aux ventes.',
     '- Les tickets du mode test n\'ont pas de numéro et ne figurent nulle part dans ce dossier.',
     '- Les pourboires sont saisis à part : ni dans le chiffre d\'affaires, ni dans la base de TVA.',
+    ...(rapport.bons ? ["- La vente d'un bon cadeau n'est pas un ticket : c'est une dette de la maison, hors chiffre d'affaires. Un bon qui paie un ticket figure dans encaissements.csv sous « Bon cadeau », et la TVA est celle du ticket."] : []),
     '',
   ];
   if (rapport.provisoire) {
@@ -437,8 +456,9 @@ export function texteLisezMoi({ rapport, etablissement = '', date = new Date() }
     lignes.push('');
   }
   lignes.push(
-    'Deux points ne sont pas confirmés par un texte fédéral lu pour ce dossier et restent à valider par la fiduciaire :',
+    `${rapport.bons ? 'Trois points ne sont pas confirmés' : 'Deux points ne sont pas confirmés'} par un texte fédéral lu pour ce dossier et restent à valider par la fiduciaire :`,
     '- le traitement TVA des pourboires (ici hors chiffre d\'affaires et hors base de TVA) ;',
+    ...(rapport.bons ? ['- le traitement des bons cadeaux (ici une dette à la vente, la TVA due quand le bon paie un ticket) ;'] : []),
     '- l\'arrondi aux 5 centimes des paiements en espèces (ici porté à part, en écart d\'arrondi).',
     '',
     'Ce dossier prépare les chiffres et les pièces. Il ne tient pas les comptes et n\'établit pas le décompte TVA officiel.',

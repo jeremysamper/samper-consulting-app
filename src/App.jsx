@@ -14,7 +14,8 @@ import SafeModule from './legacy/SafeModule.jsx';
 import { loadLegacyModules } from './legacy/loadLegacyModules.js';
 import { getHydrateFromSupabase, removeLegacyGlobal, writeLegacyGlobal } from './legacy/legacyApi.js';
 import { getPermissionsForRole } from './data/demoData.js';
-import { getConsultantToolsTabForPage, isModuleActiveForEtab, normalizePage, pageAccueil } from './modules/moduleConfig.js';
+import { getConsultantToolsTabForPage, isModuleActiveForEtab, normalizePage, pageAccueil, peutOuvrirPage } from './modules/moduleConfig.js';
+import { bonEnAttente, oublierBonEnAttente, retenirBonDuLien } from './modules/caisse/bonsCadeaux/bonEnAttente.js';
 import { readText, UI_STORAGE_KEYS, writeText } from './utils/storage.js';
 import { pageDeDemarrage } from './services/preferencesAppareil.js';
 import { dbService } from './services/dbService.js';
@@ -45,6 +46,8 @@ function lireLienNotification() {
   }
 }
 const LIEN_NOTIFICATION = typeof window !== 'undefined' ? lireLienNotification() : null;
+// Bon cadeau ouvert depuis son QR (/?bon=CODE) : gardé le temps de la connexion.
+const BON_DU_LIEN = typeof window !== 'undefined' ? retenirBonDuLien() : null;
 // Page de démarrage choisie dans Réglages > Démarrage : lue une fois, au
 // lancement, et posée comme page courante avant le premier rendu (un
 // rechargement dans le même onglet garde la page en cours, pageDeDemarrage).
@@ -242,6 +245,19 @@ export default function App() {
     replacePage(accueil);
   }, [page, etabCourant, roleCourant, shellMode]);
 
+  // Bon cadeau ouvert depuis son QR : la Caisse l'ouvre sur sa fiche, pour un
+  // compte qui a la caisse dans cet établissement. Les autres sont prévenus.
+  useEffect(() => {
+    if (!auth.profile || !etabCourant || !bonEnAttente()) return;
+    const droits = getPermissionsForRole(auth.profile.role);
+    if (isModuleActiveForEtab(etabCourant, 'caisse') && peutOuvrirPage('caisse', auth.profile, droits)) {
+      if (readText(UI_STORAGE_KEYS.page, '') !== 'caisse') setPageRef.current('caisse');
+      return;
+    }
+    oublierBonEnAttente();
+    notify('Ce bon cadeau se lit dans la Caisse, avec un compte qui y a accès.', 'info');
+  }, [auth.profile, etabCourant]);
+
   // Notification touchée : l'app bascule sur l'établissement de la réservation
   // (s'il fait partie des siens), au démarrage ou si elle était déjà ouverte.
   const [etabDemande, setEtabDemande] = useState(() => LIEN_NOTIFICATION?.etab || null);
@@ -329,7 +345,7 @@ export default function App() {
   } else if (auth.loading) {
     content = null;
   } else if (!auth.profile) {
-    content = <Auth onSignIn={auth.signIn} onResetPassword={auth.resetPassword} mfa={auth.mfa} onVerifyMfa={auth.verifyMfa} onCancelMfa={auth.signOut} onNavigateToDashboard={() => setPage(pageAccueil(null, {}, shellMode))} />;
+    content = <Auth bonCadeau={BON_DU_LIEN} onSignIn={auth.signIn} onResetPassword={auth.resetPassword} mfa={auth.mfa} onVerifyMfa={auth.verifyMfa} onCancelMfa={auth.signOut} onNavigateToDashboard={() => setPage(pageAccueil(null, {}, shellMode))} />;
   } else if (auth.profile.actif === false) {
     content = <DisabledAccount onLogout={handleLogout} />;
   } else if (legacyState.loading) {

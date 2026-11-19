@@ -3,7 +3,24 @@ import assert from 'node:assert/strict';
 import {
   normaliserCode, formaterSaisie, telephoneValide, montantValide, ajouterMois, validiteDepuis,
   etatBon, montantUtilisable, enCirculation, bilanDuMois, lienSms, texteSms, ALPHABET,
+  lienDuBon, saisieDuCode,
 } from './codeBon.js';
+
+test('lienDuBon : le QR porte un lien de production qui rend son code', () => {
+  assert.equal(lienDuBon('K7M2-Q9TX'), 'https://samperconsulting-app.com/?bon=K7M2-Q9TX');
+  assert.equal(normaliserCode(lienDuBon('K7M2-Q9TX')), 'K7M2-Q9TX');
+  assert.equal(normaliserCode('https://sc-app-git-x-samper-consulting.vercel.app/?page=caisse&bon=k7m2q9tx'), 'K7M2-Q9TX');
+  // Le domaine ne doit jamais passer pour un code (« STAGEPRV » ferait huit signes).
+  assert.equal(normaliserCode('https://stageprvxyz.example/?bon=ABC'), null);
+  assert.equal(normaliserCode('https://samperconsulting-app.com/?bon=K7M2-Q9T0'), null);
+});
+
+test('saisieDuCode : un lien tapé par une douchette rend son code, la frappe reste mise en forme', () => {
+  assert.equal(saisieDuCode('https://samperconsulting-app.com/?bon=K7M2-Q9TX'), 'K7M2-Q9TX');
+  assert.equal(saisieDuCode('k7m2'), 'K7M2');
+  assert.equal(saisieDuCode('k7m2q'), 'K7M2-Q');
+  assert.equal(saisieDuCode('K7M2-Q9TX'), 'K7M2-Q9TX');
+});
 
 test('alphabet : 31 signes, sans 0 O 1 I L', () => {
   assert.equal(ALPHABET.length, 31);

@@ -202,6 +202,7 @@ function Moyens({ r }) {
         <Rang titre="Pourboires" detail="saisis à part, hors chiffre d'affaires"><Chf v={m.pourboires} /></Rang>
         <Rang titre="Écarts d'arrondi" detail="arrondi aux 5 centimes des espèces"><Chf v={m.arrondis} /></Rang>
       </Section>
+      {r.bons && <BonsDuRapport r={r} />}
       {r.ecartsCaisse && (
         <Section titre="Écarts de caisse des clôtures">
           {r.ecartsCaisse.lignes.map((e) => (
@@ -223,6 +224,53 @@ function Moyens({ r }) {
         </Section>
       )}
     </>
+  );
+}
+
+// Bons cadeaux (19.11.2026), hors chiffre d'affaires : vendus par moyen,
+// dépensés sur les tickets, remboursés, et ce qui reste à honorer à la fin
+// de la période (bonsCadeaux de calculRapports.js).
+function BonsDuRapport({ r }) {
+  const b = r.bons;
+  const auJour = r.jourCourant && r.periode.fin > r.jourCourant ? r.jourCourant : r.periode.fin;
+  return (
+    <Section titre="Bons cadeaux, hors chiffre d'affaires">
+      {b.vendus.moyens.map((l) => (
+        <Rang
+          key={`v|${l.moyen}|${l.libelle}`}
+          titre={<><span>Vendus</span>{', '}{l.libelle ? <span data-no-translate>{l.libelle}</span> : <span>{l.nom}</span>}</>}
+          detail={<><span style={st.num}>{l.nombre}</span> <span>{pl(l.nombre, 'bon', 'bons')}</span></>}
+        >
+          <Chf v={l.montant} />
+        </Rang>
+      ))}
+      {!b.vendus.nombre && <Rang titre="Vendus"><Chf v={0} /></Rang>}
+      <Rang
+        titre="Dépensés sur les tickets"
+        detail={(
+          <>
+            <span style={st.num}>{b.utilises.nombre}</span> <span>{pl(b.utilises.nombre, 'paiement', 'paiements')}</span>
+            {b.recredites.nombre ? <>{', '}<span>rendus aux bons</span> <span style={st.num}>{chf(b.recredites.montant)}</span></> : null}
+          </>
+        )}
+      >
+        <Chf v={b.depenses} />
+      </Rang>
+      {b.rendus.moyens.map((l) => (
+        <Rang
+          key={`r|${l.moyen}|${l.libelle}`}
+          titre={<><span>Remboursés</span>{', '}{l.libelle ? <span data-no-translate>{l.libelle}</span> : <span>{l.nom}</span>}</>}
+          detail={<><span style={st.num}>{l.nombre}</span> <span>{pl(l.nombre, 'bon', 'bons')}</span></>}
+        >
+          <Chf v={-l.montant} />
+        </Rang>
+      ))}
+      {b.circulation != null && (
+        <Rang titre="En circulation" detail={<><span>soldes à honorer au</span> <span style={st.num}>{dateCH(auJour)}</span></>}>
+          <Chf v={b.circulation} fort />
+        </Rang>
+      )}
+    </Section>
   );
 }
 

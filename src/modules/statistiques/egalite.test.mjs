@@ -93,6 +93,37 @@ test('caisse : les ventilations d\'un flux refont son total', () => {
   assert.equal(net.ventilations[0].parts(lu.total).reduce((s, x) => s + Math.round(x.valeur * 100), 0) / 100, net.valeur(lu.total));
 });
 
+// Bons cadeaux (19.11.2026) : le registre des bons, hors chiffre d'affaires.
+test('caisse : les bons cadeaux sont ceux du rapport, chaque flux refait son total, la circulation est le dernier relevé', () => {
+  const bons = [
+    { id: 'm1', genre: 'emission', montant: 100, moyen: 'especes', libelle: null, jour_exploitation: '2026-10-30' },
+    { id: 'm2', genre: 'emission', montant: 50, moyen: 'carte', libelle: null, jour_exploitation: J1 },
+    { id: 'm3', genre: 'utilisation', montant: 30, moyen: null, libelle: null, jour_exploitation: J1 },
+    { id: 'm4', genre: 'recredit', montant: 30, moyen: null, libelle: null, jour_exploitation: J2 },
+    { id: 'm5', genre: 'utilisation', montant: 20.5, moyen: null, libelle: null, jour_exploitation: J2 },
+    { id: 'm6', genre: 'annulation', montant: 50, moyen: 'especes', libelle: null, jour_exploitation: '2026-11-05' },
+  ];
+  const donnees = { ...jeuEssai(), bons };
+  const lu = lire('caisse', donnees, J1, '2026-11-05', 'jour');
+  verifierFlux('caisse', lu);
+  const r = rapportCaisse(donnees, { type: 'libre', debut: J1, fin: '2026-11-05' });
+  const m = (id) => MESURES.find((x) => x.id === id);
+  assert.equal(m('caisse.bons_vendus').valeur(lu.total), r.bons.vendus.montant);
+  assert.equal(m('caisse.bons_vendus_nombre').valeur(lu.total), 1);
+  assert.equal(m('caisse.bons_depenses').valeur(lu.total), 20.5);
+  assert.equal(m('caisse.bons_rendus').valeur(lu.total), 50);
+  // Le 5 novembre n'a aucun ticket, mais un remboursement : il garde sa valeur.
+  assert.deepEqual(lu.points.map((p) => m('caisse.bons_rendus').valeur(p)), [0, 0, 50]);
+  // 100 + 50 - 30 le 3 ; + 30 - 20,5 le 4 ; - 50 le 5.
+  assert.deepEqual(lu.points.map((p) => m('caisse.bons_circulation').valeur(p)), [120, 129.5, 79.5]);
+  assert.equal(m('caisse.bons_circulation').valeur(lu.total), 79.5);
+  const vendus = m('caisse.bons_vendus');
+  assert.equal(vendus.ventilations[0].parts(lu.total).reduce((s, x) => s + x.valeur, 0), 50);
+  // Niveau cuisine : aucune mesure de bon.
+  assert.equal(mesuresVisibles({ familles: ['caisse'], niveauCaisse: 'cuisine' }).some((x) => x.id.startsWith('caisse.bons_')), false);
+  assert.equal(mesuresVisibles({ familles: ['caisse'], niveauCaisse: 'direction' }).filter((x) => x.id.startsWith('caisse.bons_')).length, 5);
+});
+
 // ── Réservations ──
 let n = 0;
 const resa = (date, service, couverts, statut, origine = 'equipe') => ({
@@ -292,6 +323,8 @@ test('accès : une famille fermée n\'apporte aucune mesure, les salaires resten
 });
 
 // Blocs du rapport des réservations entrés au catalogue en S3.
+// Bons cadeaux de la caisse (19.11.2026), testés plus haut.
+const AJOUTS_BONS = /^caisse\.bons_/;
 const AJOUTS_S3 = /^reservations\.(demandes_en_attente|meilleur_jour|jour_calme|meilleure_semaine|clients_reservations|clients_couverts|arrivees_[1-7]|couverts_par_semaine|places_table|tags_occasion|tags_allergene|tags_regime|couverts_en_ligne|couverts_equipe|couverts_passage|annulees|non_pointees|tags_(occasion|allergene|regime)_couverts|part_en_ligne)$/;
 
 test('catalogue : chaque mesure déclare ce qu\'il faut, les ids sont uniques', () => {
@@ -304,5 +337,5 @@ test('catalogue : chaque mesure déclare ce qu\'il faut, les ids sont uniques', 
     assert.ok(m.pas.length > 0, m.id);
   });
   // Les quatre familles de S1 ; celles de S2 sont comptées dans egalite-s2.test.mjs.
-  assert.equal(MESURES.filter((m) => ['caisse', 'reservations', 'achats', 'comptabilite'].includes(m.famille) && !AJOUTS_S2.includes(m.id) && !AJOUTS_S3.test(m.id)).length, 36);
+  assert.equal(MESURES.filter((m) => ['caisse', 'reservations', 'achats', 'comptabilite'].includes(m.famille) && !AJOUTS_S2.includes(m.id) && !AJOUTS_S3.test(m.id) && !AJOUTS_BONS.test(m.id)).length, 36);
 });

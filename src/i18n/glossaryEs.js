@@ -5855,4 +5855,12 @@ export const UI_GLOSSARY_ES = {
   'Actifs': 'Activos',
   'Épuisés': 'Agotados',
   'Annulés': 'Anulados',
+  "Bons cadeaux, hors chiffre d'affaires": 'Vales regalo, fuera de la facturación',
+  'Bons cadeaux vendus': 'Vales regalo vendidos',
+  'Nombre de bons cadeaux vendus': 'Número de vales regalo vendidos',
+  'Bons cadeaux dépensés': 'Vales regalo canjeados',
+  'Bons cadeaux remboursés': 'Vales regalo reembolsados',
+  'Bons cadeaux en circulation': 'Vales regalo en circulación',
+  'Dépensés sur les tickets': 'Canjeados en los tickets',
+  'soldes à honorer au': 'saldos pendientes al',
 };

@@ -201,6 +201,63 @@ function ecartsCaisse(clotures, periode) {
   return { lignes, total: fr(lignes.reduce((s, l) => s + centimes(l.ecart), 0)) };
 }
 
+// Bons cadeaux (19.11.2026), hors chiffre d'affaires : la vente d'un bon est
+// une dette de la maison, pas une vente ; la TVA se compte sur le ticket qu'il
+// paie. Source : le registre des bons (donnees.bons, lu pour la direction par
+// lireFenetre), au jour d'exploitation de chaque mouvement, celui de la
+// clôture qui le compte. Dépensés : utilisations moins recrédits des tickets
+// annulés, comme le chiffre d'affaires est net des annulations. En
+// circulation : la somme des soldes à la fin de la période, rejouée depuis le
+// premier mouvement du registre (null pour une période qui commence après
+// aujourd'hui). Sans registre (autre niveau, maison sans bon) : null.
+export function bonsCadeaux(liste, periode, jourCourant = null) {
+  if (!Array.isArray(liste) || !liste.length) return null;
+  const parMoyen = { emission: new Map(), annulation: new Map() };
+  const somme = { utilisation: 0, recredit: 0 };
+  const nombreDe = { utilisation: 0, recredit: 0 };
+  let circulation = 0;
+  let especes = 0;
+  let mouvementsPeriode = 0;
+  liste.forEach((m) => {
+    const jour = m.jour_exploitation;
+    if (!jour || jour > periode.fin) return;
+    const c = centimes(m.montant);
+    circulation += m.genre === 'emission' || m.genre === 'recredit' ? c : -c;
+    if (jour < periode.debut) return;
+    mouvementsPeriode += 1;
+    if (m.genre === 'emission' || m.genre === 'annulation') {
+      const cle = `${m.moyen || ''}|${m.libelle || ''}`;
+      const par = parMoyen[m.genre];
+      const e = par.get(cle) || { moyen: m.moyen, libelle: m.libelle || '', nombre: 0, montant: 0 };
+      e.nombre += 1;
+      e.montant += c;
+      par.set(cle, e);
+      if (m.moyen === 'especes') especes += m.genre === 'emission' ? c : -c;
+    } else if (m.genre in somme) {
+      somme[m.genre] += c;
+      nombreDe[m.genre] += 1;
+    }
+  });
+  const bloc = (par) => {
+    const lignes = [...par.values()].sort((a, b) => `${a.moyen}|${a.libelle}`.localeCompare(`${b.moyen}|${b.libelle}`));
+    return {
+      nombre: lignes.reduce((s, l) => s + l.nombre, 0),
+      montant: fr(lignes.reduce((s, l) => s + l.montant, 0)),
+      moyens: lignes.map((l) => ({ moyen: l.moyen, libelle: l.libelle, nom: libelleMoyen(l), nombre: l.nombre, montant: fr(l.montant) })),
+    };
+  };
+  return {
+    mouvements: mouvementsPeriode,
+    vendus: bloc(parMoyen.emission),
+    rendus: bloc(parMoyen.annulation),
+    utilises: { nombre: nombreDe.utilisation, montant: fr(somme.utilisation) },
+    recredites: { nombre: nombreDe.recredit, montant: fr(somme.recredit) },
+    depenses: fr(somme.utilisation - somme.recredit),
+    especes: fr(especes),
+    circulation: jourCourant && periode.debut > jourCourant ? null : fr(circulation),
+  };
+}
+
 // 3. Plats vendus : quantité et chiffre par produit, répartis midi et soir,
 // par catégorie de caisse, avec les offerts et les remises. La somme des
 // lignes fait le chiffre d'affaires net de la période.
@@ -502,6 +559,7 @@ export function rapportCaisse(donnees, periode) {
     ecartsCaisse: direction && periode.type !== 'service' ? ecartsCaisse(donnees?.clotures, periode) : null,
     personnes: direction ? personnes(mvts, donnees?.personnes) : null,
     journal: direction ? journal(mvts, donnees, periode) : null,
+    bons: direction && periode.type !== 'service' ? bonsCadeaux(donnees?.bons, periode, donnees?.jour_courant || null) : null,
   };
 }
 
@@ -560,6 +618,7 @@ export function serieRapports(donnees, periode, tranches) {
       ecartsCaisse: direction && periode.type !== 'service' ? ecartsCaisse(donnees?.clotures, t) : null,
       ecarts: ecarts ? { annulations: ecarts.annulations, remises: ecarts.remises, offerts: ecarts.offerts, abandons: ecarts.abandons } : null,
       personnes: direction ? personnes(mvts, donnees?.personnes) : null,
+      bons: direction && periode.type !== 'service' ? bonsCadeaux(donnees?.bons, t, donnees?.jour_courant || null) : null,
     };
   });
 }
