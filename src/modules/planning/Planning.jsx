@@ -14,7 +14,7 @@ import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useAbsences } from '../../hooks/useAbsences.js';
 import { absenceDe, absencesDuJour, metaMotif, resteAbsence } from '../../utils/absences.js';
-import { zurichClock, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
+import { zurichClock, zurichLundi, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import { useEchanges } from './echanges.js';
 import AbsencesModal from './AbsencesModal.jsx';
 import SaisieRapide from './SaisieRapide.jsx';
@@ -87,14 +87,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const legacySB = dbService.getBridge();
   const demoData = getDemoData();
 
-  const getMondayOfCurrentWeek = () => {
-    const d = new Date();
-    const day = d.getDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    d.setDate(d.getDate() + diff);
-    return d.toISOString().slice(0, 10);
-  };
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Lundi et jour d'aujourd'hui à Zurich. toISOString() rendait le jour UTC :
+  // entre minuit et 1 h (2 h en été), la grille commençait un dimanche et le
+  // coût du personnel portait sur la semaine précédente (audit du 19.11.2026).
+  const getMondayOfCurrentWeek = () => zurichLundi();
+  const todayStr = zurichToday();
 
   const [selectedDate, setSelectedDate] = React.useState(getMondayOfCurrentWeek());
   const [pointageDate, setPointageDate] = React.useState(todayStr);
