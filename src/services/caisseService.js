@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js';
 import { messageTpe } from '../modules/caisse/tpe/ecranTpe.js';
 import { listTransactionsTicket } from './caisseTpeService.js';
+import { MESSAGES_BONS_CADEAUX } from '../modules/caisse/bonsCadeaux/codeBon.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Caisse v1 : tickets, lignes, paiements (migration 20261105_caisse_v1).
@@ -30,6 +31,8 @@ const estRefusModeTest = (error) => String(error?.message || '') === MODE_TEST_I
 // Refus des RPC de la v5 (caisse_ouvrir_ticket, caisse_corriger_reservation) :
 // la base les lève sans accents, l'écran les dit en clair.
 const MESSAGES_RPC = {
+  // Bons cadeaux : le paiement par bon passe par caisse_encaisser.
+  ...MESSAGES_BONS_CADEAUX,
   'caisse: acces refuse': "Vous n'avez pas les droits pour cette action.",
   'caisse: table inconnue pour cet etablissement': 'Cette table ne fait plus partie du plan de salle.',
   'caisse: reservation introuvable': 'Réservation introuvable.',
@@ -599,6 +602,7 @@ export async function encaisserTicket(ticketId, paiements, aEmporter = null) {
       recu: p.recu == null || p.recu === '' ? null : p.recu,
       pourboire: p.pourboire || 0,
       ...(p.tpe ? { tpe: p.tpe } : null),
+      ...(p.bonCadeau ? { bon_cadeau: p.bonCadeau } : null),
     })),
     p_a_emporter: aEmporter,
   });

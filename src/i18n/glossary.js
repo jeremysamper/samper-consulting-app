@@ -5856,6 +5856,24 @@ export const UI_GLOSSARY = {
   "Une partie de l'exemple n'a pas été chargée. Réessayez.": 'Part of the sample data was not loaded. Try again.',
   "Une partie de l'exemple est utilisée ailleurs et reste en place.": 'Part of the sample data is used elsewhere and stays in place.',
   'Modèle introuvable. Réessayez plus tard.': 'Template not found. Try again later.',
+  // Caisse : bons cadeaux (19.11.2026).
+  'Bons cadeaux': 'Gift vouchers',
+  'Bon cadeau': 'Gift voucher',
+  'Nouveau bon cadeau': 'New gift voucher',
+  'Lire un bon': 'Scan a voucher',
+  'Lire un autre bon': 'Scan another voucher',
+  'Imprimer le bon': 'Print the voucher',
+  'Envoyer le code par SMS': 'Send the code by text message',
+  'Partager le PDF': 'Share the PDF',
+  'Payer avec un bon cadeau': 'Pay with a gift voucher',
+  'Code du bon': 'Voucher code',
+  'Registre du bon': 'Voucher history',
+  'en circulation': 'outstanding',
+  'vendus ce mois': 'sold this month',
+  'dépensés ce mois': 'redeemed this month',
+  'Actifs': 'Active',
+  'Épuisés': 'Used up',
+  'Annulés': 'Cancelled',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

@@ -27,7 +27,9 @@ export function useEnSection() {
 
 // titreMasque : le titre nomme la fenêtre (aria-label) sans être affiché, quand
 // le corps pose son propre titre (note de mise à jour).
-export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children, pied = null, titreMasque = false }) {
+// zIndex : pour une fenêtre ouverte depuis une feuille posée plus haut que les
+// fenêtres (l'encaissement de la caisse est à 1200).
+export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children, pied = null, titreMasque = false, zIndex = null }) {
   const enSection = React.useContext(ContexteSection);
   useBackLayer(!enSection, onClose, id);
   const voileRef = React.useRef(null);
@@ -56,7 +58,7 @@ export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children
     );
   }
   return createPortal(
-    <div ref={voileRef} data-fenetre="" className="modal-sheet-overlay" style={st.voile} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div ref={voileRef} data-fenetre="" className="modal-sheet-overlay" style={zIndex ? { ...st.voile, zIndex } : st.voile} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal-sheet" style={{ ...st.fenetre, width: `min(${largeur}px, 100%)` }} role="dialog" aria-modal="true" aria-label={titre}>
         <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
         {!titreMasque && <div style={st.titre}>{titre}</div>}

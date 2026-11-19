@@ -20,3 +20,4 @@
    filet (style en ligne de la ligne) ; la dernière n'en porte pas.
    !important : le filet est posé en style en ligne. */
 .caisse-liste > :last-child { border-bottom-width: 0 !important; }
+.caisse-bons-liste > :last-child { border-bottom-width: 0 !important; }

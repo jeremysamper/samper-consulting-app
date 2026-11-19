@@ -264,6 +264,25 @@ function Resultat({ cloture, onDocument, onFermer, avecCartes = false, bouclemen
       <p style={st.aide}>
         <span>Espèces attendues</span> <span style={st.num}>{chf(t.especes?.attendues)}</span><span>, fond</span> <span style={st.num}>{chf(cloture.fond_caisse)}</span><span>, comptées</span> <span style={st.num}>{chf(cloture.especes_comptees)}</span> <span>CHF.</span>
       </p>
+      {/* Bons cadeaux (19.11.2026) : hors chiffre d'affaires, dits à part. Une
+          clôture figée avant n'a pas la clé : rien ne s'affiche. */}
+      {t.bons_cadeaux && (Number(t.bons_cadeaux.vendus?.nombre) > 0 || Number(t.bons_cadeaux.rendus?.nombre) > 0 || Number(t.bons_cadeaux.utilises?.nombre) > 0) && (
+        <div style={st.bloc} data-cloture-bons="">
+          <div style={st.sousTitre}>Bons cadeaux, hors chiffre d'affaires</div>
+          {Number(t.bons_cadeaux.vendus?.nombre) > 0 && (
+            <p style={st.aide}>
+              <span style={st.num}>{t.bons_cadeaux.vendus.nombre}</span> <span>{Number(t.bons_cadeaux.vendus.nombre) > 1 ? 'bons vendus' : 'bon vendu'}</span><span> :</span> <span style={st.num}>{chf(t.bons_cadeaux.vendus.montant)}</span> <span>CHF</span>
+              {Number(t.especes?.bons_cadeaux) !== 0 && <><span>, dont espèces</span> <span style={st.num}>{chf(t.especes.bons_cadeaux)}</span> <span>CHF comptées dans les espèces attendues</span></>}<span>.</span>
+            </p>
+          )}
+          {Number(t.bons_cadeaux.rendus?.nombre) > 0 && (
+            <p style={st.aide}><span style={st.num}>{t.bons_cadeaux.rendus.nombre}</span> <span>{Number(t.bons_cadeaux.rendus.nombre) > 1 ? 'bons annulés, argent rendu' : 'bon annulé, argent rendu'}</span><span> :</span> <span style={st.num}>{chf(t.bons_cadeaux.rendus.montant)}</span> <span>CHF.</span></p>
+          )}
+          {Number(t.bons_cadeaux.utilises?.nombre) > 0 && (
+            <p style={st.aide}><span>Réglé par des bons :</span> <span style={st.num}>{chf(t.bons_cadeaux.utilises.montant)}</span> <span>CHF, compris dans le net.</span></p>
+          )}
+        </div>
+      )}
       {montrerCartes && (
         <div style={st.bloc} data-cloture-cartes="">
           <div style={st.sousTitre}>Cartes bancaires</div>

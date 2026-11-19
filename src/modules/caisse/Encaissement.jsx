@@ -9,6 +9,7 @@ import FeuilleTerminal from './tpe/FeuilleTerminal.jsx';
 import CarteDetail from './tpe/CarteDetail.jsx';
 import { ROLES_TERMINAL, ROLES_TRANCHER, choisirTerminal, enRoute, paiementDe, reprise, terminauxPour } from './tpe/ecranTpe.js';
 import { SEUIL_NOM_CLIENT, arrondiCinqCentimes, centimes, numeroTicket, preparerPaiements, totalLignes } from './tva.js';
+import FeuilleBonCadeau from './bonsCadeaux/FeuilleBonCadeau.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Encaissement (v7) : une feuille, le total en grand, les moyens en gros
@@ -35,6 +36,12 @@ import { SEUIL_NOM_CLIENT, arrondiCinqCentimes, centimes, numeroTicket, preparer
 // jamais encaissé (écran fermé, réseau coupé) se rattache au ticket à
 // l'ouverture, sans second débit. Sans terminal réglé, rien de tout cela ne
 // se charge ni ne s'affiche : l'écran est celui de la v7.
+//
+// Bon cadeau (19.11.2026) : « Bon cadeau » ouvre la feuille de lecture (QR à
+// la caméra ou code tapé) ; le bon lu, son solde règle tout ou partie du
+// reste. Le paiement se pose comme les autres (moyen « autre », libellé
+// « Bon cadeau ») avec le code du bon ; la base le débite sous verrou au
+// moment où le ticket s'encaisse, jamais avant.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -84,6 +91,7 @@ export default function Encaissement({
   const [enCours, setEnCours] = React.useState(false);
   const [fait, setFait] = React.useState(null); // réponse de la base après encaissement
   const [client, setClient] = React.useState({ nom: '', adresse: '' });
+  const [feuilleBon, setFeuilleBon] = React.useState(false);
   const verrou = React.useRef(false);
 
   // ── Terminal relié (v9) ──
@@ -121,7 +129,7 @@ export default function Encaissement({
   }, [aDesTerminaux, ticket?.id, terminaux, libelleCarte]);
   React.useEffect(() => { chargerTpe(true); }, [chargerTpe]);
   const tpePret = lectureTpe === 'sans' || lectureTpe === 'lue';
-  React.useEffect(() => { terminalOuvert.current = Boolean(feuille); }, [feuille]);
+  React.useEffect(() => { terminalOuvert.current = Boolean(feuille) || feuilleBon; }, [feuille, feuilleBon]);
 
   const fermer = React.useCallback(() => { if (fait) onEncaisse?.(fait); else onClose(); }, [fait, onEncaisse, onClose]);
   // v9 : tant que la feuille du terminal est ouverte, Échap ne ferme pas
@@ -283,6 +291,14 @@ export default function Encaissement({
           {Number(fait.pourboire) > 0 && (
             <p style={st.aide}><span>Pourboire, à part du total :</span> <span style={st.num}>{chf(fait.pourboire)}</span> <span>CHF</span></p>
           )}
+          {(fait.bons_cadeaux || []).map((b) => (
+            <p key={b.code} style={st.ligneInfo} data-caisse-reste-bon={b.code}>
+              <span>Bon cadeau</span> <span style={st.num} data-no-translate>{b.code}</span>
+              {Number(b.solde) > 0
+                ? <><span>, il reste</span> <span style={st.num}>{chf(b.solde)}</span> <span>CHF sur le bon.</span></>
+                : <span>, le bon est épuisé.</span>}
+            </p>
+          ))}
           {!fait.test && Number(fait.total) > SEUIL_NOM_CLIENT && (
             <div style={st.bloc}>
               <p style={st.aide}>Au-dessus de 400 francs, le client peut demander son nom et son adresse sur la quittance.</p>
@@ -334,6 +350,12 @@ export default function Encaissement({
             {peutRembourser
               ? <Btn variant="ghost" disabled={enCours || !enLigne} onClick={() => rembourserPose(p)} style={st.btn44}>Rembourser</Btn>
               : <span style={st.petit}>Payé sur le terminal</span>}
+          </div>
+        ) : p.bonCadeau ? (
+          <div key={'bon-' + p.bonCadeau} style={st.pose} data-caisse-pose="bon-cadeau">
+            <span style={st.poseNom}><span>Bon cadeau</span> <span style={st.num} data-no-translate>{p.bonCadeau}</span></span>
+            <span style={st.num}>{chf(p.montant)}</span>
+            <Btn variant="ghost" onClick={() => setPoses(poses.filter((_, j) => j !== i))} style={st.btn44}>Retirer</Btn>
           </div>
         ) : (
           <div key={i} style={st.pose}>
@@ -411,6 +433,9 @@ export default function Encaissement({
                   {reglages.perso?.moyens_paiement ? <span data-no-translate>{m.libelle}</span> : m.libelle}
                 </Btn>
               ))}
+              <Btn variant="primary" disabled={enCours || !enLigne || !tpePret || (part <= 0 && total > 0)} onClick={() => setFeuilleBon(true)} style={st.btnMoyen}>
+                Bon cadeau
+              </Btn>
             </div>
             {terminal && (
               <div style={st.bloc} data-caisse-terminal-choix="">
@@ -456,6 +481,23 @@ export default function Encaissement({
             onApprouve={terminalApprouve}
             onChange={(t) => setPaiementEnRoute(enRoute(t) ? t : null)}
             onFermer={fermerFeuilleTerminal}
+          />
+        </div>
+      )}
+      {feuilleBon && (
+        // La fenêtre vit dans un portail, mais ses clics remontent l'arbre
+        // React jusqu'au voile de l'encaissement : on les arrête ici.
+        <div onClick={(e) => e.stopPropagation()}>
+          <FeuilleBonCadeau
+            etablissementId={ticket.etablissement_id}
+            part={part}
+            test={Boolean(ticket.test)}
+            dejaPoses={poses.filter((p) => p.bonCadeau).map((p) => p.bonCadeau)}
+            onRegler={(code, montantBon) => {
+              setFeuilleBon(false);
+              poser({ moyen: 'autre', libelle: 'Bon cadeau', montant: montantBon, pourboire: 0, bonCadeau: code });
+            }}
+            onClose={() => setFeuilleBon(false)}
           />
         </div>
       )}

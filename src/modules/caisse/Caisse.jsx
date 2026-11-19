@@ -19,6 +19,7 @@ import BandeauTest from './BandeauTest.jsx';
 import InvitationAvisPret from './InvitationAvisPret.jsx';
 import Historique from './Historique.jsx';
 import Cloture from './Cloture.jsx';
+import BonsCadeaux from './bonsCadeaux/BonsCadeaux.jsx';
 import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
 import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
@@ -721,6 +722,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
                   onClick: () => setEcran('sans_ticket'),
                 },
                 !modeTest && { titre: 'Historique et quittances', onClick: () => setEcran('historique') },
+                !modeTest && { titre: 'Bons cadeaux', detail: 'Vendre, retrouver, suivre', onClick: () => setEcran('bons_cadeaux') },
                 !modeTest && peutHabiller && { titre: 'Clôture de caisse', onClick: () => setEcran('cloture') },
                 choixModeTest,
               ] }]}
@@ -734,6 +736,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
                 </Btn>
               )}
               {!modeTest && <Btn onClick={() => setEcran('historique')} style={st.btn44}>Historique et quittances</Btn>}
+              {!modeTest && <Btn onClick={() => setEcran('bons_cadeaux')} style={st.btn44}>Bons cadeaux</Btn>}
               {!modeTest && peutHabiller && <Btn onClick={() => setEcran('cloture')} style={st.btn44}>Clôture de caisse</Btn>}
               {choixModeTest && (
                 <BoutonActions id="caisse-plus" label="Plus" style={st.plus} titre="Caisse" sections={[{ items: [choixModeTest] }]} />
@@ -813,6 +816,12 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         )}
       </EcranTache>
     );
+  }
+
+  // ── Bons cadeaux (19.11.2026) : vendre, retrouver, suivre. Hors mode test :
+  // l'écran ne montre que de vrais bons. ──
+  if (ecran === 'bons_cadeaux' && !modeTest) {
+    return <BonsCadeaux etablissement={etablissement} reglages={reglages} role={user?.role} onRetour={retourAccueil} />;
   }
 
   // ── Historique et quittances (v7) ──

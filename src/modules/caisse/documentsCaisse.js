@@ -297,11 +297,29 @@ export async function construireCloture({ cloture, etablissement, reglages, bouc
   bloc('Espèces');
   p.paire('Ventes en espèces', chf(e.ventes));
   if (Number(e.annulees)) p.paire('Espèces rendues pour annulation', chf(-Number(e.annulees)));
+  // Bons cadeaux (19.11.2026) : les espèces reçues pour des bons, moins celles
+  // rendues, entrent dans le tiroir.
+  if (Number(e.bons_cadeaux)) p.paire('Espèces des bons cadeaux, ventes moins rendus', chf(e.bons_cadeaux));
   p.paire('Espèces attendues, hors fond de caisse et pourboires', chf(e.attendues), { gras: true });
   p.paire('Fond de caisse', chf(cloture.fond_caisse));
   p.paire('Espèces comptées', chf(cloture.especes_comptees));
   p.espace(4);
   p.paire('Écart de caisse', chf(cloture.ecart), { gras: true, taille: 11 });
+
+  // Bons cadeaux : hors chiffre d'affaires et hors TVA (la TVA est due quand
+  // le bon se dépense). Une clôture figée avant le 19.11.2026 n'a pas la clé.
+  const bc = t.bons_cadeaux || null;
+  if (bc && (Number(bc.vendus?.nombre) || Number(bc.rendus?.nombre) || Number(bc.utilises?.nombre))) {
+    bloc("Bons cadeaux, hors chiffre d'affaires");
+    p.paire(`${nb(bc.vendus?.nombre, 'bon vendu', 'bons vendus')}`, chf(bc.vendus?.montant), { gras: true });
+    (bc.vendus?.moyens || []).forEach((m) => p.paire(`dont ${libelleMoyen(m).toLowerCase()}`, chf(m.montant), { gris: true }));
+    if (Number(bc.rendus?.nombre)) {
+      p.paire(`${nb(bc.rendus.nombre, 'bon annulé, argent rendu', 'bons annulés, argent rendu')}`, chf(-Number(bc.rendus.montant)));
+      (bc.rendus.moyens || []).forEach((m) => p.paire(`rendu en ${libelleMoyen(m).toLowerCase()}`, chf(-Number(m.montant)), { gris: true }));
+    }
+    p.paire('Ventes réglées par des bons, comprises dans le net', chf(bc.utilises?.montant));
+    if (Number(bc.recredites?.montant)) p.paire('Rendu aux bons par des annulations de tickets', chf(bc.recredites.montant), { gris: true });
+  }
 
   p.filet(12);
   p.texte(`Empreinte ${cloture.empreinte}`, { taille: 7, gris: true });
