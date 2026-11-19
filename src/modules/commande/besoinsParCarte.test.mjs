@@ -90,3 +90,23 @@ test('quantité lisible', () => {
   assert.equal(formatQuantite(2, 'pcs'), '2 pcs');
   assert.equal(formatQuantite(0, 'g'), '');
 });
+
+test('plats rangés par catégorie dans l\'ordre de service, ordre de la carte gardé dans chaque catégorie', () => {
+  const r = [{ id: 'r1', nom: 'Fiche', ingredients: [{ nom: 'Sucre semoule', quantite: 10, unite: 'g' }] }];
+  const lien = [{ recetteId: 'r1', ordre: 1 }];
+  const p = [
+    { id: 'a', nom: 'Burger', categorie: 'Plats', carteIds: ['c'], recettes: lien },
+    { id: 'b', nom: 'Glace vanille', categorie: 'Glaces', carteIds: ['c'], recettes: lien },
+    { id: 'c', nom: 'Salade', categorie: 'Entrées', carteIds: ['c'], recettes: lien },
+    { id: 'd', nom: 'Planchette', categorie: 'À partager', carteIds: ['c'], recettes: lien },
+    { id: 'e', nom: 'Glace chocolat', categorie: 'Glaces', carteIds: ['c'], recettes: lien },
+    { id: 'f', nom: 'Sanglier', categorie: 'Plats', carteIds: ['c'], recettes: lien },
+    { id: 'g', nom: 'Coupe', categorie: 'Desserts', carteIds: ['c'], recettes: lien },
+  ];
+  const { groupes } = besoinsDeCarte({ id: 'c' }, contexteCommande({ plats: p, recettes: r, catalogue: [] }));
+  assert.deepEqual(groupes.map(g => g.titre),
+    ['Salade', 'Burger', 'Sanglier', 'Coupe', 'Planchette', 'Glace vanille', 'Glace chocolat']);
+  // Chaque catégorie n'apparaît qu'une fois, d'un seul tenant.
+  const suite = groupes.map(g => g.categorie).filter((c, i, t) => i === 0 || t[i - 1] !== c);
+  assert.equal(new Set(suite).size, suite.length);
+});

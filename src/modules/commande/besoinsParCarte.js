@@ -1,5 +1,6 @@
 import { toCanonical, STAPLES_SECS, STAPLES_HYGIENE } from './computeBesoins.js';
 import { HYGIENE, classerProduit, contexteClassement, estNonCommandable, estPreparation } from './classerProduit.js';
+import { categorieDuPlat, platCatRank } from '../../utils/categoriesPlat.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Commande par carte : ce que chaque carte demande, rangé comme la carte se
@@ -73,13 +74,19 @@ function ligneIngredient(ing, ctx) {
 }
 
 /**
- * Plats d'une carte, dans l'ordre de la carte.
+ * Plats d'une carte, rangés par catégorie dans l'ordre de service (celui des
+ * onglets de Cartes & Recettes), puis dans l'ordre de la carte. Sans ce tri,
+ * l'écran répétait le titre d'une catégorie à chaque changement (« Glaces »
+ * neuf fois sur la Carte Automnale).
  * @returns {{ groupes: Array<{ id, titre, categorie, sansFiche, sections: Array<{ id, titre, lignes }>, cles: string[] }>, cles: string[] }}
  *   `cles` : produits à commander (préparations exclues), sans doublon.
  */
 export function besoinsDeCarte(carte, ctx) {
   if (!carte || !ctx) return { groupes: [], cles: [] };
-  const platsCarte = ctx.plats.filter(p => (p.carteIds || []).includes(carte.id));
+  const rang = (p) => platCatRank(categorieDuPlat(p));
+  const platsCarte = ctx.plats
+    .filter(p => (p.carteIds || []).includes(carte.id))
+    .sort((a, b) => rang(a) - rang(b) || categorieDuPlat(a).localeCompare(categorieDuPlat(b)));
   const toutes = new Set();
   const groupes = platsCarte.map(plat => {
     const liens = (plat.recettes || []).slice().sort((a, b) => (a.ordre || 0) - (b.ordre || 0));
