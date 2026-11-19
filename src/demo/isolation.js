@@ -132,6 +132,37 @@ export function installerIsolation() {
   if (idb) remplacer(window, 'indexedDB', idb);
   if ('caches' in window) remplacer(window, 'caches', cachesNeutres);
 
+  // Canaux entre onglets et verrous : supabase-js diffuse connexion et
+  // déconnexion aux onglets de la même origine (BroadcastChannel nommé comme
+  // sa clé de stockage) et sérialise ses opérations par navigator.locks. Sans
+  // préfixe, une déconnexion dans la démo déconnecterait un onglet de la vraie
+  // application ouvert à côté.
+  const CanalReel = window.BroadcastChannel;
+  if (CanalReel) {
+    class CanalDemo extends CanalReel {
+      constructor(nom) { super(PREFIXE + String(nom)); }
+    }
+    window.BroadcastChannel = CanalDemo;
+  }
+  const verrous = navigator.locks;
+  if (verrous?.request) {
+    const demander = verrous.request.bind(verrous);
+    const interroger = verrous.query?.bind(verrous);
+    try {
+      Object.defineProperty(verrous, 'request', { configurable: true, value: (nom, ...reste) => demander(PREFIXE + String(nom), ...reste) });
+      if (interroger) {
+        Object.defineProperty(verrous, 'query', {
+          configurable: true,
+          value: async () => {
+            const etat = await interroger();
+            const garder = (l) => String(l.name || '').startsWith(PREFIXE);
+            return { held: (etat.held || []).filter(garder), pending: (etat.pending || []).filter(garder) };
+          },
+        });
+      }
+    } catch { /* navigateur sans verrous modifiables : supabase-js retombe sur son verrou en mémoire */ }
+  }
+
   // Aucun service worker pour la démo : ni enregistrement, ni abonnement push.
   const sw = navigator.serviceWorker;
   if (sw) {
