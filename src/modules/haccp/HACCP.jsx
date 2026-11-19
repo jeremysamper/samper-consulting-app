@@ -375,6 +375,14 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
     const last = releves.filter(r=>r.zoneId===z.id).sort((a,b)=>b.date.localeCompare(a.date)||String(b.heure).localeCompare(String(a.heure)))[0];
     latestByZone[z.id] = last||null;
   });
+  // Jour du relevé le plus récent, tous frigos actifs confondus : les repères
+  // disent depuis combien de jours rien n'a été relevé, au lieu d'annoncer
+  // « aucun relevé trop chaud » quand il n'y a aucun relevé du tout.
+  const dernierReleveJour = activeZones
+    .map(z => latestByZone[z.id]?.date)
+    .filter(Boolean)
+    .sort()
+    .pop() || null;
 
   const submitReleve = async () => {
     if (!formRel.valeur || !formRel.heure) { alertLegacy('Remplissez tous les champs obligatoires.'); return; }
@@ -920,7 +928,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
               </div>
             )}
           </div>
-          <ReperesHaccp etat={etatJour} relevesDuJour={relevesDuJour} controles={compte} />
+          <ReperesHaccp etat={etatJour} relevesDuJour={relevesDuJour} controles={compte} dernierReleveJour={dernierReleveJour} today={todayStr} />
           <div className="haccp-haut">
             <MaintenantHaccp
               lecture={lecture}

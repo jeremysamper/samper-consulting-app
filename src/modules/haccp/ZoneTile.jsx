@@ -2,7 +2,7 @@ import React from 'react';
 import { ArrowRight, TrendingDown, TrendingUp } from 'lucide-react';
 import { hs } from './HACCP.styles.js';
 import ActionsCorrectives, { Mesure, PlageTexte } from './ActionsCorrectives.jsx';
-import { verdictReleve } from './haccpJour.js';
+import { joursEntre, verdictReleve } from './haccpJour.js';
 import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
 import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 
@@ -66,7 +66,17 @@ const ZoneTile = ({ zone, last, today, trend, actif, valeur, choix, canWrite, en
   // État en mots, à droite.
   let etat;
   if (!last) etat = <span style={{ color: 'var(--text2)' }}>Pas encore relevé aujourd'hui</span>;
-  else if (!duJour) etat = <span style={{ color: 'var(--text2)' }}>Dernier relevé <DernierJour date={last.date} today={today} /> à <N>{String(last.heure).slice(0, 5)}</N></span>;
+  else if (!duJour) {
+    // Un relevé vieux de plusieurs jours se dit en jours, en couleur d'alerte :
+    // le chiffre affiché en grand à droite n'est pas la température d'aujourd'hui.
+    const joursSans = joursEntre(last.date, today);
+    etat = (
+      <span style={{ color: 'var(--text2)' }}>
+        Dernier relevé <DernierJour date={last.date} today={today} /> à <N>{String(last.heure).slice(0, 5)}</N>
+        {joursSans >= 2 && <span style={{ display: 'block', color: 'var(--warning-text)' }}><N>{joursSans}</N> jours sans relevé</span>}
+      </span>
+    );
+  }
   else {
     const mot = last.conforme ? 'Bon' : (verdictDernier?.ton === 'danger' ? verdictDernier.mot : 'À surveiller');
     etat = <span style={{ color: last.conforme ? 'var(--success-text)' : 'var(--danger-strong)', fontWeight: 'var(--g3)' }}>{mot}, à <N>{String(last.heure).slice(0, 5)}</N></span>;

@@ -258,3 +258,14 @@ test('mêmes tournées en retard que le tableau de bord', async () => {
     assert.deepEqual(cote, tableau, `relevés ${releves[0]?.heure || 'aucun'}, contrôle à ${maintenant}`);
   }
 });
+
+test('joursEntre : jours de calendrier, passage à l\'heure d\'hiver compris', async () => {
+  const { joursEntre } = await import('./haccpJour.js');
+  assert.equal(joursEntre('2026-11-19', '2026-11-19'), 0);
+  assert.equal(joursEntre('2026-11-18', '2026-11-19'), 1);
+  assert.equal(joursEntre('2026-07-10', '2026-11-19'), 132);
+  assert.equal(joursEntre('2026-05-13', '2026-11-19'), 190);
+  assert.equal(joursEntre('2026-10-24', '2026-10-26'), 2);
+  assert.equal(joursEntre(null, '2026-11-19'), null);
+  assert.equal(joursEntre('19.11.2026', '2026-11-19'), null);
+});

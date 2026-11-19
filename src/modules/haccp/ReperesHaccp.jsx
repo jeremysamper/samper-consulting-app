@@ -1,6 +1,7 @@
 import React from 'react';
 import { ClipboardCheck, RotateCcw, Thermometer, TriangleAlert } from 'lucide-react';
 import { CarteRepere } from '../../components/ui/index.jsx';
+import { joursEntre } from './haccpJour.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Repères du jour, en tête de l'accueil HACCP : quatre petites cartes blanches
@@ -15,6 +16,12 @@ import { CarteRepere } from '../../components/ui/index.jsx';
 //                        est hors plage
 //   contrôles            compteControles : faits sur dus aujourd'hui
 //
+// Sans aucun relevé aujourd'hui, les deux cartes du milieu ne disent plus
+// « aucun relevé trop chaud » ni « aucun frigo à relever de nouveau », qui se
+// lisaient comme une cuisine conforme (audit du 19.11.2026 : dernier relevé à
+// Woodland le 10.07). La deuxième dit depuis combien de jours rien n'a été
+// relevé (dernierReleveJour, tous frigos actifs), dès deux jours.
+//
 // Au téléphone (haccp.css), seuls les relevés faits et les contrôles sont
 // rendus, sur une ligne : les deux autres sont dits par la carte « Maintenant »
 // (frigo à relever de nouveau), et la page ne s'allonge pas.
@@ -26,12 +33,20 @@ import { CarteRepere } from '../../components/ui/index.jsx';
 
 const N = ({ children }) => <span data-no-translate="">{children}</span>;
 
-export default function ReperesHaccp({ etat, relevesDuJour = [], controles }) {
+// 2026-07-10 → 10.07.2026
+const dateCourte = (iso) => String(iso || '').split('-').reverse().join('.');
+
+export default function ReperesHaccp({ etat, relevesDuJour = [], controles, dernierReleveJour = null, today = null }) {
   if (!etat || etat.statut === 'non_regle') return null;
   const avecTournees = etat.tournees.length > 0;
   const faits = avecTournees ? etat.faitsJour : etat.zonesFaitesJour;
   const horsPlage = relevesDuJour.filter(r => !r.conforme).length;
   const aRevoir = etat.aRevoir || [];
+  // Sans relevé aujourd'hui, « aucun relevé trop chaud » et « aucun frigo à
+  // relever de nouveau » sont vrais mais trompeurs : ils se lisent comme une
+  // cuisine conforme. On dit alors depuis quand rien n'a été relevé.
+  const aucunAujourdhui = relevesDuJour.length === 0;
+  const joursSans = aucunAujourdhui ? joursEntre(dernierReleveJour, today) : null;
 
   return (
     <div className="haccp-reperes" data-haccp-reperes="">
@@ -45,10 +60,24 @@ export default function ReperesHaccp({ etat, relevesDuJour = [], controles }) {
       />
       {horsPlage > 0 ? (
         <CarteRepere data-repere="hors-plage" Icone={TriangleAlert} valeur={horsPlage} libelle="trop chaud ou trop froid" detail="aujourd'hui" />
+      ) : aucunAujourdhui && joursSans >= 2 ? (
+        <CarteRepere
+          data-repere="hors-plage"
+          Icone={TriangleAlert}
+          valeur={joursSans}
+          libelle="jours sans relevé"
+          detail={<>dernier relevé le <N>{dateCourte(dernierReleveJour)}</N></>}
+        />
+      ) : aucunAujourdhui && !dernierReleveJour ? (
+        <CarteRepere data-repere="hors-plage" Icone={TriangleAlert} texte="Aucun relevé enregistré pour l'instant" />
+      ) : aucunAujourdhui ? (
+        <CarteRepere data-repere="hors-plage" Icone={TriangleAlert} texte="Pas encore de relevé aujourd'hui" />
       ) : (
         <CarteRepere data-repere="hors-plage" Icone={TriangleAlert} texte="Aucun relevé trop chaud ou trop froid aujourd'hui" />
       )}
-      {aRevoir.length > 0 ? (
+      {aucunAujourdhui ? (
+        <CarteRepere data-repere="a-revoir" Icone={RotateCcw} texte="Rien à vérifier tant qu'aucun relevé n'est fait" />
+      ) : aRevoir.length > 0 ? (
         <CarteRepere
           data-repere="a-revoir"
           Icone={RotateCcw}

@@ -210,3 +210,16 @@ export function compteControles(tpls, controls, today) {
   });
   return { faits, dus };
 }
+
+// Jours entiers entre deux jours ISO (YYYY-MM-DD), calculés sur le calendrier
+// et jamais sur l'heure : 0 le jour même, 1 le lendemain. null si l'un manque.
+// Sert à dire « 132 jours sans relevé » plutôt qu'un état rassurant vide.
+export function joursEntre(jourIso, todayIso) {
+  const lire = (s) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+    return m ? Date.UTC(+m[1], +m[2] - 1, +m[3]) : null;
+  };
+  const a = lire(jourIso), b = lire(todayIso);
+  if (a == null || b == null) return null;
+  return Math.round((b - a) / 86400000);
+}
