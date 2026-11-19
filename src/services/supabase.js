@@ -23,6 +23,11 @@ const FALLBACK_CONFIG = {
 };
 
 export function getSupabaseConfig() {
+  // Mode démo (src/demo, page /demo) : un Supabase simulé dans le navigateur,
+  // posé avant tout import de ce module. Jamais présent dans l'app réelle.
+  const demo = readLegacyGlobal('SAMPER_DEMO_SUPABASE');
+  if (demo?.url && demo?.anonKey) return { url: demo.url, anonKey: demo.anonKey, source: 'demo' };
+
   const env = readEnvConfig();
   const legacy = readLegacyConfig();
 
