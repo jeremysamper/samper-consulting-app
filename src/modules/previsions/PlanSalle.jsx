@@ -1,12 +1,21 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Ellipsis, LayoutGrid, Maximize2, Minimize2, Minus, PanelRightClose, PanelRightOpen, Plus, Undo2, X } from 'lucide-react';
+import { Btn } from '../../components/ui/index.jsx';
+import { BoutonActions, Fenetre, st as stF } from '../../components/ui/Fenetres.jsx';
+import { readJson, writeJson } from '../../utils/storage.js';
+import { useVuePlan } from '../salle/useVuePlan.js';
+import { useLargeur } from '../caisse/mesures.js';
+import { aligner } from '../salle/planVue.js';
+import { bornesCurseur, enRetard, etatTablee, hhmm, minutesDe, planifier, proposer, tableesLibres, PAS_CURSEUR } from '../salle/planTemps.js';
+import PlanTable, { COULEUR_ETAT } from './PlanTable.jsx';
+import PlanListe from './PlanListe.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { notify } from '../../components/toast/index.js';
 import { dbService } from '../../services/dbService.js';
 import { ouvrirCompte } from '../../services/navigationService.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { demanderDessin } from './planSalleDessin.js';
-import { useIsMobile } from '../../hooks/useIsMobile.js';
-import { usePlanSalle, PLAN_W, PLAN_H, PLAN_GRID } from '../../hooks/usePlanSalle.js';
+import { usePlanSalle, PLAN_W, PLAN_H, PLAN_GRID, tailleParDefaut } from '../../hooks/usePlanSalle.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
 import PlanTableForm from './PlanTableForm.jsx';
@@ -16,11 +25,10 @@ import {
   ELEMENTS, ELEMENT_PAR_TYPE, ElementDecor, GrillePlan, estObstacle,
   redimensionner, apresQuartDeTour as quartDeTourElement,
 } from './planDecor.jsx';
-import ServicePanneau from './ServicePanneau.jsx';
 import TableServiceSheet from './TableServiceSheet.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import { useReservations } from '../../hooks/useReservations.js';
-import { zurichClock } from '../../utils/zurichTime.js';
+import { zurichClock, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import { serviceAffiche } from './statutsReservation.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -102,30 +110,6 @@ const estTabouret = (t) => t?.forme === 'tabouret';
 // Pas entre deux places de bar posées à la suite (tabouret de 50 + 10).
 const PAS_TABOURET = 60;
 
-// Bouton de la rangée « Ajouter » du dessin. flexShrink 0 : dans une rangée
-// qui défile, un bouton comprimé passerait sous son voisin.
-const puce = {
-  flexShrink: 0, minHeight: 40, padding: '8px 12px', borderRadius: 'var(--r)',
-  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-  background: 'var(--surface)', color: 'var(--text)',
-  fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
-  whiteSpace: 'nowrap',
-};
-
-// « Déplacer des tables » et « Dessiner la salle » : le verbe, puis la portée
-// sur une seconde ligne, plus petite. Plein quand le mode est en cours.
-// Contour en longhands : l'état actif ne change que borderColor.
-const boutonMode = (actif) => ({
-  minHeight: 44, padding: '6px 14px', borderRadius: 'var(--r)',
-  borderWidth: 1, borderStyle: 'solid',
-  borderColor: actif ? 'var(--onglet)' : 'var(--border)',
-  background: actif ? 'var(--selection)' : 'var(--surface)',
-  color: 'var(--text)',
-  display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center',
-  gap: 1, textAlign: 'left', lineHeight: 1.2,
-  fontSize: 'var(--t1)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
-});
-const portee = { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', opacity: 0.8 };
 // Le mode en cours, dit en clair au-dessus du plan.
 const bandeauMode = {
   flex: '1 1 100%', minWidth: 0, padding: '8px 12px', borderRadius: 'var(--r)',
@@ -195,250 +179,91 @@ function trancherTablee(membres) {
 }
 const snap  = (v) => Math.round(v / PLAN_GRID) * PLAN_GRID;
 
-// ── Une table sur le canevas ───────────────────────────────────────────────
-// Tablée rapprochée : seule la table qui porte le numéro parle (`tablee`
-// = 'principale' : numéro + nom des clients de toute la tablée, sans
-// capacité ni couverts) ; les autres restent muettes ('secondaire'). Le même
-// client répété sur chaque table avec des chiffres partout rendait la
-// tablée illisible.
-function TableShape({
-  table, occupants, mode, estCible, canEdit,
-  onPointerDownTable, onPointerDownOccupant, onEditTable, dragLienId, onOpenOccupant, onTap,
-  tablee = null, occupantsTablee = null, onTourner = null,
-}) {
-  const places   = table.nb_places || 0;
-  // `part` et non `nb_couverts` : une tablée étalée sur deux tables ne pèse
-  // sur chacune qu'à hauteur de ce qu'elle y assied.
-  const assis    = occupants.reduce((s, o) => s + (o.part ?? o.resa.nb_couverts ?? 0), 0);
-  const complet  = assis > 0 && assis >= places;
-  const deborde  = assis > places;
-  const inactive = table.actif === false;
+// Repli de la colonne des réservations à la tablette, gardé sur l'appareil.
+const CLE_LISTE_REPLIEE = 'sc_plan_liste_repliee';
+// Pile d'annulation du dessin : les derniers gestes, pas l'historique entier.
+const ANNULATIONS_MAX = 30;
 
-  // Bordure en propriétés séparées : l'état actif surcharge borderColor, et
-  // le raccourci `border` à côté ferait râler React à chaque bascule.
-  let borderColor = 'var(--border)';
-  if (estCible)      borderColor = 'var(--accent)';
-  else if (deborde)  borderColor = 'var(--danger-bd)';
-  else if (complet)  borderColor = 'var(--success-bd)';
+// Modèles de la rangée « Ajouter » du dessin : les tables qu'une maison pose
+// le plus, d'un seul toucher, à leur taille par défaut.
+const MODELES_TABLE = [
+  { cle: 't2', label: 'Table de 2', forme: 'carree', nb_places: 2 },
+  { cle: 't4', label: 'Table de 4', forme: 'carree', nb_places: 4 },
+  { cle: 't6', label: 'Table de 6', forme: 'rectangle', nb_places: 6 },
+  { cle: 'r8', label: 'Ronde de 8', forme: 'ronde', nb_places: 8 },
+];
 
-  let background = 'var(--surface)';
-  if (estCible)          background = 'var(--ai-bg-soft)';
-  else if (deborde)      background = 'var(--danger-bg-soft)';
-  else if (occupants.length) background = 'var(--success-bg-soft)';
+// Styles de l'écran, par les jetons : carte blanche, sol de la salle en
+// tuile intérieure, pilules et cercles des contrôles.
+const ui = {
+  racine: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
+  barre: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, minWidth: 0 },
+  corps: { display: 'flex', gap: 16, alignItems: 'flex-start', minWidth: 0 },
+  carte: {
+    position: 'relative', flex: '1 1 0', minWidth: 0, boxSizing: 'border-box',
+    background: 'var(--zone)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', padding: 14,
+    display: 'flex', flexDirection: 'column', gap: 10,
+  },
+  liste: {
+    flexShrink: 0, boxSizing: 'border-box', background: 'var(--zone)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
+    borderWidth: 1, borderStyle: 'solid', padding: '6px 16px 10px', overflowY: 'auto',
+  },
+  // L'en-tête du plan et le bandeau d'une réservation choisie ont la même
+  // hauteur : choisir ne fait pas sauter le plan sous le doigt.
+  enteteCarte: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 14px', minWidth: 0, minHeight: 54 },
+  compteurs: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 14px', flex: '1 1 auto', minWidth: 0 },
+  sol: { position: 'relative', overflow: 'hidden', background: 'var(--piste)', borderRadius: 'var(--r)', userSelect: 'none', WebkitUserSelect: 'none' },
+  fenetreTel: {
+    position: 'relative', overflow: 'auto', background: 'var(--piste)', borderRadius: 'var(--r)',
+    userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'pan-x pan-y', WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none',
+  },
+  rond: {
+    width: 40, height: 40, minHeight: 0, borderRadius: '50%', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    background: 'var(--btn-fond)', color: 'var(--btn-texte)', cursor: 'pointer', padding: 0, flexShrink: 0,
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', boxShadow: 'var(--sh)',
+  },
+  puce: {
+    flexShrink: 0, minHeight: 40, padding: '8px 14px', borderRadius: 'var(--r-full)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+    fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)', whiteSpace: 'nowrap',
+  },
+  bandeauChoix: {
+    display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: '6px 6px 6px 14px', minHeight: 54, boxSizing: 'border-box', borderRadius: 'var(--r)',
+    background: 'var(--info-bg-soft)', color: 'var(--info-text)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--info-bd)',
+  },
+  bandeauTexte: { flex: '1 1 220px', minWidth: 0, fontSize: 'var(--t2)', lineHeight: 1.4 },
+};
 
-  const tabouret = estTabouret(table);
-  const rayon = table.forme === 'ronde' || tabouret ? '50%' : table.forme === 'carree' ? 10 : 8;
-  const modePlan = mode === 'plan';
-  const sobre = tablee === 'principale';
-  const liste = sobre ? (occupantsTablee || []) : occupants;
-  // Glisser la table elle-même : dessin du plan de base, ou ajustement de la
-  // salle pour ce service.
-  const deplacable = (modePlan || mode === 'ajuster') && canEdit;
-
-  let titre = `${table.nom} : ${places} place${places > 1 ? 's' : ''}`;
-  // Une place de bar n'a la place d'écrire que trois lettres : le nom entier
-  // passe dans l'info-bulle.
-  if (tabouret && occupants.length) titre = `${table.nom} : ${occupants.map((o) => o.resa.nom).join(', ')}`;
-  if (modePlan) titre = `${table.nom} : glisser pour déplacer, double-clic pour régler`;
-  else if (mode === 'ajuster') titre = `${table.nom} : glisser pour déplacer, lâcher sur une autre table pour les rapprocher`;
-
+// Un état et son nombre, comme les compteurs de la caisse : un point de
+// couleur, le chiffre, le mot.
+function Compteur({ couleur, n, un, plusieurs }) {
   return (
-    <div
-      data-plan-table={table.id}
-      onPointerDown={deplacable ? (e) => onPointerDownTable(e, table) : undefined}
-      onDoubleClick={modePlan && canEdit ? () => onEditTable(table) : undefined}
-      onClick={!modePlan && onTap ? () => onTap(table) : undefined}
-      data-no-translate={tabouret && occupants.length ? '' : undefined}
-      title={titre}
-      style={{
-        position: 'absolute',
-        left:   `${(table.pos_x   / PLAN_W) * 100}%`,
-        top:    `${(table.pos_y   / PLAN_H) * 100}%`,
-        width:  `${(table.largeur / PLAN_W) * 100}%`,
-        height: `${(table.hauteur / PLAN_H) * 100}%`,
-        borderWidth: estCible ? 2 : 1,
-        borderStyle: inactive ? 'dashed' : 'solid',
-        borderColor,
-        background,
-        borderRadius: rayon,
-        boxSizing: 'border-box',
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        gap: tabouret ? 0 : 1, padding: tabouret ? 1 : 3, overflow: 'hidden',
-        opacity: inactive ? 0.45 : 1,
-        cursor: deplacable ? 'grab' : onTap ? 'pointer' : 'default',
-        touchAction: deplacable ? 'none' : 'auto',
-        boxShadow: estCible ? '0 0 0 3px rgba(0,48,66,0.15)' : 'none',
-        transition: 'background 0.12s, border-color 0.12s',
-        userSelect: 'none', WebkitUserSelect: 'none',
-      }}
-    >
-      {/* Quart de tour : à l'horizontale ou à la verticale. L'appui ne doit
-          ni lancer le glisser de la table ni ouvrir ses réglages. */}
-      {onTourner && (
-        <button
-          type="button"
-          className="mini"
-          aria-label="Tourner la table"
-          title={Number(table.largeur) >= Number(table.hauteur) ?'Mettre à la verticale' : 'Mettre à l’horizontale'}
-          onPointerDown={(e) => e.stopPropagation()}
-          onDoubleClick={(e) => e.stopPropagation()}
-          onClick={(e) => { e.stopPropagation(); onTourner(table.id); }}
-          style={{
-            position: 'absolute', top: 3, right: 3, zIndex: 1,
-            width: 26, height: 26, minHeight: 0, padding: 0,
-            borderRadius: '50%',
-            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
-            background: 'var(--btn-fond)', color: 'var(--lien)',
-            fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', touchAction: 'manipulation',
-          }}
-        >
-          ⟳
-        </button>
-      )}
-      {tablee !== 'secondaire' && (
-      <>
-      {/* Nom + capacité (le seul numéro, pour une tablée) */}
-      <div style={{
-        fontSize: tabouret ? 10 : sobre ? 13 : 11, fontWeight: 'var(--g3)', lineHeight: 1.1,
-        color: 'var(--text)', fontFamily: 'var(--font)',
-        maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-      }}>
-        {table.nom}
-      </div>
-      {!sobre && !tabouret && (
-        <div style={{ fontSize: 'var(--t1)', color: deborde ? 'var(--danger-text)' : 'var(--text3)', lineHeight: 1.1 }}>
-          {occupants.length ? `${assis}/${places}` : `${places} pl.`}
-        </div>
-      )}
-
-      {/* Occupants - chaque pastille est une poignée de glisser. Sur une
-          place de bar, une seule pastille de trois lettres. */}
-      {liste.slice(0, tabouret ? 1 : 3).map(({ lien, resa, etale }) => (
-        <div
-          key={lien.id}
-          data-plan-occupant={lien.id}
-          onPointerDown={mode === 'service' && canEdit ? (e) => onPointerDownOccupant(e, lien, resa) : undefined}
-          // Toucher la pastille ouvre la réservation : en service, c'est depuis
-          // la table qu'on cherche qui est assis là. Le reste de la table
-          // ouvre la fiche de la table : le clic ne doit pas remonter.
-          onClick={mode === 'service' && onOpenOccupant
-            ? (e) => { e.stopPropagation(); onOpenOccupant(resa); }
-            : undefined}
-          style={{
-            maxWidth: '100%', padding: tabouret ? '0 3px' : '1px 5px', borderRadius: 'var(--r-full)',
-            // Une table occupée par des clients déjà assis se distingue de
-            // celle qui les attend : c'est la question qu'on se pose en
-            // regardant le plan pendant le service.
-            // Chaque fond a son texte, qui suit le thème (l'aplat s'éclaircit
-            // en sombre) ; sur le gris d'une table partie, la couleur du fond
-            // de page fait l'encre.
-            background: resa.statut === 'arrive' ? 'var(--success-fill)'
-                      : resa.statut === 'parti'  ? 'var(--text3)'
-                      : 'var(--accent)',
-            color: resa.statut === 'arrive' ? 'var(--on-success)'
-                 : resa.statut === 'parti'  ? 'var(--bg)'
-                 : 'var(--on-accent)',
-            fontSize: tabouret ? 8 : 9, fontWeight: 'var(--g3)', lineHeight: 1.35,
-            fontFamily: 'var(--font)',
-            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            cursor: mode === 'service' && canEdit ? 'grab' : mode === 'service' && onOpenOccupant ? 'pointer' : 'default',
-            touchAction: mode === 'service' && canEdit ? 'none' : 'auto',
-            opacity: dragLienId === lien.id ? 0.35 : 1,
-          }}
-        >
-          {/* ⇄ : la tablée déborde sur une autre table, les couverts affichés
-              sont ceux du groupe entier et non de cette seule table. */}
-          <span data-no-translate>
-            {tabouret
-              ? `${String(resa.nom || '').trim().slice(0, 3)}${liste.length > 1 ? '+' : ''}`
-              : sobre ? resa.nom : `${etale ? '⇄ ' : ''}${resa.nom} (${resa.nb_couverts})`}
-          </span>
-        </div>
-      ))}
-      {!tabouret && liste.length > 3 && (
-        <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', fontWeight: 'var(--g3)' }}>
-          +{liste.length - 3}
-        </div>
-      )}
-      </>
-      )}
-    </div>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'var(--t2)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+      <span aria-hidden="true" style={{ width: 10, height: 10, borderRadius: '50%', background: couleur, flexShrink: 0 }} />
+      <span data-no-translate="" style={{ fontFamily: 'var(--font-num)', color: 'var(--text)', fontSize: 'var(--t3)' }}>{n}</span>
+      <span>{n > 1 ? plusieurs : un}</span>
+    </span>
   );
 }
 
-// ── Ligne de réservation dans le panneau latéral ───────────────────────────
-// Toutes les réservations du service y restent, placées ou non. Les faire
-// disparaître une fois posées interdirait le cas le plus courant des grandes
-// tablées : un groupe de 12 dans une maison qui n'a que des tables de 6 doit
-// pouvoir recevoir une SECONDE table, et ça se fait en le glissant à nouveau.
-function ResaLigne({ resa, tablesOccupees, canEdit, onPointerDownResa, onOpen, enCours }) {
-  const placee = tablesOccupees.length > 0;
+function BoutonRond({ label, onClick, disabled = false, actif = false, children }) {
   return (
-    <div
-      style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '7px 9px', borderRadius: 'var(--r)',
-        borderWidth: 1, borderStyle: 'solid',
-        borderColor: placee ? 'var(--success-bd)' : 'var(--border)',
-        background: placee ? 'var(--success-bg-soft)' : 'var(--surface)',
-        opacity: enCours ? 0.35 : 1,
-      }}
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={actif || undefined}
+      onClick={onClick}
+      disabled={disabled}
+      style={{ ...ui.rond, ...(actif ? { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' } : null), opacity: disabled ? 0.65 : 1, cursor: disabled ? 'default' : 'pointer' }}
     >
-      {/* Poignée : seule zone où le doigt ne fait pas défiler la liste */}
-      {canEdit && (
-        <span
-          data-plan-poignee={resa.id}
-          data-no-translate
-          onPointerDown={(e) => onPointerDownResa(e, resa)}
-          aria-label={placee ? `Ajouter une table à ${resa.nom}` : `Placer ${resa.nom}`}
-          title={placee ? 'Glisser sur une autre table pour agrandir la tablée' : 'Glisser sur une table'}
-          style={{
-            // 44 px de haut : une poignée de 32 se rate au doigt, et un
-            // glisser raté sur un plan de salle passe pour un bug.
-            flexShrink: 0, width: 34, height: 44, marginLeft: -4,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'grab', touchAction: 'none',
-            color: 'var(--text3)', fontSize: 'var(--t2)', lineHeight: 1,
-            userSelect: 'none', WebkitUserSelect: 'none',
-          }}
-        >
-          ⠿
-        </span>
-      )}
-      <button
-        type="button"
-        onClick={() => onOpen?.(resa)}
-        style={{
-          flex: 1, minWidth: 0, textAlign: 'left', background: 'none',
-          border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'var(--font)',
-        }}
-      >
-        <div style={{
-          fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }} data-no-translate>
-          {resa.nom}
-        </div>
-        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
-          {(resa.heure_arrivee || '').slice(0, 5)}, {resa.nb_couverts} pax
-          {resa.est_groupe ? ', groupe' : ''}
-        </div>
-        <div style={{
-          fontSize: 'var(--t1)', marginTop: 2, fontWeight: 'var(--g3)',
-          color: placee ? 'var(--success-text)' : 'var(--text3)',
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {placee ? `Table ${tablesOccupees.join(' + ')}` : 'À placer'}
-        </div>
-      </button>
-    </div>
+      {children}
+    </button>
   );
 }
 
-// ── Composant principal ────────────────────────────────────────────────────
 export default function PlanSalle({
   etablissementId, date, resas, canEdit = false, onOpenResa,
   // Relecture des résas en échec côté VueJour : un seul bandeau en vue plan,
@@ -459,10 +284,8 @@ export default function PlanSalle({
   // service quand on vient de lui.
   salleInitiale = null, ajouterAuDepart = false, onAjoutFait, onFini = null,
 }) {
-  const isMobile = useIsMobile();
   const plan     = usePlanSalle(etablissementId);
   const reservations = useReservations(etablissementId);
-  const canvasRef = useRef(null);
   const enService = variante === 'service';
   const enDessin  = variante === 'dessin';
 
@@ -512,46 +335,27 @@ export default function PlanSalle({
   // juste après ne doit pas ouvrir la réservation qu'on vient de déplacer.
   const finGesteRef = useRef(0);
 
-  // ── Plan à la hauteur de l'écran (mode service, hors téléphone) ─────
-  // L'écran scindé ne défile pas : sur un grand écran, un plan calé sur la
-  // largeur dépasserait en bas. On mesure la zone disponible et le plan prend
-  // la plus grande taille qui y tient, proportions gardées.
-  const ajusteHauteur = enService && !isMobile;
-  const [zone, setZone] = useState(null);
-  const observateurRef = useRef(null);
-  const zoneRef = useCallback((el) => {
-    observateurRef.current?.disconnect();
-    observateurRef.current = null;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(([entree]) => {
-      const { width, height } = entree.contentRect;
-      setZone((z) => (z && z.w === width && z.h === height ? z : { w: width, h: height }));
-    });
-    ro.observe(el);
-    observateurRef.current = ro;
+  // ── Placement au toucher, heure affichée, dessin ─────────────────────
+  // Une réservation choisie dans la liste allume sa table ; « armée », elle
+  // se pose au toucher d'une table (placer, changer de table, en ajouter une).
+  const [choisieId, setChoisieId] = useState(null);
+  const [armee,     setArmee]     = useState(null);   // 'placer' | 'deplacer' | 'ajouter' | null
+  // Heure montrée par le plan, en minutes. null : maintenant le jour même,
+  // sinon le début du service.
+  const [heureVue,  setHeureVue]  = useState(null);
+  const [vueTel,    setVueTel]    = useState('plan');   // téléphone : 'plan' | 'liste'
+  const [listeRepliee, setListeRepliee] = useState(() => readJson(CLE_LISTE_REPLIEE, false) === true);
+  const [tableChoisie, setTableChoisie] = useState(null);   // dessin : table choisie
+  const [guides,       setGuides]       = useState([]);     // dessin : lignes d'alignement
+  const [annulations,  setAnnulations]  = useState([]);     // dessin : gestes à défaire
+  const [planTous,     setPlanTous]     = useState(null);   // « placer les restants » à confirmer
+  const [minute, setMinute] = useState(() => zurichNowMinutes());
+  useEffect(() => {
+    const id = setInterval(() => setMinute(zurichNowMinutes()), 30000);
+    return () => clearInterval(id);
   }, []);
-  useEffect(() => () => observateurRef.current?.disconnect(), []);
-  const largeurPlan = ajusteHauteur && zone && zone.h > 0
-    ? Math.max(240, Math.floor(Math.min(zone.w, zone.h * (PLAN_W / PLAN_H))))
-    : null;
-
-  // Largeur du canevas à l'écran : les lignes fines du quadrillage (tous les
-  // 10) ne s'affichent que si elles restent espacées d'au moins 7 px.
-  const [largeurCanevas, setLargeurCanevas] = useState(0);
-  const observateurCanevasRef = useRef(null);
-  const canevasRef = useCallback((el) => {
-    canvasRef.current = el;
-    observateurCanevasRef.current?.disconnect();
-    observateurCanevasRef.current = null;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(([entree]) => {
-      const w = Math.round(entree.contentRect.width);
-      setLargeurCanevas((v) => (v === w ? v : w));
-    });
-    ro.observe(el);
-    observateurCanevasRef.current = ro;
-  }, []);
-  useEffect(() => () => observateurCanevasRef.current?.disconnect(), []);
+  const jourMeme = !!date && date === zurichToday();
+  const maintenant = jourMeme ? minute : null;
 
   // ── Chargement ──────────────────────────────────────────────────────
   // La clé de rechargement est la LISTE DES IDS sérialisée, pas le tableau
@@ -772,9 +576,25 @@ export default function PlanSalle({
     .sort((a, b) => (a.type === 'zone' ? 0 : 1) - (b.type === 'zone' ? 0 : 1)),
   [elements, salleId]);
 
+  // ── Vue du plan à l'écran : échelle, cadrage, zoom (useVuePlan) ──────
+  // Le dessin et le déplacement de tables montrent tout le canevas ; le
+  // service se cale sur ce qui est dessiné dans la salle.
+  const dessinBase = mode === 'plan' && canEdit;
+  const deplacementTables = ajuster && canEdit && !dessinBase && !ajustIndispo;
+  const vuePlan = useVuePlan({
+    objets: [...tablesSalle, ...elementsSalle],
+    tables: tablesSalle,
+    toutLeCanevas: dessinBase || deplacementTables,
+    hauteurMin: 320,
+  });
+  // Largeur de l'écran du plan : sous 900 px, plan et réservations ne tiennent
+  // plus côte à côte et passent l'un sous l'autre (bascule Plan, Réservations).
+  const [racineEl, setRacineEl] = useState(null);
+  const racineW = useLargeur(useMemo(() => ({ current: racineEl }), [racineEl]));
+
   // Changer de salle ou quitter le dessin désélectionne : la barre d'actions
   // parlerait d'un élément qu'on ne voit plus.
-  useEffect(() => { setSelection(null); setSupprEnAttente(false); }, [salleId, mode]);
+  useEffect(() => { setSelection(null); setTableChoisie(null); setSupprEnAttente(false); }, [salleId, mode]);
 
   // Contour des tablées rapprochées de la salle affichée : un cadre autour
   // des tables réunies.
@@ -920,7 +740,7 @@ export default function PlanSalle({
 
   // Convertit un point écran en unités canevas.
   function versCanevas(clientX, clientY) {
-    const rect = canvasRef.current?.getBoundingClientRect();
+    const rect = vuePlan.salleRef.current?.getBoundingClientRect();
     if (!rect || !rect.width || !rect.height) return null;
     return {
       x: ((clientX - rect.left) / rect.width)  * PLAN_W,
@@ -959,6 +779,7 @@ export default function PlanSalle({
     setSupprEnAttente(false);
     demarrerGeste(e, {
       kind: 'table', tableId: table.id,
+      avant: { pos_x: Number(table.pos_x), pos_y: Number(table.pos_y) },
       grabDX: p.x - Number(table.pos_x),
       grabDY: p.y - Number(table.pos_y),
     });
@@ -1024,8 +845,14 @@ export default function PlanSalle({
         const p = versCanevas(e.clientX, e.clientY);
         const t = (tablesRef.current || []).find((x) => x.id === d.tableId);
         if (!p || !t) return;
-        const nx = clamp(snap(p.x - d.grabDX), 0, PLAN_W - Number(t.largeur));
-        const ny = clamp(snap(p.y - d.grabDY), 0, PLAN_H - Number(t.hauteur));
+        // Guides d'alignement : près du bord ou du centre d'une autre table de
+        // la salle, la table s'y cale et une ligne le montre ; sinon, la grille.
+        const brut = { pos_x: p.x - d.grabDX, pos_y: p.y - d.grabDY, largeur: Number(t.largeur), hauteur: Number(t.hauteur) };
+        const autres = (tablesRef.current || []).filter((x) => x.id !== t.id && x.salle_id === t.salle_id);
+        const cale = aligner(brut, autres);
+        const nx = cale.guides.some((g) => g.axe === 'x') ? cale.pos_x : clamp(snap(brut.pos_x), 0, PLAN_W - brut.largeur);
+        const ny = cale.guides.some((g) => g.axe === 'y') ? cale.pos_y : clamp(snap(brut.pos_y), 0, PLAN_H - brut.hauteur);
+        setGuides(cale.guides);
         // Déplacement optimiste : le doigt ne doit pas attendre le réseau.
         setTables((prev) => (prev || []).map((x) =>
           x.id === d.tableId ? { ...x, pos_x: nx, pos_y: ny } : x));
@@ -1121,6 +948,7 @@ export default function PlanSalle({
     function nettoyer() {
       dragRef.current = null;
       setDrag(null);
+      setGuides([]);
       window.removeEventListener('pointermove',   onMove);
       window.removeEventListener('pointerup',     onUp);
       window.removeEventListener('pointercancel', onCancel);
@@ -1141,6 +969,8 @@ export default function PlanSalle({
   async function deposer(d) {
     if (d.kind === 'table') {
       if (d.posX == null || d.posY == null) return;   // posée sans avoir bougé
+      setTableChoisie(d.tableId);
+      if (d.avant) pousserAnnulation({ kind: 'table', id: d.tableId, avant: d.avant });
       const { error: e } = await plan.updateTable(d.tableId, { pos_x: d.posX, pos_y: d.posY });
       if (e) { notify(e, 'error'); load(); }
       return;
@@ -1150,7 +980,9 @@ export default function PlanSalle({
       // L'élément manipulé reste choisi : sa poignée apparaît, on peut
       // l'allonger juste après l'avoir posé.
       setSelection(d.elementId);
+      setTableChoisie(null);
       if (!d.patch) return;
+      pousserAnnulation({ kind: 'element', id: d.elementId, avant: d.avant });
       const { error: e } = await plan.updateElement(d.elementId, d.patch);
       if (e) {
         setElements((prev) => (prev || []).map((x) => (x.id === d.elementId ? { ...x, ...d.avant } : x)));
@@ -1474,6 +1306,7 @@ export default function PlanSalle({
     const patch = dernier && memePlace(t, dernier.apres) && Number(t.largeur) === dernier.apres.largeur
       ? { ...dernier.avant }
       : apresQuartDeTour(t);
+    pousserAnnulation({ kind: 'table', id: tableId, avant: { largeur: Number(t.largeur), hauteur: Number(t.hauteur), pos_x: Number(t.pos_x), pos_y: Number(t.pos_y) } });
     dernierQuartRef.current.set(tableId, {
       avant: { largeur: Number(t.largeur), hauteur: Number(t.hauteur), pos_x: Number(t.pos_x), pos_y: Number(t.pos_y) },
       apres: patch,
@@ -1588,8 +1421,25 @@ export default function PlanSalle({
     return `B${nums.length ? Math.max(...nums) + 1 : 1}`;
   }
 
-  // Pose en quinconce pour ne pas empiler les nouvelles tables au même point.
-  function positionLibre(index) {
+  // Première place libre de la salle, en lisant de gauche à droite et de haut
+  // en bas : une table neuve ne se pose jamais sur une autre ni sur un mur.
+  // Sans place libre, en quinconce comme avant.
+  function positionLibre(index, taille = { largeur: 90, hauteur: 90 }) {
+    const w = Number(taille.largeur) || 90;
+    const h = Number(taille.hauteur) || 90;
+    const obstacles = [
+      ...tablesSalle,
+      ...elementsSalle.filter((el) => estObstacle(el)),
+    ];
+    const libre = (x, y) => obstacles.every((o) => {
+      const ox = Number(o.pos_x) - 20; const oy = Number(o.pos_y) - 20;
+      return x + w <= ox || x >= ox + Number(o.largeur) + 40 || y + h <= oy || y >= oy + Number(o.hauteur) + 40;
+    });
+    for (let y = 40; y + h <= PLAN_H - 20; y += 20) {
+      for (let x = 40; x + w <= PLAN_W - 20; x += 20) {
+        if (libre(x, y)) return { pos_x: x, pos_y: y };
+      }
+    }
     return {
       pos_x: 40 + (index % 8) * 115,
       pos_y: 40 + Math.floor(index / 8) * 115,
@@ -1646,19 +1496,26 @@ export default function PlanSalle({
     if (e) { notify(e, 'error'); return; }
     // Pas de réglages ouverts : on pose une rangée de tabourets d'affilée.
     setTables((prev) => [...(prev || []), data]);
+    pousserAnnulation({ kind: 'creationTable', id: data.id });
+    setTableChoisie(data.id);
   }
 
-  async function ajouterTable() {
+  // Un modèle de la rangée « Ajouter » pose la table et la choisit, sans
+  // ouvrir ses réglages ; « Autre table » ouvre les réglages comme avant.
+  async function ajouterTable(modele = null) {
     const cible = await salleCible();
     if (!cible) return;
-
-    const { pos_x, pos_y } = positionLibre(tablesSalle.length);
+    const forme = modele?.forme ?? 'ronde';
+    const nbPlaces = modele?.nb_places ?? 2;
+    const { pos_x, pos_y } = positionLibre(tablesSalle.length, tailleParDefaut(forme, nbPlaces));
     const { data, error: e } = await plan.createTable({
-      nom: prochainNumero(), nb_places: 2, forme: 'ronde',
+      nom: prochainNumero(), nb_places: nbPlaces, forme,
       salle_id: cible, pos_x, pos_y,
     });
     if (e) { notify(e, 'error'); return; }
     setTables((prev) => [...(prev || []), data]);
+    pousserAnnulation({ kind: 'creationTable', id: data.id });
+    if (modele) { setSelection(null); setTableChoisie(data.id); return; }
     // Création lente : si l'on a ouvert les réglages d'une autre table en
     // attendant, on ne les lui prend pas.
     setEditTable((cur) => cur ?? data);
@@ -1679,6 +1536,7 @@ export default function PlanSalle({
     });
     if (e) { notify(`Duplication de la table ${modele.nom} impossible : ${e}`, 'error'); return false; }
     setTables((prev) => [...(prev || []), data]);
+    pousserAnnulation({ kind: 'creationTable', id: data.id });
     notify(`${estTabouret(data) ? 'Place de bar' : 'Table'} ${data.nom} créée`, 'success');
     return true;
   }
@@ -1700,7 +1558,9 @@ export default function PlanSalle({
     });
     if (e) { notify(`Ajout impossible (${def.label}) : ${e}`, 'error'); return; }
     setElements((prev) => [...(prev || []), data]);
+    pousserAnnulation({ kind: 'creationElement', id: data.id });
     setSupprEnAttente(false);
+    setTableChoisie(null);
     setSelection(data.id);
     // Une zone ne dit rien sans son nom (cuisine, WC...) : on le demande tout
     // de suite.
@@ -1716,6 +1576,7 @@ export default function PlanSalle({
 
   async function tournerElement(el) {
     const avant = geometrie(el);
+    pousserAnnulation({ kind: 'element', id: el.id, avant });
     const patch = quartDeTourElement(el);
     setElements((prev) => (prev || []).map((x) => (x.id === el.id ? { ...x, ...patch } : x)));
     const { error: e } = await plan.updateElement(el.id, patch);
@@ -1736,6 +1597,7 @@ export default function PlanSalle({
     });
     if (e) { notify(e, 'error'); return; }
     setElements((prev) => [...(prev || []), data]);
+    pousserAnnulation({ kind: 'creationElement', id: data.id });
     setSelection(data.id);
   }
 
@@ -1764,6 +1626,98 @@ export default function PlanSalle({
     setSupprEnAttente(false);
     setSelection(el.id);
   }
+
+  // ── Annuler et pousser au clavier (dessin) ──────────────────────────
+  // Chaque geste du dessin (déplacer, tourner, ajouter) garde ce qu'il faut
+  // pour revenir en arrière. « Annuler » ou Ctrl + Z défait le dernier.
+  const annulationsRef = useRef([]);
+  annulationsRef.current = annulations;
+  function pousserAnnulation(entree) {
+    setAnnulations((prev) => [...prev.slice(-(ANNULATIONS_MAX - 1)), entree]);
+  }
+
+  async function annulerDernier() {
+    const liste = annulationsRef.current;
+    const dernier = liste[liste.length - 1];
+    if (!dernier) return;
+    setAnnulations((prev) => prev.slice(0, -1));
+    if (dernier.kind === 'table') {
+      setTables((prev) => (prev || []).map((x) => (x.id === dernier.id ? { ...x, ...dernier.avant } : x)));
+      const { error: e } = await plan.updateTable(dernier.id, dernier.avant);
+      if (e) { notify(e, 'error'); load(); }
+    } else if (dernier.kind === 'element') {
+      setElements((prev) => (prev || []).map((x) => (x.id === dernier.id ? { ...x, ...dernier.avant } : x)));
+      const { error: e } = await plan.updateElement(dernier.id, dernier.avant);
+      if (e) { notify(e, 'error'); load(); }
+    } else if (dernier.kind === 'creationTable') {
+      setTableChoisie((c) => (c === dernier.id ? null : c));
+      await supprimerTable(dernier.id);
+    } else if (dernier.kind === 'creationElement') {
+      setSelection((c) => (c === dernier.id ? null : c));
+      setElements((prev) => (prev || []).filter((x) => x.id !== dernier.id));
+      const { error: e } = await plan.deleteElement(dernier.id);
+      if (e) { notify(e, 'error'); load(); }
+    }
+  }
+
+  // Flèches : la table ou l'élément choisi avance d'un pas de grille (de 50
+  // avec Maj). Une rafale de flèches ne fait qu'une écriture, et qu'une
+  // entrée d'annulation.
+  const pousseRef = useRef(null);
+  async function ecrirePousse(c) {
+    if (!c?.pos) return;
+    const { error: e } = c.kind === 'table'
+      ? await plan.updateTable(c.id, c.pos)
+      : await plan.updateElement(c.id, c.pos);
+    if (e) { notify(e, 'error'); load(); }
+  }
+  function pousser(dx, dy) {
+    const kind = tableChoisie ? 'table' : selection ? 'element' : null;
+    const id = tableChoisie || selection;
+    if (!kind) return;
+    const x = ((kind === 'table' ? tablesRef.current : elementsRef.current) || []).find((o) => o.id === id);
+    if (!x) return;
+    const nx = clamp(Number(x.pos_x) + dx, 0, PLAN_W - Number(x.largeur));
+    const ny = clamp(Number(x.pos_y) + dy, 0, PLAN_H - Number(x.hauteur));
+    let c = pousseRef.current;
+    if (!c || c.id !== id) {
+      if (c) { clearTimeout(c.timer); ecrirePousse(c); }
+      c = { kind, id, avant: { pos_x: Number(x.pos_x), pos_y: Number(x.pos_y) } };
+      pousseRef.current = c;
+      pousserAnnulation({ kind, id, avant: c.avant });
+    }
+    c.pos = { pos_x: nx, pos_y: ny };
+    const maj = (prev) => (prev || []).map((o) => (o.id === id ? { ...o, pos_x: nx, pos_y: ny } : o));
+    if (kind === 'table') setTables(maj); else setElements(maj);
+    clearTimeout(c.timer);
+    c.timer = setTimeout(() => { const fin = pousseRef.current; pousseRef.current = null; ecrirePousse(fin); }, 450);
+  }
+
+  // Clavier : au dessin, annuler, pousser, lâcher ; au service, Échap
+  // lâche la réservation choisie. Rien quand on tape dans un champ ou qu'une
+  // fenêtre est ouverte.
+  useEffect(() => {
+    const surTouche = (e) => {
+      const cible = e.target;
+      if (cible && (cible.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(cible.tagName || ''))) return;
+      if (document.querySelector('[data-fenetre]')) return;
+      if (dessinBase) {
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && String(e.key).toLowerCase() === 'z') {
+          e.preventDefault();
+          annulerDernier();
+          return;
+        }
+        const pas = e.shiftKey ? 50 : PLAN_GRID;
+        const dir = { ArrowLeft: [-pas, 0], ArrowRight: [pas, 0], ArrowUp: [0, -pas], ArrowDown: [0, pas] }[e.key];
+        if (dir && (tableChoisie || selection)) { e.preventDefault(); pousser(dir[0], dir[1]); return; }
+        if (e.key === 'Escape') { setTableChoisie(null); setSelection(null); setSupprEnAttente(false); }
+        return;
+      }
+      if (e.key === 'Escape' && (choisieId || armee)) { setChoisieId(null); setArmee(null); }
+    };
+    window.addEventListener('keydown', surTouche);
+    return () => window.removeEventListener('keydown', surTouche);
+  });
 
   // ── Gestion des salles ──────────────────────────────────────────────
   async function creerSalle(nom) {
@@ -1867,7 +1821,7 @@ export default function PlanSalle({
   // Le mode plan est DÉRIVÉ du droit, pas seulement de l'état : un rôle
   // rétrogradé en cours de session verrait sinon le bouton « Terminer »
   // disparaître et resterait coincé dans l'éditeur.
-  const modePlan    = mode === 'plan' && canEdit;
+  const modePlan    = dessinBase;
   // « Dessiner la salle » : la section 'plan_salle' de la page des réglages,
   // ouverte par-dessus le service avec ce qu'il montre (salle, jour, service,
   // clients placés). Le geste retour et « J'ai fini » ramènent ici.
@@ -1892,7 +1846,10 @@ export default function PlanSalle({
   const defChoisi = elementChoisi ? ELEMENT_PAR_TYPE.get(elementChoisi.type) : null;
   // « Déplacer des tables » : même dérivation du droit, et seulement une fois
   // la migration des ajustements passée.
-  const ajusterActif = ajuster && canEdit && !modePlan && !ajustIndispo;
+  const ajusterActif = deplacementTables;
+  const tableDessinChoisie = modePlan && tableChoisie
+    ? tablesSalle.find((t) => t.id === tableChoisie) || null
+    : null;
   const modeTable    = modePlan ? 'plan' : ajusterActif ? 'ajuster' : 'service';
 
   // Tablée survolée pendant un glisser : toutes ses tables s'allument, c'est
@@ -1933,7 +1890,6 @@ export default function PlanSalle({
   // Rôle de chaque table dans sa tablée, et clients de toute la tablée pour
   // celle qui porte le numéro (un client par réservation, pas un par table).
   const roleTablee = new Map();
-  const occupantsDeTablee = new Map();
   if (!modePlan) {
     const parFusion = new Map();
     for (const t of tablesSalle) {
@@ -1944,14 +1900,7 @@ export default function PlanSalle({
     for (const membres of parFusion.values()) {
       if (membres.length < 2) continue;
       const principale = principaleDe(membres);
-      const vus = new Map();
-      for (const m of membres) {
-        roleTablee.set(m.id, m.id === principale.id ? 'principale' : 'secondaire');
-        for (const o of occupantsParTable.get(m.id) || []) {
-          if (!vus.has(o.resa.id)) vus.set(o.resa.id, o);
-        }
-      }
-      occupantsDeTablee.set(principale.id, [...vus.values()]);
+      for (const m of membres) roleTablee.set(m.id, m.id === principale.id ? 'principale' : 'secondaire');
     }
   }
 
@@ -1990,465 +1939,695 @@ export default function PlanSalle({
   const placesTotales = (tables || []).filter((t) => t.actif !== false)
     .reduce((s, t) => s + (t.nb_places || 0), 0);
 
-  // Plan pas encore dessiné (ou salle vide). En mode service, la colonne des
-  // réservations reste affichée à côté : on peut suivre le service sans plan.
+  // ── Tablées de toute la maison : propositions, compteurs, états ───────
+  // Une table seule forme sa propre tablée. Les places d'une table inactive
+  // ne comptent pas.
+  const groupes = (() => {
+    const parCle = new Map();
+    for (const t of tablesVues || []) {
+      const cle = t.fusion || t.id;
+      if (!parCle.has(cle)) parCle.set(cle, []);
+      parCle.get(cle).push(t);
+    }
+    return [...parCle.values()].map((membres) => {
+      const principale = membres.length > 1 ? principaleDe(membres) : membres[0];
+      return {
+        id: principale.id,
+        nom: principale.nom,
+        salleId: salleDeTable(principale),
+        places: membres.reduce((n, t) => n + (t.actif === false ? 0 : (Number(t.nb_places) || 0)), 0),
+        tabouret: membres.length === 1 && estTabouret(principale),
+        tableIds: membres.map((t) => t.id),
+        actif: membres.some((t) => t.actif !== false),
+      };
+    }).filter((g) => g.actif);
+  })();
+  const groupeDeTable = new Map();
+  groupes.forEach((g) => g.tableIds.forEach((id) => groupeDeTable.set(id, g)));
+
+  // Réservations du service posées sur chaque table.
+  const resaParId = new Map(resasService.map((r) => [r.id, r]));
+  const occupations = new Map();
+  for (const l of liens || []) {
+    const r = resaParId.get(l.reservation_id);
+    if (!r) continue;
+    if (!occupations.has(l.table_id)) occupations.set(l.table_id, []);
+    occupations.get(l.table_id).push(r);
+  }
+  const resasDeGroupe = (g) => {
+    const vus = new Map();
+    for (const id of g.tableIds) for (const r of occupations.get(id) || []) vus.set(r.id, r);
+    return [...vus.values()];
+  };
+
+  // Heure montrée : celle du curseur, sinon maintenant le jour même pendant
+  // le service, sinon chaque table montre sa première réservation.
+  const bornes = modePlan ? null : bornesCurseur(resasService);
+  const heureAuto = jourMeme && bornes && minute >= bornes.min && minute <= bornes.max ? minute : null;
+  const heureEffective = heureVue ?? heureAuto;
+  const etats = new Map(groupes.map((g) => [g.id, etatTablee(resasDeGroupe(g), heureEffective, maintenant)]));
+  const compte = { libre: 0, reservee: 0, atable: 0, retard: 0 };
+  etats.forEach((e) => { compte[e.etat] += 1; });
+  const nbRetard = resasService.filter((r) => enRetard(r, maintenant)).length;
+
+  // À placer : ni partie, ni no-show, ni demande à confirmer, sans table.
+  const aPlacer = resasService.filter((r) => r.statut !== 'parti' && r.statut !== 'no_show'
+    && r.statut !== 'demande' && !(tablesParResa.get(r.id) || []).length);
+  const optsProp = { maintenant, salleId };
+  const propositions = new Map();
+  if (canEdit && !modePlan) {
+    for (const r of aPlacer) {
+      const g = proposer(r, groupes, occupations, optsProp);
+      if (g) propositions.set(r.id, g);
+    }
+  }
+  const nomsProposes = new Map([...propositions].map(([id, g]) => [id, g.nom]));
+
+  // Réservation choisie dans la liste, et ce qu'elle allume sur le plan.
+  const resaChoisie = choisieId ? resasService.find((r) => r.id === choisieId) || null : null;
+  const armeeActive = armee && resaChoisie && canEdit && !modePlan ? armee : null;
+  const libresChoisie = armeeActive
+    ? new Set(tableesLibres(resaChoisie, groupes, occupations, optsProp).flatMap((g) => g.tableIds))
+    : null;
+  const proposeeChoisie = armeeActive && armeeActive !== 'ajouter' ? proposer(resaChoisie, groupes, occupations, optsProp) : null;
+  const idsProposes = new Set(proposeeChoisie?.tableIds || []);
+  const tablesDeChoisie = new Set(resaChoisie
+    ? (liens || []).filter((l) => l.reservation_id === resaChoisie.id).map((l) => l.table_id)
+    : []);
+
+  const tel = vuePlan.tel;
+  const k = vuePlan.k;
+  // Sous 900 px d'écran, plan et réservations passent l'un sous l'autre :
+  // l'iPad en portrait garde ainsi toute la largeur pour la salle.
+  const empile = racineW > 0 && racineW < 900;
+  const nomService = SERVICES.find((x) => x.id === serviceActif)?.label || '';
+
+  // ── Gestes du service ───────────────────────────────────────────────
+  const montrerTable = (tableId) => {
+    const t = (tablesVues || []).find((x) => x.id === tableId);
+    if (!t) return;
+    const sid = salleDeTable(t);
+    if (sid && sid !== salleId) setSalleId(sid);
+    setTimeout(() => vuePlan.montrer(Number(t.pos_x) + Number(t.largeur) / 2, Number(t.pos_y) + Number(t.hauteur) / 2), 60);
+  };
+
+  function choisirResa(resa) {
+    if (choisieId === resa.id) { setChoisieId(null); setArmee(null); return; }
+    const placee = (tablesParResa.get(resa.id) || []).length > 0;
+    const termine = resa.statut === 'parti' || resa.statut === 'no_show';
+    setChoisieId(resa.id);
+    setArmee(canEdit && !placee && !termine && resa.statut !== 'demande' ? 'placer' : null);
+    if (empile) setVueTel('plan');
+    const lien = (liens || []).find((l) => l.reservation_id === resa.id);
+    if (lien) montrerTable(lien.table_id);
+    else {
+      const g = proposer(resa, groupes, occupations, optsProp);
+      if (g) montrerTable(g.id);
+    }
+  }
+
+  async function placerProposee(resa) {
+    const g = proposer(resa, groupes, occupations, optsProp);
+    if (!g) return;
+    if (choisieId === resa.id) { setChoisieId(null); setArmee(null); }
+    await poserSurTablee(resa, g.id);
+  }
+
+  async function toucherTableService(table) {
+    if (Date.now() - finGesteRef.current < 400) return;
+    if (Date.now() - vuePlan.finPincementRef.current < 400) return;
+    if (armeeActive && resaChoisie) {
+      const resa = resaChoisie;
+      const geste = armeeActive;
+      setChoisieId(null);
+      setArmee(null);
+      if (geste === 'deplacer') await assignerIci(resa, table.id);
+      else await poserSurTablee(resa, table.id);
+      return;
+    }
+    setChoisieId(null);
+    setArmee(null);
+    setTableOuverte(table.id);
+  }
+
+  function toucherTableDessin(table) {
+    if (Date.now() - finGesteRef.current < 400) return;
+    setSelection(null);
+    setSupprEnAttente(false);
+    const vraie = (tables || []).find((x) => x.id === table.id) || table;
+    if (tableChoisie === table.id) { setEditTable(vraie); return; }
+    setTableChoisie(table.id);
+  }
+
+  async function supprimerTableChoisie() {
+    if (!tableDessinChoisie) return;
+    if (!supprEnAttente) { setSupprEnAttente(true); return; }
+    setSupprEnAttente(false);
+    const { id, nom } = tableDessinChoisie;
+    setTableChoisie(null);
+    if (await supprimerTable(id)) notify(`Table ${nom} supprimée`, 'info');
+  }
+
+  async function confirmerTous() {
+    const liste = (planTous || []).filter((p) => p.tablee);
+    setPlanTous(null);
+    let n = 0;
+    for (const p of liste) {
+      if (await poserSurTablee(p.resa, p.tablee.id, { silencieux: true })) n += 1;
+    }
+    if (n) notify(`${n} réservation${n > 1 ? 's' : ''} placée${n > 1 ? 's' : ''}`, 'success');
+  }
+
+  async function imprimerPlan() {
+    try {
+      const { exporterPlanServicePdf } = await import('./planServicePdf.js');
+      await exporterPlanServicePdf({
+        date, nomService,
+        salles: salles || [], tables: tablesVues || [], elements: elements || [],
+        groupes, resasParGroupe: new Map(groupes.map((g) => [g.id, resasDeGroupe(g)])),
+        resas: resasService, tablesParResa,
+      });
+    } catch (e) {
+      console.error('[PlanSalle] impression du plan', e);
+      notify('Le plan du service n’a pas pu être préparé. Réessayez.', 'error');
+    }
+  }
+
+  // ── Plan vide ───────────────────────────────────────────────────────
   const planVide = (
-      <div style={{
-        textAlign: 'center', padding: '44px 24px', borderRadius: 'var(--r)',
-        borderWidth: 1, borderStyle: 'dashed', borderColor: 'var(--border)',
-        background: 'var(--surface)',
+    <div data-cadre="" style={{ ...ui.carte, alignItems: 'center', textAlign: 'center', padding: '44px 24px' }}>
+      <span aria-hidden="true" style={{
+        width: 56, height: 56, borderRadius: '50%', background: 'var(--piste)', color: 'var(--text2)',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <div style={{ fontSize: 'var(--t6)', opacity: 0.18, marginBottom: 10 }}>▦</div>
-        <div style={{
-          fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)',
-          fontFamily: 'var(--font)', marginBottom: 6,
-        }}>
-          {autresSallesGarnies
-            ? 'Cette salle n’a pas encore de table'
-            : 'Le plan de salle n’est pas encore dessiné'}
-        </div>
-        <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', maxWidth: 380, margin: '0 auto 14px' }}>
-          {canEdit
-            ? 'Ajoutez les tables une à une, placez-les au doigt, puis glissez les réservations dessus.'
-            : 'Un responsable doit le dessiner depuis « Dessiner la salle ».'}
-        </div>
-        {canEdit && (
-          // Secondaire : une seule pilule sombre par écran (règle des boutons, P2).
-          <button type="button" onClick={() => ouvrirDessin(true)} style={{
-            padding: '9px 18px', borderRadius: 'var(--r)',
-            borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
-            background: 'var(--btn-fond)', color: 'var(--btn-texte)',
-            fontSize: 'var(--t2)', fontWeight: 'var(--g3)', cursor: 'pointer', fontFamily: 'var(--font)',
-          }}>
-            Ajouter une table
-          </button>
-        )}
+        <LayoutGrid size={24} strokeWidth={1.75} />
+      </span>
+      <div style={{ fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)' }}>
+        {autresSallesGarnies ? 'Cette salle n’a pas encore de table' : 'Le plan de salle n’est pas encore dessiné'}
       </div>
+      <div style={{ fontSize: 'var(--t2)', color: 'var(--text2)', maxWidth: 420, lineHeight: 1.5 }}>
+        {canEdit
+          ? 'Posez les tables, placez-les au doigt, puis touchez une réservation et sa table pour l’y asseoir.'
+          : 'Un responsable doit le dessiner depuis « Dessiner la salle ».'}
+      </div>
+      {canEdit && <Btn variant="ghost" onClick={() => ouvrirDessin(true)} style={{ minHeight: 44 }}>Ajouter une table</Btn>}
+    </div>
   );
 
-  // En mode service, les onglets de service sont dans la barre de l'écran
-  // parent : la barre d'ici ne sert plus qu'aux boutons « Déplacer des
-  // tables » et « Dessiner la salle ».
-  const barre = !serviceControle || canEdit;
-  // Écran compact, hors dessin : les salles rejoignent la barre du service.
-  const sallesEnLigne = compact && !modePlan && !serviceControle;
+  // ── En-tête : service, salle, actions ───────────────────────────────
+  const ongletsService = !modePlan && !serviceControle ? (
+    <SegmentedTabs
+      tabs={SERVICES.map((sv) => ({
+        id: sv.id,
+        label: couvertsParService[sv.id] ? `${sv.label} (${couvertsParService[sv.id]})` : sv.label,
+      }))}
+      active={serviceActif}
+      onChange={(v) => { setService(v); setHeureVue(null); setChoisieId(null); setArmee(null); }}
+      size="sm"
+    />
+  ) : null;
+  const ongletsSalles = (salles || []).length > 1 ? (
+    <SegmentedTabs
+      tabs={(salles || []).map((sa) => ({
+        id: sa.id,
+        label: modePlan ? `${sa.nom} (${nbTablesParSalle.get(sa.id) || 0})` : sa.nom,
+      }))}
+      active={salleId}
+      onChange={setSalleId}
+      size="sm"
+    />
+  ) : null;
+
+  const menuService = !modePlan && !ajusterActif ? (
+    <BoutonActions
+      id="plan-salle-plus"
+      titre="Plan de salle"
+      label={<Ellipsis size={18} strokeWidth={2} aria-hidden="true" />}
+      style={{ ...ui.rond, boxShadow: 'none' }}
+      sections={[{
+        items: [
+          canEdit && !ajustIndispo && (tel || empile) && { titre: 'Déplacer des tables', detail: 'Pour ce service seulement : rapprocher, séparer, tourner.', onClick: () => setAjuster(true) },
+          canEdit && { titre: 'Dessiner la salle', detail: 'Le plan de base, pour tous les services.', onClick: () => ouvrirDessin() },
+          { titre: 'Imprimer le plan du service', detail: 'Un PDF avec chaque table, ses clients et leurs heures.', onClick: imprimerPlan },
+        ],
+      }]}
+    />
+  ) : null;
+
+  const actions = (() => {
+    if (modePlan) {
+      return (
+        <>
+          <Btn variant="ghost" onClick={annulerDernier} disabled={!annulations.length} title="Annuler le dernier geste (Ctrl + Z)" style={{ minHeight: 44 }}>
+            <Undo2 size={16} strokeWidth={2} aria-hidden="true" /> Annuler
+          </Btn>
+          <Btn variant="ghost" onClick={() => setGestionSalles(true)} style={{ minHeight: 44 }}>Salles</Btn>
+          {onFini && <Btn variant="primary" onClick={() => onFini()} style={{ minHeight: 44 }}>J’ai fini</Btn>}
+        </>
+      );
+    }
+    if (ajusterActif) {
+      return (
+        <>
+          {ajustParTable.size > 0 && <Btn variant="ghost" onClick={revenirAuPlanDeBase} style={{ minHeight: 44 }}>Tout remettre en place</Btn>}
+          <Btn variant="primary" onClick={() => setAjuster(false)} style={{ minHeight: 44 }}>J’ai fini</Btn>
+        </>
+      );
+    }
+    return (
+      <>
+        {canEdit && !ajustIndispo && !tel && !empile && (
+          <Btn variant="ghost" onClick={() => { setAjuster(true); setChoisieId(null); setArmee(null); }} style={{ minHeight: 44 }}>Déplacer des tables</Btn>
+        )}
+        {menuService}
+        {canEdit && propositions.size > 0 && (
+          <Btn variant="primary" onClick={() => setPlanTous(planifier(aPlacer, groupes, occupations, optsProp))} style={{ minHeight: 44 }}>
+            {empile || aPlacer.length < 2
+              ? <><span>Placer</span> <span data-no-translate="">{aPlacer.length}</span></>
+              : <><span>Placer les</span> <span data-no-translate="">{aPlacer.length}</span> <span>restants</span></>}
+          </Btn>
+        )}
+      </>
+    );
+  })();
+
+  // ── Curseur horaire ─────────────────────────────────────────────────
+  const curseur = bornes && !ajusterActif ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 260px', minWidth: 0, maxWidth: 460 }}>
+      <span style={{ fontSize: 'var(--t2)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+        {heureEffective == null
+          ? 'Tout le service'
+          : <><span>Salle à</span> <span data-no-translate="" style={{ fontFamily: 'var(--font-num)', color: 'var(--text)' }}>{hhmm(heureEffective)}</span></>}
+      </span>
+      <input
+        type="range"
+        min={bornes.min}
+        max={bornes.max}
+        step={PAS_CURSEUR}
+        value={clamp(heureEffective ?? bornes.min, bornes.min, bornes.max)}
+        onChange={(e) => setHeureVue(Number(e.target.value))}
+        aria-label="Heure montrée par le plan"
+        style={{ flex: 1, minWidth: 80, accentColor: 'var(--accent)', minHeight: 32 }}
+      />
+      {heureVue != null && (
+        <button type="button" style={ui.puce} onClick={() => setHeureVue(null)}>
+          {heureAuto != null ? 'Maintenant' : 'Tout le service'}
+        </button>
+      )}
+    </div>
+  ) : null;
+
+  // ── Bandeau de la réservation choisie ───────────────────────────────
+  const bandeauChoix = resaChoisie && !modePlan && !ajusterActif ? (() => {
+    const heure = hhmm(minutesDe(resaChoisie.heure_arrivee) ?? 0);
+    const nomsTables = tablesParResa.get(resaChoisie.id) || [];
+    const fermer = () => { setChoisieId(null); setArmee(null); };
+    const fiche = onOpenResa ? <Btn variant="ghost" onClick={() => { fermer(); onOpenResa(resaChoisie); }} style={{ minHeight: 40 }}>Détails</Btn> : null;
+    let texte;
+    let boutons;
+    if (armeeActive === 'placer') {
+      texte = (
+        <>
+          <span>Touchez une table pour placer</span>{' '}
+          <span data-no-translate="" style={{ fontWeight: 'var(--g3)' }}>{resaChoisie.nom}</span>
+          <span>, </span><span data-no-translate="">{resaChoisie.nb_couverts}</span><span> couv. à </span><span data-no-translate="">{heure}</span><span>.</span>
+          {proposeeChoisie && <><span> Table proposée : </span><span data-no-translate="" style={{ fontWeight: 'var(--g3)' }}>{proposeeChoisie.nom}</span><span>.</span></>}
+          {!proposeeChoisie && <span> Aucune table libre n’a assez de places : rapprochez des tables ou choisissez-en une.</span>}
+        </>
+      );
+      boutons = <>{proposeeChoisie && <Btn variant="ghost" onClick={() => placerProposee(resaChoisie)} style={{ minHeight: 40 }}><span>Table</span> <span data-no-translate="">{proposeeChoisie.nom}</span></Btn>}{fiche}</>;
+    } else if (armeeActive === 'deplacer' || armeeActive === 'ajouter') {
+      texte = (
+        <>
+          <span>{armeeActive === 'deplacer' ? 'Touchez la nouvelle table de' : 'Touchez la table à ajouter pour'}</span>{' '}
+          <span data-no-translate="" style={{ fontWeight: 'var(--g3)' }}>{resaChoisie.nom}</span><span>.</span>
+        </>
+      );
+      boutons = <Btn variant="ghost" onClick={() => setArmee(null)} style={{ minHeight: 40 }}>Annuler</Btn>;
+    } else {
+      const termine = resaChoisie.statut === 'parti' || resaChoisie.statut === 'no_show';
+      texte = (
+        <>
+          <span data-no-translate="" style={{ fontWeight: 'var(--g3)' }}>{resaChoisie.nom}</span>
+          <span>, </span><span data-no-translate="">{resaChoisie.nb_couverts}</span><span> couv. à </span><span data-no-translate="">{heure}</span>
+          {nomsTables.length > 0 && <><span>, table </span><span data-no-translate="">{nomsTables.join(' + ')}</span></>}
+          <span>.</span>
+        </>
+      );
+      boutons = (
+        <>
+          {canEdit && !termine && nomsTables.length > 0 && (
+            <Btn variant="ghost" onClick={() => setArmee('deplacer')} style={{ minHeight: 40 }}>Changer de table</Btn>
+          )}
+          {fiche}
+          {canEdit && !termine && nomsTables.length > 0 && (
+            <BoutonActions
+              id="plan-salle-resa"
+              titre={resaChoisie.nom}
+              label="Plus"
+              style={{ ...ui.puce, minHeight: 40 }}
+              sections={[{
+                items: [
+                  { titre: 'Ajouter une table', detail: 'La tablée s’étend sur une table de plus.', onClick: () => setArmee('ajouter') },
+                  {
+                    titre: 'Retirer du plan',
+                    detail: 'La réservation repasse dans « À placer ».',
+                    onClick: async () => {
+                      const ids = new Set(tablesDeChoisie);
+                      const resa = resaChoisie;
+                      fermer();
+                      if (await retirerLiens((liensRef.current || []).filter((l) => l.reservation_id === resa.id && ids.has(l.table_id)))) {
+                        notify(`${resa.nom} retiré du plan`, 'info');
+                      }
+                    },
+                  },
+                ],
+              }]}
+            />
+          )}
+        </>
+      );
+    }
+    return (
+      <div style={ui.bandeauChoix} data-plan-choix="">
+        <span style={ui.bandeauTexte}>{texte}</span>
+        <span style={{ display: 'inline-flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
+          {boutons}
+          <button type="button" aria-label="Lâcher la réservation" title="Lâcher (Échap)" onClick={fermer} style={{ ...ui.rond, boxShadow: 'none' }}>
+            <X size={18} strokeWidth={2} aria-hidden="true" />
+          </button>
+        </span>
+      </div>
+    );
+  })() : null;
+
+  // ── Rangées du dessin ───────────────────────────────────────────────
+  const supprimerStyle = {
+    ...ui.puce,
+    borderColor: supprEnAttente ? 'var(--danger-fill)' : 'var(--btn-bord)',
+    background: supprEnAttente ? 'var(--danger-fill)' : 'var(--btn-fond)',
+    color: supprEnAttente ? 'var(--on-danger)' : 'var(--danger-text)',
+  };
+  const rangeeDessin = modePlan ? (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
+      {elementChoisi ? (
+        <>
+          <span style={{ flexShrink: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginRight: 4, whiteSpace: 'nowrap' }}>
+            {defChoisi?.label}
+            {defChoisi?.nomme && elementChoisi.libelle ? ` « ${elementChoisi.libelle} »` : ''}
+          </span>
+          {(elementChoisi.type === 'porte' || Number(elementChoisi.largeur) !== Number(elementChoisi.hauteur)) && (
+            <button type="button" style={ui.puce} onClick={() => tournerElement(elementChoisi)}>Tourner</button>
+          )}
+          {defChoisi?.nomme && <button type="button" style={ui.puce} onClick={() => setNommer(elementChoisi)}>Nommer</button>}
+          <button type="button" style={ui.puce} onClick={() => dupliquerElement(elementChoisi)}>Dupliquer</button>
+          <button type="button" onClick={() => supprimerElement(elementChoisi)} style={supprimerStyle}>
+            {supprEnAttente ? 'Confirmer la suppression' : 'Supprimer'}
+          </button>
+          <button type="button" style={{ ...ui.puce, marginLeft: 'auto' }} onClick={() => { setSelection(null); setSupprEnAttente(false); }}>Fermer</button>
+        </>
+      ) : tableDessinChoisie ? (
+        <>
+          <span style={{ flexShrink: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginRight: 4, whiteSpace: 'nowrap' }}>
+            <span>{estTabouret(tableDessinChoisie) ? 'Place de bar' : 'Table'}</span>{' '}
+            <span data-no-translate="">{tableDessinChoisie.nom}</span>
+            {!estTabouret(tableDessinChoisie) && (
+              <span style={{ fontWeight: 'var(--g1)', color: 'var(--text2)' }}>
+                <span>, </span><span data-no-translate="">{tableDessinChoisie.nb_places || 0}</span> <span>places</span>
+              </span>
+            )}
+          </span>
+          <button type="button" style={ui.puce} onClick={() => setEditTable(tableDessinChoisie)}>Régler</button>
+          {nonCarree(tableDessinChoisie) && <button type="button" style={ui.puce} onClick={() => tournerTableBase(tableDessinChoisie.id)}>Tourner</button>}
+          <button type="button" style={ui.puce} onClick={() => dupliquerTable(tableDessinChoisie)}>Dupliquer</button>
+          <button type="button" onClick={supprimerTableChoisie} style={supprimerStyle}>
+            {supprEnAttente ? 'Confirmer la suppression' : 'Supprimer'}
+          </button>
+          <button type="button" style={{ ...ui.puce, marginLeft: 'auto' }} onClick={() => { setTableChoisie(null); setSupprEnAttente(false); }}>Fermer</button>
+        </>
+      ) : (
+        <>
+          <span style={{ flexShrink: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginRight: 2, whiteSpace: 'nowrap' }}>Ajouter</span>
+          {MODELES_TABLE.map((m) => (
+            <button key={m.cle} type="button" style={ui.puce} onClick={() => ajouterTable(m)}>{m.label}</button>
+          ))}
+          <button type="button" style={ui.puce} onClick={() => ajouterTable()}>Autre table</button>
+          {!elementsIndispo && (
+            <>
+              <button type="button" style={ui.puce} onClick={ajouterTabouret}>Place de bar</button>
+              {ELEMENTS.map((def) => (
+                <button key={def.type} type="button" style={ui.puce} onClick={() => ajouterElement(def.type)}>{def.label}</button>
+              ))}
+            </>
+          )}
+        </>
+      )}
+    </div>
+  ) : null;
+
+  // ── La salle à l'échelle ────────────────────────────────────────────
+  const cadres = modePlan ? [] : groupes
+    .filter((g) => g.tableIds.length > 1)
+    .map((g) => {
+      const membres = tablesPosees.filter((t) => g.tableIds.includes(t.id));
+      return membres.length > 1 ? { g, c: cadreDe(membres) } : null;
+    })
+    .filter(Boolean);
+
+  const salle = (
+    <div
+      ref={vuePlan.salleRef}
+      onClick={modePlan ? (e) => {
+        if (e.target !== e.currentTarget) return;
+        setSelection(null);
+        setTableChoisie(null);
+        setSupprEnAttente(false);
+      } : undefined}
+      style={{ position: 'absolute', left: -vuePlan.origineX, top: -vuePlan.origineY, width: vuePlan.canevasW, height: vuePlan.canevasH }}
+    >
+      {modePlan && <GrillePlan fine={vuePlan.canevasW >= 700} />}
+      {elementsSalle.map((el) => (
+        <ElementDecor
+          key={el.id}
+          el={el}
+          editable={modePlan}
+          selectionne={modePlan && selection === el.id}
+          onPointerDown={onPointerDownElement}
+          onPoignee={onPointerDownPoignee}
+          onClick={(x) => { setTableChoisie(null); toucherElement(x); }}
+          onDoubleClick={(x) => { if (ELEMENT_PAR_TYPE.get(x.type)?.nomme) setNommer(x); }}
+        />
+      ))}
+      {guides.map((gd) => (
+        <span
+          key={`${gd.axe}-${gd.v}`}
+          aria-hidden="true"
+          style={gd.axe === 'x'
+            ? { position: 'absolute', left: gd.v * k, top: 0, bottom: 0, width: 0, borderLeftWidth: 1, borderLeftStyle: 'dashed', borderLeftColor: 'var(--accent)', pointerEvents: 'none', zIndex: 8 }
+            : { position: 'absolute', top: gd.v * k, left: 0, right: 0, height: 0, borderTopWidth: 1, borderTopStyle: 'dashed', borderTopColor: 'var(--accent)', pointerEvents: 'none', zIndex: 8 }}
+        />
+      ))}
+      {cadres.map(({ g, c }) => (
+        <span
+          key={`cadre-${g.id}`}
+          aria-hidden="true"
+          style={{
+            position: 'absolute', zIndex: 1, pointerEvents: 'none', boxSizing: 'border-box',
+            left: c.x0 * k - 9, top: c.y0 * k - 9, width: (c.x1 - c.x0) * k + 18, height: (c.y1 - c.y0) * k + 18,
+            borderRadius: 'var(--r-lg)', borderWidth: 2, borderStyle: 'solid',
+            borderColor: COULEUR_ETAT[etats.get(g.id)?.etat || 'libre'],
+          }}
+        />
+      ))}
+      {tablesDessinees.map((t) => {
+        const g = groupeDeTable.get(t.id);
+        const e = etats.get(g?.id || t.id) || null;
+        const role = roleTablee.get(t.id) || null;
+        const parle = role !== 'secondaire';
+        const lienAffiche = e?.affichee && g
+          ? (liens || []).find((l) => l.reservation_id === e.affichee.id && g.tableIds.includes(l.table_id))
+          : null;
+        const glisseResa = modeTable === 'service' && canEdit && !tel && !!lienAffiche;
+        let onDown;
+        if (modeTable === 'plan') onDown = (ev) => onPointerDownTable(ev, t);
+        else if (modeTable === 'ajuster') onDown = (ev) => onPointerDownTableService(ev, t);
+        else if (glisseResa) onDown = (ev) => onPointerDownOccupant(ev, lienAffiche, e.affichee);
+        return (
+          <PlanTable
+            key={t.id}
+            t={t}
+            k={k}
+            mode={modeTable}
+            etat={e?.etat || 'libre'}
+            role={role}
+            info={parle ? e : null}
+            places={g?.places ?? (Number(t.nb_places) || 0)}
+            deplacable={modeTable !== 'service' ? canEdit : glisseResa}
+            cible={!!cibleIds?.has(t.id)}
+            convient={!!libresChoisie?.has(t.id) && !idsProposes.has(t.id)}
+            proposee={idsProposes.has(t.id)}
+            choisie={modePlan ? tableChoisie === t.id : armeeActive !== 'placer' && tablesDeChoisie.has(t.id)}
+            enGlisse={!!enDeplacement?.has(t.id) || (!!drag?.demarre && drag.kind === 'table' && drag.tableId === t.id)}
+            onPointerDown={onDown}
+            onClick={modeTable === 'plan' ? () => toucherTableDessin(t) : () => toucherTableService(t)}
+            onDoubleClick={modeTable === 'plan' && canEdit ? () => setEditTable((tables || []).find((x) => x.id === t.id) || t) : undefined}
+            onTourner={tournerSurCanevas(t)}
+          />
+        );
+      })}
+    </div>
+  );
+
+  const zoomTel = tel ? (
+    <div style={{ position: 'absolute', right: 24, bottom: 24, zIndex: 3, display: 'flex', gap: 8 }}>
+      {vuePlan.zoom > 1.001 ? (
+        <BoutonRond label="Voir toute la salle" onClick={() => vuePlan.zoomer(1)}><Minimize2 size={18} strokeWidth={2} aria-hidden="true" /></BoutonRond>
+      ) : (
+        <BoutonRond label="Agrandir le plan" onClick={() => vuePlan.zoomer(vuePlan.zoomLisible > 1.001 ? vuePlan.zoomLisible : vuePlan.zoomMax)} disabled={vuePlan.zoomMax <= 1.001}>
+          <Maximize2 size={18} strokeWidth={2} aria-hidden="true" />
+        </BoutonRond>
+      )}
+      <BoutonRond label="Zoom arrière" onClick={() => vuePlan.zoomer(vuePlan.zoom / 1.4)} disabled={vuePlan.zoom <= 1.001}><Minus size={18} strokeWidth={2} aria-hidden="true" /></BoutonRond>
+      <BoutonRond label="Zoom avant" onClick={() => vuePlan.zoomer(vuePlan.zoom * 1.4)} disabled={vuePlan.zoom >= vuePlan.zoomMax - 0.001}><Plus size={18} strokeWidth={2} aria-hidden="true" /></BoutonRond>
+    </div>
+  ) : null;
+
+  const cartePlan = (
+    <div style={ui.carte} data-cadre="" data-plan-carte="">
+      {!modePlan && !ajusterActif && !bandeauChoix && (
+        <div style={ui.enteteCarte}>
+          <div style={tel ? { ...ui.compteurs, flexWrap: 'nowrap', overflowX: 'auto', flex: '1 1 100%', scrollbarWidth: 'none' } : ui.compteurs} aria-live="polite">
+            <Compteur couleur={COULEUR_ETAT.libre} n={compte.libre} un="libre" plusieurs="libres" />
+            <Compteur couleur={COULEUR_ETAT.reservee} n={compte.reservee} un="réservée" plusieurs="réservées" />
+            <Compteur couleur={COULEUR_ETAT.atable} n={compte.atable} un="à table" plusieurs="à table" />
+            {nbRetard > 0 && <Compteur couleur={COULEUR_ETAT.retard} n={nbRetard} un="en retard" plusieurs="en retard" />}
+          </div>
+          {curseur}
+          {!empile && (
+            <BoutonRond
+              label={listeRepliee ? 'Afficher les réservations' : 'Masquer les réservations'}
+              onClick={() => setListeRepliee((v) => { writeJson(CLE_LISTE_REPLIEE, !v); return !v; })}
+            >
+              {listeRepliee ? <PanelRightOpen size={18} strokeWidth={2} aria-hidden="true" /> : <PanelRightClose size={18} strokeWidth={2} aria-hidden="true" />}
+            </BoutonRond>
+          )}
+        </div>
+      )}
+      {ajusterActif && (
+        <div style={ui.bandeauChoix}>
+          <span style={ui.bandeauTexte}>
+            <span style={{ fontWeight: 'var(--g3)' }}>Vous déplacez des tables pour ce service seulement.</span>{' '}
+            <span>Glissez une table pour la déplacer, lâchez-la sur une autre pour les rapprocher, touchez-la pour la séparer ou la tourner.</span>
+          </span>
+        </div>
+      )}
+      {bandeauChoix}
+      {rangeeDessin}
+      <div ref={vuePlan.colRef} style={{ width: '100%', minWidth: 0 }}>
+        {vuePlan.pret && (tel ? (
+          <div ref={vuePlan.fenetreRef} data-plan-fenetre="" style={{ ...ui.fenetreTel, width: vuePlan.largeur, height: vuePlan.fenetreH }}>
+            <div style={{ position: 'relative', width: vuePlan.surfaceW, height: vuePlan.surfaceH }}>{salle}</div>
+          </div>
+        ) : (
+          <div data-plan-sol="" style={{ ...ui.sol, width: vuePlan.largeur, height: vuePlan.hauteur }}>{salle}</div>
+        ))}
+      </div>
+      {modePlan && !tel && (
+        <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5 }}>
+          Touchez une table ou un élément pour le choisir, glissez pour le déplacer. Flèches du clavier pour l’ajuster, Ctrl + Z pour annuler.
+        </div>
+      )}
+      {zoomTel}
+    </div>
+  );
+
+  const listeVisible = !modePlan && (empile ? vueTel === 'liste' : !listeRepliee);
+  const liste = listeVisible ? (() => {
+    const survolRetrait = drag?.demarre && drag?.kind === 'lien' && drag?.over?.liste;
+    const contenu = (
+      <>
+        <PlanListe
+          resas={resasService}
+          tablesParResa={tablesParResa}
+          minute={maintenant}
+          canEdit={canEdit}
+          glisser={!tel && !empile}
+          choisieId={choisieId}
+          dragResaId={drag?.demarre && drag?.kind === 'resa' ? drag.resaId : null}
+          retraitPossible={!!(drag?.demarre && drag?.kind === 'lien')}
+          propositions={nomsProposes}
+          onChoisir={choisirResa}
+          onPointerDownResa={onPointerDownResa}
+          onPlacer={placerProposee}
+          onStatut={onStatut}
+          onTraiter={onTraiter}
+        />
+        <div style={{
+          marginTop: 8, paddingTop: 10, borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--rule-soft)',
+          fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5,
+        }}>
+          <span data-no-translate="">{totalService}</span> <span>{totalService > 1 ? 'couverts' : 'couvert'}</span>
+          <span>, </span><span data-no-translate="">{placesTotales}</span> <span>{placesTotales > 1 ? 'places en salle' : 'place en salle'}</span>
+        </div>
+      </>
+    );
+    if (empile) {
+      return (
+        <div data-plan-liste="1" data-cadre="" style={{ ...ui.liste, width: '100%', borderColor: 'var(--rule-soft)' }}>
+          {contenu}
+        </div>
+      );
+    }
+    return (
+      <div style={{ position: 'relative', alignSelf: 'stretch', width: 'clamp(280px, 30%, 360px)', flexShrink: 0, minHeight: 320 }}>
+        <div
+          data-plan-liste="1"
+          data-cadre=""
+          style={{ ...ui.liste, position: 'absolute', inset: 0, borderColor: survolRetrait ? 'var(--accent)' : 'var(--rule-soft)' }}
+        >
+          {contenu}
+        </div>
+      </div>
+    );
+  })() : null;
 
   return (
-    <div style={ajusteHauteur
-      ? { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column' }
-      : undefined}>
-      {/* ── Relecture en échec (plan ou résas) : l'affichage reste en place ── */}
+    <div ref={setRacineEl} style={ui.racine} data-plan-salle="">
       {(nonActualise || resasNonActualisees) && (
         <BandeauNonActualise onRetry={() => Promise.all([onRelireResas?.(), load()])} />
       )}
 
-      {/* ── Barre : service + bascule mode plan ── */}
-      {barre && (
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        flexWrap: 'wrap', marginBottom: 10,
-      }}>
-        {ajusterActif && (
-          <div style={bandeauMode}>
-            <div style={{ fontWeight: 'var(--g3)' }}>Vous déplacez des tables pour ce service seulement.</div>
-            <div>Glissez une table pour la déplacer, lâchez-la sur une autre pour les rapprocher, touchez-la pour la séparer, ⟳ pour la tourner.</div>
-          </div>
-        )}
-        {modePlan && (
-          <div style={bandeauMode}>
-            <div style={{ fontWeight: 'var(--g3)' }}>Vous dessinez la salle : chaque service repartira de ce plan.</div>
-          </div>
-        )}
-        {!modePlan && serviceControle && <div style={{ flex: 1 }} />}
-        {!modePlan && !serviceControle && (
-          <div style={{ flex: sallesEnLigne ? '0 1 auto' : 1, minWidth: 0 }}>
-            <SegmentedTabs
-              tabs={SERVICES.map((s) => ({
-                id: s.id,
-                label: couvertsParService[s.id] ? `${s.label} (${couvertsParService[s.id]})` : s.label,
-              }))}
-              active={serviceActif}
-              onChange={setService}
-              size="sm"
-            />
-          </div>
-        )}
-        {sallesEnLigne && (
-          <>
-            {(salles || []).length > 1 && (
-              <div style={{ flex: '0 1 auto', minWidth: 0 }}>
-                <SegmentedTabs
-                  tabs={(salles || []).map((s) => ({ id: s.id, label: s.nom }))}
-                  active={salleId}
-                  onChange={setSalleId}
-                  size="sm"
-                />
-              </div>
-            )}
-            <div style={{ flex: 1 }} />
-          </>
-        )}
-        {modePlan && (
-          <div style={{ flex: 1, minWidth: 0, fontSize: 'var(--t1)', color: 'var(--text2)' }}>
-            {elementChoisi
-              ? (defChoisi?.forme === 'ligne'
-                ? 'Glissez pour déplacer, tirez le rond pour allonger.'
-                : 'Glissez pour déplacer, tirez le rond pour agrandir.')
-              : 'Glissez pour déplacer. Double-cliquez sur une table pour la régler, touchez un élément du décor pour le modifier.'}
-          </div>
-        )}
-        {canEdit && (
-          <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
-            {!modePlan && !ajustIndispo && ajusterActif && ajustParTable.size > 0 && (
-              <button type="button" onClick={revenirAuPlanDeBase} style={{
-                minHeight: 40, padding: '8px 14px', borderRadius: 'var(--r)',
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
-                background: 'var(--btn-fond)', color: 'var(--btn-texte)',
-                fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)',
-              }}>
-                Tout remettre en place
-              </button>
-            )}
-            {!modePlan && !ajustIndispo && (
-              <button
-                type="button"
-                onClick={() => setAjuster((v) => !v)}
-                aria-pressed={ajusterActif}
-                style={boutonMode(ajusterActif)}
-              >
-                <span>{ajusterActif ? 'J’ai fini' : 'Déplacer des tables'}</span>
-                <span style={portee}>ce service seulement</span>
-              </button>
-            )}
-            {modePlan && (
-              <button type="button" onClick={() => setGestionSalles(true)} style={{
-                padding: '8px 14px', borderRadius: 'var(--r)',
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
-                background: 'var(--btn-fond)', color: 'var(--btn-texte)',
-                fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)',
-              }}>
-                Salles
-              </button>
-            )}
-            {/* Pas pendant un déplacement de tables : on finit l'un avant
-                d'ouvrir l'autre. */}
-            {!ajusterActif && (!enDessin || onFini) && (
-              <button
-                type="button"
-                onClick={enDessin ? () => onFini() : () => ouvrirDessin()}
-                aria-pressed={modePlan}
-                style={boutonMode(modePlan)}
-              >
-                <span>{modePlan ? 'J’ai fini' : 'Dessiner la salle'}</span>
-                <span style={portee}>pour tous les services</span>
-              </button>
-            )}
-          </div>
+      <div style={ui.barre}>
+        {ongletsService}
+        {ongletsSalles}
+        <div style={{ flex: 1 }} />
+        {!(empile && !modePlan && !aucuneTable) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>{actions}</div>
         )}
       </div>
-      )}
 
-      {/* ── Dessin : ce qu'on peut ajouter, ou les actions de l'élément
-             choisi. Une seule rangée, de hauteur fixe : choisir un élément ne
-             fait pas sauter le plan sous le doigt. Pas de menu déroulant
-             dedans (la rangée défile, elle le couperait). ── */}
-      {modePlan && (
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          minHeight: 44, marginBottom: 10,
-          overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-        }}>
-          {elementChoisi ? (
-            <>
-              <span style={{
-                flexShrink: 0, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text)',
-                fontFamily: 'var(--font)', marginRight: 4, whiteSpace: 'nowrap',
-              }}>
-                {defChoisi?.label}
-                {defChoisi?.nomme && elementChoisi.libelle ? ` « ${elementChoisi.libelle} »` : ''}
-              </span>
-              {(elementChoisi.type === 'porte'
-                || Number(elementChoisi.largeur) !== Number(elementChoisi.hauteur)) && (
-                <button type="button" style={puce} onClick={() => tournerElement(elementChoisi)}>
-                  Tourner
-                </button>
-              )}
-              {defChoisi?.nomme && (
-                <button type="button" style={puce} onClick={() => setNommer(elementChoisi)}>
-                  Nommer
-                </button>
-              )}
-              <button type="button" style={puce} onClick={() => dupliquerElement(elementChoisi)}>
-                Dupliquer
-              </button>
-              <button
-                type="button"
-                onClick={() => supprimerElement(elementChoisi)}
-                style={{
-                  ...puce,
-                  borderColor: supprEnAttente ? 'var(--danger-text)' : 'var(--btn-bord)',
-                  background: supprEnAttente ? 'var(--danger-fill)' : 'var(--surface)',
-                  color: supprEnAttente ? 'var(--on-danger)' : 'var(--danger-text)',
-                }}
-              >
-                {supprEnAttente ? 'Confirmer la suppression' : 'Supprimer'}
-              </button>
-              <button
-                type="button"
-                style={{ ...puce, marginLeft: 'auto' }}
-                onClick={() => { setSelection(null); setSupprEnAttente(false); }}
-              >
-                Fermer
-              </button>
-            </>
-          ) : (
-            <>
-              <span style={{
-                flexShrink: 0, fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)',
-                marginRight: 2, whiteSpace: 'nowrap',
-              }}>
-                Ajouter
-              </span>
-              {/* Puce comme les autres ajouts : l'aplat sombre dit un choix, pas un ajout (P2). */}
-              <button
-                type="button"
-                onClick={ajouterTable}
-                style={puce}
-              >
-                Table
-              </button>
-              {/* Décor et places de bar : seulement une fois la migration
-                  20261007_plan_salle_elements passée, sinon la base les
-                  refuserait. */}
-              {!elementsIndispo && (
-                <>
-                  <button type="button" style={puce} onClick={ajouterTabouret}>
-                    Place de bar
-                  </button>
-                  {ELEMENTS.map((def) => (
-                    <button key={def.type} type="button" style={puce} onClick={() => ajouterElement(def.type)}>
-                      {def.label}
-                    </button>
-                  ))}
-                </>
-              )}
-            </>
-          )}
+      {empile && !modePlan && !aucuneTable && (
+        <div style={ui.barre}>
+          <SegmentedTabs
+            tabs={[
+              { id: 'plan', label: 'Plan' },
+              { id: 'liste', label: aPlacer.length ? <><span>Réservations</span> <span data-no-translate="">{`(${aPlacer.length})`}</span></> : 'Réservations' },
+            ]}
+            active={vueTel}
+            onChange={setVueTel}
+            size="sm"
+          />
+          <div style={{ flex: 1 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>{actions}</div>
         </div>
       )}
 
-      {/* ── Onglets de salle (dans la barre en écran compact, hors dessin) ── */}
-      {(salles || []).length > 1 && !sallesEnLigne && (
-        <SegmentedTabs
-          tabs={(salles || []).map((s) => ({
-            id: s.id,
-            label: modePlan
-              ? `${s.nom} (${nbTablesParSalle.get(s.id) || 0})`
-              : s.nom,
-          }))}
-          active={salleId}
-          onChange={setSalleId}
-          size="sm"
-          style={{ marginBottom: 10 }}
-        />
-      )}
-
-      {/* ── Plan vide ── */}
       {aucuneTable && !enService && planVide}
 
-      {/* ── Canevas + liste ── */}
       {(!aucuneTable || enService) && (
-        <div style={{
-          display: 'flex', gap: 12,
-          flexDirection: isMobile ? 'column' : 'row',
-          alignItems: ajusteHauteur ? 'stretch' : 'flex-start',
-          ...(ajusteHauteur ? { flex: 1, minHeight: 0 } : {}),
-        }}>
-          {/* Canevas. Sur téléphone il garde une largeur plancher et défile
-              DANS son cadre : à 335 px de large, une table de deux couverts
-              tomberait à 31 px, illisible et increvable au doigt. La page,
-              elle, ne pane jamais : le débordement reste enfermé ici. */}
-          {aucuneTable ? (
-            <div style={{ flex: 1, minWidth: 0, width: '100%' }}>{planVide}</div>
-          ) : (
-          <div
-            ref={ajusteHauteur ? zoneRef : undefined}
-            style={{
-              flex: 1, minWidth: 0, width: '100%',
-              overflowX: 'auto', WebkitOverflowScrolling: 'touch',
-              borderRadius: 'var(--r)',
-              ...(ajusteHauteur ? { display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: 0 } : {}),
-            }}
-          >
-          <div
-            ref={canevasRef}
-            // Toucher le sol du plan lâche l'élément de décor choisi.
-            onClick={modePlan ? (e) => {
-              if (e.target !== e.currentTarget) return;
-              setSelection(null);
-              setSupprEnAttente(false);
-            } : undefined}
-            style={{
-              position: 'relative',
-              width: largeurPlan ? largeurPlan : '100%',
-              flexShrink: 0,
-              minWidth: isMobile ? 560 : 0,
-              aspectRatio: `${PLAN_W} / ${PLAN_H}`,
-              background: 'var(--bg)',
-              borderWidth: 1, borderStyle: 'solid', borderColor: modePlan ? 'var(--border2)' : 'var(--border)',
-              borderRadius: 'var(--r)', overflow: 'hidden',
-            }}
-          >
-            {/* Quadrillage : seulement pour dessiner le plan. En service, il
-                brouillait la lecture de la salle. */}
-            {modePlan && <GrillePlan fine={largeurCanevas >= 700} />}
-
-            {/* Décor : sous les tables, inerte hors du dessin. */}
-            {elementsSalle.map((el) => (
-              <ElementDecor
-                key={el.id}
-                el={el}
-                editable={modePlan}
-                selectionne={modePlan && selection === el.id}
-                onPointerDown={onPointerDownElement}
-                onPoignee={onPointerDownPoignee}
-                onClick={toucherElement}
-                onDoubleClick={(x) => { if (ELEMENT_PAR_TYPE.get(x.type)?.nomme) setNommer(x); }}
-              />
-            ))}
-
-            {/* Tablées rapprochées pour ce service : un simple cadre autour
-                des tables réunies. Le numéro et les clients sont portés par
-                la table principale, une seule fois. */}
-            {tablees
-              .filter((g) => !(enDeplacement && tablesSalle.some((t) => t.fusion === g.cle && enDeplacement.has(t.id))))
-              .map((g) => (
-                <div
-                  key={g.cle}
-                  aria-hidden="true"
-                  style={{
-                    position: 'absolute',
-                    left:   `${((g.x0 - 6) / PLAN_W) * 100}%`,
-                    top:    `${((g.y0 - 6) / PLAN_H) * 100}%`,
-                    width:  `${((g.x1 - g.x0 + 12) / PLAN_W) * 100}%`,
-                    height: `${((g.y1 - g.y0 + 12) / PLAN_H) * 100}%`,
-                    borderWidth: 2, borderStyle: 'dashed', borderColor: 'var(--accent)',
-                    borderRadius: 'var(--r)', pointerEvents: 'none', boxSizing: 'border-box',
-                  }}
-                />
-              ))}
-            {tablesDessinees.map((t) => (
-              <TableShape
-                key={t.id}
-                table={t}
-                occupants={occupantsParTable.get(t.id) || []}
-                mode={modeTable}
-                canEdit={canEdit}
-                tablee={roleTablee.get(t.id) || null}
-                occupantsTablee={occupantsDeTablee.get(t.id) || null}
-                estCible={!!cibleIds?.has(t.id)}
-                dragLienId={drag?.demarre && drag?.kind === 'lien' ? drag.lienId : null}
-                onPointerDownTable={ajusterActif ? onPointerDownTableService : onPointerDownTable}
-                onPointerDownOccupant={onPointerDownOccupant}
-                onTourner={tournerSurCanevas(t)}
-                onEditTable={setEditTable}
-                onTap={(table) => {
-                  if (Date.now() - finGesteRef.current < 400) return;
-                  setTableOuverte(table.id);
-                }}
-                onOpenOccupant={onOpenResa ? (resa) => {
-                  if (Date.now() - finGesteRef.current < 400) return;
-                  onOpenResa(resa);
-                } : undefined}
-              />
-            ))}
-          </div>
-          </div>
-          )}
-
-          {/* Réservations du service - aussi zone de dépôt pour retirer du plan */}
-          {!modePlan && (
-            <div
-              data-plan-liste="1"
-              data-cadre=""
-              style={{
-                width: isMobile ? '100%' : enService ? 'clamp(300px, 36%, 440px)' : 250,
-                flexShrink: 0,
-                borderWidth: 1, borderStyle: 'solid',
-                borderColor: drag?.demarre && drag?.kind === 'lien' && drag?.over?.liste
-                  ? 'var(--accent)' : 'var(--rule-soft)',
-                borderRadius: 'var(--r)', background: 'var(--zone)',
-                padding: 10, boxSizing: 'border-box',
-                overflowY: 'auto',
-                ...(ajusteHauteur
-                  ? { height: '100%', minHeight: 0 }
-                  : { maxHeight: enService ? 'none' : isMobile ? 260 : 520 }),
-              }}
-            >
-              {enService ? (
-                <ServicePanneau
-                  resas={resasService}
-                  date={date}
-                  tablesParResa={tablesParResa}
-                  canEdit={canEdit}
-                  dragResaId={drag?.demarre && drag?.kind === 'resa' ? drag.resaId : null}
-                  retraitPossible={!!(drag?.demarre && drag?.kind === 'lien')}
-                  onPointerDownResa={onPointerDownResa}
-                  onOpen={onOpenResa}
-                  onStatut={onStatut}
-                  onTraiter={onTraiter}
-                />
-              ) : (
-              <>
-              <div style={{
-                fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', marginBottom: 8,
-              }}>
-                {nbAPlacer > 0
-                  ? `À placer (${nbAPlacer}/${resasService.length})`
-                  : `Réservations (${resasService.length})`}
-              </div>
-
-              {resasService.length === 0 && (
-                <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', padding: '10px 2px', lineHeight: 1.5 }}>
-                  Aucune réservation sur ce service.
-                </div>
-              )}
-
-              {resasService.length > 0 && nbAPlacer === 0 && (
-                <div style={{ fontSize: 'var(--t1)', color: 'var(--success-text)', padding: '2px 2px 8px', lineHeight: 1.5 }}>
-                  {drag?.demarre && drag?.kind === 'lien'
-                    ? 'Lâche ici pour retirer du plan.'
-                    : 'Tout le monde est placé'}
-                </div>
-              )}
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {resasTriees.map((r) => (
-                  <ResaLigne
-                    key={r.id}
-                    resa={r}
-                    tablesOccupees={tablesParResa.get(r.id) || []}
-                    canEdit={canEdit}
-                    enCours={drag?.demarre && drag?.kind === 'resa' && drag.resaId === r.id}
-                    onPointerDownResa={onPointerDownResa}
-                    onOpen={onOpenResa}
-                  />
-                ))}
-              </div>
-              </>
-              )}
-
-              {/* Récap capacité */}
-              <div style={{
-                marginTop: 10, paddingTop: 8,
-                borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)',
-                fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5,
-              }}>
-                {totalService} couvert{totalService > 1 ? 's' : ''}, {placesTotales} place{placesTotales > 1 ? 's' : ''} en salle
-                {enService && nbAPlacer > 0 ? `, ${nbAPlacer} à placer` : ''}
-              </div>
-            </div>
-          )}
+        <div style={ui.corps}>
+          {aucuneTable ? <div style={{ flex: 1, minWidth: 0 }}>{planVide}</div> : (!empile || vueTel === 'plan' || modePlan) && cartePlan}
+          {liste}
         </div>
       )}
 
@@ -2458,13 +2637,49 @@ export default function PlanSalle({
           position: 'fixed', left: drag.x, top: drag.y,
           transform: 'translate(-50%, -140%)',
           pointerEvents: 'none', zIndex: 2000,
-          padding: '5px 10px', borderRadius: 'var(--r-full)',
+          padding: '6px 12px', borderRadius: 'var(--r-full)',
           background: 'var(--accent)', color: 'var(--on-accent)',
-          fontSize: 'var(--t1)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)',
-          boxShadow: '0 6px 20px rgba(0,0,0,0.28)', whiteSpace: 'nowrap',
+          fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
+          boxShadow: 'var(--sh-lg)', whiteSpace: 'nowrap',
         }} data-no-translate>
           {drag.resa?.nom}, {drag.resa?.nb_couverts} pax
         </div>
+      )}
+
+      {/* ── Placer les restants : la proposition, validée en un geste ── */}
+      {planTous && (
+        <Fenetre
+          id="plan-placer-tous"
+          titre="Placer les réservations restantes"
+          sousTitre="Chacune sur la plus petite table libre qui la tient."
+          onClose={() => setPlanTous(null)}
+          pied={(
+            <>
+              <button type="button" style={stF.secondaire} onClick={() => setPlanTous(null)}>Annuler</button>
+              {planTous.some((p) => p.tablee) && (
+                <button type="button" style={stF.primaire} onClick={confirmerTous}>
+                  <span>Placer</span> <span data-no-translate="">{planTous.filter((p) => p.tablee).length}</span>
+                </button>
+              )}
+            </>
+          )}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {planTous.map(({ resa, tablee }) => (
+              <div key={resa.id} style={{
+                display: 'flex', alignItems: 'baseline', gap: 10, minHeight: 44, padding: '8px 0',
+                borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
+              }}>
+                <span data-no-translate="" style={{ fontFamily: 'var(--font-num)', color: 'var(--text2)', flexShrink: 0 }}>{hhmm(minutesDe(resa.heure_arrivee) ?? 0)}</span>
+                <span data-no-translate="" style={{ fontWeight: 'var(--g2)', minWidth: 0, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{resa.nom}</span>
+                <span style={{ color: 'var(--text2)', flexShrink: 0 }}><span data-no-translate="">{resa.nb_couverts}</span> <span>couv.</span></span>
+                <span style={{ flexShrink: 0, fontWeight: 'var(--g2)', color: tablee ? 'var(--text)' : 'var(--warning-text)' }}>
+                  {tablee ? <><span>Table</span> <span data-no-translate="">{tablee.nom}</span></> : 'Aucune table libre'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Fenetre>
       )}
 
       {/* ── Réglages d'une table ──
@@ -2506,7 +2721,7 @@ export default function PlanSalle({
           numeros={ficheTriee.length > 1 ? ficheTriee.map((t) => ({ id: t.id, nom: t.nom })) : []}
           numeroActuel={fichePrincipale?.id}
           onChoisirNumero={canEdit && !ajustIndispo ? (id) => choisirNumero(tableOuverte, id) : undefined}
-          places={ficheTablee.reduce((s, t) => s + (t.actif === false ? 0 : (t.nb_places || 0)), 0)}
+          places={ficheTablee.reduce((n, t) => n + (t.actif === false ? 0 : (t.nb_places || 0)), 0)}
           occupants={ficheOccupants}
           resasService={resasService}
           tablesParResa={tablesParResa}

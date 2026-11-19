@@ -6,6 +6,7 @@ import { ElementDecor } from '../previsions/planDecor.jsx';
 import { readJson, writeJson } from '../../utils/storage.js';
 import { useHauteurRestante, useLargeur, useMaintenant } from './mesures.js';
 import { ATTENTE_COMMANDE_MIN, cadreDe, decalageBorne, tableSous } from './planService.js';
+import { TABLE_LISIBLE, borne, cadrage, chaises, medianeTables } from '../salle/planVue.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Plan de salle de la caisse : le plan du service tel que Réservations l'a
@@ -82,53 +83,13 @@ export function estPret(ligne) {
 const CLE_AFFICHAGE = 'sc_caisse_plan';
 const AFFICHAGE_DEFAUT = { montant: true, minutes: true, couverts: true, nom: true, grand: false, liste: true, salles: {}, zoomTel: null };
 
-// Zoom du téléphone : une table « lisible » mesure au moins ce côté en pixels
+// Zoom du téléphone : une table « lisible » mesure TABLE_LISIBLE pixels de côté
 // (numéro et montant y tiennent). Le zoom est un facteur de la vue « toute la
-// salle » ; null = le zoom lisible, recalculé pour chaque salle.
-const TABLE_LISIBLE = 64;
-const borne = (v, min, max) => Math.min(max, Math.max(min, v));
-function medianeTables(tables) {
-  const cotes = tables.map((t) => Math.min(Number(t.largeur) || 0, Number(t.hauteur) || 0)).filter((c) => c > 0).sort((a, b) => a - b);
-  return cotes.length ? cotes[Math.floor(cotes.length / 2)] : 0;
-}
+// salle » ; null = le zoom lisible, recalculé pour chaque salle. Géométrie
+// partagée avec les autres plans : src/modules/salle/planVue.js.
 function lireAffichage() {
   const v = readJson(CLE_AFFICHAGE, null);
   return v && typeof v === 'object' ? { ...AFFICHAGE_DEFAUT, ...v, salles: { ...(v.salles || {}) } } : { ...AFFICHAGE_DEFAUT, salles: {} };
-}
-
-// Chaises autour d'une table, en pixels, relatives à la table. Un tabouret
-// est déjà une place : pas de chaise.
-function chaises(t, w, h, k) {
-  const n = Math.min(12, Math.max(0, Number(t.nb_places) || 0));
-  if (!n || t.forme === 'tabouret' || k < 0.45) return [];
-  const ep = Math.max(5, Math.round(9 * k));
-  const ecart = Math.max(3, Math.round(5 * k));
-  const res = [];
-  if (t.forme === 'ronde') {
-    const r = Math.min(w, h) / 2;
-    const d = Math.max(8, Math.round(18 * k));
-    for (let i = 0; i < n; i += 1) {
-      const a = (Math.PI * 2 * i) / n - Math.PI / 2;
-      res.push({ left: w / 2 + Math.cos(a) * (r + ecart + ep / 2) - d / 2, top: h / 2 + Math.sin(a) * (r + ecart + ep / 2) - ep / 2, width: d, height: ep, rot: (a * 180) / Math.PI + 90 });
-    }
-    return res;
-  }
-  // Rectangle : les grands côtés d'abord. Carré : les quatre côtés.
-  const cotes = t.forme === 'carree' && n > 2 ? ['haut', 'bas', 'gauche', 'droite'] : (w >= h ? ['haut', 'bas'] : ['gauche', 'droite']);
-  const parCote = Object.fromEntries(cotes.map((c) => [c, 0]));
-  for (let i = 0; i < n; i += 1) parCote[cotes[i % cotes.length]] += 1;
-  Object.entries(parCote).forEach(([cote, m]) => {
-    const horizontal = cote === 'haut' || cote === 'bas';
-    const long = horizontal ? w : h;
-    const pas = long / m;
-    const lg = Math.max(8, Math.min(pas * 0.6, 26 * k));
-    for (let i = 0; i < m; i += 1) {
-      const centre = pas * (i + 0.5);
-      if (horizontal) res.push({ left: centre - lg / 2, top: cote === 'haut' ? -ecart - ep : h + ecart, width: lg, height: ep, rot: 0 });
-      else res.push({ left: cote === 'gauche' ? -ecart - ep : w + ecart, top: centre - lg / 2, width: ep, height: lg, rot: 0 });
-    }
-  });
-  return res;
 }
 
 export default function PlanTables({
@@ -673,21 +634,6 @@ export default function PlanTables({
       </div>
     </div>
   );
-}
-
-// Vue du plan : le contour de ce qui est dessiné, avec 40 unités autour (la
-// place des chaises), au moins 300 sur 210, dans le canevas. Sans rien :
-// tout le canevas.
-function cadrage(objets) {
-  if (!objets?.length) return { x0: 0, y0: 0, w: PLAN_W, h: PLAN_H };
-  const marge = 40;
-  let x0 = Math.max(0, Math.min(...objets.map((o) => Number(o.pos_x))) - marge);
-  let y0 = Math.max(0, Math.min(...objets.map((o) => Number(o.pos_y))) - marge);
-  let x1 = Math.min(PLAN_W, Math.max(...objets.map((o) => Number(o.pos_x) + Number(o.largeur))) + marge);
-  let y1 = Math.min(PLAN_H, Math.max(...objets.map((o) => Number(o.pos_y) + Number(o.hauteur))) + marge);
-  if (x1 - x0 < 300) { const c = (x0 + x1) / 2; x0 = Math.max(0, c - 150); x1 = Math.min(PLAN_W, x0 + 300); }
-  if (y1 - y0 < 210) { const c = (y0 + y1) / 2; y0 = Math.max(0, c - 105); y1 = Math.min(PLAN_H, y0 + 210); }
-  return { x0, y0, w: x1 - x0, h: y1 - y0 };
 }
 
 // Tablées de plus d'une table dans la salle affichée, une fois chacune.
