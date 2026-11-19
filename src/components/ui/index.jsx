@@ -305,10 +305,13 @@ const repere = {
 //   carteAvantStyles(ton) rend les styles de ses pièces : carte, titre,
 //   libelle (petit texte doux), chiffre (grand, graisse normale), tuile
 //   (tuile intérieure : fond --carte-nuit-tuile sur la carte nuit).
+//   Le fond de la carte est un dégradé léger (--degrade-nuit, -soleil, -ciel,
+//   19.11.2026), avec la teinte plate en repli ; la teinte plate reste le nom
+//   de la couleur de la carte (piste des anneaux, encre inversée du bouton).
 const TONS_AVANT = {
-  nuit: { fond: 'var(--carte-nuit)', texte: 'var(--carte-nuit-texte)', doux: 'var(--carte-nuit-doux)', tuile: 'var(--carte-nuit-tuile)' },
-  soleil: { fond: 'var(--carte-soleil)', texte: 'var(--carte-soleil-texte)', doux: 'var(--carte-soleil-texte)', tuile: 'transparent' },
-  ciel: { fond: 'var(--carte-ciel)', texte: 'var(--carte-ciel-texte)', doux: 'var(--carte-ciel-texte)', tuile: 'transparent' },
+  nuit: { fond: 'var(--degrade-nuit, var(--carte-nuit))', texte: 'var(--carte-nuit-texte)', doux: 'var(--carte-nuit-doux)', tuile: 'var(--carte-nuit-tuile)' },
+  soleil: { fond: 'var(--degrade-soleil, var(--carte-soleil))', texte: 'var(--carte-soleil-texte)', doux: 'var(--carte-soleil-texte)', tuile: 'transparent' },
+  ciel: { fond: 'var(--degrade-ciel, var(--carte-ciel))', texte: 'var(--carte-ciel-texte)', doux: 'var(--carte-ciel-texte)', tuile: 'transparent' },
 };
 
 export function carteAvantStyles(ton = 'nuit') {

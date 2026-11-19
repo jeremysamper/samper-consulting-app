@@ -32,11 +32,17 @@ Direction d'apparence de l'app depuis le 13.11.2026 (elle remplace la direction 
 
 ## Interdits
 - Lire `--nav*` hors de la coque (`src/layouts/AppLayout.jsx`, `src/components/nav/`, règles `.sc-nav-*` et `.nav-organizer*`). `--nav-active` et `--nav-text-active` sont l'aplat et l'encre de l'entrée choisie du menu : ils ne servent ni au survol ni au texte courant. Un texte blanc littéral sur `--nav` est refusé par `npm.cmd run lint:on-color`.
-- Couleur en dur, `gradient(`, `blur(`, `text-shadow`, `uppercase`, `backdrop-filter` autre que `none`, halo coloré, émoji. Une ombre écrite autrement que par `--sh` ou `--sh-lg`.
+- Couleur en dur, `gradient(` écrit hors des jetons de dégradé (voir « Dégradés légers »), `blur(`, `text-shadow`, `uppercase`, `backdrop-filter` autre que `none`, halo coloré, émoji. Une ombre écrite autrement que par `--sh` ou `--sh-lg`.
 - Une règle globale qui reprend une couleur ne vise que la valeur neutre nommée (`--border`, `--border2`), jamais tout élément qui porte la propriété.
 - Un jeton de couleur nouveau sans son miroir dans `THEME_VAR_OVERRIDES` (`src/design/brandTokens.js`), ou sans ses deux valeurs sombres identiques.
 - Appliquer la direction dans une vue capturée en PDF : `.pdf-render-root` garde les rayons de 8 px et les couleurs de marque, un export sort identique au pixel.
 - Restyler le Spa, le KDS, la FAQ ou la réservation d'un soin (`src/reservation/ReservationEnLigne.jsx`, `GuideIntegration.jsx`), qui gardent leur système. La réservation d'une table (`ReservationTable.jsx`, `reservationTable.css`, `public/widget-table.js`) suit la direction depuis le 17.11.2026, avec ses jetons `--t-*` recopiés d'`app.css` (page autonome, sans `app.css`).
+
+## Dégradés légers
+Depuis le 19.11.2026, à la demande de Jérémy (un visuel agréable et pas trop agressif), deux familles de dégradés, et elles seules :
+- `--ambient`, lu par `body` seul : deux lueurs très légères en haut de page (sable de la marque et aqua en clair, pétrole et un soupçon de sable en sombre), tailles en `vw` et `vh`.
+- `--degrade-nuit`, `--degrade-soleil`, `--degrade-ciel` : le fond des cartes de mise en avant, posé par `CarteAvant` et `carteAvantStyles` (`src/components/ui/index.jsx`) avec la teinte plate en repli. Un seul sens (135 deg), départ un ton plus clair en haut à gauche, arrivée sur la teinte de la carte. Le texte garde 4,5:1 au point le plus clair.
+Jamais de dégradé sur un texte, un bouton, une pastille, un statut, une ligne de liste ni une carte blanche. Un dégradé neuf est un jeton de ces deux familles, dans les trois blocs d'`app.css` et dans `THEME_VAR_OVERRIDES` en aplat (un export reste plat).
 
 ## Coque
 - Menu de l'ordinateur : un rail d'icônes de 76 px par défaut (un cercle de 44 px par module sur `--surface`, l'entrée choisie en aplat `--nav-active`, le libellé gardé pour le lecteur d'écran et en infobulle). Le bouton placé à gauche du titre le déplie en menu à libellés de 234 px, Ctrl ou Cmd + B aussi ; le choix est gardé sur le poste dans `sc_menu_deplie` (`'1'` déplié), que la coque seule écrit (la section Menu et gestes des réglages passe par elle, `ShellContext`, `reglages.menu`). La coque pose `--largeur-menu` (76 ou 234 px) : ce qui est fixe en bas d'écran s'y cale.
