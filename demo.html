@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Jouanet - Démo</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="alternate icon" href="/favicon.ico" />
+    <meta name="theme-color" content="#003042" />
+    <link rel="preload" href="/fonts/ui/IBMPlexSans-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
+    <!-- Démo de l'application sur un Supabase simulé dans le navigateur
+         (src/demo). Ni manifeste ni service worker : la page ne s'installe
+         pas et n'écrit rien pour la vraie application. -->
+    <style>
+      #pre-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        background: #000D13;
+        transition: opacity 0.3s ease;
+      }
+      #pre-splash.done {
+        opacity: 0;
+        pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="pre-splash" aria-hidden="true"></div>
+    <div id="root"></div>
+    <script type="module" src="/src/demo/main.jsx"></script>
+  </body>
+</html>

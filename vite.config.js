@@ -59,6 +59,11 @@ function reservationPubliqueDevPlugin() {
         if (/^\/reserver\/[a-z0-9-]+(\/integrer)?\/?$/i.test(chemin) || /^\/table\/[a-z0-9-]+\/?$/i.test(chemin)) {
           req.url = `/reserver.html${requete ? `?${requete}` : ''}`;
         }
+        // /demo : l'application sur un Supabase simulé (src/demo), comme
+        // cleanUrls le sert en production.
+        if (/^\/demo\/?$/i.test(chemin)) {
+          req.url = `/demo.html${requete ? `?${requete}` : ''}`;
+        }
         next();
       });
     }
@@ -116,7 +121,8 @@ export default defineConfig({
         navigateFallback: '/vite-index.html',
         // /reserver/ et /table/ : pages publiques de réservation (spas,
         // restaurants ; entrée à part), jamais remplacées par l'app shell.
-        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//, /^\/confidentialite/],
+        // /demo : la démo publique (src/demo) ne passe jamais par l'app shell.
+        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//, /^\/confidentialite/, /^\/demo/],
         cleanupOutdatedCaches: true,
         // Caches runtime : l'ordre compte (première route qui matche gagne).
         // Les clés de cache sont les URL PostgREST complètes : le filtre
@@ -227,7 +233,10 @@ export default defineConfig({
         // Pages publiques de réservation (/reserver/<adresse> pour un spa,
         // /table/<adresse> pour un restaurant), sans le bundle de l'app :
         // servies seules ou dans le site du client.
-        reserver: 'reserver.html'
+        reserver: 'reserver.html',
+        // Démo publique de l'application (/demo), sur un Supabase simulé dans
+        // le navigateur : aucune requête vers la base de production.
+        demo: 'demo.html'
       },
       output: {
         manualChunks: {
