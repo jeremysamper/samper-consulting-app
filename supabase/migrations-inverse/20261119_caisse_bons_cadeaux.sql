@@ -5,6 +5,10 @@
 -- ou apres en avoir sorti la liste.
 begin;
 
+-- Gardes (20261119_caisse_bons_cadeaux_gardes.sql).
+drop trigger if exists trg_caisse_paiement_bon_cadeau_garde on public.caisse_paiements;
+drop function if exists public.caisse_paiement_bon_cadeau_garde();
+
 drop trigger if exists trg_caisse_ticket_bon_cadeau_recredit on public.caisse_tickets;
 drop function if exists public.caisse_bon_cadeau_recredit();
 
