@@ -238,7 +238,7 @@ export default function LegacyModuleHost({
       // Le module ferme lui-même son écran à qui ne le verrait pas dans le menu
       // (système éteint ou personne qui n'y participe pas, entreeMenuVisible).
       return peutOuvrirPage('points', user, permissions)
-        ? wrap('Points & boutique', <Points user={user} etablissement={etablissement} />)
+        ? wrap('Points & boutique', <Points user={user} etablissement={etablissement} permissions={permissions} />)
         : accessDenied;
     }
     case 'comptabilite': {

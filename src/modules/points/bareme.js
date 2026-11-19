@@ -2,9 +2,9 @@
 // Points des employés : règles d'affichage, sans React.
 //
 // Miroir des migrations des points :
-//   BAREME_DEFAUT      = points_bareme_defaut() (20261115_points_anti_fuite.sql)
+//   BAREME_DEFAUT      = points_bareme_defaut() (20261119_points_nouveaux_gestes.sql)
 //   ROLES_PARTICIPANTS = points_roles_defaut()
-//   LIBELLES_ACTIONS   = points_libelle_action() (20261114_points_boutique.sql)
+//   LIBELLES_ACTIONS   = points_libelle_action() (20261119_points_nouveaux_gestes.sql)
 //   PLAFONDS_TOTAUX    = défauts de points_reglages.plafond_jour_total et _mois_total
 // La base reste la seule à créditer ; ces listes ne servent qu'à l'écran.
 // points.test.mjs compare les clés des deux côtés.
@@ -19,6 +19,14 @@ export const BAREME_DEFAUT = {
   comptage_zone: { points: 10, plafond: 5 },
   inventaire_valide: { points: 20, plafond: 1 },
   pointage_ponctuel: { points: 2, plafond: 2 },
+  reservation_saisie: { points: 1, plafond: 4 },
+  client_accueilli: { points: 1, plafond: 8 },
+  mep_cochee: { points: 1, plafond: 6 },
+  passation_ecrite: { points: 3, plafond: 1 },
+  tache_faite: { points: 2, plafond: 4 },
+  chambre_prete: { points: 1, plafond: 10 },
+  ordre_termine: { points: 3, plafond: 4 },
+  seance_spa: { points: 2, plafond: 5 },
 };
 
 export const ACTIONS = Object.keys(BAREME_DEFAUT);
@@ -32,6 +40,14 @@ export const LIBELLES_ACTIONS = {
   comptage_zone: "Zone d'inventaire comptée",
   inventaire_valide: 'Inventaire validé',
   pointage_ponctuel: "Pointage à l'heure",
+  reservation_saisie: 'Réservation saisie',
+  client_accueilli: 'Client accueilli',
+  mep_cochee: 'Mise en place cochée',
+  passation_ecrite: 'Passation écrite',
+  tache_faite: 'Tâche du jour faite',
+  chambre_prete: 'Chambre prête',
+  ordre_termine: 'Ordre de travail terminé',
+  seance_spa: 'Compte rendu de séance',
 };
 
 // Ce que rapporte chaque geste, dit à l'employé (« Ce qui rapporte des points »).
@@ -44,7 +60,50 @@ export const EXPLICATIONS_ACTIONS = {
   comptage_zone: "Chaque zone comptée, versée quand l'inventaire est validé, cinq au plus.",
   inventaire_valide: "L'inventaire que vous validez, un par périmètre et par semaine.",
   pointage_ponctuel: "Votre arrivée pointée dans l'heure qui précède le début, pas en retard, sur un service que vous n'avez pas planifié vous-même.",
+  reservation_saisie: "Chaque réservation que vous saisissez pour aujourd'hui ou plus tard, avec un nom et des couverts. Une réservation annulée ensuite ne rapporte plus.",
+  client_accueilli: 'Chaque client que vous marquez arrivé le jour de sa réservation.',
+  mep_cochee: "Chaque ligne de mise en place que vous cochez, pour aujourd'hui ou demain. Une ligne décochée ne rapporte plus.",
+  passation_ecrite: "La première passation du jour pour un pôle et un service, d'au moins une phrase complète.",
+  tache_faite: 'Chaque tâche du jour que vous cochez dans les Passations.',
+  chambre_prete: 'Chaque chambre que vous passez à « Propre », une fois par chambre et par jour.',
+  ordre_termine: "Chaque ordre de travail que vous terminez avec son compte rendu, quand une autre personne ou un plan l'a ouvert.",
+  seance_spa: 'Chaque compte rendu de séance écrit le jour même avec vos observations, un par client et par jour.',
 };
+
+// Module dont dépend chaque geste : un geste dont le module est éteint dans
+// l'établissement n'est ni expliqué à l'équipe ni réglé par la direction (rien
+// ne peut s'y gagner). La facture vient de plusieurs écrans : toujours montrée.
+export const MODULE_ACTION = {
+  releve_haccp: 'haccp',
+  controle_haccp: 'haccp',
+  photo_tracabilite: 'haccp',
+  perte_declaree: 'pertes',
+  comptage_zone: 'inventaire',
+  inventaire_valide: 'inventaire',
+  pointage_ponctuel: 'planning',
+  reservation_saisie: 'previsions',
+  client_accueilli: 'previsions',
+  mep_cochee: 'mep',
+  passation_ecrite: 'passations',
+  tache_faite: 'passations',
+  chambre_prete: 'etages',
+  ordre_termine: 'technique',
+  seance_spa: 'spa',
+};
+
+// Gestes possibles dans l'établissement, dans l'ordre du barème.
+// estActif   = isModuleActiveForEtab de moduleConfig.js, passé par l'écran ;
+// peutOuvrir = (module) => la personne ouvre ce module (écran de l'employé
+//              seulement : la direction règle le barème pour toute l'équipe).
+export function actionsDeLEtablissement(etablissement, estActif, peutOuvrir = null) {
+  return ACTIONS.filter((a) => {
+    const module = MODULE_ACTION[a];
+    if (!module) return true;
+    if (typeof estActif === 'function' && !estActif(etablissement, module)) return false;
+    if (typeof peutOuvrir === 'function' && !peutOuvrir(module)) return false;
+    return true;
+  });
+}
 
 // Rôles participants par défaut ; consultant et patron n'y entrent jamais.
 export const ROLES_PARTICIPANTS = ['resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa',

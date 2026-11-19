@@ -5,9 +5,10 @@ import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import {
-  ACTIONS, EXPLICATIONS_ACTIONS, FILTRES_BOUTIQUE, LIBELLES_STATUTS, PLAFONDS_TOTAUX, baremeEffectif, chiffresDuMois,
+  EXPLICATIONS_ACTIONS, FILTRES_BOUTIQUE, LIBELLES_STATUTS, PLAFONDS_TOTAUX, actionsDeLEtablissement, baremeEffectif, chiffresDuMois,
   filtreParDefaut, filtrerCadeaux, formatPoints, libelleAction, prochainCadeau, raisonCommandeImpossible,
 } from './bareme.js';
+import { isModuleActiveForEtab, peutOuvrirPage } from '../moduleConfig.js';
 import { messageErreurPoints, pointsService } from './pointsService.js';
 import { ecouterMouvements } from './usePointsRetour.js';
 import PhotoCadeau from './PhotoCadeau.jsx';
@@ -42,7 +43,7 @@ function RaisonEteinte({ raison }) {
   );
 }
 
-export default function MesPoints({ user, etablissement, bareme, plafonds = PLAFONDS_TOTAUX, sansTitre = false }) {
+export default function MesPoints({ user, etablissement, permissions = null, bareme, plafonds = PLAFONDS_TOTAUX, sansTitre = false }) {
   const etabId = etablissement?.id;
   const userId = user?.id;
   const [donnees, setDonnees] = React.useState(null);
@@ -125,6 +126,10 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
   const enCours = commandes.filter((c) => c.statut === 'demandee');
   const nomCadeau = (id) => cadeaux.find((c) => c.id === id)?.nom || 'Cadeau retiré';
   const regles = baremeEffectif(bareme);
+  // Gestes que la personne peut faire ici : module allumé pour l'établissement
+  // et écran qu'elle ouvre (droits de son rôle et les siens).
+  const gestes = actionsDeLEtablissement(etablissement, isModuleActiveForEtab,
+    permissions ? (module) => peutOuvrirPage(module, user, permissions) : null);
 
   return (
     <div className="points-page" data-points-ecran="participant">
@@ -270,7 +275,7 @@ export default function MesPoints({ user, etablissement, bareme, plafonds = PLAF
             </p>
             <p className="points-aide">Les points ne comptent que les jours où vous êtes au planning.</p>
             <div className="points-liste">
-              {ACTIONS.filter((a) => regles[a].points > 0 && regles[a].plafond > 0).map((a) => (
+              {gestes.filter((a) => regles[a].points > 0 && regles[a].plafond > 0).map((a) => (
                 <div key={a} style={{ ...ligneStyle(), padding: '6px 0', alignItems: 'flex-start' }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 'var(--g2)' }}>{libelleAction(a)}</div>

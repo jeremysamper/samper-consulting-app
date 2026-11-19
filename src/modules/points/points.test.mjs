@@ -7,15 +7,16 @@ import { fileURLToPath } from 'node:url';
 import {
   ACTIONS, BAREME_DEFAUT, COUT_MAX, COUT_MIN, EXPLICATIONS_ACTIONS, LIBELLES_ACTIONS, PLAFONDS_TOTAUX, ROLES_PARTICIPANTS, ROLES_JAMAIS,
   baremeEffectif, chiffresDuMois, entreeMenuVisible, erreurBareme, filtreParDefaut, filtrerCadeaux, libelleAction,
-  messageCredit, peutGererPoints, prochainCadeau, raisonCommandeImpossible,
+  messageCredit, peutGererPoints, prochainCadeau, raisonCommandeImpossible, MODULE_ACTION, actionsDeLEtablissement,
 } from './bareme.js';
-import { rolesEcritureBase } from '../moduleConfig.js';
+import { isModuleActiveForEtab, navItems, peutOuvrirPage, rolesEcritureBase } from '../moduleConfig.js';
 
 const lireMigration = (nom) => readFileSync(
   fileURLToPath(new URL(`../../../supabase/migrations/${nom}`, import.meta.url)), 'utf8',
 );
 // La définition en vigueur est celle de la dernière migration qui la pose.
-const MIGRATIONS = ['20261115_points_indicateurs.sql', '20261115_points_anti_fuite.sql', '20261114_points_boutique.sql'].map(lireMigration);
+const MIGRATIONS = ['20261119_points_nouveaux_gestes.sql', '20261115_points_indicateurs.sql', '20261115_points_anti_fuite.sql',
+  '20261114_points_boutique.sql'].map(lireMigration);
 
 // Corps d'une fonction SQL, entre ses deux $fn$, dans la dernière migration qui la définit.
 function corps(nom) {
@@ -47,6 +48,40 @@ test('miroir : chaque action a le même libellé fixe des deux côtés', () => {
     .map((m) => [m[1], m[2].replace(/''/g, "'")]));
   assert.deepEqual(paires, LIBELLES_ACTIONS);
   assert.deepEqual(Object.keys(LIBELLES_ACTIONS).sort(), [...ACTIONS].sort());
+});
+
+test('chaque geste a son explication, et le module qui le porte est un vrai module', () => {
+  assert.deepEqual(Object.keys(EXPLICATIONS_ACTIONS).sort(), [...ACTIONS].sort());
+  const cles = new Set(navItems.map((i) => i.permKey));
+  for (const [action, module] of Object.entries(MODULE_ACTION)) {
+    assert.ok(ACTIONS.includes(action), `${action} n'est pas au barème`);
+    assert.ok(cles.has(module), `${module} n'est pas un module du menu`);
+  }
+});
+
+test('gestes de l\'établissement : un module éteint retire ses gestes, la facture reste', () => {
+  const restaurant = { modulesActifs: ['haccp', 'pertes', 'inventaire', 'planning', 'previsions', 'mep'] };
+  const liste = actionsDeLEtablissement(restaurant, isModuleActiveForEtab);
+  assert.ok(liste.includes('facture_achat'));
+  assert.ok(liste.includes('reservation_saisie') && liste.includes('client_accueilli') && liste.includes('mep_cochee'));
+  for (const a of ['passation_ecrite', 'tache_faite', 'chambre_prete', 'ordre_termine', 'seance_spa']) {
+    assert.ok(!liste.includes(a), `${a} ne paraît pas sans son module`);
+  }
+  // Jamais réglé (modules_actifs NULL) : les modules « à activer » (hôtel, spa) restent éteints.
+  const parDefaut = actionsDeLEtablissement({ modulesActifs: null }, isModuleActiveForEtab);
+  assert.ok(parDefaut.includes('releve_haccp') && parDefaut.includes('mep_cochee'));
+  assert.ok(!parDefaut.includes('chambre_prete') && !parDefaut.includes('seance_spa'));
+  // Un spa : son compte rendu et le pointage, rien de la cuisine.
+  const spa = actionsDeLEtablissement({ type: 'Spa', modulesActifs: ['spa', 'planning'] }, isModuleActiveForEtab);
+  assert.deepEqual(spa, ['facture_achat', 'pointage_ponctuel', 'seance_spa']);
+  // Sans fonction de contrôle : tout le barème, dans l'ordre.
+  assert.deepEqual(actionsDeLEtablissement(null), ACTIONS);
+  // Écran de l'employé : un serveur sans les Réservations (clé stricte) n'en voit pas les gestes.
+  const serveur = { role: 'serveur' };
+  const sansResa = actionsDeLEtablissement(restaurant, isModuleActiveForEtab, (m) => peutOuvrirPage(m, serveur, { mep: false }));
+  assert.ok(!sansResa.includes('reservation_saisie') && !sansResa.includes('mep_cochee'));
+  const avecResa = actionsDeLEtablissement(restaurant, isModuleActiveForEtab, (m) => peutOuvrirPage(m, serveur, { previsions: true }));
+  assert.ok(avecResa.includes('reservation_saisie') && avecResa.includes('client_accueilli'));
 });
 
 test('libellés des actions : fixes, en français, repli sur la clé', () => {
@@ -124,7 +159,7 @@ test('chiffres du mois : crédits moins annulations, jour de Zurich', () => {
 });
 
 test('miroir P2 : plafonds totaux, bornes du coût et catégories comme en base', () => {
-  const p2 = MIGRATIONS[1];
+  const p2 = lireMigration('20261115_points_anti_fuite.sql');
   assert.match(p2, /plafond_jour_total integer not null default 40/);
   assert.match(p2, /plafond_mois_total integer not null default 400/);
   assert.deepEqual(PLAFONDS_TOTAUX, { jour: 40, mois: 400 });

@@ -2,12 +2,12 @@ import React from 'react';
 import { Btn, Panneau, ligneStyle } from '../../components/ui/index.jsx';
 import { Fenetre, Options, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
-import { roles as ROLES } from '../moduleConfig.js';
+import { roles as ROLES, isModuleActiveForEtab } from '../moduleConfig.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import {
-  ACTIONS, AJUSTEMENT_MAX, BAREME_DEFAUT, CATEGORIES_CADEAU, COUT_MAX, COUT_MIN, LIBELLES_CATEGORIES, LIBELLES_STATUTS,
+  AJUSTEMENT_MAX, BAREME_DEFAUT, CATEGORIES_CADEAU, COUT_MAX, COUT_MIN, LIBELLES_CATEGORIES, LIBELLES_STATUTS,
   PLAFOND_JOUR_TOTAL_MAX, PLAFOND_MAX, PLAFOND_MOIS_TOTAL_MAX, POINTS_MAX, ROLES_PARTICIPANTS,
-  baremeEffectif, erreurBareme, formatPoints, libelleAction,
+  actionsDeLEtablissement, baremeEffectif, erreurBareme, formatPoints, libelleAction,
 } from './bareme.js';
 import { messageErreurPoints, pointsService } from './pointsService.js';
 import { rafraichirPointsEtat } from './pointsEtat.js';
@@ -466,7 +466,7 @@ function OngletEquipe({ etabId, user, donnees, charger, exclus }) {
 
 // ─── Réglages ───────────────────────────────────────────────────────────────
 
-function OngletReglages({ etabId, user, etat }) {
+function OngletReglages({ etabId, user, etat, etablissement }) {
   const [actif, setActif] = React.useState(etat.actif);
   const [roles, setRoles] = React.useState(etat.rolesParticipants || ROLES_PARTICIPANTS);
   const [bareme, setBareme] = React.useState(() => baremeEffectif(etat.bareme));
@@ -555,7 +555,7 @@ function OngletReglages({ etabId, user, etat }) {
           <span style={st.label}>Geste</span>
           <span style={st.label}>Points</span>
           <span style={st.label}>Plafond par jour</span>
-          {ACTIONS.map((a) => (
+          {actionsDeLEtablissement(etablissement, isModuleActiveForEtab).map((a) => (
             <React.Fragment key={a}>
               <span style={{ fontSize: 'var(--t2)', minWidth: 0, overflowWrap: 'anywhere' }}>{libelleAction(a)}</span>
               <input aria-label={`${libelleAction(a)}, points`} style={st.champ} inputMode="numeric" value={String(bareme[a]?.points ?? BAREME_DEFAUT[a].points)} max={POINTS_MAX} onChange={(e) => changerBareme(a, 'points', e.target.value)} />
@@ -592,7 +592,7 @@ export default function GestionPoints({ onglet, user, etablissement, etat }) {
   const etabId = etablissement?.id;
   const { donnees, echec, charger } = useDonneesGestion(etabId);
 
-  if (onglet === 'reglages') return <OngletReglages etabId={etabId} user={user} etat={etat} />;
+  if (onglet === 'reglages') return <OngletReglages etabId={etabId} user={user} etat={etat} etablissement={etablissement} />;
   if (!donnees) {
     return (
       <div>

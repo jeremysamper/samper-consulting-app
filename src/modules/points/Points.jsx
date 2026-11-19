@@ -22,7 +22,7 @@ const ONGLETS_GESTION = [
   { id: 'reglages', label: 'Réglages' },
 ];
 
-export default function Points({ user, etablissement }) {
+export default function Points({ user, etablissement, permissions = null }) {
   const etabId = etablissement?.id;
   const etat = usePointsEtat(etabId, user?.id, { gereFront: canManageModule(user?.role, 'points'), role: user?.role });
   const participe = etat.actif && etat.participant;
@@ -44,7 +44,7 @@ export default function Points({ user, etablissement }) {
     );
   }
   if (!etat.gere) {
-    return <MesPoints user={user} etablissement={etablissement} bareme={etat.bareme} plafonds={{ jour: etat.plafondJour, mois: etat.plafondMois }} />;
+    return <MesPoints user={user} etablissement={etablissement} permissions={permissions} bareme={etat.bareme} plafonds={{ jour: etat.plafondJour, mois: etat.plafondMois }} />;
   }
 
   return (
@@ -56,7 +56,7 @@ export default function Points({ user, etablissement }) {
         )}
         <SegmentedTabs tabs={onglets} active={courant} onChange={setOnglet} />
         {courant === 'moi'
-          ? <MesPoints user={user} etablissement={etablissement} bareme={etat.bareme} plafonds={{ jour: etat.plafondJour, mois: etat.plafondMois }} sansTitre />
+          ? <MesPoints user={user} etablissement={etablissement} permissions={permissions} bareme={etat.bareme} plafonds={{ jour: etat.plafondJour, mois: etat.plafondMois }} sansTitre />
           : <GestionPoints key={`${etabId}-${courant}`} onglet={courant} user={user} etablissement={etablissement} etat={etat} />}
       </div>
     </div>
