@@ -26,9 +26,7 @@ export const UI_STORAGE_KEYS = {
   totpRappelJusqua: 'sc_totp_rappel_jusqua',
   // Version d'icônes pour laquelle l'appareil a lu le rappel « rafraîchir la
   // vignette de l'écran d'accueil » (iOS uniquement).
-  iconTipAck: 'sc_icon_tip_ack',
-  // KDS : l'appareil ouvre le passe en plein écran ('1') ou dans la coque.
-  kdsPlein: 'sc_kds_plein'
+  iconTipAck: 'sc_icon_tip_ack'
 };
 
 export function readJson(key, fallback = null) {

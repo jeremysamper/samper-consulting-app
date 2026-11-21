@@ -7,7 +7,6 @@ import { notify } from '../../components/toast/index.js';
 import { navigateToPage } from '../../services/navigationService.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
-import { UI_STORAGE_KEYS, readText, writeText } from '../../utils/storage.js';
 import { pollKdsOrders } from '../pos/lib/posApi.js';
 import { fusionnerReglages, libelleMode } from '../caisse/reglages.js';
 import { construireBons, rangerBons, lignesALire, estVivant, RANG_TENU } from './bons.js';
@@ -35,7 +34,9 @@ import {
 //     va tout à la fin du rail et laisse la place aux autres directs ;
 //   - il revient de lui-même dans la file quand la salle réclame la suite, et
 //     il se retrouve en glissant, ou d'un toucher sur « en attente » ;
-//   - gros caractères, lignes hautes, plein écran au choix de l'appareil.
+//   - gros caractères, lignes hautes, plein écran de base (21.11.2026) : le
+//     passe s'ouvre en plein écran à chaque arrivée sur le module, et
+//     « Quitter le plein écran » ne vaut que pour la visite en cours.
 // Pensé pour le rush : actions optimistes (aucune attente réseau), une seule
 // confirmation, quand on termine un bon dont des suites sont encore tenues.
 // L'écran reste allumé (wake lock) tant que le KDS est ouvert.
@@ -116,7 +117,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   const [lightspeed, setLightspeed] = React.useState(null);
   // figes : bons qui viennent d'être validés ici (clé -> { jusqua, depuis }).
   const [figes, setFiges] = React.useState(() => new Map());
-  const [plein, setPlein] = React.useState(() => readText(UI_STORAGE_KEYS.kdsPlein, '') === '1');
+  const [plein, setPlein] = React.useState(true);
   // aDroite : bons à faire cachés à droite de l'écran (file plus longue que lui).
   const [aDroite, setADroite] = React.useState(0);
   const [, setTick] = React.useState(0); // re-render 1 s pour les chronos
@@ -328,11 +329,12 @@ const Kds = ({ user, etablissement, isActive = true }) => {
     if (rail) rail.scrollBy({ left: rail.clientWidth * 0.9, behavior: 'smooth' });
   };
 
-  // ── Plein écran : un calque au-dessus de la coque, retenu par appareil ──
+  // ── Plein écran : un calque au-dessus de la coque, de base à chaque
+  // arrivée sur le module (le module reste monté quand on part ailleurs) ──
   const immersif = plein && isActive;
+  React.useEffect(() => { if (isActive) setPlein(true); }, [isActive]);
   const basculerPlein = (actif) => {
     setPlein(actif);
-    writeText(UI_STORAGE_KEYS.kdsPlein, actif ? '1' : '0');
     if (actif) entrerPleinNatif(); else sortirPleinNatif();
   };
   // Le geste retour quitte le plein écran, pas le module.
@@ -342,7 +344,6 @@ const Kds = ({ user, etablissement, isActive = true }) => {
     const onKey = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       setPlein(false);
-      writeText(UI_STORAGE_KEYS.kdsPlein, '0');
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
