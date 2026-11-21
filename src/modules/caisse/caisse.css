@@ -21,3 +21,37 @@
    !important : le filet est posé en style en ligne. */
 .caisse-liste > :last-child { border-bottom-width: 0 !important; }
 .caisse-bons-liste > :last-child { border-bottom-width: 0 !important; }
+
+/* ─── Écran de prise de commande (21.11.2026) ────────────────────────────────
+   Plein écran, en grille (TicketEcran.jsx). La feuille de la commande monte
+   du bas au téléphone et redescend à la fermeture ; les animations réduites
+   (préférence du système, ou Réglages > Cet appareil) la posent sans
+   mouvement. Une case touchée s'enfonce un instant, au doigt comme à la
+   souris. */
+.caisse-feuille { animation: caisse-feuille-monte 240ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.caisse-feuille--sortie { animation: caisse-feuille-descend 180ms ease-in forwards; }
+.caisse-voile { animation: caisse-voile-entre 200ms ease-out; }
+.caisse-voile--sortie { animation: caisse-voile-sort 180ms ease-in forwards; }
+@keyframes caisse-feuille-monte { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes caisse-feuille-descend { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@keyframes caisse-voile-entre { from { opacity: 0; } to { opacity: 1; } }
+@keyframes caisse-voile-sort { from { opacity: 1; } to { opacity: 0; } }
+
+.caisse-case { transition: transform 90ms ease-out; -webkit-tap-highlight-color: transparent; }
+.caisse-case:active { transform: scale(0.97); }
+.caisse-case:focus-visible,
+.caisse-rail button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.caisse-rail { scrollbar-width: none; }
+.caisse-rail::-webkit-scrollbar { display: none; }
+/* Dernière ligne d'un mode : pas de filet sous elle. !important : le filet
+   est posé en style en ligne. */
+.caisse-bloc > :last-child { border-bottom-width: 0 !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .caisse-feuille, .caisse-feuille--sortie, .caisse-voile, .caisse-voile--sortie { animation: none; }
+  .caisse-case { transition: none; }
+}
+/* Modes dans l'en-tête de l'écran de commande : un cran plus serrés que la
+   barre d'avant, pour que deux modes tiennent à côté de la loupe et du menu
+   au téléphone ; la bande défile au-delà. */
+.caisse-plein .caisse-modes .segmented-tab { min-height: 44px; padding: 8px 14px; }

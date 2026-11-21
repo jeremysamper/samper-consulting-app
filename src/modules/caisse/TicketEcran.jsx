@@ -1,8 +1,13 @@
 import React from 'react';
-import { Check, ChevronDown, ConciergeBell, FlaskConical, Hourglass, Megaphone, Plus, Send, TriangleAlert } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import {
+  ArrowLeft, Check, ChevronDown, ChevronUp, ConciergeBell, FlaskConical, Hourglass, LayoutGrid, Megaphone,
+  Minus, MoreHorizontal, Pencil, Plus, Search, Send, Trash2, TriangleAlert, X,
+} from 'lucide-react';
 import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
-import { Fenetre, st as fen } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Fenetre, st as fen } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
+import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { zurichDateHeure } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
@@ -12,17 +17,30 @@ import CorrigerClient from './CorrigerClient.jsx';
 import Encaissement from './Encaissement.jsx';
 import { allergenesEnConflit, allergenesIdsDe, allergiesDe } from './clients.js';
 import { libelleOption } from './options.js';
-import { nomCourtDefaut, pictoDefaut, pictoParId } from './boutons.js';
+import { pictoCategorieDefaut, pictoDefaut, pictoParId } from './boutons.js';
 import { ID_TOUT, rangerArticles, sousGroupesAutres } from './categories.js';
 import { libelleSupplement, supplementsPourLigne } from './supplements.js';
 import { REGLAGES_DEFAUT, SUITE_MAX, libelleMode, peutOuvrirMode, suitesVisibles } from './reglages.js';
-import { useHauteurRestante, useLargeur, useRetraitBas } from './mesures.js';
+import { comptesCommande, photoDuBouton, quantitesParPlat } from './commande.js';
+import { useLargeur } from './mesures.js';
 import { estPret } from './PlanTables.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// L'écran du ticket : à gauche la saisie (mode, catégories, produits), à
-// droite la lecture de la table (ticket en blocs par mode, total, action).
-// Gros boutons, cibles 44 px : c'est l'écran du service, au doigt, sur iPad.
+// L'écran de prise de commande d'un ticket, en plein écran (21.11.2026, à la
+// manière des caisses en grille) :
+//   en haut   : retour au plan, les modes (En direct, À suivre...), la loupe et
+//               le menu des actions du ticket ;
+//   à gauche  : les catégories en pictos ;
+//   au centre : les cases des produits en grille, avec leur photo (celle posée
+//               dans la caisse, sinon celle de la fiche), sinon leur couleur et
+//               leur picto ; une pastille dit combien la table en a ;
+//   téléphone : en bas, le résumé (total, entrées, plats, desserts) et
+//               l'action principale ; le résumé fait monter la commande dans
+//               une feuille, pour vérifier, modifier ou retirer d'un toucher ;
+//   tablette  : la commande dans un panneau à droite, même contenu.
+// L'écran est rendu dans body (portail) : la coque et ses conteneurs ne le
+// cadrent pas. Les fenêtres partagées (Fenetre, z-index 1000) et les feuilles
+// de la caisse (1200) passent au-dessus de lui (900).
 //
 // Modes (v4) : « En direct », « À suivre », « À suivre 2 »... sont les suites
 // 1, 2, 3 de caisse_lignes, sans changement de schéma. On choisit le mode,
@@ -30,42 +48,37 @@ import { estPret } from './PlanTables.jsx';
 // « même plat = +1 » se fait dans le mode actif. Le mode revient à « En
 // direct » à chaque ouverture de ticket (le composant est remonté).
 //
-// Action principale, une seule à la fois : Envoyer (le direct), puis Réclamer
-// la suite (le mode suivant en attente), puis Encaisser. Le moteur d'envoi est
-// celui de la v1 : caisse_envoyer_bon sur la plus basse suite en attente,
-// idempotent au double tap.
+// Action principale, une seule à la fois : Envoyer en cuisine (le direct),
+// puis Réclamer la suite (le mode suivant en attente), puis Encaisser. Le
+// moteur d'envoi est celui de la v1 : caisse_envoyer_bon sur la plus basse
+// suite en attente, idempotent au double tap.
 //
-// Sur un écran large, l'écran est cadré : la grille et le ticket défilent
-// chacun chez soi, le total et l'action ne quittent jamais l'écran.
 // Les noms de produits, de catégories, de modes et de tables sont des
 // données : data-no-translate. Chaque nombre vit dans son propre noeud
 // (traduction du DOM).
 //
-// v5 : le ticket d'une table sait qui est assis. Un bandeau en tête dit le
-// nom, les couverts et les allergies du client ; « Corriger » ouvre la feuille
-// des corrections du service (nom, couverts, arrivé, no-show, autre
-// réservation), toutes par la RPC caisse_corriger_reservation. Une vente
-// directe reste anonyme : pas de bandeau.
-// Quand la maison vend plus d'une carte, un sélecteur discret restreint la
-// grille à une seule ; il s'ouvre sur « Toutes les cartes » (aucun geste de
-// plus pour qui ne s'en sert pas) et le choix tient le temps du ticket. Un
-// produit porté par deux cartes n'apparaît qu'une fois.
+// v5 : le ticket d'une table sait qui est assis. Un bandeau en tête de la
+// commande dit le nom, les couverts et les allergies du client ; « Corriger »
+// ouvre la feuille des corrections du service (nom, couverts, arrivé,
+// no-show, autre réservation), toutes par la RPC caisse_corriger_reservation.
+// Une vente directe reste anonyme : pas de bandeau.
+// Quand la maison vend plus d'une carte, le menu propose la carte affichée ;
+// il s'ouvre sur « Toutes les cartes » et le choix tient le temps du ticket.
 //
-// v6 : la cuisine voit ce qui arrive, la salle voit ce qui est prêt.
-// Au premier envoi, les lignes des modes suivants sont annoncées en cuisine,
-// tenues : elles s'affichent « annoncé » et restent modifiables (la base met
-// l'item de la cuisine à jour). « Réclamer la suite » les libère par la RPC
-// caisse_reclamer_suite : même tap unique qu'avant. Quand la cuisine marque un
-// plat fait, la ligne porte « Prêt » (caisse_lignes.pret_at, posé par la
-// base : le service ne lit jamais les tables du KDS).
-// En mode test (modeTest), le ticket n'a ni client ni réservation : le
-// bandeau le dit et « Corriger » n'existe pas.
+// v6 : la cuisine voit ce qui arrive, la salle voit ce qui est prêt. Au
+// premier envoi, les lignes des modes suivants sont annoncées en cuisine,
+// tenues : elles s'affichent « annoncé » et restent modifiables. « Réclamer la
+// suite » les libère par la RPC caisse_reclamer_suite. Quand la cuisine marque
+// un plat fait, la ligne porte « Prêt ». En mode test, le ticket n'a ni client
+// ni réservation : le bandeau le dit et « Corriger » n'existe pas.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
-const LARGEUR_DEUX_COLONNES = 700;
+const LARGEUR_TABLETTE = 760;
 const ID_PLUS = '_plus';
 const LIBELLES_QUI = { reservation: 'Réservation', passage: 'Client de passage', compte: 'Compte client' };
+const SERVICES = [['entrees', 'Entrée', 'Entrées'], ['plats', 'Plat', 'Plats'], ['desserts', 'Dessert', 'Desserts']];
+const DUREE_SORTIE_FEUILLE = 180;
 
 export default function TicketEcran({
   ticket, articles, allergenesFiches = null, boutons = {}, categories = [], reglages = REGLAGES_DEFAUT,
@@ -74,8 +87,10 @@ export default function TicketEcran({
   cartes = [], reservation = null, reservations = [], onReservationsChange,
   modeTest = false, onQuittance,
   terminaux = [], role = null,
+  titre = null, onRetour, bandeau = null,
 }) {
   const [recherche, setRecherche] = React.useState('');
+  const [rechercheOuverte, setRechercheOuverte] = React.useState(false);
   // Carte choisie pour ce ticket ; null = toutes les cartes en vente.
   const [carteChoisie, setCarteChoisie] = React.useState(null);
   const [cartesOuvert, setCartesOuvert] = React.useState(false);
@@ -86,7 +101,7 @@ export default function TicketEcran({
   const [modeActif, setModeActif] = React.useState(1);
   // Modes ouverts par le « + » pendant ce ticket, au-delà de ceux réglés.
   const [modesOuverts, setModesOuverts] = React.useState(0);
-  // Onglet de catégorie choisi ; null = celui par défaut (voir plus bas).
+  // Catégorie choisie dans le rail ; null = celle par défaut (voir plus bas).
   const [ongletChoisi, setOngletChoisi] = React.useState(null);
   // Fiche d'édition d'une ligne (v2) : identifiant de la ligne ouverte.
   const [ficheLigneId, setFicheLigneId] = React.useState(null);
@@ -96,11 +111,17 @@ export default function TicketEcran({
   const [librePrix, setLibrePrix] = React.useState('');
   const [paiementOuvert, setPaiementOuvert] = React.useState(false);
   const [envoiEnCours, setEnvoiEnCours] = React.useState(false);
+  // Feuille de la commande au téléphone : fermée, ouverte, ou en train de
+  // redescendre (le temps de son animation).
+  const [feuille, setFeuille] = React.useState('fermee');
+  // Photos qui n'ont pas pu se charger : la case reprend sa couleur et son picto.
+  const [photosEnEchec, setPhotosEnEchec] = React.useState(() => new Set());
   // Verrous immédiats (une ref, pas un état) : deux taps dans la même image
-  // ne lancent pas deux envois (l'encaissement a son propre verrou, v7).
+  // ne lancent pas deux envois ni deux retraits de la même ligne.
   const verrou = React.useRef({ envoi: false });
-  // Habillage des boutons (v3) : mode édition (consultant, patron,
-  // resp_cuisine) et fiche du bouton ouvert ; l'appui long ouvre aussi la
+  const verrouRetrait = React.useRef(new Set());
+  // Habillage des cases (v3) : mode édition (consultant, patron,
+  // resp_cuisine) et fiche de la case ouverte ; l'appui long ouvre aussi la
   // fiche, hors mode, pour les mêmes rôles.
   const [editionBoutons, setEditionBoutons] = React.useState(false);
   const [boutonPlat, setBoutonPlat] = React.useState(null);
@@ -108,12 +129,38 @@ export default function TicketEcran({
   // allergenes } ; la fenêtre « Attention allergène » demande de confirmer.
   const [alerteAllergene, setAlerteAllergene] = React.useState(null);
   const appuiLong = React.useRef({ timer: null, declenche: false });
+  const minuterieFeuille = React.useRef(null);
 
   const racineRef = React.useRef(null);
   const largeur = useLargeur(racineRef);
-  const deuxColonnes = largeur >= LARGEUR_DEUX_COLONNES;
-  const hauteur = useHauteurRestante(racineRef, deuxColonnes);
-  const retraitBas = useRetraitBas(racineRef, !deuxColonnes && largeur > 0);
+  const tablette = largeur >= LARGEUR_TABLETTE;
+
+  const ouvrirFeuille = React.useCallback(() => {
+    clearTimeout(minuterieFeuille.current);
+    setFeuille('ouverte');
+  }, []);
+  const fermerFeuille = React.useCallback(() => {
+    setFeuille((f) => (f === 'ouverte' ? 'fermeture' : f));
+    clearTimeout(minuterieFeuille.current);
+    minuterieFeuille.current = setTimeout(() => setFeuille('fermee'), DUREE_SORTIE_FEUILLE);
+  }, []);
+  React.useEffect(() => () => clearTimeout(minuterieFeuille.current), []);
+  // Passage en tablette (rotation de l'iPad) : la commande est déjà à droite.
+  React.useEffect(() => { if (tablette) setFeuille('fermee'); }, [tablette]);
+  // Le geste retour et Échap referment la feuille avant de quitter l'écran.
+  useBackLayer(feuille === 'ouverte' && !tablette, fermerFeuille, 'caisse-commande');
+  React.useEffect(() => {
+    if (feuille !== 'ouverte') return undefined;
+    const echap = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
+      if (document.querySelector('[data-fenetre]')) return;
+      e.preventDefault();
+      fermerFeuille();
+    };
+    document.addEventListener('keydown', echap);
+    return () => document.removeEventListener('keydown', echap);
+  }, [feuille, fermerFeuille]);
 
   function debutAppuiLong(plat) {
     if (!peutHabiller) return;
@@ -165,8 +212,9 @@ export default function TicketEcran({
     () => rangerArticles({ articles: articlesCarte, boutons, categoriesMaison: categories }),
     [articlesCarte, boutons, categories],
   );
-  // Suppléments de la fiche ouverte : leurs choix suivent les catégories de
-  // caisse de tous les articles en vente, quelle que soit la carte affichée.
+  // Suppléments de la fiche ouverte et comptes de la commande : selon les
+  // catégories de caisse de tous les articles en vente, quelle que soit la
+  // carte affichée.
   const rangementComplet = React.useMemo(
     () => rangerArticles({ articles, boutons, categoriesMaison: categories }),
     [articles, boutons, categories],
@@ -175,6 +223,12 @@ export default function TicketEcran({
     () => supplementsPourLigne({ ligne: ficheLigne, supplements: reglages.supplements, rangement: rangementComplet, articles }),
     [ficheLigne, reglages.supplements, rangementComplet, articles],
   );
+  const articlesParId = React.useMemo(() => new Map(articles.map((a) => [a.id, a])), [articles]);
+  const comptes = React.useMemo(
+    () => comptesCommande(lignes, { parArticle: rangementComplet.parArticle, articlesParId }),
+    [lignes, rangementComplet, articlesParId],
+  );
+  const quantites = React.useMemo(() => quantitesParPlat(lignes), [lignes]);
   // « Tout » par défaut : chaque produit reste à un tap, comme avant les
   // onglets. Une maison peut régler l'ouverture sur sa première catégorie.
   const ongletDefaut = reglages.ouverture === 'categorie' ? (rangement.onglets[0]?.id || ID_TOUT) : ID_TOUT;
@@ -191,24 +245,55 @@ export default function TicketEcran({
 
   const erreur = (e) => { if (e) notify(e, 'error'); return Boolean(e); };
 
-  async function ajouterArticle(plat) {
+  // Touchers rapides sur les cases : les ajouts passent un par un (file), et
+  // chacun lit les lignes connues, celles du serveur complétées par celles que
+  // ce poste vient d'écrire et que la relecture n'a pas encore rendues. Deux
+  // touchers sur la même case donnent une ligne à 2, jamais deux lignes à 1.
+  const lignesRef = React.useRef(lignes);
+  lignesRef.current = lignes;
+  const ecrites = React.useRef(new Map());
+  const fileAjouts = React.useRef(Promise.resolve());
+  function retenirEcrite(ligne) {
+    if (ligne?.id) ecrites.current.set(ligne.id, { ligne, t: Date.now() });
+  }
+  function lignesConnues() {
+    const serveur = new Map(lignesRef.current.map((l) => [l.id, l]));
+    const maintenant = Date.now();
+    ecrites.current.forEach(({ ligne, t }, id) => {
+      const vue = serveur.get(id);
+      // Absente du serveur depuis plus de 10 s : retirée ailleurs.
+      if (!vue) { if (maintenant - t < 10000) serveur.set(id, ligne); else ecrites.current.delete(id); return; }
+      // Partie en cuisine : le serveur fait foi.
+      if (vue.statut !== 'en_attente') { ecrites.current.delete(id); return; }
+      if (maintenant - t < 10000) serveur.set(id, { ...vue, quantite: ligne.quantite });
+      else ecrites.current.delete(id);
+    });
+    return [...serveur.values()];
+  }
+
+  function ajouterArticle(plat) {
+    const mode = modeActif;
+    const tache = fileAjouts.current.then(() => ajouterUn(plat, mode));
+    fileAjouts.current = tache.catch(() => {});
+    return tache;
+  }
+
+  async function ajouterUn(plat, mode) {
     // Même plat, même mode, sans note ni paramètre, pas encore envoyé : +1
     // (une ligne paramétrée reste la sienne, on n'y empile pas un couvert).
     // Le libellé compte aussi : un supplément choisi (« Supplément alcool
     // (Kirsch) ») ne reçoit pas le supplément nu touché dans la grille.
-    const existante = lignes.find((l) =>
-      l.statut === 'en_attente' && l.plat_id === plat.id && l.suite === modeActif
+    const existante = lignesConnues().find((l) =>
+      l.statut === 'en_attente' && l.plat_id === plat.id && l.suite === mode
       && l.libelle === plat.nom && !l.note && !(l.options || []).length);
-    if (existante) {
-      const { error } = await caisse.majLigne(existante.id, { quantite: Number(existante.quantite) + 1 });
-      if (erreur(error)) return;
-    } else {
-      const { error } = await caisse.ajouterLigne({
+    const { data, error } = existante
+      ? await caisse.majLigne(existante.id, { quantite: Number(existante.quantite) + 1 })
+      : await caisse.ajouterLigne({
         ticketId: ticket.id, platId: plat.id, libelle: plat.nom,
-        prixUnitaire: plat.prixVente ?? 0, suite: modeActif,
+        prixUnitaire: plat.prixVente ?? 0, suite: mode,
       });
-      if (erreur(error)) return;
-    }
+    if (erreur(error)) return;
+    retenirEcrite(data);
     reload();
   }
 
@@ -235,8 +320,10 @@ export default function TicketEcran({
   // Écritures de la fiche de ligne : immédiates, l'écran suit par reload.
   async function majFicheLigne(partial) {
     if (!ficheLigne) return;
-    const { error } = await caisse.majLigne(ficheLigne.id, partial);
-    if (!erreur(error)) reload();
+    const { data, error } = await caisse.majLigne(ficheLigne.id, partial);
+    if (erreur(error)) return;
+    retenirEcrite(data);
+    reload();
   }
 
   // Un supplément est une ligne à lui, dans le mode de la ligne d'origine :
@@ -261,8 +348,28 @@ export default function TicketEcran({
     if (!ficheLigne) return;
     const { error } = await caisse.supprimerLigne(ficheLigne.id);
     if (erreur(error)) return;
+    ecrites.current.delete(ficheLigne.id);
     setFicheLigneId(null);
     reload();
+  }
+
+  // Retrait rapide depuis la commande : un de moins, ou la ligne entière quand
+  // il n'en reste qu'un. Seulement sur une ligne pas encore partie en cuisine
+  // (une ligne annoncée reste modifiable, la base met son item à jour).
+  async function retirerUn(l) {
+    if (l.statut !== 'en_attente' || verrouRetrait.current.has(l.id)) return;
+    verrouRetrait.current.add(l.id);
+    try {
+      const q = Number(l.quantite);
+      const { data, error } = q > 1
+        ? await caisse.majLigne(l.id, { quantite: q - 1 })
+        : await caisse.supprimerLigne(l.id);
+      if (erreur(error)) return;
+      if (q > 1) retenirEcrite(data); else ecrites.current.delete(l.id);
+      await reload();
+    } finally {
+      verrouRetrait.current.delete(l.id);
+    }
   }
 
   async function basculerServi(l) {
@@ -352,7 +459,7 @@ export default function TicketEcran({
 
   const allergies = allergiesDe(reservation);
   // Allergènes signalés par la table (réservation et fiche client), croisés
-  // avec les fiches de chaque plat : pastille sur le bouton, confirmation au toucher.
+  // avec les fiches de chaque plat : contour sur la case, confirmation au toucher.
   const allergenesTable = allergenesIdsDe(reservation);
   const conflitsDe = (plat) => allergenesEnConflit(plat, allergenesTable, allergenesFiches);
   function toucherArticle(plat) {
@@ -361,27 +468,30 @@ export default function TicketEcran({
     ajouterArticle(plat);
   }
   const dense = reglages.grille === 'dense';
-  const styleGrille = { ...st.grille, gridTemplateColumns: `repeat(auto-fill, minmax(${dense ? 112 : 140}px, 1fr))` };
+  const minCase = tablette ? (dense ? 112 : 136) : (dense ? 84 : 104);
+  const styleGrille = { ...st.grille, gridTemplateColumns: `repeat(auto-fill, minmax(${minCase}px, 1fr))` };
+  const heureOuverture = zurichDateHeure(ticket.created_at).heure;
 
-  function boutonProduit(a, categorie) {
+  // ── Une case de la grille ──
+  function caseProduit(a, categorie) {
     const hab = boutons[a.id];
     const couleur = hab?.couleur || categorie?.couleur || null;
-    const picto = pictoParId(hab?.picto || categorie?.picto || pictoDefaut(a.categorie));
+    const picto = pictoParId(hab?.picto || categorie?.picto || pictoDefaut(a.categorie) || pictoCategorieDefaut(categorie?.nom));
+    const photo = photoDuBouton(a, hab);
+    const avecPhoto = Boolean(photo) && !photosEnEchec.has(photo);
     const conflits = conflitsDe(a);
+    const n = quantites.get(a.id) || 0;
     return (
       <button
         key={a.id}
         type="button"
+        className="caisse-case"
         data-cadre=""
         data-produit={a.id}
+        data-photo={avecPhoto ? '' : undefined}
         data-allergene={conflits.length ? '' : undefined}
         title={conflits.length ? `Attention : contient ${conflits.join(', ')}` : undefined}
-        style={{
-          ...st.article,
-          ...(dense ? st.articleDense : null),
-          ...(couleur ? { background: `var(--caisse-${couleur})`, boxShadow: 'none' } : null),
-          ...(conflits.length ? st.articleAllergene : null),
-        }}
+        style={{ ...st.case, ...(conflits.length ? st.caseAllergene : null) }}
         onClick={() => {
           if (appuiLong.current.declenche) { appuiLong.current.declenche = false; return; }
           if (editionBoutons && peutHabiller) { setBoutonPlat(a); return; }
@@ -393,22 +503,41 @@ export default function TicketEcran({
         onPointerCancel={finAppuiLong}
         onContextMenu={(e) => { if (peutHabiller) e.preventDefault(); }}
       >
-        <span style={st.articleNomRang}>
-          {picto && <picto.Icone size={18} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />}
-          <span style={st.articleNom} data-no-translate>{hab?.nom_court || nomCourtDefaut(a.nom)}</span>
+        <span style={{ ...st.caseVisuel, background: couleur ? `var(--caisse-${couleur})` : 'var(--piste)' }}>
+          {avecPhoto ? (
+            <img
+              src={photo}
+              alt=""
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+              style={st.casePhoto}
+              onError={() => setPhotosEnEchec((s) => new Set(s).add(photo))}
+            />
+          ) : picto && (
+            <picto.Icone size={dense ? 24 : 30} strokeWidth={1.5} aria-hidden="true" />
+          )}
+          {n > 0 && <span style={st.casePastille} data-caisse-quantite="">{n}</span>}
+          {editionBoutons && peutHabiller && (
+            <span style={st.caseCrayon}><Pencil size={14} strokeWidth={2} aria-hidden="true" /></span>
+          )}
         </span>
-        {conflits.length > 0 && (
-          <span style={st.articleAlerte}>
-            <TriangleAlert size={14} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
-            <span>{conflits.join(', ')}</span>
-          </span>
-        )}
-        <span style={st.articlePrix}>{chf(a.prixVente)}</span>
+        <span style={st.caseTexte}>
+          {/* Nom complet sur deux lignes au plus (la case coupe le reste). */}
+          <span style={st.caseNom} data-no-translate>{hab?.nom_court || a.nom}</span>
+          {conflits.length > 0 && (
+            <span style={st.caseAlerte}>
+              <TriangleAlert size={13} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
+              <span>{conflits.join(', ')}</span>
+            </span>
+          )}
+          <span style={st.casePrix}>{chf(a.prixVente)}</span>
+        </span>
       </button>
     );
   }
 
-  // ── Barre de modes ──
+  // ── Modes, en tête de l'écran ──
   const ongletsModes = suites.map((s) => {
     const n = enAttente.filter((l) => l.suite === s).length;
     return {
@@ -428,30 +557,18 @@ export default function TicketEcran({
     });
   }
 
-  const ongletsCategories = [
-    { id: ID_TOUT, label: 'Tout' },
-    ...rangement.onglets.map((c) => {
-      const picto = pictoParId(c.picto);
-      return {
-        id: c.id,
-        icon: picto ? <picto.Icone size={16} strokeWidth={1.75} aria-hidden="true" /> : null,
-        label: <span data-no-translate>{c.nom}</span>,
-      };
-    }),
-  ];
-
-  // ── L'action principale : une seule, large, en bas du ticket ──
-  let actionPrincipale = null;
+  // ── L'action principale : une seule à la fois ──
+  let actionPrincipale;
   if (suiteAEnvoyer === 1) {
     actionPrincipale = (
-      <Btn variant="primary" onClick={envoyer} disabled={envoiEnCours} style={st.btnPrincipal}>
+      <Btn variant="primary" onClick={envoyer} disabled={envoiEnCours} style={st.btnPrincipal} data-caisse-action="envoyer">
         <Send size={20} strokeWidth={1.75} aria-hidden="true" />
-        <span>Envoyer</span>
+        <span>Envoyer en cuisine</span>
       </Btn>
     );
   } else if (suiteAEnvoyer != null) {
     actionPrincipale = (
-      <Btn variant="primary" onClick={envoyer} disabled={envoiEnCours} style={st.btnPrincipal}>
+      <Btn variant="primary" onClick={envoyer} disabled={envoiEnCours} style={st.btnPrincipal} data-caisse-action="reclamer">
         <Send size={20} strokeWidth={1.75} aria-hidden="true" />
         <span style={st.principalTexte}>
           <span>Réclamer la suite</span>
@@ -461,140 +578,91 @@ export default function TicketEcran({
     );
   } else if (lignes.length > 0) {
     actionPrincipale = (
-      <Btn variant="primary" onClick={() => setPaiementOuvert(true)} style={st.btnPrincipal}>
+      <Btn variant="primary" onClick={() => setPaiementOuvert(true)} style={st.btnPrincipal} data-caisse-action="encaisser">
         <span>Encaisser</span>
       </Btn>
     );
+  } else {
+    actionPrincipale = (
+      <Btn variant="primary" disabled style={st.btnPrincipal} data-caisse-action="vide">
+        <Send size={20} strokeWidth={1.75} aria-hidden="true" />
+        <span>Envoyer en cuisine</span>
+      </Btn>
+    );
   }
+  // Encaisser reste à un toucher pendant qu'il reste quelque chose à envoyer.
+  const encaisserSecondaire = suiteAEnvoyer != null && lignes.length > 0 ? (
+    <Btn variant="ghost" onClick={() => setPaiementOuvert(true)} style={st.btnSecondaire}>Encaisser</Btn>
+  ) : null;
 
-  // Le total et l'action : dans le pied du ticket quand l'écran est cadré,
-  // dans une barre collée en bas quand il s'empile.
-  const blocTotalAction = (
-    <>
-      <div style={st.totalLigne}>
-        <span style={st.totalLibelle}>Total</span>
-        <span style={st.totalValeur}><span>{chf(total)}</span> <span style={st.devise}>CHF</span></span>
-      </div>
-      {actionPrincipale}
-    </>
+  // Entrées, plats et desserts de la table : un chiffre et son mot.
+  const repereServices = (
+    <span style={st.services} data-caisse-services="">
+      {SERVICES.map(([cle, un, plusieurs]) => (
+        <span key={cle} style={st.service} data-service={cle}>
+          <span style={st.serviceChiffre}>{comptes[cle]}</span>
+          <span style={st.serviceLibelle}>{comptes[cle] === 1 ? un : plusieurs}</span>
+        </span>
+      ))}
+    </span>
   );
 
-  const cadree = Boolean(deuxColonnes && hauteur);
-  const cadre = cadree ? { ...st.cadre, height: hauteur } : st.empile;
-  const colonne = cadree ? st.colonneCadree : null;
-  const defilant = cadree ? st.defilant : null;
+  // ── Menu des actions du ticket (en-tête) ──
+  const menuActions = (
+    <BoutonActions
+      id="caisse-commande-plus"
+      label={<><MoreHorizontal size={20} strokeWidth={1.75} aria-hidden="true" /><span style={st.horsEcran}>Actions du ticket</span></>}
+      style={st.rond}
+      titre="Actions du ticket"
+      sections={[
+        { titre: 'Saisie', items: [
+          { titre: 'Article libre', detail: 'Un libellé et un prix', onClick: () => setLibreOuvert(true) },
+          cartes.length > 1 && {
+            titre: 'Carte affichée',
+            detail: carte ? <span data-no-translate>{carte.nom}</span> : 'Toutes les cartes',
+            onClick: () => setCartesOuvert(true),
+          },
+          peutHabiller && {
+            titre: editionBoutons ? 'Terminer la modification des cases' : 'Modifier les cases',
+            detail: 'Nom court, couleur, picto et photo',
+            onClick: () => setEditionBoutons((v) => !v),
+          },
+        ] },
+        { titre: 'Ticket', items: [
+          suiteAEnvoyer != null && suiteAEnvoyer < SUITE_MAX && {
+            titre: 'Passer à suivre', detail: 'Les articles en attente passent au mode suivant', onClick: passerASuivre,
+          },
+          { titre: 'Déplacer vers une autre table', onClick: onDeplacer },
+          ticketsMemeTable.length > 0 && { titre: 'Fusionner les tickets de la table', onClick: fusionner },
+          { titre: 'Annuler le ticket', detail: 'Les articles déjà envoyés restent en cuisine', danger: true, onClick: annuler },
+        ] },
+      ]}
+    />
+  );
 
-  return (
-    <div ref={racineRef} style={cadre} data-caisse-ecran={deuxColonnes ? 'cadre' : 'empile'}>
-      {/* ── La saisie : mode, catégories, produits ── */}
-      <section style={{ ...st.colArticles, ...colonne }}>
-        {ongletsModes.length > 1 && (
-          <SegmentedTabs className="caisse-modes" tabs={ongletsModes} active={modeActif} onChange={choisirMode} />
-        )}
-        <Input
-          value={recherche}
-          onChange={(e) => setRecherche(e.target.value)}
-          placeholder="Chercher un article"
-          style={{ minHeight: 44, flexShrink: 0 }}
-        />
-        {!enRecherche && cartes.length > 1 && (
-          <div style={st.cartes} data-caisse-cartes="">
-            <button
-              type="button"
-              style={st.carteBouton}
-              aria-expanded={cartesOuvert}
-              onClick={() => setCartesOuvert((v) => !v)}
-            >
-              <span style={st.carteLibelle}>Carte :</span>
-              {carte ? <span data-no-translate>{carte.nom}</span> : <span>Toutes les cartes</span>}
-              <ChevronDown size={16} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
-            </button>
-            {cartesOuvert && (
-              <div style={st.carteListe}>
-                <Btn variant={carte ? 'ghost' : 'primary'} onClick={() => { setCarteChoisie(null); setCartesOuvert(false); }} style={st.btn44}>Toutes les cartes</Btn>
-                {cartes.map((c) => (
-                  <Btn key={c.id} variant={carte?.id === c.id ? 'primary' : 'ghost'} onClick={() => { setCarteChoisie(c.id); setCartesOuvert(false); }} style={st.btn44}>
-                    <span data-no-translate>{c.nom}</span>
-                  </Btn>
-                ))}
-              </div>
-            )}
+  // ── La commande : en feuille au téléphone, en panneau à la tablette ──
+  function contenuCommande(enFeuille) {
+    return (
+      <>
+        <div style={st.commandeEntete}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={st.commandeTitre}>Commande</div>
+            <div style={st.commandeDetail}>
+              <span style={st.commandeTable}>{titre}</span>{' '}
+              <span>ouvert à</span> <span style={st.num}>{heureOuverture}</span>
+            </div>
           </div>
-        )}
-        {!enRecherche && rangement.onglets.length > 1 && (
-          <SegmentedTabs className="caisse-onglets" tabs={ongletsCategories} active={onglet} onChange={setOngletChoisi} />
-        )}
-
-        <div style={{ ...st.zoneGrille, ...defilant }} data-caisse-grille="">
-          {enRecherche ? (
-            <div style={styleGrille}>{trouves.map(({ a, c }) => boutonProduit(a, c))}</div>
-          ) : sections.map((c) => {
-            const sous = sousGroupesAutres(c);
-            return (
-              <div key={c.id}>
-                {onglet === ID_TOUT && <div style={st.categorie} data-no-translate>{c.nom}</div>}
-                {sous ? sous.map((g) => (
-                  <div key={g.titre}>
-                    <div style={st.sousCategorie} data-no-translate>{g.titre}</div>
-                    <div style={styleGrille}>{g.articles.map((a) => boutonProduit(a, c))}</div>
-                  </div>
-                )) : (
-                  <div style={styleGrille}>{c.articles.map((a) => boutonProduit(a, c))}</div>
-                )}
-              </div>
-            );
-          })}
-          {(enRecherche ? !trouves.length : !rangement.onglets.length) && (
-            <p style={st.vide}>
-              {enRecherche ? 'Aucun article ne correspond.' : 'Aucun article sur les cartes en vente.'}
-            </p>
+          {enFeuille && (
+            <button type="button" style={st.rond} onClick={fermerFeuille}>
+              <ChevronDown size={20} strokeWidth={1.75} aria-hidden="true" />
+              <span style={st.horsEcran}>Fermer le résumé</span>
+            </button>
           )}
         </div>
 
-        {libreOuvert ? (
-          <div style={st.libreForm}>
-            <Input value={libreNom} onChange={(e) => setLibreNom(e.target.value)} placeholder="Libellé" style={{ flex: 2, minWidth: 140, minHeight: 44 }} />
-            <Input value={librePrix} onChange={(e) => setLibrePrix(e.target.value)} placeholder="Prix" type="text" inputMode="decimal" style={{ flex: 1, minWidth: 80, minHeight: 44 }} />
-            <Btn variant="primary" onClick={ajouterLibre} style={st.btn44}>Ajouter</Btn>
-            <Btn variant="ghost" onClick={() => setLibreOuvert(false)} style={st.btn44}>Fermer</Btn>
-          </div>
-        ) : (
-          <div style={st.piedSaisie}>
-            <Btn variant="ghost" onClick={() => setLibreOuvert(true)} style={{ ...st.btn44, flex: '1 1 auto' }}>Article libre</Btn>
-            {peutHabiller && (
-              <Btn variant={editionBoutons ? 'primary' : 'ghost'} onClick={() => setEditionBoutons((v) => !v)} style={st.btn44}>
-                Modifier les boutons
-              </Btn>
-            )}
-          </div>
-        )}
-        {editionBoutons && peutHabiller && (
-          <p style={{ ...st.vide, margin: 0 }}>Touchez un produit pour changer son nom court, sa couleur ou son picto.</p>
-        )}
-        {boutonPlat && (
-          <BoutonFiche
-            plat={boutonPlat}
-            bouton={boutons[boutonPlat.id]}
-            onEnregistrer={async (valeurs) => {
-              const { error } = await caisse.upsertBouton({
-                etablissementId: ticket.etablissement_id,
-                platId: boutonPlat.id,
-                ...valeurs,
-              });
-              if (error) { notify(error, 'error'); return; }
-              setBoutonPlat(null);
-              onBoutonsChange?.();
-            }}
-            onClose={() => setBoutonPlat(null)}
-          />
-        )}
-      </section>
-
-      {/* ── La lecture de la table : le ticket en blocs par mode ── */}
-      <section style={{ ...st.colTicket, ...colonne }} data-cadre="" data-caisse-ticket="">
-        {/* ── Ticket de test (v6) : ni client ni réservation, rien à corriger. ── */}
+        {/* Ticket de test (v6) : ni client ni réservation, rien à corriger. */}
         {modeTest && (
-          <div style={st.bandeau} data-caisse-client="test">
+          <div style={st.bandeauClient} data-caisse-client="test">
             <FlaskConical size={18} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
             <div style={st.bandeauCorps}>
               <span style={st.bandeauNom}>Ticket de test</span>
@@ -607,9 +675,9 @@ export default function TicketEcran({
             </div>
           </div>
         )}
-        {/* ── Qui est à la table (v5). Vente directe : anonyme, pas de bandeau. ── */}
+        {/* Qui est à la table (v5). Vente directe : anonyme, pas de bandeau. */}
         {!modeTest && ticket.table_id && (
-          <div style={st.bandeau} data-caisse-client={ticket.qui || 'inconnu'}>
+          <div style={st.bandeauClient} data-caisse-client={ticket.qui || 'inconnu'}>
             <div style={st.bandeauCorps}>
               {reservation ? (
                 <span style={st.bandeauNom} data-no-translate>{reservation.nom}</span>
@@ -632,8 +700,9 @@ export default function TicketEcran({
             <Btn variant="ghost" onClick={() => setCorrigerOuvert(true)} style={st.btn44}>Corriger</Btn>
           </div>
         )}
-        <div style={{ ...st.zoneLignes, ...defilant }}>
-          {lignes.length === 0 && <p style={st.vide}>Touchez un article pour l'ajouter.</p>}
+
+        <div style={st.lignesZone} data-caisse-lignes="">
+          {lignes.length === 0 && <p style={st.vide}>Touchez une case pour ajouter un article.</p>}
           {Array.from({ length: SUITE_MAX }, (_, i) => i + 1).filter((s) => lignes.some((l) => l.suite === s)).map((s) => {
             const duBloc = lignes.filter((l) => l.suite === s);
             const attente = duBloc.filter((l) => l.statut === 'en_attente');
@@ -642,75 +711,79 @@ export default function TicketEcran({
             // cuisine (tenues) est « annoncé » ; il reste à le réclamer.
             const annonce = enCours && attente.every((l) => l.annonce_at);
             return (
-              <div key={s} style={st.bloc} data-mode={s} data-mode-etat={annonce ? 'annonce' : (enCours ? 'en_attente' : 'envoye')}>
+              <div key={s} style={st.bloc} className="caisse-bloc" data-mode={s} data-mode-etat={annonce ? 'annonce' : (enCours ? 'en_attente' : 'envoye')}>
                 <div style={st.blocTitre}>
-                  <span style={{ ...st.blocNom, ...(s === modeActif ? st.blocNomActif : null) }} data-no-translate>{libelleMode(reglages, s)}</span>
+                  <span style={st.blocNomRang}>
+                    {s === modeActif && <span style={st.blocPoint} aria-hidden="true" />}
+                    <span style={st.blocNom} data-no-translate>{libelleMode(reglages, s)}</span>
+                  </span>
                   <span style={st.blocEtat}>{annonce ? 'annoncé' : (enCours ? 'en attente' : 'envoyé')}</span>
                 </div>
                 {duBloc.map((l) => {
+                  const q = Number(l.quantite);
                   const params = [...(l.options || []).map(libelleOption), l.note].filter(Boolean).join(', ');
-                  const contenu = (
-                    <span style={st.ligneRang}>
-                      <span style={st.ligneQte}>{Number(l.quantite)}</span>
-                      <span style={st.ligneCorps}>
-                        <span style={st.ligneNom} data-no-translate>{l.libelle}</span>
-                        {params && <span style={st.ligneNote} data-no-translate>{params}</span>}
-                        {/* Remise ou offert posés par un responsable (v7). */}
-                        {l.offert && <span style={st.ligneNote} data-ligne-offerte="">Offert</span>}
-                        {!l.offert && l.prix_origine != null && (
-                          <span style={st.ligneNote} data-ligne-remisee="">
-                            <span>Remise</span> <span style={st.num}>{chf(l.remise_montant)}</span>
-                          </span>
-                        )}
-                        {l.statut === 'en_attente' && !l.annonce_at && (
-                          <span style={st.etat}><Hourglass size={13} strokeWidth={1.75} aria-hidden="true" /><span>En attente</span></span>
-                        )}
-                        {l.statut === 'en_attente' && l.annonce_at && (
-                          <span style={st.etat} data-ligne-annoncee="">
-                            <Megaphone size={13} strokeWidth={1.75} aria-hidden="true" /><span>Annoncé en cuisine, à réclamer</span>
-                          </span>
-                        )}
-                        {l.statut === 'envoye' && (
-                          <span style={st.etat}>
-                            <Send size={13} strokeWidth={1.75} aria-hidden="true" />
-                            <span>Envoyé à</span>
-                            <span style={st.num}>{l.envoye_at ? zurichDateHeure(l.envoye_at).heure : ''}</span>
-                          </span>
-                        )}
-                        {l.statut === 'servi' && (
-                          <span style={{ ...st.etat, ...st.etatServi }}><Check size={14} strokeWidth={2.25} aria-hidden="true" /><span>Servi</span></span>
-                        )}
-                        {/* La cuisine a marqué le plat fait : à emporter en salle. */}
-                        {estPret(l) && (
-                          <span style={st.pret} data-cadre="" data-ligne-prete="">
-                            <ConciergeBell size={14} strokeWidth={2.25} aria-hidden="true" /><span>Prêt</span>
-                          </span>
-                        )}
-                      </span>
-                      <span style={st.lignePrix}>{chf(Number(l.quantite) * Number(l.prix_unitaire))}</span>
-                    </span>
-                  );
-                  // Ligne en attente : tout le rang est la cible, un tap ouvre sa
-                  // fiche (quantité, mode, paramètres, suppression).
-                  if (l.statut === 'en_attente') {
-                    return (
-                      <button key={l.id} type="button" style={st.ligneBouton} data-ligne={l.statut} onClick={() => setFicheLigneId(l.id)}>
-                        {contenu}
-                      </button>
-                    );
-                  }
-                  // Ligne partie en cuisine : figée ; un tap bascule servi / envoyé.
+                  const attenteLigne = l.statut === 'en_attente';
                   return (
-                    <button
-                      key={l.id}
-                      type="button"
-                      style={st.ligneBouton}
-                      data-ligne={l.statut}
-                      title={l.statut === 'servi' ? 'Toucher pour remettre en envoyé' : 'Toucher pour marquer servi'}
-                      onClick={() => basculerServi(l)}
-                    >
-                      {contenu}
-                    </button>
+                    <div key={l.id} style={st.ligneRang} data-ligne={l.statut}>
+                      <button
+                        type="button"
+                        style={st.ligneBouton}
+                        title={attenteLigne ? undefined : (l.statut === 'servi' ? 'Toucher pour remettre en envoyé' : 'Toucher pour marquer servi')}
+                        onClick={() => (attenteLigne ? setFicheLigneId(l.id) : basculerServi(l))}
+                      >
+                        <span style={st.ligneQte}>{q}</span>
+                        <span style={st.ligneCorps}>
+                          <span style={st.ligneNom} data-no-translate>{l.libelle}</span>
+                          {params && <span style={st.ligneNote} data-no-translate>{params}</span>}
+                          {/* Remise ou offert posés par un responsable (v7). */}
+                          {l.offert && <span style={st.ligneNote} data-ligne-offerte="">Offert</span>}
+                          {!l.offert && l.prix_origine != null && (
+                            <span style={st.ligneNote} data-ligne-remisee="">
+                              <span>Remise</span> <span style={st.num}>{chf(l.remise_montant)}</span>
+                            </span>
+                          )}
+                          {attenteLigne && !l.annonce_at && (
+                            <span style={st.etat}><Hourglass size={13} strokeWidth={1.75} aria-hidden="true" /><span>En attente</span></span>
+                          )}
+                          {attenteLigne && l.annonce_at && (
+                            <span style={st.etat} data-ligne-annoncee="">
+                              <Megaphone size={13} strokeWidth={1.75} aria-hidden="true" /><span>Annoncé en cuisine, à réclamer</span>
+                            </span>
+                          )}
+                          {l.statut === 'envoye' && (
+                            <span style={st.etat}>
+                              <Send size={13} strokeWidth={1.75} aria-hidden="true" />
+                              <span>Envoyé à</span>
+                              <span style={st.num}>{l.envoye_at ? zurichDateHeure(l.envoye_at).heure : ''}</span>
+                            </span>
+                          )}
+                          {l.statut === 'servi' && (
+                            <span style={{ ...st.etat, ...st.etatServi }}><Check size={14} strokeWidth={2.25} aria-hidden="true" /><span>Servi</span></span>
+                          )}
+                          {/* La cuisine a marqué le plat fait : à emporter en salle. */}
+                          {estPret(l) && (
+                            <span style={st.pret} data-cadre="" data-ligne-prete="">
+                              <ConciergeBell size={14} strokeWidth={2.25} aria-hidden="true" /><span>Prêt</span>
+                            </span>
+                          )}
+                        </span>
+                        <span style={st.lignePrix}>{chf(q * Number(l.prix_unitaire))}</span>
+                      </button>
+                      {attenteLigne && (
+                        <button
+                          type="button"
+                          style={{ ...st.ligneRetrait, ...(q > 1 ? null : st.ligneRetraitSupprimer) }}
+                          onClick={() => retirerUn(l)}
+                          aria-label={q > 1 ? 'Retirer un' : 'Supprimer la ligne'}
+                          title={q > 1 ? 'Retirer un' : 'Supprimer la ligne'}
+                          data-ligne-retrait=""
+                        >
+                          {q > 1
+                            ? <Minus size={18} strokeWidth={2} aria-hidden="true" />
+                            : <Trash2 size={18} strokeWidth={1.75} aria-hidden="true" />}
+                        </button>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -718,218 +791,555 @@ export default function TicketEcran({
           })}
         </div>
 
-        <div style={st.pied} data-caisse-pied="">
-          {cadree && blocTotalAction}
-
-          <div style={st.gestion}>
-            {suiteAEnvoyer != null && suiteAEnvoyer < SUITE_MAX && (
-              <Btn variant="ghost" onClick={passerASuivre} style={st.btn44}>Passer à suivre</Btn>
-            )}
-            {suiteAEnvoyer != null && lignes.length > 0 && (
-              <Btn variant="ghost" onClick={() => setPaiementOuvert(true)} style={st.btn44}>Encaisser</Btn>
-            )}
-            <Btn variant="ghost" onClick={onDeplacer} style={st.btn44}>Déplacer</Btn>
-            {ticketsMemeTable.length > 0 && (
-              <Btn variant="ghost" onClick={fusionner} style={st.btn44}>Fusionner</Btn>
-            )}
-            <Btn variant="danger" onClick={annuler} style={st.btn44}>Annuler le ticket</Btn>
+        <div style={st.commandePied} data-caisse-pied="">
+          <div style={st.totalRang}>
+            <span style={st.totalBloc}>
+              <span style={st.totalLibelle}>Total</span>
+              <span style={st.totalValeur}><span>{chf(total)}</span> <span style={st.devise}>CHF</span></span>
+            </span>
+            {repereServices}
           </div>
+          {actionPrincipale}
+          {encaisserSecondaire}
         </div>
+      </>
+    );
+  }
 
-        {ficheLigne && (
-          <FicheLigne
-            ligne={ficheLigne}
-            sansRecents={sansRecents}
-            reglages={reglages}
-            suites={suitesVisibles(reglages, lignes, Math.max(modesOuverts, reglages.modes.max))}
-            supplements={supplementsFiche}
-            onSupplement={ajouterSupplement}
-            onChange={majFicheLigne}
-            onSupprimer={supprimerFicheLigne}
-            onClose={() => setFicheLigneId(null)}
-          />
-        )}
-        {/* Encaissement (v7) : la feuille prépare, la base encaisse et numérote. */}
-        {paiementOuvert && (
-          <Encaissement
-            ticket={ticket}
-            reglages={reglages}
-            peutRemiser={peutHabiller}
-            modeTest={modeTest}
-            onQuittance={onQuittance}
-            onEncaisse={() => { setPaiementOuvert(false); onClos(); }}
-            onClose={() => setPaiementOuvert(false)}
-            reload={reload}
-            terminaux={terminaux}
-            role={role}
-          />
-        )}
-        {alerteAllergene && (
-          <Fenetre
-            id="caisse-alerte-allergene"
-            titre="Attention allergène"
-            onClose={() => setAlerteAllergene(null)}
-            largeur={420}
-            pied={(
-              <>
-                <button type="button" style={fen.secondaire} onClick={() => setAlerteAllergene(null)}>Annuler</button>
-                <button
-                  type="button"
-                  style={fen.primaire}
-                  onClick={() => { const { plat } = alerteAllergene; setAlerteAllergene(null); ajouterArticle(plat); }}
-                >
-                  Ajouter quand même
-                </button>
-              </>
-            )}
+  // ── Le rail des catégories ──
+  const ongletsRail = rangement.onglets.length > 1 ? [
+    { id: ID_TOUT, nom: 'Tout', Icone: LayoutGrid, donnee: false },
+    ...rangement.onglets.map((c) => ({
+      id: c.id, nom: c.nom, donnee: true,
+      Icone: (pictoParId(c.picto) || pictoParId(pictoCategorieDefaut(c.nom)))?.Icone || LayoutGrid,
+    })),
+  ] : [];
+  const rail = ongletsRail.length > 0 && (
+    <nav style={{ ...st.rail, width: tablette ? 92 : 74 }} className="caisse-rail" aria-label="Catégories" data-caisse-rail="">
+      {ongletsRail.map((o) => {
+        const actif = !enRecherche && onglet === o.id;
+        return (
+          <button
+            key={o.id}
+            type="button"
+            style={st.railBouton}
+            aria-pressed={actif}
+            data-categorie={o.id}
+            onClick={() => { setRecherche(''); setOngletChoisi(o.id); }}
           >
-            <div style={st.alerteCorps}>
-              <TriangleAlert size={22} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--danger-text)' }} />
-              <p style={{ margin: 0, lineHeight: 1.5 }}>
-                <span data-no-translate>{alerteAllergene.plat.nom}</span>
-                {' '}<span>contient</span>{' '}
-                <strong>{alerteAllergene.allergenes.join(', ')}</strong>
-                <span>.</span>{' '}
-                <span>{alerteAllergene.allergenes.length > 1 ? 'La table a signalé ces allergènes.' : 'La table a signalé cet allergène.'}</span>{' '}
-                <span>Vérifiez avec le client avant d'envoyer.</span>
-              </p>
-            </div>
-          </Fenetre>
-        )}
-        {corrigerOuvert && (
-          <CorrigerClient
-            reservation={reservation}
-            reservations={reservations}
-            tableId={ticket.table_id}
-            enCours={correctionEnCours}
-            onCorriger={corriger}
-            onClose={() => setCorrigerOuvert(false)}
-          />
-        )}
-      </section>
+            <span style={{ ...st.railCercle, ...(actif ? st.railCercleActif : null) }}>
+              <o.Icone size={22} strokeWidth={1.75} aria-hidden="true" />
+            </span>
+            <span style={{ ...st.railLibelle, ...(actif ? st.railLibelleActif : null) }} data-no-translate={o.donnee ? '' : undefined}>
+              {o.nom}
+            </span>
+          </button>
+        );
+      })}
+    </nav>
+  );
 
-      {/* Écran étroit : la page défile, le total et l'action restent collés en
-          bas de l'écran pendant qu'on parcourt la grille. */}
-      {!cadree && (
-        <div style={{ ...st.barreBas, bottom: -retraitBas }} data-caisse-barre="">{blocTotalAction}</div>
+  // ── La grille ──
+  const grille = (
+    <main style={st.zoneGrille} data-caisse-grille="">
+      {enRecherche ? (
+        <div style={styleGrille}>{trouves.map(({ a, c }) => caseProduit(a, c))}</div>
+      ) : sections.map((c) => {
+        const sous = sousGroupesAutres(c);
+        return (
+          <section key={c.id} style={st.sectionGrille}>
+            {onglet === ID_TOUT && <div style={st.categorie} data-no-translate>{c.nom}</div>}
+            {sous ? sous.map((g) => (
+              <div key={g.titre}>
+                <div style={st.sousCategorie} data-no-translate>{g.titre}</div>
+                <div style={styleGrille}>{g.articles.map((a) => caseProduit(a, c))}</div>
+              </div>
+            )) : (
+              <div style={styleGrille}>{c.articles.map((a) => caseProduit(a, c))}</div>
+            )}
+          </section>
+        );
+      })}
+      {(enRecherche ? !trouves.length : !rangement.onglets.length) && (
+        <p style={st.vide}>
+          {enRecherche ? 'Aucun article ne correspond.' : 'Aucun article sur les cartes en vente.'}
+        </p>
       )}
-    </div>
+    </main>
+  );
+
+  const sortieFeuille = feuille === 'fermeture';
+
+  return createPortal(
+    <div ref={racineRef} style={st.plein} className="caisse-plein no-print" data-caisse-ecran={tablette ? 'tablette' : 'telephone'}>
+      {bandeau}
+
+      {/* ── En-tête : retour, modes, loupe, actions ── */}
+      <header style={st.entete} data-caisse-entete="">
+        <button type="button" style={st.rond} onClick={onRetour}>
+          <ArrowLeft size={20} strokeWidth={1.75} aria-hidden="true" />
+          <span style={st.horsEcran}>Retour au plan de salle</span>
+        </button>
+        {(tablette || ongletsModes.length < 2) && (
+          <div style={st.enteteTitre}>
+            <span style={st.enteteTable}>{titre}</span>
+            <span style={st.enteteDetail}><span>Ouvert à</span> <span style={st.num}>{heureOuverture}</span></span>
+          </div>
+        )}
+        {ongletsModes.length > 1 && (
+          <div style={st.modesZone} data-caisse-modes="">
+            <SegmentedTabs className="caisse-modes" tabs={ongletsModes} active={modeActif} onChange={choisirMode} />
+          </div>
+        )}
+        <button
+          type="button"
+          style={{ ...st.rond, ...(rechercheOuverte ? st.rondActif : null) }}
+          aria-pressed={rechercheOuverte}
+          onClick={() => { if (rechercheOuverte) setRecherche(''); setRechercheOuverte((v) => !v); }}
+        >
+          <Search size={20} strokeWidth={1.75} aria-hidden="true" />
+          <span style={st.horsEcran}>Chercher un article</span>
+        </button>
+        {menuActions}
+      </header>
+
+      {rechercheOuverte && (
+        <div style={st.rechercheRang} data-caisse-recherche="">
+          <Input
+            autoFocus
+            value={recherche}
+            onChange={(e) => setRecherche(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') { e.preventDefault(); setRecherche(''); setRechercheOuverte(false); } }}
+            placeholder="Chercher un article"
+            style={{ minHeight: 44, flex: 1, minWidth: 0 }}
+          />
+          {recherche && (
+            <button type="button" style={st.rond} onClick={() => setRecherche('')}>
+              <X size={18} strokeWidth={2} aria-hidden="true" />
+              <span style={st.horsEcran}>Effacer la recherche</span>
+            </button>
+          )}
+        </div>
+      )}
+      {editionBoutons && peutHabiller && (
+        <div style={st.editionRang} data-caisse-edition="">
+          <span style={st.editionTexte}>Touchez une case pour changer son nom court, sa couleur, son picto ou sa photo.</span>
+          <Btn variant="ghost" onClick={() => setEditionBoutons(false)} style={st.btn44}>Terminer</Btn>
+        </div>
+      )}
+
+      {/* ── Corps : rail, grille, et la commande à droite sur tablette ── */}
+      <div
+        style={{
+          ...st.corps,
+          gridTemplateColumns: [rail ? 'auto' : null, 'minmax(0, 1fr)', tablette ? `${largeur >= 1100 ? 380 : 340}px` : null]
+            .filter(Boolean).join(' '),
+        }}
+      >
+        {rail}
+        {grille}
+        {tablette && (
+          <aside style={st.panneau} data-caisse-ticket="" aria-label="Commande">
+            {contenuCommande(false)}
+          </aside>
+        )}
+      </div>
+
+      {/* ── Téléphone : le résumé et l'action, collés en bas ── */}
+      {!tablette && (
+        <footer style={st.barre} data-caisse-barre="">
+          <button
+            type="button"
+            style={st.resume}
+            onClick={ouvrirFeuille}
+            aria-expanded={feuille === 'ouverte'}
+            data-caisse-resume=""
+          >
+            <span style={st.resumeHaut}>
+              <span style={st.resumeTable}>{titre}</span>
+              <span style={st.resumeOuvrir}>
+                <span>Résumé de la commande</span>
+                <ChevronUp size={16} strokeWidth={2} aria-hidden="true" />
+              </span>
+            </span>
+            <span style={st.resumeBas}>
+              <span style={st.resumeMontant}><span>{chf(total)}</span> <span style={st.devise}>CHF</span></span>
+              {repereServices}
+            </span>
+          </button>
+          {actionPrincipale}
+        </footer>
+      )}
+
+      {!tablette && feuille !== 'fermee' && (
+        <div
+          className={sortieFeuille ? 'caisse-voile caisse-voile--sortie' : 'caisse-voile'}
+          style={st.voile}
+          onClick={(e) => { if (e.target === e.currentTarget) fermerFeuille(); }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Résumé de la commande"
+            className={sortieFeuille ? 'caisse-feuille caisse-feuille--sortie' : 'caisse-feuille'}
+            style={st.feuille}
+            data-caisse-feuille=""
+            data-caisse-ticket=""
+          >
+            <button type="button" style={st.poignee} onClick={fermerFeuille}>
+              <span style={st.poigneeTrait} />
+              <span style={st.horsEcran}>Fermer le résumé</span>
+            </button>
+            {contenuCommande(true)}
+          </section>
+        </div>
+      )}
+
+      {/* ── Fenêtres et feuilles : hors de la feuille qui glisse (une
+          transformation en cours cadrerait leur position fixe). ── */}
+      {boutonPlat && (
+        <BoutonFiche
+          plat={boutonPlat}
+          bouton={boutons[boutonPlat.id]}
+          etablissementId={ticket.etablissement_id}
+          onEnregistrer={async (valeurs) => {
+            const { error } = await caisse.upsertBouton({
+              etablissementId: ticket.etablissement_id,
+              platId: boutonPlat.id,
+              ...valeurs,
+            });
+            if (error) { notify(error, 'error'); return; }
+            setBoutonPlat(null);
+            onBoutonsChange?.();
+          }}
+          onClose={() => setBoutonPlat(null)}
+        />
+      )}
+      {ficheLigne && (
+        <FicheLigne
+          ligne={ficheLigne}
+          sansRecents={sansRecents}
+          reglages={reglages}
+          suites={suitesVisibles(reglages, lignes, Math.max(modesOuverts, reglages.modes.max))}
+          supplements={supplementsFiche}
+          onSupplement={ajouterSupplement}
+          onChange={majFicheLigne}
+          onSupprimer={supprimerFicheLigne}
+          onClose={() => setFicheLigneId(null)}
+        />
+      )}
+      {/* Encaissement (v7) : la feuille prépare, la base encaisse et numérote. */}
+      {paiementOuvert && (
+        <Encaissement
+          ticket={ticket}
+          reglages={reglages}
+          peutRemiser={peutHabiller}
+          modeTest={modeTest}
+          onQuittance={onQuittance}
+          onEncaisse={() => { setPaiementOuvert(false); onClos(); }}
+          onClose={() => setPaiementOuvert(false)}
+          reload={reload}
+          terminaux={terminaux}
+          role={role}
+        />
+      )}
+      {libreOuvert && (
+        <Fenetre
+          id="caisse-article-libre"
+          titre="Article libre"
+          onClose={() => setLibreOuvert(false)}
+          largeur={420}
+          pied={(
+            <>
+              <button type="button" style={fen.secondaire} onClick={() => setLibreOuvert(false)}>Fermer</button>
+              <button type="button" style={fen.primaire} disabled={!libreNom.trim()} onClick={ajouterLibre}>Ajouter</button>
+            </>
+          )}
+        >
+          <div style={st.libreForm}>
+            <label style={st.libreChamp}>
+              <span style={fen.label}>Libellé</span>
+              <Input value={libreNom} onChange={(e) => setLibreNom(e.target.value)} style={{ minHeight: 44, width: '100%' }} />
+            </label>
+            <label style={st.libreChamp}>
+              <span style={fen.label}>Prix</span>
+              <Input value={librePrix} onChange={(e) => setLibrePrix(e.target.value)} type="text" inputMode="decimal" style={{ minHeight: 44, width: '100%' }} />
+            </label>
+          </div>
+        </Fenetre>
+      )}
+      {cartesOuvert && (
+        <Fenetre id="caisse-carte-affichee" titre="Carte affichée" onClose={() => setCartesOuvert(false)} largeur={420}>
+          <div style={st.carteListe}>
+            <Btn variant={carte ? 'ghost' : 'primary'} onClick={() => { setCarteChoisie(null); setCartesOuvert(false); }} style={st.btn44}>Toutes les cartes</Btn>
+            {cartes.map((c) => (
+              <Btn key={c.id} variant={carte?.id === c.id ? 'primary' : 'ghost'} onClick={() => { setCarteChoisie(c.id); setCartesOuvert(false); }} style={st.btn44}>
+                <span data-no-translate>{c.nom}</span>
+              </Btn>
+            ))}
+          </div>
+        </Fenetre>
+      )}
+      {alerteAllergene && (
+        <Fenetre
+          id="caisse-alerte-allergene"
+          titre="Attention allergène"
+          onClose={() => setAlerteAllergene(null)}
+          largeur={420}
+          pied={(
+            <>
+              <button type="button" style={fen.secondaire} onClick={() => setAlerteAllergene(null)}>Annuler</button>
+              <button
+                type="button"
+                style={fen.primaire}
+                onClick={() => { const { plat } = alerteAllergene; setAlerteAllergene(null); ajouterArticle(plat); }}
+              >
+                Ajouter quand même
+              </button>
+            </>
+          )}
+        >
+          <div style={st.alerteCorps}>
+            <TriangleAlert size={22} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--danger-text)' }} />
+            <p style={{ margin: 0, lineHeight: 1.5 }}>
+              <span data-no-translate>{alerteAllergene.plat.nom}</span>
+              {' '}<span>contient</span>{' '}
+              <strong>{alerteAllergene.allergenes.join(', ')}</strong>
+              <span>.</span>{' '}
+              <span>{alerteAllergene.allergenes.length > 1 ? 'La table a signalé ces allergènes.' : 'La table a signalé cet allergène.'}</span>{' '}
+              <span>Vérifiez avec le client avant d'envoyer.</span>
+            </p>
+          </div>
+        </Fenetre>
+      )}
+      {corrigerOuvert && (
+        <CorrigerClient
+          reservation={reservation}
+          reservations={reservations}
+          tableId={ticket.table_id}
+          enCours={correctionEnCours}
+          onCorriger={corriger}
+          onClose={() => setCorrigerOuvert(false)}
+        />
+      )}
+    </div>,
+    document.body,
   );
 }
 
 const st = {
-  // Écran large : deux colonnes cadrées à la hauteur qui reste, chacune défile
-  // chez soi. Écran étroit : les deux blocs s'empilent et la page défile.
-  cadre: { display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(300px, 2fr)', gap: 16, minWidth: 0, marginTop: 10 },
-  empile: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, marginTop: 10 },
-  colonneCadree: { minHeight: 0, height: '100%', overflow: 'hidden' },
-  defilant: { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain' },
-  colArticles: { minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 },
-  colTicket: {
-    minWidth: 0, display: 'flex', flexDirection: 'column', background: 'var(--surface)',
-    borderRadius: 'var(--r-xl)', boxShadow: 'var(--sh-sm)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
+  // L'écran entier, posé sur la coque (portail dans body).
+  plein: {
+    position: 'fixed', inset: 0, zIndex: 900, display: 'flex', flexDirection: 'column', minWidth: 0,
+    background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)',
+    paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)',
   },
-  // Sélecteur de carte : une ligne discrète, qui se déplie sur place.
-  cartes: { display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0, minWidth: 0 },
-  carteBouton: {
-    display: 'inline-flex', alignItems: 'center', gap: 6, alignSelf: 'flex-start', minHeight: 44, maxWidth: '100%',
-    padding: '0 4px', background: 'none', border: 'none', cursor: 'pointer',
-    color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 14, fontWeight: 500, textAlign: 'left',
+  entete: {
+    display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, minWidth: 0, boxSizing: 'border-box',
+    padding: 'calc(8px + env(safe-area-inset-top)) 10px 8px', background: 'var(--surface)',
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
   },
-  carteLibelle: { color: 'var(--text2)', fontWeight: 400 },
-  carteListe: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  // Bandeau du client en tête du ticket : ne défile pas.
-  bandeau: {
-    display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, padding: '10px 12px 10px 16px', minWidth: 0,
-    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
+  // Bouton à picto seul : un cercle de 40 px dans une cible de 44 px.
+  rond: {
+    width: 44, height: 44, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    padding: 0, cursor: 'pointer', color: 'var(--text)', background: 'var(--piste)',
+    borderRadius: 'var(--r-full)', borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--surface)',
+    boxSizing: 'border-box', fontFamily: 'var(--font)',
   },
-  bandeauCorps: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
-  bandeauNom: { fontSize: 16, fontWeight: 600, fontFamily: 'var(--font-serif)', color: 'var(--text)', lineHeight: 1.2, overflowWrap: 'anywhere' },
-  bandeauDetail: { display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: 13, color: 'var(--text2)' },
-  bandeauAllergies: { fontSize: 13, fontWeight: 600, color: 'var(--warning-text)', lineHeight: 1.3, overflowWrap: 'anywhere' },
-  // Plat qui contient un allergène signalé par la table : contour (ombre
-  // intérieure, comme le contour d'origine) et ligne d'alerte en encre de
-  // danger, la couleur du bouton reste.
-  articleAllergene: { boxShadow: 'inset 0 0 0 2px var(--danger-text)' },
-  articleAlerte: {
-    display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0,
-    fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--danger-text)', lineHeight: 1.2, overflowWrap: 'anywhere',
+  rondActif: { background: 'var(--accent)', color: 'var(--on-accent)' },
+  enteteTitre: { display: 'flex', flexDirection: 'column', minWidth: 0, flexShrink: 1, marginRight: 4 },
+  enteteTable: {
+    fontSize: 'var(--t3)', fontWeight: 'var(--g2)', lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
   },
-  alerteCorps: { display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 'var(--t2)', color: 'var(--text)' },
-  zoneGrille: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, paddingBottom: 4 },
-  zoneLignes: { padding: '6px 16px 0', minWidth: 0 },
+  enteteDetail: { fontSize: 'var(--t1)', color: 'var(--text3)', whiteSpace: 'nowrap' },
+  modesZone: { flex: '1 1 auto', minWidth: 0, display: 'flex' },
   modeCompte: {
-    fontFamily: 'var(--font-num)', fontSize: 13, fontWeight: 600, minWidth: 22, height: 22, padding: '0 6px',
+    fontFamily: 'var(--font-num)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', minWidth: 22, height: 22, padding: '0 6px',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', boxSizing: 'border-box',
     borderRadius: 'var(--r-full)', background: 'var(--surface)', color: 'var(--text)', marginLeft: 8,
   },
   horsEcran: { position: 'absolute', width: 1, height: 1, overflow: 'hidden', clipPath: 'inset(50%)', whiteSpace: 'nowrap' },
-  categorie: { fontSize: 13, fontWeight: 600, color: 'var(--text2)', margin: '10px 0 6px' },
-  sousCategorie: { fontSize: 12, color: 'var(--text2)', margin: '8px 0 4px' },
-  grille: { display: 'grid', gap: 8 },
-  article: {
-    minHeight: 68, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center',
-    gap: 4, padding: '10px 12px', borderRadius: 'var(--r-lg)', background: 'var(--surface)', color: 'var(--text)',
-    border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 14, textAlign: 'left', minWidth: 0,
-    // Contour du bouton secondaire, en ombre intérieure : --surface2 vaut la
-    // surface, sans lui le bouton n'aurait plus de limite.
-    boxShadow: 'inset 0 0 0 1px var(--btn-bord)',
+  rechercheRang: {
+    display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, padding: '8px 10px', background: 'var(--surface)',
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
   },
-  articleDense: { minHeight: 56, padding: '8px 10px', fontSize: 13 },
-  articleNomRang: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0, maxWidth: '100%' },
-  articleNom: { fontWeight: 500, lineHeight: 1.2, overflowWrap: 'anywhere' },
-  articlePrix: { fontSize: 12, color: 'var(--text2)', fontFamily: 'var(--font-num)' },
-  piedSaisie: { display: 'flex', gap: 8, flexWrap: 'wrap', flexShrink: 0 },
-  libreForm: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', flexShrink: 0 },
-  vide: { color: 'var(--text2)', fontSize: 14 },
-  // Un bloc par mode : son nom en clair, puis ses lignes.
+  editionRang: {
+    display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, padding: '8px 12px', flexWrap: 'wrap',
+    background: 'var(--carte-ciel)', color: 'var(--carte-ciel-texte)',
+  },
+  editionTexte: { flex: '1 1 220px', fontSize: 'var(--t2)', lineHeight: 1.35, minWidth: 0 },
+  corps: { flex: '1 1 auto', minHeight: 0, display: 'grid', minWidth: 0 },
+  // Rail des catégories : pictos dans leur cercle, nom dessous.
+  rail: {
+    display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 4px', overflowY: 'auto', overscrollBehavior: 'contain',
+    background: 'var(--surface)', boxSizing: 'border-box', minHeight: 0,
+    borderRightWidth: 1, borderRightStyle: 'solid', borderRightColor: 'var(--rule-soft)',
+  },
+  railBouton: {
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: '100%', minHeight: 64, padding: '6px 2px',
+    background: 'transparent', borderWidth: 0, borderStyle: 'solid', borderColor: 'transparent', borderRadius: 'var(--r)',
+    cursor: 'pointer', color: 'var(--text2)', fontFamily: 'var(--font)', flexShrink: 0,
+  },
+  railCercle: {
+    width: 44, height: 44, borderRadius: 'var(--r-full)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    background: 'var(--piste)', color: 'var(--text)', flexShrink: 0,
+  },
+  railCercleActif: { background: 'var(--accent)', color: 'var(--on-accent)' },
+  railLibelle: {
+    fontSize: 'var(--t1)', lineHeight: 1.2, textAlign: 'center', maxWidth: '100%', overflowWrap: 'anywhere',
+    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+  },
+  railLibelleActif: { color: 'var(--text)', fontWeight: 'var(--g2)' },
+  zoneGrille: {
+    minWidth: 0, minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', boxSizing: 'border-box',
+    padding: '12px 12px 20px', display: 'flex', flexDirection: 'column', gap: 6,
+  },
+  sectionGrille: { minWidth: 0 },
+  categorie: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text2)', margin: '8px 2px 8px' },
+  sousCategorie: { fontSize: 'var(--t1)', color: 'var(--text3)', margin: '8px 2px 6px' },
+  grille: { display: 'grid', gap: 10 },
+  // Une case : la photo (ou la couleur et le picto) en haut, le nom et le prix
+  // dessous. Bloc en bouton : rayon --r, carte blanche à filet doux.
+  case: {
+    display: 'flex', flexDirection: 'column', alignItems: 'stretch', padding: 0, minWidth: 0, overflow: 'hidden',
+    background: 'var(--zone)', color: 'var(--text)', borderRadius: 'var(--r)', boxShadow: 'var(--sh)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+    cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left', boxSizing: 'border-box',
+    WebkitTouchCallout: 'none', userSelect: 'none',
+  },
+  caseAllergene: { borderWidth: 2, borderColor: 'var(--danger-text)' },
+  caseVisuel: {
+    position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%',
+    aspectRatio: '4 / 3', color: 'var(--text)', flexShrink: 0, overflow: 'hidden',
+  },
+  casePhoto: { position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' },
+  casePastille: {
+    position: 'absolute', top: 6, right: 6, minWidth: 26, height: 26, padding: '0 7px', boxSizing: 'border-box',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: 'var(--r-full)',
+    background: 'var(--accent)', color: 'var(--on-accent)', fontFamily: 'var(--font-num)', fontSize: 'var(--t2)',
+    fontWeight: 'var(--g3)', boxShadow: 'var(--sh)',
+  },
+  caseCrayon: {
+    position: 'absolute', top: 6, left: 6, width: 28, height: 28, display: 'inline-flex', alignItems: 'center',
+    justifyContent: 'center', borderRadius: 'var(--r-full)', background: 'var(--surface)', color: 'var(--text)', boxShadow: 'var(--sh)',
+  },
+  caseTexte: { display: 'flex', flexDirection: 'column', gap: 3, padding: '8px 10px 10px', minWidth: 0, flex: '1 1 auto' },
+  caseNom: {
+    fontSize: 'var(--t2)', fontWeight: 'var(--g2)', lineHeight: 1.25, minHeight: '2.5em', overflowWrap: 'anywhere',
+    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+  },
+  caseAlerte: {
+    display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0,
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--danger-text)', lineHeight: 1.2, overflowWrap: 'anywhere',
+  },
+  casePrix: { fontSize: 'var(--t1)', color: 'var(--text2)', fontFamily: 'var(--font-num)' },
+  vide: { color: 'var(--text2)', fontSize: 'var(--t2)', margin: '12px 2px' },
+  // Panneau de la commande, à droite sur tablette.
+  panneau: {
+    display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, background: 'var(--surface)',
+    borderLeftWidth: 1, borderLeftStyle: 'solid', borderLeftColor: 'var(--rule-soft)',
+  },
+  commandeEntete: { display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px', flexShrink: 0, minWidth: 0 },
+  commandeTitre: { fontSize: 'var(--t4)', fontWeight: 'var(--g2)', lineHeight: 1.2 },
+  commandeDetail: { fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 2 },
+  commandeTable: { color: 'var(--text2)', fontWeight: 'var(--g2)' },
+  bandeauClient: {
+    display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0, margin: '0 12px 6px', padding: '10px 12px', minWidth: 0,
+    background: 'var(--piste)', borderRadius: 'var(--r)',
+  },
+  bandeauCorps: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
+  bandeauNom: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', lineHeight: 1.2, overflowWrap: 'anywhere' },
+  bandeauDetail: { display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: 'var(--t1)', color: 'var(--text2)' },
+  bandeauAllergies: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--warning-text)', lineHeight: 1.3, overflowWrap: 'anywhere' },
+  lignesZone: { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overscrollBehavior: 'contain', padding: '0 16px', minWidth: 0 },
   bloc: { paddingBottom: 6 },
   blocTitre: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, margin: '12px 0 2px' },
-  blocNom: { fontSize: 15, fontWeight: 600, fontFamily: 'var(--font-serif)', color: 'var(--text)' },
-  blocNomActif: { color: 'var(--accent)' },
-  blocEtat: { fontSize: 12, color: 'var(--text2)' },
-  // Rang tappable d'une ligne : filet bas, cible de 44 px au moins.
-  ligneBouton: {
-    display: 'block', width: '100%', minHeight: 48, padding: '9px 0', textAlign: 'left',
-    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text)',
-    fontFamily: 'var(--font)', fontSize: 15,
-    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
+  blocNomRang: { display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 },
+  blocPoint: { width: 8, height: 8, borderRadius: 'var(--r-full)', background: 'var(--accent)', flexShrink: 0 },
+  blocNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  blocEtat: { fontSize: 'var(--t1)', color: 'var(--text3)' },
+  // Une ligne : son toucher ouvre sa fiche (ou bascule servi), le cercle à
+  // droite retire d'un toucher.
+  ligneRang: {
+    display: 'flex', alignItems: 'center', gap: 8, minWidth: 0,
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
   },
-  ligneRang: { display: 'flex', alignItems: 'flex-start', gap: 10, minWidth: 0 },
-  ligneQte: { fontFamily: 'var(--font-num)', fontWeight: 600, fontSize: 22, lineHeight: 1.05, minWidth: 28, flexShrink: 0, textAlign: 'right' },
+  ligneBouton: {
+    display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1, minWidth: 0, minHeight: 52, padding: '10px 0',
+    textAlign: 'left', background: 'transparent', borderWidth: 0, borderStyle: 'solid', borderColor: 'transparent',
+    borderRadius: 0, cursor: 'pointer', color: 'var(--text)', fontFamily: 'var(--font)', fontSize: 'var(--t2)',
+  },
+  ligneQte: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t4)', lineHeight: 1.05, minWidth: 26, flexShrink: 0, textAlign: 'right' },
   ligneCorps: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
-  ligneNom: { fontWeight: 500, lineHeight: 1.25, overflowWrap: 'anywhere' },
-  ligneNote: { fontSize: 13, color: 'var(--text2)', lineHeight: 1.3 },
-  etat: { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--text2)' },
-  etatServi: { color: 'var(--success-text)', fontWeight: 600 },
-  // Pastille « Prêt » : un picto et le mot, sur fond doux (lisible sans la
-  // couleur seule).
+  ligneNom: { fontWeight: 'var(--g2)', lineHeight: 1.25, overflowWrap: 'anywhere' },
+  ligneNote: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.3 },
+  etat: { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 'var(--t1)', color: 'var(--text3)' },
+  etatServi: { color: 'var(--success-text)', fontWeight: 'var(--g3)' },
   pret: {
     display: 'inline-flex', alignItems: 'center', gap: 5, alignSelf: 'flex-start', padding: '2px 9px',
     borderRadius: 'var(--r-full)', background: 'var(--success-bg-soft)', color: 'var(--success-text)',
-    fontSize: 13, fontWeight: 700,
+    fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
   },
-  num: { fontFamily: 'var(--font-num)' },
   lignePrix: { fontFamily: 'var(--font-num)', flexShrink: 0, paddingTop: 2 },
-  btn44: { minHeight: 44, flexShrink: 0 },
-  // Le pied du ticket ne défile pas : total et action toujours à l'écran.
-  pied: {
-    display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0, padding: '12px 16px 14px',
-    borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)',
+  ligneRetrait: {
+    width: 44, height: 44, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    padding: 0, cursor: 'pointer', color: 'var(--text)', background: 'var(--piste)',
+    borderRadius: 'var(--r-full)', borderWidth: 2, borderStyle: 'solid', borderColor: 'var(--surface)', boxSizing: 'border-box',
   },
-  barreBas: {
-    position: 'sticky', bottom: 0, zIndex: 5, display: 'flex', flexDirection: 'column', gap: 8,
-    padding: '10px 14px 12px', background: 'var(--surface)', borderRadius: 'var(--r-xl) var(--r-xl) 0 0',
-    boxShadow: 'var(--sh-lg)',
-    borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)',
+  ligneRetraitSupprimer: { color: 'var(--danger-text)' },
+  commandePied: {
+    display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0, padding: '12px 16px calc(14px + env(safe-area-inset-bottom))',
+    borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--rule-soft)',
   },
-  totalLigne: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' },
-  totalLibelle: { fontSize: 14, color: 'var(--text2)' },
-  totalValeur: { fontSize: 28, fontWeight: 600, fontFamily: 'var(--font-num)', lineHeight: 1.1 },
-  devise: { fontSize: 14, fontWeight: 500, color: 'var(--text2)' },
-  btnPrincipal: { minHeight: 60, fontSize: 18, width: '100%', gap: 10, whiteSpace: 'normal' },
+  totalRang: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
+  totalBloc: { display: 'flex', flexDirection: 'column', gap: 2 },
+  totalLibelle: { fontSize: 'var(--t1)', color: 'var(--text3)' },
+  totalValeur: { fontSize: 'var(--t6)', fontWeight: 'var(--g-chiffre)', fontFamily: 'var(--font-num)', lineHeight: 1.05 },
+  devise: { fontSize: 'var(--t2)', fontWeight: 'var(--g1)', color: 'var(--text3)', fontFamily: 'var(--font)' },
+  services: { display: 'inline-flex', gap: 14, alignItems: 'flex-end' },
+  service: { display: 'inline-flex', flexDirection: 'column', alignItems: 'center', minWidth: 44 },
+  serviceChiffre: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t4)', lineHeight: 1.1, color: 'var(--text)' },
+  serviceLibelle: { fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.2 },
+  btnPrincipal: { minHeight: 56, fontSize: 'var(--t3)', width: '100%', gap: 10, whiteSpace: 'normal', flexShrink: 0 },
+  btnSecondaire: { minHeight: 44, width: '100%', flexShrink: 0 },
   principalTexte: { display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', lineHeight: 1.15 },
-  principalDetail: { fontSize: 13, fontWeight: 500 },
-  gestion: { display: 'flex', gap: 6, flexWrap: 'wrap' },
+  principalDetail: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)' },
+  // Téléphone : barre du bas, le résumé en tuile, l'action dessous.
+  barre: {
+    display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0,
+    padding: '10px 12px calc(10px + env(safe-area-inset-bottom))', background: 'var(--surface)', boxShadow: 'var(--sh-lg)',
+    borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--rule-soft)',
+  },
+  resume: {
+    display: 'flex', flexDirection: 'column', gap: 4, width: '100%', padding: '8px 14px 10px', boxSizing: 'border-box',
+    background: 'var(--piste)', color: 'var(--text)', borderRadius: 'var(--r)', cursor: 'pointer', textAlign: 'left',
+    borderWidth: 0, borderStyle: 'solid', borderColor: 'transparent', fontFamily: 'var(--font)',
+  },
+  resumeHaut: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minWidth: 0 },
+  resumeTable: {
+    fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
+  },
+  resumeOuvrir: { display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--t1)', color: 'var(--text2)', flexShrink: 0 },
+  resumeBas: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 10, minWidth: 0 },
+  resumeMontant: { fontSize: 'var(--t5)', fontWeight: 'var(--g-chiffre)', fontFamily: 'var(--font-num)', lineHeight: 1.05, whiteSpace: 'nowrap' },
+  // Feuille de la commande : monte du bas, la grille reste devinée dessus.
+  voile: {
+    position: 'absolute', inset: 0, zIndex: 20, background: 'rgba(0,0,0,0.45)',
+    display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+  },
+  feuille: {
+    display: 'flex', flexDirection: 'column', maxHeight: '90%', minHeight: '55%', minWidth: 0,
+    background: 'var(--surface)', borderRadius: 'var(--r-xl) var(--r-xl) 0 0', boxShadow: 'var(--sh-lg)',
+  },
+  poignee: {
+    display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: 24, flexShrink: 0,
+    padding: 0, background: 'transparent', borderWidth: 0, borderStyle: 'solid', borderColor: 'transparent', cursor: 'pointer',
+  },
+  poigneeTrait: { width: 44, height: 5, borderRadius: 'var(--r-full)', background: 'var(--border)' },
+  libreForm: { display: 'flex', flexDirection: 'column', gap: 12 },
+  libreChamp: { display: 'flex', flexDirection: 'column', gap: 6 },
+  carteListe: { display: 'flex', gap: 8, flexWrap: 'wrap' },
+  alerteCorps: { display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 'var(--t2)', color: 'var(--text)' },
+  num: { fontFamily: 'var(--font-num)' },
+  btn44: { minHeight: 44, flexShrink: 0 },
 };

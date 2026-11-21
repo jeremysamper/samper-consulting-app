@@ -167,6 +167,28 @@ export function nomCourtDefaut(nom, max = 18) {
   return garde.replace(/[ ,;:]+$/, '') + '...';
 }
 
+// Picto d'une categorie de caisse dans le rail de l'ecran de commande, quand
+// la maison ne lui en a pas choisi : deduit du nom, sinon l'etiquette. Le rail
+// ne montre que des pictos, chaque categorie en porte donc toujours un.
+export function pictoCategorieDefaut(nom) {
+  const k = String(nom || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  if (/^entree/.test(k)) return 'salade';
+  if (/^dessert|gateau|patiss/.test(k)) return 'gateau';
+  if (/^plat|menu|station/.test(k)) return 'couverts';
+  if (/cafe|chaud|\bthe\b|infusion/.test(k)) return 'cafe';
+  if (/soft|soda|jus|sirop/.test(k)) return 'soda';
+  if (/biere/.test(k)) return 'biere';
+  if (/vin|champagne/.test(k)) return 'verre';
+  if (/alcool|cocktail|aperitif|spiritueux|digestif/.test(k)) return 'cocktail';
+  if (/boisson|eau/.test(k)) return 'eau';
+  if (/fromage/.test(k)) return 'feuille';
+  if (/enfant/.test(k)) return 'enfant';
+  if (/brunch|petit.dej|viennois/.test(k)) return 'croissant';
+  if (/glace/.test(k)) return 'coupe';
+  if (/supplement|option/.test(k)) return 'etincelles';
+  return 'etiquette';
+}
+
 // Correspondance evidente categorie -> picto ; sinon aucun.
 export function pictoDefaut(categorie) {
   if (categorie === 'Boissons') return 'verre';

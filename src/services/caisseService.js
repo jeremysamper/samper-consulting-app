@@ -405,7 +405,10 @@ export async function listBoutons(etablissementId) {
 // categorie et le rang du produit, qu'un habillage vide ne doit pas emporter.
 // L'upsert ne nomme que les colonnes d'habillage : categorie_id et ordre ne
 // sont jamais touches ici.
-export async function upsertBouton({ etablissementId, platId, nomCourt, couleur, picto }) {
+// photoUrl (21.11.2026) : null = photo de la fiche, '' = sans photo, sinon
+// l'adresse publique rendue par upload-recette-photo. Absent de l'appel : la
+// colonne n'est pas nommée, la photo en place reste.
+export async function upsertBouton({ etablissementId, platId, nomCourt, couleur, picto, photoUrl }) {
   const { error } = await supabase
     .from('caisse_boutons')
     .upsert({
@@ -414,6 +417,7 @@ export async function upsertBouton({ etablissementId, platId, nomCourt, couleur,
       nom_court: nomCourt || null,
       couleur: couleur || null,
       picto: picto || null,
+      ...(photoUrl !== undefined ? { photo_url: photoUrl } : null),
     }, { onConflict: 'plat_id' });
   if (error) return { error: mapError(error, "L'habillage n'a pas pu etre enregistre.") };
   return { error: null };

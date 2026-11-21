@@ -29,6 +29,18 @@ export async function convertHeicToJpeg(file) {
 }
 
 // Compresse si > seuil. Lazy import pour ne pas charger la lib si pas necessaire.
+// Vignette d'une case de la caisse : toujours réduite (800 px, 300 Ko), une
+// grille en montre des dizaines à la fois, sur le wifi d'un restaurant.
+export async function compresserVignette(file) {
+  const { default: imageCompression } = await import('browser-image-compression');
+  return imageCompression(file, {
+    maxSizeMB: 0.3,
+    maxWidthOrHeight: 800,
+    useWebWorker: true,
+    fileType: 'image/jpeg',
+  });
+}
+
 export async function maybeCompress(file) {
   if (file.size <= COMPRESSION_THRESHOLD_MB * 1024 * 1024) return file;
   const { default: imageCompression } = await import('browser-image-compression');

@@ -920,47 +920,42 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     );
   }
 
-  // ── Le ticket ──
+  // ── Le ticket : écran de prise de commande en plein écran (21.11.2026),
+  // rendu par-dessus la coque ; le bandeau du mode test vit en tête. ──
   if (ecran === 'ticket' && ticket) {
     const nom = nomTable(ticket);
     const autresMemeTable = tickets.filter((t) => t.id !== ticket.id && t.table_id && t.table_id === ticket.table_id);
+    // key : un autre ticket remonte l'écran, le mode revient à « En direct ».
     return (
-      <>
-      {bandeauTest}
-      <EcranTache
-        titre={nom ? <><span>Table</span> <span data-no-translate>{nom}</span></> : 'Vente directe'}
-        etat={<span><span>Ouvert à</span> <span>{zurichDateHeure(ticket.created_at).heure}</span></span>}
+      <TicketEcran
+        key={ticket.id}
+        titre={nom ? <><span>Table</span> <span data-no-translate>{nom}</span></> : <span>Vente directe</span>}
         onRetour={retourAccueil}
-      >
-        {/* key : un autre ticket remonte l'écran, le mode revient à « En direct ». */}
-        <TicketEcran
-          key={ticket.id}
-          ticket={ticket}
-          articles={articles}
-          allergenesFiches={allergenesFiches}
-          boutons={boutons}
-          categories={categories}
-          reglages={reglages}
-          cartes={cartesEnVente}
-          reservation={reservations.find((r) => r.id === ticket.reservation_id) || null}
-          reservations={reservationsAttachables(reservations, {
-            jour, tableId: ticket.table_id, tickets, garder: ticket.reservation_id,
-          })}
-          onReservationsChange={rechargerReservations}
-          peutHabiller={peutHabiller}
-          onBoutonsChange={rechargerBoutons}
-          ticketsMemeTable={autresMemeTable}
-          onDeplacer={() => { setModeTables('deplacer'); setEcran('tables'); }}
-          onFusionne={rechargerTickets}
-          onClos={() => { rechargerTickets(); rechargerReservations(); rechargerJournee(); retourAccueil(); }}
-          reload={rechargerTickets}
-          modeTest={modeTest}
-          onQuittance={quittance}
-          terminaux={terminaux}
-          role={user?.role}
-        />
-      </EcranTache>
-      </>
+        bandeau={bandeauTest}
+        ticket={ticket}
+        articles={articles}
+        allergenesFiches={allergenesFiches}
+        boutons={boutons}
+        categories={categories}
+        reglages={reglages}
+        cartes={cartesEnVente}
+        reservation={reservations.find((r) => r.id === ticket.reservation_id) || null}
+        reservations={reservationsAttachables(reservations, {
+          jour, tableId: ticket.table_id, tickets, garder: ticket.reservation_id,
+        })}
+        onReservationsChange={rechargerReservations}
+        peutHabiller={peutHabiller}
+        onBoutonsChange={rechargerBoutons}
+        ticketsMemeTable={autresMemeTable}
+        onDeplacer={() => { setModeTables('deplacer'); setEcran('tables'); }}
+        onFusionne={rechargerTickets}
+        onClos={() => { rechargerTickets(); rechargerReservations(); rechargerJournee(); retourAccueil(); }}
+        reload={rechargerTickets}
+        modeTest={modeTest}
+        onQuittance={quittance}
+        terminaux={terminaux}
+        role={user?.role}
+      />
     );
   }
 
