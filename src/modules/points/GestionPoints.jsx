@@ -522,7 +522,9 @@ function OngletEquipe({ etabId, user, donnees, charger, exclus }) {
 
 // ─── Réglages ───────────────────────────────────────────────────────────────
 
-function OngletReglages({ etabId, user, etat, etablissement }) {
+// Monté par la page des réglages (Réglages > Points, plan 15, lot 2) : il a
+// quitté les onglets du module.
+export function OngletReglages({ etabId, user, etat, etablissement }) {
   const [actif, setActif] = React.useState(etat.actif);
   const [roles, setRoles] = React.useState(etat.rolesParticipants || ROLES_PARTICIPANTS);
   const [bareme, setBareme] = React.useState(() => baremeEffectif(etat.bareme));
@@ -648,7 +650,6 @@ export default function GestionPoints({ onglet, user, etablissement, etat, onOng
   const etabId = etablissement?.id;
   const { donnees, echec, charger } = useDonneesGestion(etabId);
 
-  if (onglet === 'reglages') return <OngletReglages etabId={etabId} user={user} etat={etat} etablissement={etablissement} />;
   if (!donnees) {
     return (
       <div>

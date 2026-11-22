@@ -4,6 +4,7 @@ import { echeancier } from './analysesAchats.js';
 import { estFacture, statutPaiement, trierParEcheance } from '../inventaire/facturesLogic.js';
 import { dateCH } from '../inventaire/inventaireLignes.js';
 import { Btn } from '../../components/ui/index.jsx';
+import { avecEcheancesPrevues, useDelaisPaiement } from './delaisPaiement.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // « Échéances » (Factures & achats) : réservé au droit « Régler les
@@ -17,7 +18,12 @@ const chf = (n) => (Number(n) || 0).toLocaleString('fr-CH', { minimumFractionDig
 const Chf = ({ v }) => (v == null ? <span>n/a</span> : <><span>CHF</span> <span>{chf(v)}</span></>);
 const pluriel = (n, un, plusieurs) => (n > 1 ? plusieurs : un);
 
-export default function Echeancier({ docs, aujourdhui, onRegler }) {
+export default function Echeancier({ docs: docsLus, aujourdhui, onRegler }) {
+  // Une facture sans échéance reçoit l'échéance prévue par le délai de son
+  // fournisseur, sinon par celui de la maison (Réglages > Factures & achats).
+  const etabId = (docsLus || []).find(d => d.etablissementId)?.etablissementId || null;
+  const delais = useDelaisPaiement(etabId);
+  const docs = React.useMemo(() => avecEcheancesPrevues(docsLus, delais), [docsLus, delais]);
   const { tranches, aRegler } = React.useMemo(() => echeancier(docs, aujourdhui), [docs, aujourdhui]);
   const factures = React.useMemo(() => trierParEcheance(tranches.flatMap(t => t.factures)), [tranches]);
   // Aucune facture enregistrée : rien n'est « réglé », la phrase le dit.
@@ -64,7 +70,7 @@ export default function Echeancier({ docs, aujourdhui, onRegler }) {
                     {f.numero ? <span style={st.numero} data-no-translate>{` n° ${f.numero}`}</span> : null}
                   </span>
                   <span style={{ ...st.detail, ...(retard ? st.retard : null) }}>
-                    {f.dateEcheance ? <><span>échéance le</span> <span>{dateCH(f.dateEcheance)}</span></> : <span>sans échéance</span>}
+                    {f.dateEcheance ? <><span>{f.echeancePrevue ? 'échéance prévue le' : 'échéance le'}</span> <span>{dateCH(f.dateEcheance)}</span></> : <span>sans échéance</span>}
                     {', '}<span data-no-translate>{(f.perimetre || '').trim() || 'Général'}</span>
                   </span>
                   <span style={st.montant}>{f.totalTTC != null ? <Chf v={f.totalTTC} /> : <span style={st.manque}>TTC à saisir</span>}</span>

@@ -16,6 +16,8 @@ import { messageErreur } from '../../utils/messageErreur.js';
 import { prixAffiche } from './prixAffiche.js';
 import { ChoixFiltre, Panneau } from '../../components/ui/index.jsx';
 import { useShellMode, estTactile } from '../../hooks/useShellMode.js';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
@@ -33,6 +35,10 @@ const Catalogue = ({ user, etablissement }) => {
   const legacySB = dbService.getBridge();
   const canWrite = canManageModule(user.role, 'catalogue');
   const isConsultant = user.role === 'consultant';
+  // Catégories et unités de la maison (Réglages > Catalogue). Sans liste
+  // réglée : les catégories de l'app.
+  const { reglages: reglagesCatalogue } = useReglagesModule(etablissement?.id || null, 'catalogue');
+  const categoriesMaison = reglagesCatalogue.categories.length ? reglagesCatalogue.categories : CATEGORIES_PRODUITS;
 
   const [produits, setProduits] = React.useState([]);
   const [fournisseurs, setFournisseurs] = React.useState([]);
@@ -441,7 +447,7 @@ const Catalogue = ({ user, etablissement }) => {
     }
   };
 
-  const cats = ['Tous', ...CATEGORIES_PRODUITS];
+  const cats = ['Tous', ...categoriesMaison];
   const totalValeur = produits.reduce((s, p) => s + (p.prixUnitaire || 0), 0);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
@@ -453,10 +459,12 @@ const Catalogue = ({ user, etablissement }) => {
         <div>
           <div style={cat.sub}>{produits.length} produit{produits.length > 1 ? 's' : ''}, {fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</div>
         </div>
+        {/* Une action principale, une secondaire, et les trois façons
+            d'importer rangées dans une seule fenêtre ; « Régler » mène aux
+            catégories et unités de la maison. */}
+        <div className="module-actions">
         {canWrite && (
-          // Une action principale, une secondaire, et les trois façons
-          // d'importer rangées dans une seule fenêtre.
-          <div className="module-actions">
+          <>
             <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', borderWidth: 0 }} onClick={() => { setEditProd(null); setShowProdForm(true); }}>Nouveau produit</button>
             <button style={cat.btn} onClick={() => { setEditFourn(null); setShowFournForm(true); }}>Nouveau fournisseur</button>
             <BoutonActions
@@ -471,8 +479,10 @@ const Catalogue = ({ user, etablissement }) => {
               ] }]}
             />
             <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} disabled={importing} />
-          </div>
+          </>
         )}
+          <BoutonRegler section="catalogue" user={user} etablissement={etablissement} />
+        </div>
       </div>
 
       {/* Tabs */}
@@ -756,6 +766,8 @@ const Catalogue = ({ user, etablissement }) => {
           prod={editProd}
           fournisseurs={fournisseurs}
           etabId={etabId}
+          categories={categoriesMaison}
+          unitesMaison={reglagesCatalogue.unites}
           onSave={saveProd}
           onClose={() => setShowProdForm(false)}
         />
@@ -869,7 +881,7 @@ const ALLERGENE_EMOJIS = {
 const ALLERGENES_OPTIONS = ALLERGENES.map(a => ({ ...a, emoji: ALLERGENE_EMOJIS[a.id] || '⚠' }));
 
 // ─── Formulaire Produit ───
-const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
+const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose, categories = CATEGORIES_PRODUITS, unitesMaison = [] }) => {
   const legacySB = dbService.getBridge();
   const [form, setForm] = React.useState(() => (prod ? {
     ...prod,
@@ -1000,7 +1012,8 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
             <div>
               <label style={cat.lbl}>Catégorie</label>
               <select style={cat.inp} value={form.categorie} onChange={e => up('categorie', e.target.value)}>
-                {CATEGORIES_PRODUITS.map(c => <option key={c} value={c}>{c}</option>)}
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                {form.categorie && !categories.includes(form.categorie) && <option value={form.categorie}>{form.categorie}</option>}
               </select>
             </div>
           </div>
@@ -1173,8 +1186,18 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                       <label style={cat.lbl}>Qté conditionnement</label>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <input style={{ ...cat.inp, flex: 2 }} type="number" step="0.001" value={newPF.quantiteCond} onChange={e => setNewPF(p => ({ ...p, quantiteCond: e.target.value }))} placeholder="5" />
-                        <select style={{ ...cat.inp, flex: 1 }} value={newPF.uniteCond} onChange={e => setNewPF(p => ({ ...p, uniteCond: e.target.value }))}>
+                        <select style={{ ...cat.inp, flex: 1 }} value={newPF.uniteCond} onChange={e => {
+                          // Une unité de la maison (bouteille 75 cl) se ramène tout
+                          // de suite à son unité de référence : 2 bouteilles = 1500 ml.
+                          const maison = unitesMaison.find(u => `maison:${u.code}` === e.target.value);
+                          if (maison) {
+                            setNewPF(p => ({ ...p, uniteCond: maison.base, quantiteCond: String((Number(String(p.quantiteCond).replace(',', '.')) || 1) * maison.facteur) }));
+                            return;
+                          }
+                          setNewPF(p => ({ ...p, uniteCond: e.target.value }));
+                        }}>
                           {['g','kg','ml','L','pcs','cs'].map(u => <option key={u} value={u}>{u}</option>)}
+                          {unitesMaison.map(u => <option key={u.code} value={`maison:${u.code}`}>{u.code}</option>)}
                         </select>
                       </div>
                     </div>

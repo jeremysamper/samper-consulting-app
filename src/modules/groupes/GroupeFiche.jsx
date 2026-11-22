@@ -10,7 +10,7 @@ import {
   allergenesEnConflit, computeListeCourses, formatQuantiteCourses, payloadCoursesPdf,
 } from './listeCourses.js';
 import { dateComplete, enTeteCourses, payloadFicheGroupe } from './pdfGroupe.js';
-import { STATUTS, libelleGroupe, lignesParSection, metaStatut } from './typesGroupe.js';
+import { libelleGroupe, lignesParSection, metaStatut, statutsActifs } from './typesGroupe.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fiche d'un groupe : ce que la brigade lit, et l'endroit où elle dit qu'elle
@@ -184,7 +184,7 @@ export default function GroupeFiche({
           {!groupe.annule && (
             <div>
               <div style={st.selecteur} role="radiogroup" aria-label="État de préparation">
-                {STATUTS.map((sid) => {
+                {statutsActifs(groupe.statut).map((sid) => {
                   const m = metaStatut(sid);
                   const actif = groupe.statut === sid;
                   return (

@@ -5,7 +5,7 @@ import { ALLERGENES, sortAllergenes } from '../../utils/allergenes.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { dateComplete } from './pdfGroupe.js';
 import { choixEstVide, ligneServieLe, metaSaison, saisonDeDate } from './choixMenu.js';
-import { NUMEROS_MENU, TYPES_GROUPE, metaType, plurielSection, rangSection } from './typesGroupe.js';
+import { NUMEROS_MENU, TYPES_GROUPE, metaType, plurielSection, rangSection, typesProposes } from './typesGroupe.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Prise de réservation d'un groupe. Pensée pour le patron au téléphone : six
@@ -41,7 +41,8 @@ function etatInitial(groupe, dateInitiale) {
   return {
     dateEvenement: dateInitiale || zurichToday(),
     heure: '',
-    typeGroupe: 'mariage',
+    // Le premier type que la maison propose (Réglages > Groupes).
+    typeGroupe: typesProposes()[0]?.id || 'mariage',
     menuNumero: null,
     nom: '',
     contact: '',
@@ -185,7 +186,7 @@ export default function GroupeForm({
           <div>
             <span style={st.label}>Type de groupe</span>
             <div style={st.rangee}>
-              {TYPES_GROUPE.map((t) => {
+              {typesProposes(groupe?.typeGroupe).map((t) => {
                 const actif = form.typeGroupe === t.id;
                 return (
                   <button

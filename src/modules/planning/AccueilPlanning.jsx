@@ -64,7 +64,7 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats
     },
     {
       id: 'gerer', Icone: Settings2, libelle: 'Gérer', onClick: () => setGererOuvert(true), visible: canWrite && choix.length > 0,
-      etat: <>absences, modèles, groupes, export</>,
+      etat: <>absences, export, réglages</>,
     },
   ];
 

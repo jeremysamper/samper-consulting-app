@@ -144,7 +144,7 @@ export default function MaintenantHaccp({
       <Carte ton="neutre">
         <div style={{ ...st.surtitre, color: ENCRES.neutre }}>Pas encore prêt</div>
         <div style={st.ligne}>Aucun frigo à relever n'est réglé pour cet établissement.</div>
-        {!isConsultant && <div style={st.ligne}>Le consultant ajoute les frigos à relever. En attendant, les étiquettes et les contrôles fonctionnent.</div>}
+        {!isConsultant && <div style={st.ligne}>La direction ajoute les frigos à relever dans Réglages. En attendant, les étiquettes et les contrôles fonctionnent.</div>}
       </Carte>
     );
   }

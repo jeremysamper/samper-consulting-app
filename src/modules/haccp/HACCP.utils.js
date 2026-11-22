@@ -95,6 +95,23 @@ export function creneauLePlusProche(creneaux, heure) {
   return best;
 }
 
+// Jour de la semaine d'une date 'AAAA-MM-JJ' : 1 = lundi à 7 = dimanche
+// (haccp_creneaux.jours). Calcul sur la date seule, sans fuseau.
+export function jourSemaineIso(dateIso) {
+  const [a, m, j] = String(dateIso || '').split('-').map(Number);
+  if (!a || !m || !j) return null;
+  const d = new Date(Date.UTC(a, m - 1, j)).getUTCDay();
+  return d === 0 ? 7 : d;
+}
+
+// Le créneau est-il attendu ce jour-là ? Sans jours réglés : tous les jours.
+export function creneauDuJour(creneau, dateIso) {
+  const jours = creneau && Array.isArray(creneau.jours) ? creneau.jours : null;
+  if (!jours || !jours.length) return true;
+  const j = jourSemaineIso(dateIso);
+  return j == null ? true : jours.includes(j);
+}
+
 // Tri d'affichage des créneaux : chronologique, comme la journée se déroule.
 export function trierCreneaux(creneaux) {
   return (creneaux || []).slice().sort((a, b) =>
@@ -127,7 +144,7 @@ export function suiviDesTournees(creneauxActifs, zonesActives, relevesDuJour) {
 // même que la saisie rapide propose par défaut), avec son suivi du jour.
 // null sans grille horaire ou sans zone active.
 export function tourneeProposee(creneaux, zones, releves, date, heure) {
-  const actifs = trierCreneaux((creneaux || []).filter(c => c.actif));
+  const actifs = trierCreneaux((creneaux || []).filter(c => c.actif && creneauDuJour(c, date)));
   const zonesActives = (zones || []).filter(z => z.actif);
   if (!actifs.length || !zonesActives.length) return null;
   const proche = creneauLePlusProche(actifs, heure);

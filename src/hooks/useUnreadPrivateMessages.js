@@ -1,5 +1,7 @@
 import React from 'react';
 import { dbService } from '../services/dbService.js';
+import { aviserNouveauMessage } from '../services/avisMessages.js';
+import { notify } from '../components/toast/index.js';
 
 // Nombre de messages privés non lus pour l'utilisateur courant.
 // Realtime : recompte à chaque changement sur private_messages (nouveau
@@ -9,7 +11,7 @@ import { dbService } from '../services/dbService.js';
 // tableau de bord) : ouvert par le premier, fermé par le dernier. La
 // messagerie de la barre du haut relit sur ses changements
 // (surChangementMessages) sans en ouvrir un autre.
-const partage = { userId: null, count: 0, lecteurs: new Set(), off: null };
+const partage = { userId: null, count: 0, lu: false, lecteurs: new Set(), off: null };
 const abonnes = new Set();
 
 async function recompter() {
@@ -19,6 +21,11 @@ async function recompter() {
   try {
     const c = await legacySB.db.countUnreadPrivateMessages(userId);
     if (partage.userId !== userId) return;
+    // Un non-lu de plus après la première lecture : un message vient
+    // d'arriver. L'avis suit le réglage de l'appareil (Réglages >
+    // Notifications) ; éteint, rien ne change.
+    if (partage.lu && c > partage.count) aviserNouveauMessage(notify);
+    partage.lu = true;
     partage.count = c;
     partage.lecteurs.forEach((lecteur) => lecteur(c));
   } catch { /* la prochaine notification recomptera */ }
@@ -46,6 +53,7 @@ function rejoindre(userId, lecteur) {
     partage.lecteurs.clear();
     partage.userId = userId;
     partage.count = 0;
+    partage.lu = false;
   }
   partage.lecteurs.add(lecteur);
   if (!partage.off) {

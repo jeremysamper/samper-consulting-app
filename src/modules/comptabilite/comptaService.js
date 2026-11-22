@@ -67,6 +67,10 @@ export const MAPPERS = {
   compta_reglages: (r) => ({
     etablissementId: r.etablissement_id, methodeTva: r.methode_tva || 'effective', tauxTdfn: nombre(r.taux_tdfn),
     chargesSocialesPct: nombre(r.charges_sociales_pct) ?? 16, coutHoraireMoyen: nombre(r.cout_horaire_moyen),
+    // Lot 2 du plan 15 : délai de paiement par défaut et catégories de charges
+    // de la maison (vide = celles de l'app).
+    delaiPaiementJours: Number.isInteger(r.delai_paiement_jours) ? r.delai_paiement_jours : 30,
+    categoriesCharges: Array.isArray(r.categories_charges) ? r.categories_charges : [],
   }),
   releves_bancaires: (r) => ({
     id: r.id, etablissementId: r.etablissement_id, format: r.format, nomFichier: r.nom_fichier || '', iban: r.iban || '',
