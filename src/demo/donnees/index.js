@@ -17,6 +17,9 @@ import {
 import { genererCaisse } from './caisse.js';
 import { REGLAGES_MODULES, MEP_MODELES, COMMANDE_CIBLES, CANAUX_MESSAGES } from './reglages.js';
 import { genererPos } from './pos.js';
+import {
+  genererCommandes, COMMANDE_HABITUELS, avecConditionnement, pertesLot4a, mepLot4a, reglesPos, ingredientsARelier,
+} from './commande.js';
 import { genererHotel } from './hotel.js';
 import { genererSpa } from './spa.js';
 import { empreinteDemo } from '../rpc.js';
@@ -52,6 +55,10 @@ export function creerBase() {
   const { reservations, tags, liens } = genererReservations();
   const { releves, controles } = genererHaccp();
   const { plats_boissons: boissons, ...caisse } = genererCaisse();
+  // Lot 4a : commandes par fournisseur, réception, pertes reliées, liste J+1.
+  const { commandes, commande_lignes: commandeLignes, commande_groupes: commandeGroupes, achat: achatReception } = genererCommandes();
+  const mep = mepLot4a(MEP_LISTES, MEP_ITEMS);
+  const pos = genererPos();
   return {
     etablissements: [ETABLISSEMENT],
     profiles: EQUIPE.map((u) => ({ ...u })),
@@ -61,11 +68,11 @@ export function creerBase() {
     user_settings: reglagesUtilisateurs(),
     app_settings: [],
     fournisseurs: fournisseursEtab,
-    produits: PRODUITS,
+    produits: PRODUITS.map(avecConditionnement),
     produit_fournisseurs: PRODUIT_FOURNISSEURS,
     produit_prix_historique: PRODUIT_PRIX_HISTORIQUE,
     produit_alias: [],
-    recettes: RECETTES,
+    recettes: ingredientsARelier(RECETTES),
     plats: [...PLATS, ...boissons],
     plat_recettes: PLAT_RECETTES,
     cartes: CARTES,
@@ -102,11 +109,15 @@ export function creerBase() {
     haccp_tracabilite: HACCP_TRACABILITE,
     etiquettes_perso: ETIQUETTES_PERSO,
     inventaires: genererInventaires(),
-    pertes: PERTES,
+    pertes: pertesLot4a(PERTES, mep.mep_items),
     commande_items: COMMANDE_ITEMS,
     commande_cibles: COMMANDE_CIBLES,
-    mep_listes: MEP_LISTES,
-    mep_items: MEP_ITEMS,
+    commande_habituels: COMMANDE_HABITUELS,
+    commandes,
+    commande_lignes: commandeLignes,
+    commande_groupes: commandeGroupes,
+    mep_listes: mep.mep_listes,
+    mep_items: mep.mep_items,
     mep_modeles: MEP_MODELES,
     // Lot 5 : une procédure rappelée à l'heure qu'il est, une commencée par Inès.
     sops: procedures(SOPS),
@@ -123,7 +134,7 @@ export function creerBase() {
     points_commandes: commandesCadeaux(POINTS_CADEAUX),
     compta_reglages: COMPTA_REGLAGES,
     charges_fixes: CHARGES_FIXES,
-    achats_documents: genererAchats(),
+    achats_documents: [...genererAchats(), achatReception],
     achats_hausses_vues: [],
     salaires_estimes: SALAIRES_ESTIMES,
     releves_bancaires: [],
@@ -154,7 +165,9 @@ export function creerBase() {
     factures_compteurs: [],
     scans_facture: [],
     ...caisse,
-    ...genererPos(),
+    ...pos,
+    pos_item_recipe_mapping: pos.pos_item_recipe_mapping.map((m) => ({ regle_id: null, ...m })),
+    pos_regles_correspondance: reglesPos(),
     ...genererHotel(),
     ...genererSpa(),
   };
