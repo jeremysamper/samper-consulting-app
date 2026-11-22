@@ -410,6 +410,8 @@ async function repondreFonction(nom, corps) {
   if (nom === 'pos-backfill' || nom === 'pos-sync') return reponse(400, { error: 'La synchronisation Lightspeed n\'est pas disponible dans la démo.' });
   if (nom === 'spa-mailer') return reponse(200, { ok: true, demo: true });
   if (nom === 'caisse-tpe') return reponse(400, { error: 'Aucun terminal de paiement n\'est relié dans la démo.' });
+  // Envoi par Brevo : jamais relié dans la démo, le bouton « Envoyer » ne s'affiche pas.
+  if (nom === 'envoi-documents') return reponse(200, corps?.action === 'etat' ? { configure: false } : { error: 'L\'envoi par e-mail n\'est pas disponible dans la démo.' });
   return reponse(200, { error: 'Ce service n\'est pas disponible dans la démo.' });
 }
 

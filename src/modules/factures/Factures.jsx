@@ -5,6 +5,7 @@ import { readText, removeStorageKeys } from '../../utils/storage.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
 import { ouvrirCompte } from '../../services/navigationService.js';
+import { envoyerDocument, lireEtatEnvoi } from '../../services/envoiDocumentsService.js';
 import { signalerReglage, useReglageModifie } from '../../services/reglagesSignal.js';
 import {
   DEFAULT_EMAIL_SUBJECT, DEFAULT_FACTURE_TEXTS, SIGNAL_NOTIFICATION, choisirClientTextes, factureTextsKey,
@@ -254,6 +255,17 @@ const Factures = ({ user, etablissement }) => {
   // Le PDF ne peut pas être joint par URL : on trace si l'utilisateur l'a déjà
   // téléchargé pour afficher l'étape suivante plutôt qu'un simple avertissement.
   const [attachmentSaved, setAttachmentSaved] = React.useState(false);
+  // Envoi direct par Brevo (Edge Function envoi-documents) : null tant que
+  // l'état n'est pas lu, { configure } ensuite. Sans clé Brevo côté serveur,
+  // le brouillon Gmail reste l'action principale.
+  const [envoiBrevo, setEnvoiBrevo] = React.useState(null);
+  const [envoiEnCours, setEnvoiEnCours] = React.useState(false);
+  React.useEffect(() => {
+    if (!isConsultant) return undefined;
+    let actif = true;
+    lireEtatEnvoi().then((etat) => { if (actif) setEnvoiBrevo(etat); });
+    return () => { actif = false; };
+  }, [isConsultant]);
 
   // Lecture initiale synchrone depuis le cache (déjà hydraté par App au login),
   // avec le repli localStorage d'avant la migration : lireReglagesEmail, la
@@ -419,7 +431,7 @@ const Factures = ({ user, etablissement }) => {
   // ═══ Brouillon de notification client ═══
   // Objet et corps viennent des templates persistés ; les variables sont
   // résolues sur la facture qui vient d'être envoyée.
-  const buildEmailDraft = (fileName, blob) => {
+  const buildEmailDraft = (fileName, blob, documentId = null) => {
     const targetEtab = etabsAll.find(e => e.id === selectedEtabId) || etablissement;
     const vars = {
       numero: form.numero,
@@ -437,9 +449,38 @@ const Factures = ({ user, etablissement }) => {
       body: renderEmailTemplate(emailTemplate, vars),
       fileName,
       blob: blob || null,
+      documentId,
       etabNom: targetEtab?.nom || '',
     };
   };
+
+  // ═══ Envoi direct par Brevo ═══
+  // La fonction relit le PDF dans Documents par son identifiant : rien d'autre
+  // que le texte du message ne part du navigateur. La fenêtre reste fermable
+  // pendant l'envoi.
+  const envoyerParBrevo = async () => {
+    if (!emailDraft?.documentId || envoiEnCours) return;
+    if (!String(emailDraft.to || '').trim()) {
+      notifyLegacy('Indiquez le destinataire avant d\'envoyer.', 'warning');
+      return;
+    }
+    setEnvoiEnCours(true);
+    const { error } = await envoyerDocument({
+      documentId: emailDraft.documentId,
+      a: emailDraft.to,
+      cc: emailDraft.cc,
+      objet: emailDraft.subject,
+      message: emailDraft.body,
+    });
+    setEnvoiEnCours(false);
+    if (error) {
+      notifyLegacy(error, 'error');
+      return;
+    }
+    notifyLegacy(`Facture envoyée à ${emailDraft.to}.`, 'success');
+    setShowEmailModal(false);
+  };
+  const envoiDirect = Boolean(envoiBrevo?.configure && emailDraft?.documentId);
 
   // ═══ Génération du PDF ═══
   const generatePDF = async (sendToDocs) => {
@@ -467,13 +508,13 @@ const Factures = ({ user, etablissement }) => {
         // Mode "Envoyer au module Documents"
         // On récupère le Blob généré pour le proposer en pièce jointe sans
         // repasser par un téléchargement depuis Documents.
-        const blob = await sendFactureToDocuments(fileName, qrFacture);
+        const { blob, doc } = await sendFactureToDocuments(fileName, qrFacture);
         setSavedToDocs(true);
         setTimeout(() => setSavedToDocs(false), 4000);
 
         // ─── Préparer le brouillon email si activé ───
         if (emailEnabled) {
-          setEmailDraft(buildEmailDraft(fileName, blob));
+          setEmailDraft(buildEmailDraft(fileName, blob, doc?.id || null));
           setAttachmentSaved(false);
           setShowEmailModal(true);
         }
@@ -555,7 +596,7 @@ const Factures = ({ user, etablissement }) => {
 
     // 3. Upload du fichier dans le dossier mensuel
     const file = new File([blob], fileName, { type: 'application/pdf' });
-    await legacySB.db.uploadFile({
+    const doc = await legacySB.db.uploadFile({
       etablissementId: targetEtabId,
       parentId: monthFolderObj.id,
       file,
@@ -578,7 +619,7 @@ const Factures = ({ user, etablissement }) => {
       setRecentFactures(allFactures.slice(0, 5));
     }
 
-    return blob;
+    return { blob, doc };
   };
 
   // ═══ Réinitialiser le formulaire (pour faire une nouvelle facture) ═══
@@ -813,9 +854,11 @@ const Factures = ({ user, etablissement }) => {
               </label>
             </div>
             <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 10, lineHeight: 1.5 }}>
-              {emailEnabled
-                ? 'Après envoi dans Documents, un brouillon prérempli s\'ouvre directement dans Gmail (objet, destinataire et message).'
-                : 'Aucune notification ne sera proposée après l\'envoi dans Documents.'}
+              {!emailEnabled
+                ? 'Aucune notification ne sera proposée après l\'envoi dans Documents.'
+                : envoiBrevo?.configure
+                  ? 'Après envoi dans Documents, le message prérempli s\'ouvre : un clic sur « Envoyer » le fait partir par Brevo, la facture en pièce jointe.'
+                  : 'Après envoi dans Documents, un brouillon prérempli s\'ouvre directement dans Gmail (objet, destinataire et message).'}
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
@@ -978,8 +1021,20 @@ const Factures = ({ user, etablissement }) => {
                 />
               </div>
 
+              {/* Envoi par Brevo : le PDF part en pièce jointe depuis Documents. */}
+              {envoiDirect && (
+                <div style={fac.attachBox}>
+                  <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)' }}>Pièce jointe</div>
+                  <div style={{ fontSize: 'var(--t1)', opacity: 0.85, wordBreak: 'break-all' }}>{emailDraft.fileName}</div>
+                  <div style={{ fontSize: 'var(--t1)', marginTop: 8, lineHeight: 1.5, opacity: 0.9 }}>
+                    La facture part jointe au message, depuis l'adresse {envoiBrevo.expediteur || 'de votre compte Brevo'}.
+                  </div>
+                </div>
+              )}
+
               {/* Pièce jointe : Gmail ne permet pas de joindre un fichier par URL,
                   on met donc le PDF à un clic de la fenêtre de rédaction. */}
+              {!envoiDirect && (
               <div style={attachmentSaved ? fac.attachBoxDone : fac.attachBox}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 180 }}>
@@ -1009,10 +1064,34 @@ const Factures = ({ user, etablissement }) => {
                     : 'La facture est déjà classée dans Documents. Récupérez-la ici pour la joindre au message en une fois.'}
                 </div>
               </div>
+              )}
             </div>
 
-            {/* Pas d'espaceur flex ici : le bouton Gmail occupe la place restante,
+            {/* Pas d'espaceur flex ici : le bouton principal occupe la place restante,
                 donc il passe pleine largeur quand la barre se réorganise sur mobile. */}
+            {envoiDirect ? (
+            <div style={fac.modalFooter}>
+              <button style={fac.modalGhostBtn} onClick={() => setShowEmailModal(false)}>Fermer</button>
+              <button
+                style={fac.modalGhostBtn}
+                title="Ouvrir le message en brouillon Gmail plutôt que de l'envoyer d'ici"
+                onClick={() => {
+                  const win = browserWindow?.open(buildGmailUrl(emailDraft), '_blank', 'noopener,noreferrer');
+                  if (!win) notifyLegacy('Gmail a été bloqué par le navigateur. Autorisez les fenêtres pop-up pour ce site.', 'warning');
+                }}
+              >
+                Brouillon Gmail
+              </button>
+              <button
+                style={{ ...fac.modalPrimaryBtn, flexGrow: 1, minWidth: 200, opacity: envoiEnCours ? 0.7 : 1 }}
+                onClick={envoyerParBrevo}
+                disabled={envoiEnCours}
+                aria-busy={envoiEnCours}
+              >
+                {envoiEnCours ? 'Envoi en cours…' : 'Envoyer'}
+              </button>
+            </div>
+            ) : (
             <div style={fac.modalFooter}>
               <button style={fac.modalGhostBtn} onClick={() => setShowEmailModal(false)}>Fermer</button>
 
@@ -1065,6 +1144,7 @@ const Factures = ({ user, etablissement }) => {
                 Ouvrir le brouillon Gmail
               </button>
             </div>
+            )}
           </div>
         </div>
       )}
