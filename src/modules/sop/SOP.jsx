@@ -4,7 +4,9 @@ import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
-import { canManageModule } from '../../data/demoData.js';
+import { canManageModule, getPermissionsForRole } from '../../data/demoData.js';
+import { isPageActiveForEtab, peutOuvrirPage } from '../moduleConfig.js';
+import { navigateToPage } from '../../services/navigationService.js';
 import { Anneau, Btn } from '../../components/ui/index.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
@@ -40,6 +42,9 @@ const FREQ_MAP = Object.fromEntries(SOP_FREQUENCES.map(f => [f.id, f]));
 // L'historique est un écran de tâche (Retour, geste retour et Échap ramènent
 // à la liste) ; la checklist et l'éditeur se referment aussi par le retour.
 const SOP = ({ user, etablissement }) => {
+  // Renvoi vers le module Inventaire (procédure d'inventaire) : seulement si
+  // le module est activé pour l'établissement et ouvert à la personne.
+  const versInventaire = isPageActiveForEtab(etablissement, 'inventaire') && peutOuvrirPage('inventaire', user, getPermissionsForRole(user?.role));
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
   const canManage = canManageModule(user.role, 'sop');
@@ -171,6 +176,7 @@ const SOP = ({ user, etablissement }) => {
       </div>
 
       <SopList
+        versInventaire={versInventaire}
         sops={sops}
         sopTemplates={sopTemplates}
         executions={executions}
@@ -204,7 +210,7 @@ const SOP = ({ user, etablissement }) => {
 };
 
 // ─── Liste des SOPs ───
-const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, etabId, legacySB, onEdit, onStart, onAddToTemplates }) => {
+const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, etabId, legacySB, onEdit, onStart, onAddToTemplates, versInventaire = false }) => {
   const [search, setSearch] = React.useState('');
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
@@ -414,10 +420,17 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={ss.sopCardTitle}>{sop.titre}</div>
                     {sop.description && <div style={ss.sopCardDesc}>{sop.description}</div>}
+                    {versInventaire && /inventaire/i.test(sop.titre || '') && (
+                      <div style={ss.sopCardDesc} data-sop-renvoi="inventaire">
+                        <span>Le comptage se fait dans le module Inventaire.</span>{' '}
+                        <button type="button" style={ss.lienRenvoi} onClick={() => navigateToPage('inventaire')}>Ouvrir l'inventaire</button>
+                      </div>
+                    )}
                     <div style={ss.sopCardMeta}>
                       <span style={ss.sopCardCat}>{sop.categorie}</span>
                       <span style={ss.sopCardSteps}>{totalSteps} étape{totalSteps > 1 ? 's' : ''}</span>
-                      {(sop.tags || []).map(t => (
+                      {/* La catégorie une seule fois : un tag qui la répète n'est pas redit. */}
+                      {(sop.tags || []).filter(t => normalizeSearch(t) !== normalizeSearch(sop.categorie)).map(t => (
                         <span key={t} style={ss.sopCardTag}>{t}</span>
                       ))}
                       {doneToday && (
@@ -1253,6 +1266,7 @@ const ss = {
   sopCard: { ...carte, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 },
   sopCardTitle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', lineHeight: 1.3 },
   sopCardDesc: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 },
+  lienRenvoi: { background: 'none', borderWidth: 0, borderStyle: 'none', padding: '6px 0', minHeight: 32, color: 'var(--lien)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t1)' },
   sopCardMeta: { display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' },
   sopCardSteps: { fontSize: 'var(--t1)', color: 'var(--text2)' },
   sopCardCat: etiquette,

@@ -23,14 +23,15 @@ const chf = (v) => Number(v || 0).toFixed(2);
 // sixième pour toutes les suivantes.
 const SERIES = ['var(--serie-1)', 'var(--serie-2)', 'var(--serie-3)', 'var(--serie-4)', 'var(--serie-5)', 'var(--serie-6)'];
 
-export function ReperesPertes({ totalValeur, declarations, nonValidees, parCategorie }) {
+export function ReperesPertes({ totalValeur, periode, declarations, nonValidees, parCategorie }) {
   const premiere = Object.entries(parCategorie || {}).sort((a, b) => b[1] - a[1])[0];
   return (
     <div className="pertes-reperes" data-pertes-reperes="">
       <CarteRepere
         Icone={TrendingDown}
         valeur={<span style={st.montant}>{`−CHF ${chf(totalValeur)}`}</span>}
-        libelle="Valeur totale pertes (période)"
+        libelle="Valeur des pertes"
+        detail={periode ? <span data-no-translate>{periode}</span> : null}
       />
       <CarteRepere Icone={ClipboardList} valeur={declarations} libelle="Déclarations" />
       <CarteRepere

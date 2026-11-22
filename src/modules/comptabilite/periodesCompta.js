@@ -103,6 +103,17 @@ export function periodePrecedente(p, { periodesInv = [] } = {}) {
   return periodeMois(veille);
 }
 
+// Période de comparaison à durée égale : une période qui court encore se
+// compare aux mêmes jours écoulés de la précédente (le 1er au 22 octobre pour
+// le 1er au 22 novembre), jamais à toute la précédente. Une période close, une
+// période d'inventaire ou une précédente plus courte que les jours écoulés :
+// la précédente entière. Marquée `partielle` pour son libellé.
+export function periodeComparable(p, precedente, aujourdhui) {
+  if (!p || !precedente || p.type === 'inventaire' || precedente.type === 'inventaire' || !estEnCours(p, aujourdhui)) return precedente;
+  const fin = ajouterJours(precedente.debut, nbJours(p.debut, aujourdhui) - 1);
+  return fin >= precedente.fin ? precedente : { ...precedente, fin, partielle: true };
+}
+
 // Période suivante, null au-delà de la période en cours.
 export function periodeSuivante(p, aujourdhui, { periodesInv = [] } = {}) {
   if (!p) return null;
@@ -141,6 +152,7 @@ const ordinal = (n) => (n === 1 ? '1er' : `${n}e`);
 export function libellePeriode(p) {
   if (!p) return '';
   const { a, m } = parties(p.debut);
+  if (p.partielle) return intervalleLong(p.debut, p.fin);
   if (p.type === 'mois') return `${MOIS[m - 1]} ${a}`;
   if (p.type === 'trimestre') return `${ordinal(p.numero || Math.floor((m - 1) / 3) + 1)} trimestre ${a}`;
   if (p.type === 'annee') return `année ${a}`;
@@ -155,5 +167,6 @@ export function libellePeriode(p) {
 // un inventaire (« sur du 1er au 31 août » se lirait mal).
 export function libelleComparaison(p) {
   if (!p) return '';
-  return p.type === 'inventaire' ? 'la période précédente' : libellePeriode(p);
+  if (p.type === 'inventaire') return 'la période précédente';
+  return p.partielle ? `les jours ${intervalleLong(p.debut, p.fin)}` : libellePeriode(p);
 }

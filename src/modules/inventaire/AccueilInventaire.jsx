@@ -100,7 +100,7 @@ export default function AccueilInventaire({
           <span>{totaux.aRegler.n}</span> {totaux.aRegler.n > 1 ? 'factures à régler' : 'facture à régler'}
           {totaux.enRetard.n ? <>, <span>{totaux.enRetard.n}</span> en retard</> : null}
         </>
-        : <>tout est réglé</>,
+        : !trierDocuments(docs).factures.length ? <>aucune facture enregistrée</> : <>tout est réglé</>,
     },
     {
       id: 'echeances', Icone: CalendarClock, libelle: 'Échéances', onClick: onEcheances, visible: canRegler,
@@ -141,7 +141,7 @@ export default function AccueilInventaire({
       {!achatsVue && <ReperesInventaire dernier={dernier} perimetreActif={perimetreActif} perimetres={perimetres} pilesParPerimetre={pilesParPerimetre} />}
       {!achatsVue && <CarteInventaire dernier={dernier} perimetreActif={perimetreActif} />}
       {achatsVue && <ReperesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} depenses={depenses} />}
-      {achatsVue && <CartesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} onEcheances={onEcheances} />}
+      {achatsVue && <CartesAchats docs={docs} aujourdhui={aujourdhui} canRegler={canRegler} onEcheances={onEcheances} onSaisirFacture={() => onImport('facture')} />}
 
       {achatsVue && aCompleter > 0 && (
         <div style={st.bandeau} data-bandeau-a-completer="">

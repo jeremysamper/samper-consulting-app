@@ -15,11 +15,11 @@ import { zurichToday } from '../../utils/zurichTime.js';
 import './pertes.css';
 import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
 import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
-import { Choix, Fenetre, st as stFenetre } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Choix, Fenetre, st as stFenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { totauxPertes } from './calculPertes.js';
+import { datePerte, periodePertes, totauxPertes, unitePerte } from './calculPertes.js';
 import { Printer, Trash2 } from 'lucide-react';
 
 // Choix exclusif en tuiles (motif, unité) : un toucher au lieu des deux d'une
@@ -262,6 +262,7 @@ const Pertes = ({ user, etablissement }) => {
       {/* Repères : les chiffres de l'ensemble affiché. */}
       <ReperesPertes
         totalValeur={totalValeur}
+        periode={periodePertes(filtered)}
         declarations={filtered.length}
         nonValidees={pertesEtab.filter(p=>!p.valide).length}
         parCategorie={parCategorie}
@@ -350,14 +351,14 @@ const Pertes = ({ user, etablissement }) => {
                   />
                 </span>
               )}
-              <span style={pts.cell}>{p.date}</span>
+              <span style={pts.cell} data-no-translate>{datePerte(p.date, todayStr)}</span>
               <span style={{...pts.cellBold, flex:2}}>
                 {p.produit}
                 {p.commentaire && <div style={{fontSize: 'var(--t1)',color:'var(--text2)',fontWeight: 'var(--g1)',marginTop:1}} data-no-translate>{p.commentaire}</div>}
               </span>
               <span style={pts.cell}><span style={pts.motifTag}>{p.motif}</span></span>
               <span style={pts.cell}>{p.categorie}</span>
-              <span style={{...pts.cell,textAlign:'right'}}>{p.quantite} {p.unite}</span>
+              <span style={{...pts.cell,textAlign:'right'}}>{p.quantite} {unitePerte(p.quantite, p.unite)}</span>
               <span style={{...pts.cell,textAlign:'right',color:'var(--danger-strong)',fontWeight: 'var(--g2)'}}>−CHF {valeur}</span>
               <span style={pts.cell}>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
@@ -377,7 +378,14 @@ const Pertes = ({ user, etablissement }) => {
               )}
               {canManage && (
                 <span>
-                  <button style={pts.deleteBtn} onClick={()=>supprimer(p.id)}>Supprimer</button>
+                  <BoutonActions
+                    id={`perte-${p.id}`}
+                    label="Gérer"
+                    style={pts.gererBtn}
+                    titre="Gérer"
+                    sousTitre={<span data-no-translate="">{p.produit}, {datePerte(p.date, todayStr)}</span>}
+                    sections={[{ items: [{ titre: 'Supprimer', detail: 'Retire cette perte de la liste.', onClick: () => supprimer(p.id) }] }]}
+                  />
                 </span>
               )}
             </div>
@@ -603,7 +611,7 @@ const pts = {
   motifTag:{fontSize: 'var(--t1)',background:'var(--selection)',color:'var(--text2)',padding:'2px 8px',borderRadius: 'var(--r)',fontWeight: 'var(--g2)'},
   empDot:{width:22,height:22,borderRadius: 'var(--r)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight: 'var(--g3)',fontSize: 'var(--t1)',flexShrink:0},
   valBtn:{background: 'var(--success-bg-soft)',border: '1px solid transparent',color:'var(--success-text)',borderRadius: 'var(--r-full)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{background: 'var(--danger-bg-soft)',border: '1px solid transparent',color:'var(--danger-strong)',borderRadius: 'var(--r-full)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  gererBtn:{background: 'var(--btn-fond)',borderWidth: 1,borderStyle: 'solid',borderColor: 'var(--btn-bord)',color:'var(--btn-texte)',borderRadius: 'var(--r-full)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   chartCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'18px 20px'},
   chartTitle:{fontSize: 'var(--t1)',fontWeight: 'var(--g3)',color:'var(--text)',marginBottom:14},
   chartBars:{display:'flex',flexDirection:'column',gap:10},

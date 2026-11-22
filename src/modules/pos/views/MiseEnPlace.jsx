@@ -52,7 +52,7 @@ function ReliableBadge({ reliable, occurrences }) {
 
 // ── Ligne de plat ─────────────────────────────────────────────────
 
-function ItemRow({ item }) {
+function ItemRow({ item, sansBadge = false }) {
   return (
     <div style={{
       display:       'flex',
@@ -97,8 +97,8 @@ function ItemRow({ item }) {
         portion{item.qty !== 1 ? 's' : ''}
       </div>
 
-      {/* Badge */}
-      <ReliableBadge reliable={item.reliable} occurrences={item.occurrences} />
+      {/* Badge : retiré quand la mention vaut pour tous les plats (dite en tête). */}
+      {!sansBadge && <ReliableBadge reliable={item.reliable} occurrences={item.occurrences} />}
     </div>
   );
 }
@@ -124,6 +124,10 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
   }
 
   const mappedCount = items.length;
+  // Même historique court pour tous les plats : la mention est dite une fois
+  // en tête de la liste, pas répétée sur chaque ligne.
+  const courtCommun = items.every((i) => !i.reliable && i.occurrences === items[0].occurrences)
+    ? items[0].occurrences : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -175,10 +179,16 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
           )}
         </div>
 
+        {courtCommun != null && (
+          <div data-pos-historique-court="" style={{ fontSize: 'var(--t2)', color: 'var(--warning-text)' }}>
+            <span>Historique court pour tous les plats :</span> <span data-no-translate>{courtCommun}</span> <span>{courtCommun > 1 ? 'jours de ventes' : 'jour de ventes'}</span>
+          </div>
+        )}
+
         {/* Liste des plats */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {items.map((item) => (
-            <ItemRow key={item.posItemId} item={item} />
+            <ItemRow key={item.posItemId} item={item} sansBadge={courtCommun != null} />
           ))}
         </div>
 

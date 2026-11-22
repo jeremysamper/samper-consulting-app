@@ -1,7 +1,7 @@
 import React from 'react';
 import { BarresListe } from './GraphiquesAchats.jsx';
 import { echeancier } from './analysesAchats.js';
-import { statutPaiement, trierParEcheance } from '../inventaire/facturesLogic.js';
+import { estFacture, statutPaiement, trierParEcheance } from '../inventaire/facturesLogic.js';
 import { dateCH } from '../inventaire/inventaireLignes.js';
 import { Btn } from '../../components/ui/index.jsx';
 
@@ -20,6 +20,8 @@ const pluriel = (n, un, plusieurs) => (n > 1 ? plusieurs : un);
 export default function Echeancier({ docs, aujourdhui, onRegler }) {
   const { tranches, aRegler } = React.useMemo(() => echeancier(docs, aujourdhui), [docs, aujourdhui]);
   const factures = React.useMemo(() => trierParEcheance(tranches.flatMap(t => t.factures)), [tranches]);
+  // Aucune facture enregistrée : rien n'est « réglé », la phrase le dit.
+  const aucune = React.useMemo(() => !(docs || []).some(estFacture), [docs]);
 
   const lignes = tranches.filter(t => t.factures.length).map(t => ({
     cle: t.id,
@@ -36,14 +38,14 @@ export default function Echeancier({ docs, aujourdhui, onRegler }) {
         <div style={st.total}>
           {aRegler
             ? <><span>{aRegler}</span> {pluriel(aRegler, 'facture à régler', 'factures à régler')}, tous périmètres</>
-            : <>Toutes les factures sont réglées.</>}
+            : aucune ? <>Aucune facture enregistrée pour l'instant.</> : <>Toutes les factures sont réglées.</>}
         </div>
         <Btn variant="primary" onClick={onRegler}>Je règle les factures</Btn>
       </div>
 
       <section style={st.section}>
         <div style={st.titre}>Échéancier</div>
-        <BarresListe lignes={lignes} vide="n/a : aucune facture à régler" />
+        <BarresListe lignes={lignes} vide={aucune ? "Aucune facture enregistrée pour l'instant." : 'Aucune facture à régler.'} />
         <div style={st.calcul}>
           Montant à payer (TTC) des factures non réglées, rangées par date d'échéance, semaine du lundi au dimanche. Une facture sans TTC est comptée à part : n/a quand aucune facture de la tranche n'a de TTC.
         </div>

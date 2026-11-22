@@ -15,7 +15,7 @@ import { TAUX_VENTES } from './ventesCompta.js';
 const NOMS_TAUX = { 8.1: 'sur place', 2.6: 'à l\'emporter', 3.8: 'hébergement' };
 
 function Valeur({ v, pct, danger }) {
-  if (v == null) return <span style={{ color: 'var(--text3)' }}>n/a</span>;
+  if (v == null) return <span style={{ color: 'var(--text3)' }}>pas encore de chiffre</span>;
   return (
     <span style={{ fontFamily: 'var(--font-num)', whiteSpace: 'nowrap', ...(danger && v < 0 ? { color: 'var(--danger-text)' } : null) }}>
       {pct ? pctTexte(v) : chf(v)}

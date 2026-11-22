@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   periodeMois, periodeTrimestre, periodeAnnee, periodesInventaire, periodePrecedente, periodeSuivante,
-  periodeCourante, finEffective, libellePeriode, prorata, nbJours, listeJours,
+  periodeCourante, finEffective, libellePeriode, prorata, nbJours, listeJours, periodeComparable, libelleComparaison,
 } from './periodesCompta.js';
 
 test('bornes de mois de 28 à 31 jours', () => {
@@ -81,4 +81,17 @@ test('fin effective, prorata et jours', () => {
   assert.equal(nbJours('2026-10-01', '2026-10-31'), 31);
   assert.equal(nbJours('2026-10-02', '2026-10-01'), 0);
   assert.deepEqual(listeJours('2026-02-27', '2026-03-01'), ['2026-02-27', '2026-02-28', '2026-03-01']);
+});
+
+test('comparaison à durée égale : un mois entamé se compare aux mêmes jours du précédent', () => {
+  const p = periodeMois('2026-11-22');
+  const c = periodeComparable(p, periodePrecedente(p), '2026-11-22');
+  assert.deepEqual([c.debut, c.fin, c.partielle], ['2026-10-01', '2026-10-22', true]);
+  assert.equal(libelleComparaison(c), 'les jours du 1er au 22 octobre 2026');
+  // Mois clos : la précédente entière.
+  const clos = periodeMois('2026-10-15');
+  assert.equal(periodeComparable(clos, periodePrecedente(clos), '2026-11-22').fin, '2026-09-30');
+  // Précédente plus courte que les jours écoulés (31 mars contre février) : entière.
+  const mars = periodeMois('2026-03-31');
+  assert.equal(periodeComparable(mars, periodePrecedente(mars), '2026-03-31').partielle, undefined);
 });

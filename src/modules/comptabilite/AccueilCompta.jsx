@@ -1,6 +1,7 @@
 import React from 'react';
 import { Building2, CalendarRange, Coins, Landmark, Percent, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
 import { echeancier } from '../factures-achats/analysesAchats.js';
+import { estFacture } from '../inventaire/facturesLogic.js';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import BarrePeriode from './BarrePeriode.jsx';
 import CarteChiffre from './CarteChiffre.jsx';
@@ -49,7 +50,7 @@ export default function AccueilCompta({
     s.ratios.matierePct != null && <><span>{pctTexte(s.ratios.matierePct)}</span> <span>du chiffre d'affaires</span></>,
     periode?.type === 'inventaire'
       ? (s.matiere.variationStock != null ? <>variation de stock comprise</> : <>pas d'inventaire au début ou à la fin</>)
-      : <>sans variation de stock</>,
+      : <>sans variation de stock, chiffre incomplet</>,
     s.matiere.ht != null && <Comparaison a={s.matiere.ht} b={p?.matiere.ht} precedente={precedente} />,
   ];
   // Coût du personnel : direction seulement ; « Pas encore activé » sans la
@@ -117,13 +118,17 @@ export default function AccueilCompta({
     peutEcrire && {
       id: 'tva', libelle: 'TVA', Icone: Percent, onClick: () => onOuvrir('tva'),
       etat: etats.tva !== 'ready' ? null : (() => {
-        const d = data.tva.decomptes[data.tva.defaut];
-        if (d.etat.due == null) return <span>{d.periode.libelle}</span>;
+        // Le trimestre en cours ; le précédent, tant qu'il reste à déclarer
+        // (échéance pas encore passée), est nommé à la suite.
+        const d = data.tva.decomptes[1];
+        const aDeclarer = data.tva.defaut === 0 ? data.tva.decomptes[0] : null;
+        const suite = aDeclarer ? <>, <span>{aDeclarer.periode.libelle}</span> <span>à déclarer</span></> : null;
+        if (d.etat.due == null) return <><span>{d.periode.libelle}</span>{suite}</>;
         // Trop peu de jours de ventes : ni montant ni « crédit » (tvaCompta).
-        if (!d.etat.ventesCompletes) return <><span>chiffre d'affaires incomplet pour le</span> <span>{d.periode.libelle}</span></>;
+        if (!d.etat.ventesCompletes) return <><span>chiffre d'affaires incomplet pour le</span> <span>{d.periode.libelle}</span>{suite}</>;
         return d.etat.due < 0
-          ? <><span>crédit de</span> <Chf v={-d.etat.due} /> <span>estimé pour le</span> <span>{d.periode.libelle}</span></>
-          : <><Chf v={d.etat.due} /> <span>estimés pour le</span> <span>{d.periode.libelle}</span></>;
+          ? <><span>crédit de</span> <Chf v={-d.etat.due} /> <span>estimé pour le</span> <span>{d.periode.libelle}</span>{suite}</>
+          : <><Chf v={d.etat.due} /> <span>estimés pour le</span> <span>{d.periode.libelle}</span>{suite}</>;
       })(),
     },
     peutEcrire && {
@@ -140,7 +145,7 @@ export default function AccueilCompta({
       etat: etats.achats !== 'ready' ? null : (() => {
         const { tranches, aRegler } = echeancier(data.docs, aujourdhui);
         const retard = tranches.find(t => t.id === 'retard')?.factures.length || 0;
-        if (!aRegler) return <>Toutes les factures sont réglées.</>;
+        if (!aRegler) return (data.docs || []).some(estFacture) ? <>Toutes les factures sont réglées.</> : <>Aucune facture enregistrée pour l'instant.</>;
         return <><span>{aRegler}</span> <span>{pluriel(aRegler, 'facture à régler,', 'factures à régler,')}</span> <span>{retard}</span> <span>en retard</span></>;
       })(),
     },
@@ -171,8 +176,8 @@ export default function AccueilCompta({
             ) : (
               <CarteChiffre
                 id="personnel" titre="Coût du personnel" Icone={Users}
-                valeur={<span style={{ color: 'var(--text2)' }}>n/a</span>}
-                lignes={personnelLignes}
+                valeur={<span style={{ color: 'var(--text2)' }}>{direction ? 'pas encore de chiffre' : 'réservé à la direction'}</span>}
+                lignes={direction ? personnelLignes : []}
               />
             )}
             <CarteChiffre

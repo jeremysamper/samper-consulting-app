@@ -40,6 +40,7 @@ import { confirmLegacy, getBrowserWindow } from '../../legacy/legacyApi.js';
 import { useShellMode, estTactile } from '../../hooks/useShellMode.js';
 import PhotoFiche from '../../components/fiches/PhotoFiche.jsx';
 import AllergenesFiche from '../../components/fiches/AllergenesFiche.jsx';
+import { allergenesProbablesNonDeclares } from '../../utils/allergenes.js';
 import { photoDeRecette } from '../../components/fiches/rangementFiches.js';
 import VitrineCarte, { clePlat } from './VitrineCarte.jsx';
 import VitrineFiches, { fichesTrouvees } from './VitrineFiches.jsx';
@@ -659,7 +660,11 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
         </div>
       </header>
 
-      <AllergenesFiche ids={recette.allergenesIds} variante="bandeau" />
+      <AllergenesFiche
+        ids={recette.allergenesIds}
+        variante="bandeau"
+        probables={allergenesProbablesNonDeclares((recette.ingredients || []).map((i) => i.nom), recette.allergenesIds)}
+      />
 
       <div className="fv-fiche-cols">
         <section className="fv-bloc" data-fiche-section="ingredients">
@@ -1263,7 +1268,7 @@ const ms = {
 // Cherche un terme (ex. « poivre », « gluten ») dans TOUTES les recettes de
 // l'établissement et liste précisément lesquelles le contiennent (ingrédient
 // matché + allergènes déclarés + plat(s) de rattachement).
-const QUICK_ALLERGENES = ['Gluten', 'Lactose', 'Œufs', 'Fruits à coque', 'Arachides', 'Soja', 'Sésame', 'Moutarde'];
+const QUICK_ALLERGENES = ['Gluten', 'Lait', 'Œufs', 'Fruits à coque', 'Arachides', 'Soja', 'Sésame', 'Moutarde'];
 
 const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, onClose }) => {
   const [query, setQuery] = React.useState('');

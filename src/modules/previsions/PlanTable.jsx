@@ -1,6 +1,7 @@
 import { RotateCw, TriangleAlert } from 'lucide-react';
 import { chaises, numeroSeul } from '../salle/planVue.js';
 import { hhmm, minutesDe } from '../salle/planTemps.js';
+import { libelleTagAllergene } from '../../utils/allergenes.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Une table sur le plan de salle de Réservations, à l'échelle k (pixels par
@@ -32,7 +33,7 @@ const FOND = {
 export const COULEUR_ETAT = Object.fromEntries(Object.entries(FOND).map(([k, v]) => [k, v.chaise]));
 
 const allergiesDe = (resa) => (Array.isArray(resa?.reservation_tags) ? resa.reservation_tags : [])
-  .filter((t) => t.type_tag === 'allergene' && t.valeur).map((t) => t.valeur);
+  .filter((t) => t.type_tag === 'allergene' && t.valeur).map((t) => libelleTagAllergene(t.valeur));
 
 export default function PlanTable({
   t, k, mode = 'service', etat = 'libre', role = null, info = null, places = 0,

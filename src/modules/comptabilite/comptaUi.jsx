@@ -4,7 +4,7 @@ import React from 'react';
 // Petits morceaux d'affichage partagés par les écrans de la Comptabilité :
 // montants, pourcentages, dates, styles communs. Francs entiers sur les
 // grandes cartes, centimes dans les listes (D21) ; une valeur inconnue
-// s'écrit « n/a », jamais 0. Nombres et dates dans leurs propres nœuds : la
+// s'écrit « pas encore de chiffre », jamais 0 ni « n/a ». Nombres et dates dans leurs propres nœuds : la
 // phrase autour reste une entrée du glossaire au lieu de partir à l'IA.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -29,15 +29,15 @@ export function lireMontant(texte) {
   return n < 10000000 ? n : NaN;
 }
 
-// « CHF 1 234,50 » (ou entier), « n/a » sans valeur.
+// « CHF 1 234,50 » (ou entier), « pas encore de chiffre » sans valeur.
 export function Chf({ v, entier = false }) {
-  if (v == null) return <span>n/a</span>;
+  if (v == null) return <span>pas encore de chiffre</span>;
   return <span style={{ fontFamily: 'var(--font-num)', whiteSpace: 'nowrap' }}><span>CHF</span> <span>{entier ? chfEntier(v) : chf(v)}</span></span>;
 }
 
 // Montant seul, sans « CHF », aligné à droite dans un tableau.
 export function Montant({ v }) {
-  return <span style={{ fontFamily: 'var(--font-num)', whiteSpace: 'nowrap' }}>{v == null ? 'n/a' : chf(v)}</span>;
+  return <span style={{ fontFamily: 'var(--font-num)', whiteSpace: 'nowrap' }}>{v == null ? 'pas encore de chiffre' : chf(v)}</span>;
 }
 
 export const st = {

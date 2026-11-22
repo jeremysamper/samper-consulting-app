@@ -32,7 +32,7 @@ import { ventesComparables } from './syntheseCompta.js';
 import { Chf, pluriel, st as ui } from './comptaUi.jsx';
 import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
 import {
-  TYPES_PERIODE, libellePeriode, periodeAnnee, periodeCourante, periodeMois, periodePrecedente, periodeSuivante,
+  TYPES_PERIODE, libellePeriode, periodeAnnee, periodeComparable, periodeCourante, periodeMois, periodePrecedente, periodeSuivante,
   periodeTrimestre, periodesInventaire,
 } from './periodesCompta.js';
 
@@ -120,6 +120,9 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
   // Sans inventaire validé, les tuiles se lisent sur le mois en cours.
   const periodeCalcul = React.useMemo(() => periode || periodeMois(aujourdhui), [periode, aujourdhui]);
   const precedente = React.useMemo(() => (periode ? periodePrecedente(periode, { periodesInv }) : null), [periode, periodesInv]);
+  // Les écarts comparent à durée égale (un mois entamé aux mêmes jours du
+  // mois précédent) ; « précédent » de la barre ouvre la période entière.
+  const comparaison = React.useMemo(() => periodeComparable(periode, precedente, aujourdhui), [periode, precedente, aujourdhui]);
   const suivante = periode ? periodeSuivante(periode, aujourdhui, { periodesInv }) : null;
 
   const choisirType = (t) => {
@@ -128,7 +131,7 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
     writeJson(CLE_PERIODE, { type: t });
   };
 
-  const data = useCompta({ etablissement, periode: periodeCalcul, precedente, aujourdhui, inventaires, direction, banque: peutEcrire });
+  const data = useCompta({ etablissement, periode: periodeCalcul, precedente: comparaison, aujourdhui, inventaires, direction, banque: peutEcrire });
   // Réglages enregistrés dans la page des réglages (section 'comptabilite') :
   // les chiffres gardés montés se recalculent sans recharger l'app.
   useReglageModifie('comptabilite', () => data.reloadTout());
@@ -165,7 +168,7 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
   });
 
   const libelle = periode ? libellePeriode(periode) : '';
-  const libellePrec = precedente ? libellePeriode(precedente) : '';
+  const libellePrec = comparaison ? libellePeriode(comparaison) : '';
   const actions = peutEcrire
     ? [
       { id: 'exporter', label: 'Exporter', detail: 'Ventes, factures d\'achat, charges fixes et état TVA pour la fiduciaire.', onClick: () => ouvrirExport() },
@@ -196,7 +199,7 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
         <AccueilCompta
           barre={barre}
           periode={periode}
-          precedente={precedente}
+          precedente={comparaison}
           aujourdhui={aujourdhui}
           data={{ ...data, manquesVisibles }}
           direction={direction}
@@ -211,7 +214,7 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
             s={s}
             p={data.precedente}
             periode={periodeCalcul}
-            precedente={precedente}
+            precedente={comparaison}
             hebergement={data.hebergement}
             comparable={etats.couverture === 'ready' && ventesComparables(data.precedente?.ventes)}
             direction={direction}

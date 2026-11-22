@@ -8,6 +8,7 @@ import {
 } from '../../utils/dateHelpers.js';
 import { SERVICE_META, SERVICES_AFFICHES } from './statutsReservation.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
+import { libelleTagAllergene } from '../../utils/allergenes.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Planning de la semaine : les réservations par NOM, service par service.
@@ -53,7 +54,7 @@ function ResaPuce({ resa, svc, onOpen }) {
   const passeport = !!resa.passeport_gourmand;
   const allergies = (Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [])
     .filter((t) => t.type_tag === 'allergene' && t.valeur)
-    .map((t) => t.valeur);
+    .map((t) => libelleTagAllergene(t.valeur));
   const heure = (resa.heure_arrivee || '').slice(0, 5);
   const titre = [
     `${heure} ${resa.nom}, ${pluriel(resa.nb_couverts || 0, 'couvert')}`,
