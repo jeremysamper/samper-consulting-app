@@ -344,15 +344,21 @@ export const SOPS = SOP_TEMPLATES.slice(0, 5).map((t, i) => ({
   updated_at: '2026-03-01T08:00:00Z',
 }));
 
+// Lot 5 : les types sont ceux de la base ('folder', 'file' : l'écran ne
+// reconnaissait pas 'dossier' et 'fichier') ; le dossier HACCP porte le nom
+// qu'ouvre le module HACCP ; les contrats sont réservés à la direction
+// (roles_visibles vide).
 export const DOCUMENTS = [
-  { id: 'doc-dossier-hygiene', parent_id: null, type: 'dossier', nom: 'Hygiène et HACCP', storage_path: null, mime_type: null, taille: null },
-  { id: 'doc-dossier-rh', parent_id: null, type: 'dossier', nom: 'Équipe', storage_path: null, mime_type: null, taille: null },
-  { id: 'doc-dossier-fournisseurs', parent_id: null, type: 'dossier', nom: 'Fournisseurs', storage_path: null, mime_type: null, taille: null },
-  { id: 'doc-plan-nettoyage', parent_id: 'doc-dossier-hygiene', type: 'fichier', nom: 'Plan de nettoyage.pdf', storage_path: 'demo/plan-nettoyage.pdf', mime_type: 'application/pdf', taille: 184320 },
-  { id: 'doc-autocontrole', parent_id: 'doc-dossier-hygiene', type: 'fichier', nom: 'Concept d\'autocontrôle.pdf', storage_path: 'demo/autocontrole.pdf', mime_type: 'application/pdf', taille: 402112 },
-  { id: 'doc-reglement', parent_id: 'doc-dossier-rh', type: 'fichier', nom: 'Règlement du personnel.pdf', storage_path: 'demo/reglement.pdf', mime_type: 'application/pdf', taille: 251904 },
-  { id: 'doc-conditions', parent_id: 'doc-dossier-fournisseurs', type: 'fichier', nom: 'Conditions Primeurs du Rhône.pdf', storage_path: 'demo/conditions.pdf', mime_type: 'application/pdf', taille: 96256 },
-].map((d) => ({ ...d, etablissement_id: ETAB, uploaded_by: 'demo-patron', description: null, created_at: '2026-04-01T08:00:00Z', updated_at: '2026-04-01T08:00:00Z' }));
+  { id: 'doc-dossier-hygiene', parent_id: null, type: 'folder', nom: 'HACCP', storage_path: null, mime_type: null, taille: null },
+  { id: 'doc-dossier-rh', parent_id: null, type: 'folder', nom: 'Équipe', storage_path: null, mime_type: null, taille: null },
+  { id: 'doc-dossier-fournisseurs', parent_id: null, type: 'folder', nom: 'Fournisseurs', storage_path: null, mime_type: null, taille: null },
+  { id: 'doc-dossier-contrats', parent_id: null, type: 'folder', nom: 'Contrats', storage_path: null, mime_type: null, taille: null, roles_visibles: [] },
+  { id: 'doc-plan-nettoyage', parent_id: 'doc-dossier-hygiene', type: 'file', nom: 'Plan de nettoyage.pdf', storage_path: 'demo/plan-nettoyage.pdf', mime_type: 'application/pdf', taille: 184320 },
+  { id: 'doc-autocontrole', parent_id: 'doc-dossier-hygiene', type: 'file', nom: 'Concept d\'autocontrôle.pdf', storage_path: 'demo/autocontrole.pdf', mime_type: 'application/pdf', taille: 402112 },
+  { id: 'doc-reglement', parent_id: 'doc-dossier-rh', type: 'file', nom: 'Règlement du personnel.pdf', storage_path: 'demo/reglement.pdf', mime_type: 'application/pdf', taille: 251904 },
+  { id: 'doc-conditions', parent_id: 'doc-dossier-fournisseurs', type: 'file', nom: 'Conditions Primeurs du Rhône.pdf', storage_path: 'demo/conditions.pdf', mime_type: 'application/pdf', taille: 96256 },
+  { id: 'doc-contrat-ines', parent_id: 'doc-dossier-contrats', type: 'file', nom: 'Contrat Inès Garnier.pdf', storage_path: 'demo/contrat-ines.pdf', mime_type: 'application/pdf', taille: 128000 },
+].map((d) => ({ roles_visibles: null, ...d, etablissement_id: ETAB, uploaded_by: 'demo-patron', description: null, created_at: '2026-04-01T08:00:00Z', updated_at: '2026-04-01T08:00:00Z' }));
 
 // ── Messages ────────────────────────────────────────────────────────────────
 
