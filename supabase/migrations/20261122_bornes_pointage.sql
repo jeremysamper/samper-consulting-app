@@ -107,8 +107,9 @@ create table if not exists public.bornes_pointage_essais (
   user_id           text,
   resultat          text not null check (resultat in ('arrivee', 'depart', 'deja', 'code_faux', 'attente', 'revoquee', 'hors_fenetre')),
   client_uuid       uuid unique,
-  -- Pointage réussi fait en ligne (sans heure de geste) : seule preuve que la
-  -- file de la borne était déjà partie.
+  -- Appel fait en ligne (sans heure de geste), réussi ou non : la borne
+  -- n'appelle en ligne qu'une file vide, c'est la preuve que sa file était
+  -- déjà partie.
   en_ligne          boolean not null default false,
   event_at          timestamptz not null default now(),
   created_at        timestamptz not null default now()
@@ -618,8 +619,8 @@ begin
     if not exists (select 1 from bornes_pointage_essais
                     where borne_id = v_borne.id and resultat = 'revoquee'
                       and created_at > now() - interval '1 minute') then
-      insert into bornes_pointage_essais (borne_id, etablissement_id, resultat, client_uuid, event_at)
-      values (v_borne.id, v_borne.etablissement_id, 'revoquee', p_client_uuid, coalesce(p_event_at, now()));
+      insert into bornes_pointage_essais (borne_id, etablissement_id, resultat, client_uuid, event_at, en_ligne)
+      values (v_borne.id, v_borne.etablissement_id, 'revoquee', p_client_uuid, coalesce(p_event_at, now()), p_event_at is null);
     end if;
     return jsonb_build_object('ok', false, 'raison', 'revoquee');
   end if;
@@ -651,8 +652,8 @@ begin
     if not exists (select 1 from bornes_pointage_essais
                     where borne_id = v_borne.id and resultat = 'attente'
                       and created_at > now() - interval '1 minute') then
-      insert into bornes_pointage_essais (borne_id, etablissement_id, resultat, event_at)
-      values (v_borne.id, v_borne.etablissement_id, 'attente', coalesce(p_event_at, now()));
+      insert into bornes_pointage_essais (borne_id, etablissement_id, resultat, event_at, en_ligne)
+      values (v_borne.id, v_borne.etablissement_id, 'attente', coalesce(p_event_at, now()), p_event_at is null);
     end if;
     return jsonb_build_object('ok', false, 'raison', 'attente',
       'secondes', greatest(1, ceil(extract(epoch from (v_derniers[1] + v_pause - now())))::int));
@@ -675,10 +676,10 @@ begin
     return jsonb_build_object('ok', false, 'raison', 'hors_fenetre');
   end if;
   -- Un rejeu n'est cru que pour une coupure que la base a pu voir : si la
-  -- borne a réussi un pointage en ligne plus d'une minute après l'heure
-  -- annoncée, sa file était déjà partie (la borne ne pointe en ligne qu'une
-  -- file vide) ; ce geste est antidaté. Un code faux, une attente ou une
-  -- borne révoquée ne comptent pas.
+  -- borne a appelé en ligne (réussi ou non) plus d'une minute après l'heure
+  -- annoncée, sa file était déjà partie (la borne n'appelle en ligne qu'une
+  -- file vide) ; ce geste est antidaté. borne_etat ne compte pas : il passe
+  -- à l'ouverture de la borne, avant le rejeu.
   if p_event_at is not null and exists (
     select 1 from bornes_pointage_essais e
      where e.borne_id = v_borne.id
@@ -706,8 +707,8 @@ begin
        and p.actif is not false;
   end if;
   if v_user is null then
-    insert into bornes_pointage_essais (borne_id, etablissement_id, resultat, client_uuid, event_at)
-    values (v_borne.id, v_borne.etablissement_id, 'code_faux', p_client_uuid, v_at);
+    insert into bornes_pointage_essais (borne_id, etablissement_id, resultat, client_uuid, event_at, en_ligne)
+    values (v_borne.id, v_borne.etablissement_id, 'code_faux', p_client_uuid, v_at, p_event_at is null);
     return jsonb_build_object('ok', false, 'raison', 'code_faux', 'restants', greatest(0, 4 - v_echecs));
   end if;
 
