@@ -50,6 +50,9 @@ export const PARAMETRES_DEFAUT = {
   joursFermes: [],
   servicesFermes: {},
   messageEnLigne: '',
+  // Choix de la table sur le plan (lot L9) : non par défaut.
+  choixTable: false,
+  sallesChoixTable: [],
 };
 
 function depuisBase(r) {
@@ -71,6 +74,11 @@ function depuisBase(r) {
     joursFermes: r.jours_fermes || [],
     servicesFermes: r.services_fermes && typeof r.services_fermes === 'object' ? r.services_fermes : {},
     messageEnLigne: r.message_en_ligne || '',
+    choixTable: r.choix_table === true,
+    sallesChoixTable: Array.isArray(r.salles_choix_table) ? r.salles_choix_table : [],
+    // Faux quand la base n'a pas encore les colonnes (migration
+    // 20261122_reservation_choix_table) : rien n'y est alors écrit.
+    choixTableDispo: Object.prototype.hasOwnProperty.call(r, 'choix_table'),
   };
 }
 
@@ -121,6 +129,10 @@ function versBase(p) {
     jours_fermes: [...new Set(p.joursFermes || [])].sort(),
     services_fermes: nettoyerServicesFermes(p.servicesFermes),
     message_en_ligne: String(p.messageEnLigne || '').trim() || null,
+    ...(p.choixTableDispo === false ? {} : {
+      choix_table: Boolean(p.choixTable),
+      salles_choix_table: [...new Set((p.sallesChoixTable || []).filter((x) => typeof x === 'string' && x))],
+    }),
     updated_at: new Date().toISOString(),
   };
 }

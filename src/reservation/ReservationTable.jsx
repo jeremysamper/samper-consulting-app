@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, MapPin, Phone, X } from 'lucide-react';
 import { ALLERGENES } from '../utils/allergenes.js';
+import PlanChoixTable from './PlanChoixTable.jsx';
+import { libelleTable } from './choixTable.js';
 import './reservationTable.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8,6 +10,8 @@ import './reservationTable.css';
 //
 // Même principe que la réservation d'un soin (ReservationEnLigne.jsx), dans
 // l'ordre d'un appel au restaurant : combien, quand, puis les coordonnées.
+// Quand le restaurant le permet (lot L9), le visiteur choisit sa table sur le
+// plan après l'heure, ou laisse le restaurant choisir.
 // Selon le réglage du restaurant, la réservation est confirmée tout de suite
 // ou arrive « À confirmer » dans le module Prévisions.
 //
@@ -24,7 +28,13 @@ import './reservationTable.css';
 // contenu, fermeture, réservation envoyée. Rien de personnel dans ces messages.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const URL_FONCTION = `${import.meta.env.VITE_SUPABASE_URL || 'https://ppmtoiqgajwcdkbnrcll.supabase.co'}/functions/v1/spa-mailer`;
+const URL_BASE = import.meta.env.VITE_SUPABASE_URL || 'https://ppmtoiqgajwcdkbnrcll.supabase.co';
+const URL_FONCTION = `${URL_BASE}/functions/v1/spa-mailer`;
+// Plan des tables (lot L9) : RPC anonyme table_en_ligne_plan, appelée avec la
+// clé publique du projet (la même que l'app). Elle ne rend que la géométrie
+// des tables et un booléen « libre ».
+const URL_PLAN = `${URL_BASE}/rest/v1/rpc/table_en_ligne_plan`;
+const CLE_PUBLIQUE = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_Vp4K1VX34PBe4lID0qFS1w_JD2sc5Ov';
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 const JOURS_COURTS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
@@ -86,6 +96,16 @@ async function appeler(action, charge) {
   return { ok: r.ok, statut: r.status, corps };
 }
 
+async function lirePlan(charge) {
+  const r = await fetch(URL_PLAN, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: CLE_PUBLIQUE },
+    body: JSON.stringify(charge),
+  });
+  if (!r.ok) throw new Error(String(r.status));
+  return r.json();
+}
+
 function prevenirParent(type, valeur) {
   if (window.parent === window) return;
   try { window.parent.postMessage({ source: 'table-reservation', type, valeur }, '*'); } catch { /* parent fermé */ }
@@ -126,11 +146,15 @@ export default function ReservationTable() {
   const parametres = useMemo(lireParametres, []);
   const [infos, setInfos] = useState(null);
   const [etatChargement, setEtatChargement] = useState('chargement'); // chargement | pret | ferme | erreur
-  const [etape, setEtape] = useState('moment'); // moment | coordonnees | envoye
+  const [etape, setEtape] = useState('moment'); // moment | table | coordonnees | envoye
   const [couverts, setCouverts] = useState(2);
   const [date, setDate] = useState(null);
   const [creneaux, setCreneaux] = useState({ cle: null, services: [], chargement: false });
   const [choix, setChoix] = useState(null); // { service, heure }
+  // Table choisie sur le plan (lot L9) : { id, nom, places } ; null = peu importe.
+  const [table, setTable] = useState(null);
+  const [plan, setPlan] = useState({ cle: null, donnees: null, chargement: false, erreur: false });
+  const [versionPlan, setVersionPlan] = useState(0);
   const [form, setForm] = useState({ prenom: '', nom: '', email: '', telephone: '', message: '', siteWeb: '', actus: false, allergenes: [] });
   const basculerAllergene = (id) => setForm((p) => ({
     ...p, allergenes: p.allergenes.includes(id) ? p.allergenes.filter((x) => x !== id) : [...p.allergenes, id],
@@ -198,6 +222,19 @@ export default function ReservationTable() {
     if (date && etape === 'moment') chargerCreneaux(date, couverts);
   }, [date, couverts, etape, chargerCreneaux]);
 
+  // Plan des tables, relu à chaque entrée dans l'étape (une table a pu être
+  // prise entre-temps) et après un refus « table prise » (versionPlan).
+  useEffect(() => {
+    if (etape !== 'table' || !choix || !date) return undefined;
+    const cle = `${date}|${choix.service}|${choix.heure}|${couverts}|${versionPlan}`;
+    let vivant = true;
+    setPlan({ cle, donnees: null, chargement: true, erreur: false });
+    lirePlan({ p_adresse: parametres.slug, p_jour: date, p_heure: choix.heure, p_personnes: couverts, p_service: choix.service })
+      .then((donnees) => { if (vivant) setPlan({ cle, donnees, chargement: false, erreur: false }); })
+      .catch(() => { if (vivant) setPlan({ cle, donnees: null, chargement: false, erreur: true }); });
+    return () => { vivant = false; };
+  }, [etape, choix, date, couverts, versionPlan, parametres.slug]);
+
   // Le jour choisi glisse dans la bande quand il était caché (jour suivant,
   // autre date). La bande seule défile : jamais la page ni le site parent.
   useEffect(() => {
@@ -219,6 +256,7 @@ export default function ReservationTable() {
   function choisirJour(iso) {
     setErreur(null);
     setChoix(null);
+    setTable(null);
     setDate(iso);
   }
 
@@ -247,6 +285,8 @@ export default function ReservationTable() {
         // croise avec les fiches des plats commandés. L'équipe la lit aussi
         // dans les notes et dans l'e-mail.
         message: messageAvecAllergies(f.message, f.allergenes),
+        // Table choisie sur le plan : revérifiée par la base à l'envoi.
+        ...(table ? { table: table.id } : {}),
         // Accord pour les actualités et bons cadeaux : décoché par défaut,
         // seul un geste du client le donne (nLPD / RGPD).
         consentement: f.actus === true,
@@ -259,8 +299,15 @@ export default function ReservationTable() {
         return;
       }
       setErreur(corps.error || 'La réservation n\'a pas pu être envoyée. Réessayez.');
-      if (statut === 409) {
+      if (statut === 409 && corps.code === 'table_prise') {
+        // La table vient d'être prise : le plan relu, une autre table ou
+        // « peu importe ».
+        setTable(null);
+        setVersionPlan((v) => v + 1);
+        setEtape('table');
+      } else if (statut === 409) {
         setChoix(null);
+        setTable(null);
         setEtape('moment');
       }
     } catch {
@@ -272,6 +319,7 @@ export default function ReservationTable() {
 
   function recommencer() {
     setChoix(null);
+    setTable(null);
     setResultat(null);
     setForm((p) => ({ ...p, message: '', allergenes: [] }));
     debutSaisie.current = performance.now();
@@ -291,6 +339,9 @@ export default function ReservationTable() {
   const cleCreneaux = `${date}|${couverts}`;
   const services = creneaux.cle === cleCreneaux ? creneaux.services : [];
   const aucuneHeure = !creneaux.chargement && creneaux.cle === cleCreneaux && !services.some((x) => x.creneaux.length);
+  const choixTable = infos?.choixTable === true;
+  const sallesPlan = plan.donnees?.ouvert ? (plan.donnees.salles || []).filter((x) => x.tables?.length) : [];
+  const aucuneLibre = sallesPlan.length > 0 && !sallesPlan.some((x) => x.tables.some((t) => t.libre));
 
   return (
     <div className="rt-racine" style={racine} ref={haut}>
@@ -342,7 +393,7 @@ export default function ReservationTable() {
               )}
             </header>
 
-            {etape !== 'envoye' && <Avancement etape={etape} />}
+            {etape !== 'envoye' && <Avancement etape={etape} avecTable={choixTable} />}
 
             {erreur && <div key={erreur} role="alert" className="rt-apparait" style={s.erreur}>{erreur}</div>}
 
@@ -361,7 +412,7 @@ export default function ReservationTable() {
                         aria-label={personnes(n)}
                         data-actif={couverts === n ? '1' : undefined}
                         className="rt-choix rt-puce"
-                        onClick={() => { setChoix(null); setCouverts(n); }}
+                        onClick={() => { setChoix(null); setTable(null); setCouverts(n); }}
                       >
                         {n}
                       </button>
@@ -372,7 +423,7 @@ export default function ReservationTable() {
                         value={couverts > 10 ? couverts : ''}
                         data-actif={couverts > 10 ? '1' : undefined}
                         className="rt-choix rt-puce rt-puce-liste"
-                        onChange={(e) => { if (e.target.value) { setChoix(null); setCouverts(Number(e.target.value)); } }}
+                        onChange={(e) => { if (e.target.value) { setChoix(null); setTable(null); setCouverts(Number(e.target.value)); } }}
                       >
                         <option value="">11+</option>
                         {Array.from({ length: max - 10 }, (_, i) => i + 11).map((n) => <option key={n} value={n}>{n}</option>)}
@@ -454,7 +505,7 @@ export default function ReservationTable() {
                                 data-actif={choix?.service === x.service && choix?.heure === h ? '1' : undefined}
                                 className="rt-choix rt-creneau rt-apparait"
                                 style={delai(i + iService * 4)}
-                                onClick={() => { setChoix({ service: x.service, heure: h }); allerA('coordonnees'); }}
+                                onClick={() => { setChoix({ service: x.service, heure: h }); setTable(null); allerA(choixTable ? 'table' : 'coordonnees'); }}
                               >
                                 {h}
                               </button>
@@ -470,10 +521,48 @@ export default function ReservationTable() {
               </section>
             )}
 
-            {/* ── 2. Les coordonnées ── */}
+            {/* ── 2. La table, sur le plan (si le restaurant le permet) ── */}
+            {etape === 'table' && choix && (
+              <section key="table" style={s.pile}>
+                <Recap date={date} choix={choix} couverts={couverts} onModifier={() => allerA('moment')} />
+                <div className="rt-entree" style={{ ...s.carte, '--rt-delai': '80ms' }}>
+                  <h2 style={s.titreCarte}>Où souhaitez-vous vous asseoir{FINE}?</h2>
+                  <p style={s.note}>Touchez une table libre. Les tables grisées ne sont pas disponibles pour ce moment.</p>
+                  <div aria-live="polite">
+                    {plan.chargement && (
+                      <div aria-label="Chargement du plan" className="rt-squelette" style={{ height: 220, borderRadius: 14, marginTop: 16 }} />
+                    )}
+                    {!plan.chargement && plan.erreur && (
+                      <div className="rt-apparait" style={{ ...s.aucun, marginTop: 16 }}>Le plan n'a pas pu se charger. Vous pouvez laisser le restaurant choisir votre table.</div>
+                    )}
+                    {!plan.chargement && !plan.erreur && plan.donnees && !sallesPlan.length && (
+                      <div className="rt-apparait" style={{ ...s.aucun, marginTop: 16 }}>Le choix de la table n'est pas proposé pour ce moment. Le restaurant vous placera.</div>
+                    )}
+                    {!plan.chargement && aucuneLibre && (
+                      <div className="rt-apparait" style={{ ...s.aucun, marginTop: 16 }}>Plus de table à choisir à cette heure pour ce nombre de personnes. Le restaurant vous placera.</div>
+                    )}
+                    {!plan.chargement && sallesPlan.length > 0 && !aucuneLibre && (
+                      <PlanChoixTable key={plan.cle} salles={sallesPlan} choisie={table?.id || null} onChoisir={(t) => { setErreur(null); setTable(t); }} />
+                    )}
+                  </div>
+                  <div style={s.actionsTable}>
+                    {table && (
+                      <button type="button" className="rt-bouton rt-principal rt-apparait" style={s.principal} onClick={() => allerA('coordonnees')}>
+                        Continuer avec cette table
+                      </button>
+                    )}
+                    <button type="button" className="rt-bouton rt-secondaire" style={{ ...s.principal, minHeight: 48 }} onClick={() => { setTable(null); allerA('coordonnees'); }}>
+                      Peu importe la table
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            {/* ── 3. Les coordonnées ── */}
             {etape === 'coordonnees' && choix && (
               <form key="coordonnees" onSubmit={envoyer} noValidate style={s.pile}>
-                <Recap date={date} choix={choix} couverts={couverts} onModifier={() => allerA('moment')} />
+                <Recap date={date} choix={choix} couverts={couverts} table={table} onModifier={() => allerA(choixTable ? 'table' : 'moment')} />
                 <div className="rt-entree" style={{ ...s.carte, '--rt-delai': '80ms' }}>
                   <h2 style={s.titreCarte}>Vos coordonnées</h2>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginTop: 16 }}>
@@ -571,6 +660,7 @@ export default function ReservationTable() {
                     ['Table pour', personnes(couverts)],
                     ['Le', jourLong(date)],
                     ['À', choix.heure],
+                    ...(table ? [['Table', String(table.nom)]] : []),
                     ['Au nom de', `${form.prenom.trim()} ${form.nom.trim()}`],
                     ...(form.allergenes.length
                       ? [['Allergies', ALLERGENES.filter((a) => form.allergenes.includes(a.id)).map((a) => a.label).join(', ')]]
@@ -600,12 +690,16 @@ export default function ReservationTable() {
   );
 }
 
-// Deux étapes avant l'envoi : une barre fine par étape, remplie en douceur.
-function Avancement({ etape }) {
-  const deuxieme = etape === 'coordonnees';
+// Deux étapes avant l'envoi (trois avec le choix de la table) : une barre
+// fine par étape, remplie en douceur.
+const ETAPES = [['moment', 'Le moment'], ['coordonnees', 'Vos coordonnées']];
+const ETAPES_TABLE = [['moment', 'Le moment'], ['table', 'La table'], ['coordonnees', 'Vos coordonnées']];
+function Avancement({ etape, avecTable = false }) {
+  const etapes = avecTable ? ETAPES_TABLE : ETAPES;
+  const rang = Math.max(0, etapes.findIndex(([id]) => id === etape));
   return (
-    <div className="rt-entree" style={{ ...s.avancement, '--rt-delai': '30ms' }} aria-label={deuxieme ? 'Étape 2 sur 2' : 'Étape 1 sur 2'}>
-      {[['Le moment', true], ['Vos coordonnées', deuxieme]].map(([libelle, fait]) => (
+    <div className="rt-entree" style={{ ...s.avancement, '--rt-delai': '30ms' }} aria-label={`Étape ${rang + 1} sur ${etapes.length}`}>
+      {etapes.map(([, libelle], i) => [libelle, i <= rang]).map(([libelle, fait]) => (
         <div key={libelle} style={{ flex: 1, minWidth: 0 }}>
           <div className="rt-barre"><span style={{ transform: `scaleX(${fait ? 1 : 0})` }} /></div>
           <div style={{ ...s.etapeLibelle, color: fait ? 'var(--t-ink)' : 'var(--t-ink3)' }}>{libelle}</div>
@@ -627,13 +721,14 @@ function Champ({ label, id, aide, children }) {
 
 // Le choix en cours, en aplat sombre (couleur d'action du site) : c'est ce
 // que le visiteur confirme en remplissant ses coordonnées.
-function Recap({ date, choix, couverts, onModifier }) {
+function Recap({ date, choix, couverts, table = null, onModifier }) {
   return (
     <div className="rt-entree" style={s.recap}>
       <div style={{ minWidth: 0, flex: '1 1 auto' }}>
         <div style={{ fontSize: 12, opacity: 0.78 }}>Votre table</div>
         <div style={{ fontSize: 24, fontWeight: 400, lineHeight: 1.2, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>{personnes(couverts)}</div>
         <div style={{ fontSize: 14, marginTop: 2, opacity: 0.86 }}>{jourLong(date)}, {choix.heure}</div>
+        {table && <div style={{ fontSize: 14, marginTop: 2, opacity: 0.86 }} data-no-translate>{libelleTable(table.nom)}</div>}
       </div>
       <button type="button" onClick={onModifier} className="rt-bouton rt-inverse" style={{ flexShrink: 0, minHeight: 40, padding: '0 16px', fontSize: 14 }}>
         <ArrowLeft size={15} strokeWidth={2} aria-hidden="true" /> Changer
@@ -705,6 +800,7 @@ const s = {
   accord: { display: 'flex', alignItems: 'flex-start', gap: 10, minHeight: 44, cursor: 'pointer' },
   piege: { position: 'absolute', left: -10000, top: 'auto', width: 1, height: 1, overflow: 'hidden' },
   principal: { width: '100%', minHeight: 52, fontSize: 16, marginTop: 4 },
+  actionsTable: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 20 },
   bon: { margin: '20px 0', padding: '4px 16px', borderRadius: 14, background: 'var(--t-piste)' },
   bonLigne: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12,

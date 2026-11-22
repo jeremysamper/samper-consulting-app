@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import BoiteEnvoiReservations from './BoiteEnvoiReservations.jsx';
+import ChoixTableReglage from './ChoixTableReglage.jsx';
 import { encadreStyle } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
@@ -266,6 +267,18 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
                 </label>
               ))}
             </div>
+
+            {/* ── Choix de la table (lot L9), quand la base connaît le réglage ── */}
+            {form.choixTableDispo !== false && (
+              <ChoixTableReglage
+                etablissementId={etabId}
+                actif={Boolean(form.choixTable)}
+                salles={form.sallesChoixTable || []}
+                onActif={(v) => set('choixTable', v)}
+                onSalles={(v) => set('sallesChoixTable', v)}
+                styles={s}
+              />
+            )}
 
             {/* ── Horaires ── */}
             <div style={s.carte}>

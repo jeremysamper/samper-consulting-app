@@ -107,6 +107,62 @@
 .rt-coche { animation: rt-rond 0.42s cubic-bezier(0.2, 0.8, 0.2, 1.2) both; }
 .rt-coche path { stroke-dasharray: 1; animation: rt-trait 0.42s 0.24s cubic-bezier(0.4, 0, 0.2, 1) both; }
 
+/* ── Plan de salle : choisir sa table (lot L9) ──
+   Le sol de la salle en --t-bg, sur toute la largeur de la carte ; une
+   grande salle glisse sous le doigt au lieu de rétrécir ses tables. */
+.rt-salles { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+.rt-salle { min-height: 44px; padding: 0 16px; border-radius: 999px; gap: 8px; font-size: 15px; font-weight: 500; }
+.rt-salle-compte { font-size: 13px; font-weight: 400; opacity: 0.8; }
+.rt-plan-cadre {
+  margin: 16px -20px 0; padding: 12px 0; background: var(--t-bg);
+  overflow-x: hidden; overflow-y: hidden; overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: var(--t-line) transparent;
+}
+.rt-plan-cadre[data-defile="1"] { overflow-x: auto; }
+.rt-plan { position: relative; margin: 0 auto; }
+.rt-plan-aide { margin: 8px 0 0; font-size: 13px; line-height: 1.5; color: var(--t-ink3); }
+
+.rt-decor {
+  position: absolute; box-sizing: border-box; transform-origin: center;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--t-ink3); pointer-events: none; border-radius: 6px;
+  background: var(--t-piste);
+}
+.rt-decor[data-type="mur"] { background: var(--t-ink3); border-radius: 2px; }
+.rt-decor[data-type="baie"] { background: var(--t-champ); border-radius: 2px; }
+.rt-decor[data-type="zone"] { background: transparent; border-width: 1px; border-style: dashed; border-color: var(--t-line); }
+.rt-decor[data-type="porte"] { background: transparent; border-width: 1px; border-style: solid; border-color: var(--t-line); border-radius: 0 0 100% 0; }
+.rt-decor[data-type="plante"], .rt-decor[data-type="pilier"] { border-radius: 999px; }
+
+.rt-table {
+  position: absolute; box-sizing: border-box; padding: 0; margin: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font); font-weight: 500; font-variant-numeric: tabular-nums; line-height: 1;
+  border-width: 1.5px; border-style: solid;
+  transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.14s ease, box-shadow 0.18s ease;
+}
+.rt-table[data-etat="libre"] { background: var(--t-surface); border-color: var(--t-ink2); color: var(--t-ink); cursor: pointer; }
+.rt-table[data-etat="choisie"] { background: var(--t-accent); border-color: var(--t-accent); color: var(--t-on-accent); cursor: pointer; box-shadow: var(--t-sh); }
+.rt-table[data-etat="prise"] { background: var(--t-piste); border-color: var(--t-line); }
+button.rt-table:active { transform: scale(0.95); }
+/* Cible de 44 px au doigt pour une petite table (place de bar) : la zone
+   touchée déborde sans rien dessiner. */
+button.rt-table::before { content: ""; position: absolute; inset: min(0px, calc((100% - 44px) / 2)); }
+.rt-table-nom { position: relative; max-width: 100%; overflow: hidden; text-overflow: clip; white-space: nowrap; padding: 0 2px; }
+.rt-chaise { position: absolute; border-radius: 999px; background: var(--t-line); pointer-events: none; transition: background-color 0.18s ease; }
+.rt-table[data-etat="libre"] .rt-chaise { background: var(--t-champ); }
+.rt-table[data-etat="choisie"] .rt-chaise { background: var(--t-accent); }
+@media (hover: hover) {
+  .rt-table[data-etat="libre"]:hover { background: var(--t-selection); }
+}
+
+.rt-legende { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; font-size: 13px; color: var(--t-ink2); }
+.rt-legende span { display: inline-flex; align-items: center; gap: 6px; }
+.rt-legende i { display: inline-block; width: 14px; height: 14px; border-radius: 4px; border-width: 1.5px; border-style: solid; box-sizing: border-box; }
+.rt-legende i[data-etat="libre"] { background: var(--t-surface); border-color: var(--t-ink2); }
+.rt-legende i[data-etat="choisie"] { background: var(--t-accent); border-color: var(--t-accent); }
+.rt-legende i[data-etat="prise"] { background: var(--t-piste); border-color: var(--t-line); }
+
 /* ── Focus au clavier : hors de la pilule, visible sur l'aplat sombre ── */
 .rt-racine :focus-visible { outline: 2px solid var(--t-focus); outline-offset: 2px; }
 .rt-racine .rt-champ:focus-visible { outline: none; }

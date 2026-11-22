@@ -227,6 +227,9 @@ export const RESERVATION_EN_LIGNE_PARAMETRES = [{
   rythme: {},
   capacite_jours: {},
   services_fermes: {},
+  // Choix de la table sur le plan (lot L9), ouvert dans la grande salle.
+  choix_table: true,
+  salles_choix_table: ['salle-principale'],
 }];
 
 export function genererPrevisions(reservations) {

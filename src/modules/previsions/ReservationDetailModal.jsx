@@ -5,6 +5,7 @@ import { ouvrirGroupe } from '../../services/navigationService.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
 import { STATUTS, metaStatut } from './statutsReservation.js';
 import ClientFiche from './ClientFiche.jsx';
+import { supabase } from '../../services/supabase.js';
 
 export default function ReservationDetailModal({
   resa, onClose, onResaUpdated, onEdit, onStatut, onTraiter, canEdit = true,
@@ -22,6 +23,16 @@ export default function ReservationDetailModal({
   const [passeportLocal, setPasseportLocal] = useState(null);
   const passeport = passeportLocal ?? !!resa.passeport_gourmand;
   const tags = Array.isArray(resa.reservation_tags) ? resa.reservation_tags : [];
+  // Table choisie par le client en ligne (lot L9) : son numéro, lu à part.
+  // La place réelle reste celle du plan de salle, que l'équipe change.
+  const [tableDemandee, setTableDemandee] = useState(null);
+  useEffect(() => {
+    if (!resa.table_demandee_id) { setTableDemandee(null); return undefined; }
+    let vivant = true;
+    supabase.from('salle_tables').select('nom').eq('id', resa.table_demandee_id).maybeSingle()
+      .then(({ data }) => { if (vivant) setTableDemandee(data?.nom || null); });
+    return () => { vivant = false; };
+  }, [resa.table_demandee_id]);
 
   async function basculerPasseport() {
     const valeur = !passeport;
@@ -244,6 +255,12 @@ export default function ReservationDetailModal({
             )}
           />
           {resa.origine === 'en_ligne' && <LigneDetail label="Origine" valeur="Réservée en ligne" />}
+          {tableDemandee && (
+            <LigneDetail
+              label="Table demandée"
+              valeur={<>{/^\d+[a-z]?$/i.test(tableDemandee) ? 'Table ' : ''}<span data-no-translate>{tableDemandee}</span>, choisie par le client. Vous pouvez la changer sur le plan de salle.</>}
+            />
+          )}
           {resa.origine === 'passage' && <LigneDetail label="Origine" valeur="Client de passage" />}
           {resa.est_groupe && <LigneDetail label="Type" valeur={groupeLie ? 'Groupe, saisi dans Groupes' : 'Groupe'} />}
           <LigneDetail label="Notes"     valeur={resa.notes_libres} brut />

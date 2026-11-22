@@ -58,6 +58,12 @@
 //                                    resa_reserver_en_ligne (verrou, capacité),
 //                                    puis complète la fiche client (resa_clients :
 //                                    prénom, nom, accord pour les actualités)
+//                                    Table choisie sur le plan (lot L9,
+//                                    migration 20261122) : { table } passé à
+//                                    resa_reserver_en_ligne (p_table), qui la
+//                                    revérifie sous verrou ; prise entre-temps :
+//                                    409 code 'table_prise'. Le plan lui-même
+//                                    vient de la RPC anonyme table_en_ligne_plan.
 //   resa_statut            équipe  → e-mail « confirmée » ou « refusée » après
 //                                    traitement d'une demande venue du site
 //   resa_confirmation      équipe  → { reservationId, evenement: 'creation' |
@@ -989,6 +995,9 @@ async function actionPublique(req: Request, sb: Admin, cfg: Cfg, action: string,
   const heure = String(body.heure || '');
   const naissance = String(body.dateNaissance || '');
   const consentement = body.consentement === true;
+  // Table choisie sur le plan (facultative) : un id de salle_tables, revérifié
+  // par resa_reserver_en_ligne. Rien de plus n'est cru du client.
+  const table = typeof body.table === 'string' && /^[0-9a-z-]{1,64}$/i.test(body.table) ? body.table : '';
 
   // Robots : champ piège rempli ou formulaire envoyé en moins de 3 secondes.
   // La durée est mesurée par la page elle-même (performance.now), pas par
@@ -1076,6 +1085,8 @@ type ParamsTable = {
   capacite_demi_heure: number | null; rythme: Record<string, Record<string, number>> | null;
   capacite_jours: Record<string, Record<string, number>> | null;
   services_fermes: Record<string, string[]> | null;
+  // Lot L9 (migration 20261122) : absents d'une base plus ancienne.
+  choix_table?: boolean; salles_choix_table?: string[] | null;
 };
 
 // Plafond du service ce jour-là : réglage propre au jour de la semaine, sinon
@@ -1198,6 +1209,7 @@ const SERVICE_LIBELLE: Record<string, string> = { midi: 'Midi', soir: 'Soir', br
 function recapTable(etab: Etab, r: {
   nom?: string | null; date_service: string; service?: string | null; heure_arrivee: string;
   nb_couverts: number; telephone?: string | null; notes_libres?: string | null; origine?: string | null;
+  table?: string | null;
 }): Recap {
   const recap: Recap = [
     ['Établissement', etab.nom],
@@ -1206,6 +1218,7 @@ function recapTable(etab: Etab, r: {
   ];
   if (r.service && SERVICE_LIBELLE[r.service]) recap.push(['Service', SERVICE_LIBELLE[r.service]]);
   recap.push(['Nombre de personnes', String(Number(r.nb_couverts || 0))]);
+  if (r.table) recap.push(['Table souhaitée', r.table]);
   if (r.nom) recap.push(['Au nom de', r.nom]);
   if (r.telephone) recap.push(['Téléphone', r.telephone]);
   if (r.origine === 'en_ligne' && r.notes_libres) recap.push(['Votre message', r.notes_libres]);
@@ -1291,6 +1304,9 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
       etablissement: { nom: etab.nom, adresse: etab.adresse || null, tel: etab.tel || null },
       message: p.message_en_ligne || null,
       mode: p.mode,
+      // Choix de la table sur le plan (lot L9) : la page affiche le plan des
+      // salles ouvertes après l'heure (RPC table_en_ligne_plan).
+      choixTable: p.choix_table === true && (p.salles_choix_table || []).length > 0,
       maxCouverts: p.max_couverts,
       horizonJours: p.horizon_jours,
       joursOuverts: jours,
@@ -1360,6 +1376,9 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
   const { data: r, error } = await sb.rpc('resa_reserver_en_ligne', {
     p_etab: etab.id, p_date: date, p_service: service, p_heure: heure, p_couverts: couverts,
     p_nom: `${prenom} ${nom}`, p_telephone: telephone, p_email: email, p_message: message || null,
+    // Seulement quand une table est choisie : sans elle, l'appel reste celui
+    // d'avant le lot L9 (fonctionne aussi sur une base sans la migration).
+    ...(table ? { p_table: table } : {}),
   });
   if (error) {
     console.error('[spa-mailer] resa_reserver_en_ligne', error);
@@ -1375,6 +1394,7 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
       service_ferme: 'Ce service est fermé ce jour-là. Choisissez un autre moment.',
       couverts: `En ligne, jusqu'à ${personnes(p.max_couverts)}. Pour un groupe, appelez-nous.`,
       ferme: 'La réservation en ligne n\'est pas ouverte pour ce restaurant.',
+      table_prise: 'Cette table vient d\'être prise. Choisissez-en une autre, ou laissez le restaurant choisir.',
     };
     return json({ error: messages[r.erreur] || 'Heure indisponible.', code: r.erreur }, 409);
   }
@@ -1383,9 +1403,10 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
 
   const confirmee = r.statut === 'confirme';
   const quand = `${jourLong(date)} à ${heure}`;
+  const tableNom = typeof r.table_nom === 'string' && r.table_nom.trim() ? r.table_nom.trim().slice(0, 40) : null;
   const recap = recapTable(etab, {
     nom: `${prenom} ${nom}`, date_service: date, service, heure_arrivee: heure, nb_couverts: couverts,
-    telephone, notes_libres: message || null, origine: 'en_ligne',
+    telephone, notes_libres: message || null, origine: 'en_ligne', table: tableNom,
   });
   await mailTable(sb, cfg, etab, confirmee
     ? {
@@ -1410,10 +1431,10 @@ async function actionTablePublique(req: Request, sb: Admin, cfg: Cfg, action: st
       email: etab.email,
       signature: 'Réservation en ligne',
       sujet: `${confirmee ? 'Nouvelle réservation' : 'Nouvelle demande'} en ligne : ${personnes(couverts)}, ${quand}`,
-      corps: `${prenom} ${nom} ${confirmee ? 'a réservé' : 'demande'} une table pour ${personnes(couverts)} le ${quand}.\n\nTéléphone : ${telephone}\nE-mail : ${email}${message ? `\n\nMessage : ${message}` : ''}\n\n${confirmee ? 'La réservation est déjà confirmée dans le module Réservations.' : 'La demande attend votre confirmation dans le module Réservations.'}`,
+      corps: `${prenom} ${nom} ${confirmee ? 'a réservé' : 'demande'} une table pour ${personnes(couverts)} le ${quand}.${tableNom ? `\nTable souhaitée : ${tableNom}, déjà posée sur le plan ; vous pouvez la changer.` : ''}\n\nTéléphone : ${telephone}\nE-mail : ${email}${message ? `\n\nMessage : ${message}` : ''}\n\n${confirmee ? 'La réservation est déjà confirmée dans le module Réservations.' : 'La demande attend votre confirmation dans le module Réservations.'}`,
     });
   }
-  return json({ ok: true, statut: r.statut, date, heure, couverts });
+  return json({ ok: true, statut: r.statut, date, heure, couverts, table: tableNom });
 }
 
 // ── Fiche client d'une réservation en ligne ───────────────────────

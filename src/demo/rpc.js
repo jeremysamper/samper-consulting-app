@@ -2,6 +2,7 @@
 // Chaque fonction rend la forme que l'app attend ; ce qui n'a pas de sens
 // hors production rend une erreur claire au lieu d'un faux succès.
 import { uuid } from './postgrest.js';
+import { planEnLigne } from '../reservation/choixTable.js';
 
 const heureZurich = () => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
 const jourZurich = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -453,6 +454,20 @@ const RPC = {
       bons: [],
       tpe: [],
     };
+  },
+  // Réservation de table en ligne (lot L9) : plan des salles ouvertes au
+  // choix, même calcul et même forme que la fonction de la base.
+  table_en_ligne_plan(ctx, a) {
+    const params = (ctx.db.reservation_en_ligne_parametres || [])
+      .find((p) => p.slug === String(a.p_adresse || '').trim().toLowerCase() && p.en_ligne_actif);
+    if (!params || !a.p_jour || !a.p_heure || a.p_personnes == null) return { ouvert: false, raison: params ? 'parametres' : 'ferme' };
+    const [h, m] = heureZurich().split(':').map(Number);
+    return planEnLigne({
+      params, salles: ctx.db.salles, tables: ctx.db.salle_tables, elements: ctx.db.salle_elements || [],
+      reservations: ctx.db.reservations, liens: ctx.db.reservation_tables || [], ajustements: ctx.db.salle_tables_service || [],
+      jour: a.p_jour, heure: String(a.p_heure).slice(0, 5), personnes: a.p_personnes, service: a.p_service || null,
+      aujourdhui: jourZurich(), maintenant: h * 60 + m,
+    });
   },
   caisse_tpe_rapport() { return { transactions: [], bouclements: [] }; },
   caisse_tpe_bouclement_poser() { throw new ErreurRpc('Aucun terminal de paiement n\'est relié dans la démo.'); },
