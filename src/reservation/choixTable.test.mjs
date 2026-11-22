@@ -7,7 +7,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { DUREE_TABLEE } from '../modules/salle/planTemps.js';
 import {
-  ECART_PLACES, cadragePlan, dureeTablee, libelleTable, planEnLigne, serviceDeLHeure, tableConvient, tablesLibres,
+  DEMANDE_JOURS, DEMANDE_MIN, DEMANDE_PART, ECART_PLACES, cadragePlan, dureeTablee, ecartContours, entreeDe,
+  planEnLigne, reperesTable, serviceDeLHeure, tableConvient, tablesDemandees, tablesLibres,
 } from './choixTable.js';
 
 const ETAB = 'etab-x';
@@ -119,7 +120,7 @@ test('plan de la démo : même forme que la RPC, rien sur une table prise', () =
   const t2 = p.salles[0].tables.find((t) => t.id === 't2');
   assert.equal(t2.nom, '2');
   for (const t of p.salles[0].tables) {
-    assert.deepEqual(Object.keys(t).sort(), ['forme', 'hauteur', 'id', 'largeur', 'libre', 'nom', 'pivotee', 'places', 'x', 'y']);
+    assert.deepEqual(Object.keys(t).sort(), ['demandee', 'forme', 'hauteur', 'id', 'largeur', 'libre', 'nom', 'pivotee', 'places', 'x', 'y']);
   }
   assert.equal(JSON.stringify(p).includes('confirme'), false);
 });
@@ -166,9 +167,90 @@ test('cadrage : une petite salle ne grossit pas au-delà de l’échelle maximal
   assert.equal(c.defile, false);
 });
 
-test('libellé : un numéro devient « Table 12 », un nom reste tel quel', () => {
-  assert.equal(libelleTable('12'), 'Table 12');
-  assert.equal(libelleTable('4b'), 'Table 4b');
-  assert.equal(libelleTable('Bar 2'), 'Bar 2');
-  assert.equal(libelleTable(''), 'Table');
+// ── Tables les plus demandées ──
+const passee = (id, jour, statut = 'parti') => ({ id, etablissement_id: ETAB, date_service: jour, statut });
+const demandees = (reservations, liens, opts = {}) => [...tablesDemandees({
+  tables: TABLES, reservations, liens, etablissementId: ETAB, sallesOuvertes: ['s1'], aujourdhui: '2026-11-22', ...opts,
+})].sort();
+// n réservations passées sur la table, à des jours différents.
+const sur = (table, n, depart = 0, statut = 'parti') => Array.from({ length: n }, (_, k) => {
+  const jour = new Date(Date.UTC(2026, 10, 21 - depart - k)).toISOString().slice(0, 10);
+  return { r: passee(`${table}-${depart + k}`, jour, statut), l: { reservation_id: `${table}-${depart + k}`, table_id: table } };
+});
+const histoire = (...lots) => ({ reservations: lots.flat().map((x) => x.r), liens: lots.flat().map((x) => x.l) });
+
+test('tables demandées : les plus réservées des salles ouvertes, à 3 réservations au moins', () => {
+  // s1 a 5 tables : 15 % donne 1 place au classement.
+  const h = histoire(sur('t1', 4), sur('t2', 2), sur('t6', 9));
+  assert.deepEqual(demandees(h.reservations, h.liens), ['t1']);
+  const peu = histoire(sur('t1', 2));
+  assert.deepEqual(demandees(peu.reservations, peu.liens), [], 'deux réservations ne suffisent pas');
+});
+
+test('tables demandées : ex aequo compris, annulées, no-shows et futures exclues, 90 jours', () => {
+  const ex = histoire(sur('t1', 3), sur('t2', 3));
+  assert.deepEqual(demandees(ex.reservations, ex.liens), ['t1', 't2']);
+  const annulees = histoire(sur('t1', 5, 0, 'annule'), sur('t2', 5, 10, 'no_show'));
+  assert.deepEqual(demandees(annulees.reservations, annulees.liens), []);
+  const vieilles = histoire(sur('t1', 4, DEMANDE_JOURS));
+  assert.deepEqual(demandees(vieilles.reservations, vieilles.liens), [], 'au-delà de 90 jours');
+  const futures = { reservations: [0, 1, 2, 3].map((k) => passee(`f${k}`, `2026-11-2${2 + k}`, 'confirme')), liens: [0, 1, 2, 3].map((k) => ({ reservation_id: `f${k}`, table_id: 't1' })) };
+  assert.deepEqual(demandees(futures.reservations, futures.liens), [], 'le jour même et après ne comptent pas');
+});
+
+test('tables demandées : la migration dit la même chose', () => {
+  const sql = readFileSync(fileURLToPath(new URL('../../supabase/migrations/20261122_table_en_ligne_reperes.sql', import.meta.url)), 'utf8');
+  assert.ok(sql.includes(`r.date_service >= v_auj - ${DEMANDE_JOURS} and r.date_service < v_auj`), 'fenêtre de 90 jours');
+  assert.ok(sql.includes(`n >= ${DEMANDE_MIN} and rg <= ceil(total * ${DEMANDE_PART})`), 'seuil et part du classement');
+  assert.ok(sql.includes("r.statut not in ('annule', 'no_show')"), 'statuts exclus');
+});
+
+test('plan de la démo : demandee par table, nom des zones seulement', () => {
+  const h = histoire(sur('t2', 4));
+  const p = plan({
+    reservations: [R('a', '12:00'), ...h.reservations], liens: [{ reservation_id: 'a', table_id: 't1' }, ...h.liens],
+    elements: [
+      { salle_id: 's1', etablissement_id: ETAB, type: 'zone', libelle: ' Terrasse ', pos_x: 0, pos_y: 0, largeur: 200, hauteur: 200 },
+      { salle_id: 's1', etablissement_id: ETAB, type: 'bar', libelle: 'Bar du fond', pos_x: 0, pos_y: 300, largeur: 200, hauteur: 60 },
+    ],
+  });
+  const t2 = p.salles[0].tables.find((t) => t.id === 't2');
+  assert.equal(t2.demandee, true);
+  assert.equal(p.salles[0].tables.filter((t) => t.demandee).length, 1);
+  assert.deepEqual(p.salles[0].decor.map((d) => d.libelle), ['Terrasse', null]);
+});
+
+// ── Repères d'une table ──
+const rect = (x, y, largeur = 90, hauteur = 90, extra = {}) => ({ x, y, largeur, hauteur, ...extra });
+
+test('écart entre contours : nul au contact, droit sur un axe, en diagonale sinon', () => {
+  assert.equal(ecartContours(rect(0, 0), rect(90, 0)), 0);
+  assert.equal(ecartContours(rect(0, 0), rect(50, 50)), 0);
+  assert.equal(ecartContours(rect(0, 0), rect(0, 130)), 40);
+  assert.equal(ecartContours(rect(0, 0), rect(120, 130)), 50);
+});
+
+test('entrée : la seule porte, ou la plus proche de l’accueil, sinon aucune', () => {
+  const p1 = rect(900, 500, 70, 70, { type: 'porte' });
+  const p2 = rect(0, 500, 70, 70, { type: 'porte' });
+  assert.equal(entreeDe([p1, rect(0, 0, 300, 10, { type: 'mur' })]), p1);
+  assert.equal(entreeDe([p1, p2, rect(800, 600, 120, 60, { type: 'accueil' })]), p1);
+  assert.equal(entreeDe([p1, p2]), null);
+  assert.equal(entreeDe([]), null);
+});
+
+test('repères : baie vitrée, entrée, terrasse par la salle ou par une zone nommée', () => {
+  const salle = {
+    nom: 'Salle',
+    decor: [
+      rect(0, 0, 1000, 10, { type: 'baie' }),
+      rect(930, 500, 70, 70, { type: 'porte' }),
+      rect(0, 600, 300, 200, { type: 'zone', libelle: 'Terrasse couverte' }),
+    ],
+  };
+  assert.deepEqual(reperesTable(rect(30, 40), salle), ['vitres']);
+  assert.deepEqual(reperesTable(rect(30, 200), salle), []);
+  assert.deepEqual(reperesTable(rect(870, 350, 96, 96), salle), ['entree']);
+  assert.deepEqual(reperesTable(rect(100, 650), salle), ['terrasse']);
+  assert.deepEqual(reperesTable(rect(30, 40), { nom: 'La terrasse', decor: salle.decor }), ['terrasse', 'vitres']);
 });

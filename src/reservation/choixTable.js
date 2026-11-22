@@ -108,6 +108,9 @@ export function planEnLigne({
   if (ecart === 0 && minutesDe(heure) < maintenant + (params.delai_min_heures || 0) * 60) return ferme('horaire');
 
   const etab = params.etablissement_id;
+  const demandees = tablesDemandees({
+    tables, reservations, liens, etablissementId: etab, sallesOuvertes: params.salles_choix_table, aujourdhui,
+  });
   const libres = tablesLibres({
     tables, salles, reservations: (reservations || []).filter((r) => r.etablissement_id === etab && r.date_service === jour),
     liens, ajustements: (ajustements || []).filter((a) => a.date_service === jour), etablissementId: etab,
@@ -139,10 +142,12 @@ export function planEnLigne({
           hauteur: Number(a?.pivotee ? t.largeur : t.hauteur),
           pivotee: !!a?.pivotee,
           libre,
+          demandee: demandees.has(t.id),
         };
       }),
       decor: (elements || []).filter((e) => e.salle_id === s.id && e.etablissement_id === etab).map((e) => ({
         type: e.type, x: Number(e.pos_x), y: Number(e.pos_y), largeur: Number(e.largeur), hauteur: Number(e.hauteur), rotation: Number(e.rotation) || 0,
+        libelle: e.type === 'zone' ? (String(e.libelle || '').trim().slice(0, 40) || null) : null,
       })),
     })),
   };
@@ -172,10 +177,85 @@ export function cadragePlan(salle, largeurDispo, { cible = COTE_TACTILE, echelle
   };
 }
 
-// Libellé d'une table pour le visiteur : « Table 12 » pour un numéro seul,
-// le nom tel quel sinon (« Bar 2 », « Terrasse 4 »).
-export function libelleTable(nom) {
-  const n = String(nom ?? '').trim();
-  if (!n) return 'Table';
-  return /^\d+[a-z]?$/i.test(n) ? `Table ${n}` : n;
+// ── Tables les plus demandées ────────────────────────────────────────────────
+// Comme table_en_ligne_plan() (migration 20261122_table_en_ligne_reperes) :
+// réservations passées des 90 derniers jours, annulées et no-shows exclus,
+// rangées parmi les tables des salles ouvertes au choix ; une table est
+// « très demandée » dans les 15 % du haut (ex aequo compris), à 3 réservations
+// au moins. La page n'en reçoit qu'un booléen.
+export const DEMANDE_JOURS = 90;
+export const DEMANDE_PART = 0.15;
+export const DEMANDE_MIN = 3;
+
+export function tablesDemandees({ tables, reservations, liens, etablissementId, sallesOuvertes, aujourdhui }) {
+  const ouvertes = new Set(sallesOuvertes || []);
+  const candidates = (tables || []).filter((t) => t.etablissement_id === etablissementId && t.actif !== false && ouvertes.has(t.salle_id));
+  if (!candidates.length || !aujourdhui) return new Set();
+  const comptees = new Map((reservations || [])
+    .filter((r) => r.etablissement_id === etablissementId && !['annule', 'no_show'].includes(r.statut))
+    .filter((r) => { const e = ecartJours(aujourdhui, r.date_service); return e < 0 && e >= -DEMANDE_JOURS; })
+    .map((r) => [r.id, r]));
+  const n = new Map(candidates.map((t) => [t.id, 0]));
+  for (const l of liens || []) {
+    if (n.has(l.table_id) && comptees.has(l.reservation_id)) n.set(l.table_id, n.get(l.table_id) + 1);
+  }
+  const valeurs = [...n.values()];
+  const plafond = Math.ceil(candidates.length * DEMANDE_PART);
+  // rank() de Postgres : 1 + le nombre de tables strictement plus demandées.
+  const rang = (v) => 1 + valeurs.filter((x) => x > v).length;
+  return new Set([...n].filter(([, v]) => v >= DEMANDE_MIN && rang(v) <= plafond).map(([id]) => id));
+}
+
+// ── Repères d'une table pour le visiteur ─────────────────────────────────────
+// Le visiteur ne voit pas de numéro (Jérémy, 22.11.2026 : « les clients s'en
+// moquent ») : il se repère à l'entrée, aux vitres et à la terrasse. Une
+// table est « près » d'un élément quand l'écart entre leurs contours tient
+// sous le seuil, en unités du plan (une table de deux fait environ 90).
+export const SEUIL_VITRES = 60;
+export const SEUIL_ENTREE = 120;
+
+// Phrases dites au visiteur, dans l'ordre où elles comptent pour lui.
+export const PHRASES_REPERE = {
+  terrasse: 'En terrasse',
+  vitres: 'Près de la baie vitrée',
+  entree: 'Près de l’entrée',
+};
+const ORDRE_REPERES = ['terrasse', 'vitres', 'entree'];
+
+const centre = (o) => ({ x: o.x + o.largeur / 2, y: o.y + o.hauteur / 2 });
+
+// Écart entre deux rectangles { x, y, largeur, hauteur } : 0 quand ils se
+// touchent ou se chevauchent.
+export function ecartContours(a, b) {
+  const dx = Math.max(0, b.x - (a.x + a.largeur), a.x - (b.x + b.largeur));
+  const dy = Math.max(0, b.y - (a.y + a.hauteur), a.y - (b.y + b.hauteur));
+  return Math.hypot(dx, dy);
+}
+
+// La porte d'entrée d'une salle : la seule porte dessinée, ou, s'il y en a
+// plusieurs, la plus proche de la banque d'accueil. Sans accueil pour
+// trancher entre plusieurs portes, aucune n'est dite « entrée ».
+export function entreeDe(decor) {
+  const portes = (decor || []).filter((d) => d.type === 'porte');
+  if (portes.length <= 1) return portes[0] || null;
+  const accueil = (decor || []).find((d) => d.type === 'accueil');
+  if (!accueil) return null;
+  const c = centre(accueil);
+  const distance = (p) => { const q = centre(p); return Math.hypot(q.x - c.x, q.y - c.y); };
+  return portes.reduce((m, p) => (distance(p) < distance(m) ? p : m));
+}
+
+const estTerrasse = (texte) => /terrasse/i.test(String(texte || ''));
+
+// Repères d'une table, clés de PHRASES_REPERE dans l'ordre de lecture.
+export function reperesTable(table, salle) {
+  const decor = salle?.decor || [];
+  const c = centre(table);
+  const dans = (z) => c.x >= z.x && c.x <= z.x + z.largeur && c.y >= z.y && c.y <= z.y + z.hauteur;
+  const trouves = new Set();
+  if (estTerrasse(salle?.nom) || decor.some((d) => d.type === 'zone' && estTerrasse(d.libelle) && dans(d))) trouves.add('terrasse');
+  if (decor.some((d) => d.type === 'baie' && ecartContours(table, d) <= SEUIL_VITRES)) trouves.add('vitres');
+  const entree = entreeDe(decor);
+  if (entree && ecartContours(table, entree) <= SEUIL_ENTREE) trouves.add('entree');
+  return ORDRE_REPERES.filter((k) => trouves.has(k));
 }

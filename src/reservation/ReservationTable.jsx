@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, MapPin, Phone, X } from 'lucide-react';
 import { ALLERGENES } from '../utils/allergenes.js';
 import PlanChoixTable from './PlanChoixTable.jsx';
-import { libelleTable } from './choixTable.js';
 import './reservationTable.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -139,6 +138,11 @@ function jetons(theme, hex) {
     '--t-ok-soft': sombre ? 'rgba(134, 214, 160, 0.14)' : '#dcfce7',
     '--t-danger': sombre ? '#fb8f8f' : '#a11616',
     '--t-danger-soft': sombre ? 'rgba(251, 143, 143, 0.12)' : '#fee2e2',
+    // Repères du plan (choix de la table) : baie vitrée en trait bleuté,
+    // étoile des tables demandées aux couleurs de la carte soleil d'app.css.
+    '--t-vitre': sombre ? '#5d8fc4' : '#7aa6d6',
+    '--t-soleil': sombre ? '#3a3216' : '#f5e4a8',
+    '--t-soleil-encre': sombre ? '#f3e7b5' : '#2b2408',
   };
 }
 
@@ -151,7 +155,9 @@ export default function ReservationTable() {
   const [date, setDate] = useState(null);
   const [creneaux, setCreneaux] = useState({ cle: null, services: [], chargement: false });
   const [choix, setChoix] = useState(null); // { service, heure }
-  // Table choisie sur le plan (lot L9) : { id, nom, places } ; null = peu importe.
+  // Table choisie sur le plan (lot L9) : { id, nom, places, reperes } ; null =
+  // peu importe. Le visiteur ne voit jamais le numéro (nom), seulement ses
+  // repères (« Près de la baie vitrée ») ; l'équipe le retrouve sur le plan.
   const [table, setTable] = useState(null);
   const [plan, setPlan] = useState({ cle: null, donnees: null, chargement: false, erreur: false });
   const [versionPlan, setVersionPlan] = useState(0);
@@ -660,7 +666,7 @@ export default function ReservationTable() {
                     ['Table pour', personnes(couverts)],
                     ['Le', jourLong(date)],
                     ['À', choix.heure],
-                    ...(table ? [['Table', String(table.nom)]] : []),
+                    ...(table ? [['Table', table.reperes?.[0] || 'Choisie sur le plan']] : []),
                     ['Au nom de', `${form.prenom.trim()} ${form.nom.trim()}`],
                     ...(form.allergenes.length
                       ? [['Allergies', ALLERGENES.filter((a) => form.allergenes.includes(a.id)).map((a) => a.label).join(', ')]]
@@ -728,7 +734,7 @@ function Recap({ date, choix, couverts, table = null, onModifier }) {
         <div style={{ fontSize: 12, opacity: 0.78 }}>Votre table</div>
         <div style={{ fontSize: 24, fontWeight: 400, lineHeight: 1.2, marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>{personnes(couverts)}</div>
         <div style={{ fontSize: 14, marginTop: 2, opacity: 0.86 }}>{jourLong(date)}, {choix.heure}</div>
-        {table && <div style={{ fontSize: 14, marginTop: 2, opacity: 0.86 }} data-no-translate>{libelleTable(table.nom)}</div>}
+        {table && <div style={{ fontSize: 14, marginTop: 2, opacity: 0.86 }}>{table.reperes?.[0] || 'Table choisie sur le plan'}</div>}
       </div>
       <button type="button" onClick={onModifier} className="rt-bouton rt-inverse" style={{ flexShrink: 0, minHeight: 40, padding: '0 16px', fontSize: 14 }}>
         <ArrowLeft size={15} strokeWidth={2} aria-hidden="true" /> Changer

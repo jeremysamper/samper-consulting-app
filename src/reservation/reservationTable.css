@@ -129,10 +129,13 @@
   background: var(--t-piste);
 }
 .rt-decor[data-type="mur"] { background: var(--t-ink3); border-radius: 2px; }
-.rt-decor[data-type="baie"] { background: var(--t-champ); border-radius: 2px; }
+/* Baie vitrée : trait bleuté, distinct du mur gris (repère du visiteur). */
+.rt-decor[data-type="baie"] { background: var(--t-vitre); border-radius: 2px; }
 .rt-decor[data-type="zone"] { background: transparent; border-width: 1px; border-style: dashed; border-color: var(--t-line); }
 .rt-decor[data-type="porte"] { background: transparent; border-width: 1px; border-style: solid; border-color: var(--t-line); border-radius: 0 0 100% 0; }
 .rt-decor[data-type="plante"], .rt-decor[data-type="pilier"] { border-radius: 999px; }
+/* Libellé du bar, de l'accueil, d'une zone : centré, sur deux lignes au besoin. */
+.rt-decor { text-align: center; line-height: 1.15; padding: 2px; }
 
 .rt-table {
   position: absolute; box-sizing: border-box; padding: 0; margin: 0;
@@ -148,7 +151,28 @@ button.rt-table:active { transform: scale(0.95); }
 /* Cible de 44 px au doigt pour une petite table (place de bar) : la zone
    touchée déborde sans rien dessiner. */
 button.rt-table::before { content: ""; position: absolute; inset: min(0px, calc((100% - 44px) / 2)); }
-.rt-table-nom { position: relative; max-width: 100%; overflow: hidden; text-overflow: clip; white-space: nowrap; padding: 0 2px; }
+/* Pas de numéro (les clients s'en moquent) : la table choisie porte une coche. */
+.rt-table-coche { position: relative; pointer-events: none; }
+/* Texte lu par le lecteur d'écran seulement (nom accessible de la table). */
+.rt-vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* Étoile des tables les plus demandées, au coin de la table. */
+.rt-demandee {
+  position: absolute; top: -6px; right: -6px; width: 18px; height: 18px; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;
+  background: var(--t-soleil); color: var(--t-soleil-encre); pointer-events: none;
+  border-width: 1.5px; border-style: solid; border-color: var(--t-surface);
+}
+.rt-demandee-legende { position: static; border-color: transparent; }
+
+/* Entrée : pastille posée au milieu de la porte, sous les tables. */
+.rt-repere-entree {
+  position: absolute; width: 28px; height: 28px; margin: -14px 0 0 -14px; box-sizing: border-box;
+  display: inline-flex; align-items: center; justify-content: center; border-radius: 999px;
+  background: var(--t-surface); color: var(--t-ink); pointer-events: none;
+  border-width: 1.5px; border-style: solid; border-color: var(--t-ink2); box-shadow: var(--t-sh);
+}
+.rt-repere-legende { position: static; width: 18px; height: 18px; margin: 0; box-shadow: none; border-width: 1px; }
 .rt-chaise { position: absolute; border-radius: 999px; background: var(--t-line); pointer-events: none; transition: background-color 0.18s ease; }
 .rt-table[data-etat="libre"] .rt-chaise { background: var(--t-champ); }
 .rt-table[data-etat="choisie"] .rt-chaise { background: var(--t-accent); }
@@ -162,6 +186,17 @@ button.rt-table::before { content: ""; position: absolute; inset: min(0px, calc(
 .rt-legende i[data-etat="libre"] { background: var(--t-surface); border-color: var(--t-ink2); }
 .rt-legende i[data-etat="choisie"] { background: var(--t-accent); border-color: var(--t-accent); }
 .rt-legende i[data-etat="prise"] { background: var(--t-piste); border-color: var(--t-line); }
+.rt-legende i[data-etat="vitre"] { height: 6px; border-radius: 2px; border-width: 0; background: var(--t-vitre); }
+
+/* La table touchée, décrite sous le plan : places et repères en pilules. */
+.rt-plan-choix { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
+.rt-plan-choix-titre { font-size: 13px; color: var(--t-ink3); margin-right: 2px; }
+/* En bloc en ligne et non en flex : un flex avalerait l'espace avant « places ». */
+.rt-repere-puce {
+  display: inline-block; line-height: 32px; padding: 0 12px; border-radius: 999px; white-space: nowrap;
+  font-size: 14px; color: var(--t-ink); background: var(--t-piste); font-variant-numeric: tabular-nums;
+}
+.rt-repere-puce[data-ton="demandee"] { background: var(--t-soleil); color: var(--t-soleil-encre); }
 
 /* ── Focus au clavier : hors de la pilule, visible sur l'aplat sombre ── */
 .rt-racine :focus-visible { outline: 2px solid var(--t-focus); outline-offset: 2px; }
