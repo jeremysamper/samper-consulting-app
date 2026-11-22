@@ -1,15 +1,22 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { dbService } from '../../services/dbService.js';
-import { getReglages, listSuitesLignes } from '../../services/caisseService.js';
+import {
+  getReglages, listSuitesLignes, listCategories, listBoutons, listCategoriesPlats,
+} from '../../services/caisseService.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { notify } from '../../components/toast/index.js';
 import { navigateToPage } from '../../services/navigationService.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
+import { useIsMobile } from '../../hooks/useIsMobile.js';
+import { readText, writeText } from '../../utils/storage.js';
 import { pollKdsOrders } from '../pos/lib/posApi.js';
 import { fusionnerReglages, libelleMode } from '../caisse/reglages.js';
-import { construireBons, rangerBons, lignesALire, estVivant, RANG_TENU } from './bons.js';
+import {
+  construireBons, rangerBons, lignesALire, estVivant, RANG_TENU,
+  POSTE_TOUS, postesEnService, posteParPlat, filtrerParPoste, recapitulatif,
+} from './bons.js';
 import {
   s, bonStyle, enteteStyle, chronoStyle, sectionStyle, platStyle, marqueStyle, qteStyle, nomStyle,
 } from './Kds.styles.js';
@@ -37,6 +44,17 @@ import {
 //   - gros caractères, lignes hautes, plein écran de base (21.11.2026) : le
 //     passe s'ouvre en plein écran à chaque arrivée sur le module, et
 //     « Quitter le plein écran » ne vaut que pour la visite en cours.
+// Lot L4 (22.11.2026) :
+//   - un bandeau de récap compte chaque plat à sortir sur tous les bons, en
+//     deux colonnes, « En direct » (à faire) et « À suivre » (tenu) ;
+//   - deux onglets, « En cours » et « Terminés », à la place de la liste
+//     repliée en bas. Laissé sur « Terminés », l'écran revient seul sur
+//     « En cours » : un nouveau bon ne reste pas caché ;
+//   - des onglets de poste (chaud, froid, pâtisserie, bar), quand la maison
+//     en a donné à ses catégories de caisse. Un poste ne voit que ses plats ;
+//     un plat sans poste ne se voit que dans « Tous ». Les gestes qui valent
+//     pour toute la table (lancer une suite, terminer le bon) restent dans
+//     « Tous ». Le poste choisi est gardé sur l'appareil.
 // Pensé pour le rush : actions optimistes (aucune attente réseau), une seule
 // confirmation, quand on termine un bon dont des suites sont encore tenues.
 // L'écran reste allumé (wake lock) tant que le KDS est ouvert.
@@ -55,6 +73,10 @@ const SORTIE_MS = 1500;
 // montre toujours les bons les plus anciens, et un nouveau direct ne tombe
 // jamais derrière des bons en attente.
 const RETOUR_MS = 15000;
+// Onglet « Terminés » laissé ouvert : retour sur « En cours » après ce temps
+// sans geste.
+const RETOUR_TERMINES_MS = 30000;
+const CLE_POSTE = 'sc_kds_poste';
 const CONNECT_ROLES = ['consultant', 'patron'];
 
 function elapsedLabel(depuis) {
@@ -121,6 +143,15 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   // aDroite : bons à faire cachés à droite de l'écran (file plus longue que lui).
   const [aDroite, setADroite] = React.useState(0);
   const [, setTick] = React.useState(0); // re-render 1 s pour les chronos
+  // onglet : 'cours' (le rail) ou 'terminees'.
+  const [onglet, setOnglet] = React.useState('cours');
+  const [poste, setPoste] = React.useState(() => readText(CLE_POSTE, POSTE_TOUS) || POSTE_TOUS);
+  // cuisine : catégories de caisse de la maison (et leur poste) et
+  // rattachement des produits, lus pour ranger les plats par poste.
+  const [cuisine, setCuisine] = React.useState({ categories: [], boutons: {} });
+  // platsCat : catégorie de carte des plats déjà lus (id -> plats.categorie).
+  const [platsCat, setPlatsCat] = React.useState(() => new Map());
+  const telephone = useIsMobile(600);
 
   const lectures = useOrdreLectures();
   const ecritures = React.useRef(0);
@@ -128,6 +159,10 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   const minuteries = React.useRef(new Map());
   const railRef = React.useRef(null);
   const dernierGeste = React.useRef(0);
+  const ongletRef = React.useRef('cours');
+  const platsDemandes = React.useRef(new Set());
+  const etabRef = React.useRef(etabId);
+  React.useEffect(() => { etabRef.current = etabId; }, [etabId]);
 
   // ── Lecture des commandes (RLS lecture cuisine) ──
   // Une lecture ne repeint jamais par-dessus une écriture en cours : elle
@@ -192,7 +227,75 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   useReglageModifie('caisse', () => {
     if (!etabId) return;
     getReglages(etabId).then(({ data }) => { if (data) setReglages(fusionnerReglages(data)); });
+    lireCuisine();
   });
+
+  // ── Postes : les catégories de caisse de la maison et leur poste ──
+  // Sans aucun poste réglé, rien de plus n'est lu et le passe n'a pas
+  // d'onglets de poste. Une lecture en échec garde ce qui était connu et
+  // réessaie plus tard.
+  const lireCuisine = React.useCallback(async () => {
+    const etab = etabId;
+    if (!etab) return false;
+    const { data: categories, error } = await listCategories(etab);
+    if (error || !categories || etabRef.current !== etab) return false;
+    if (!postesEnService(categories).length) {
+      setCuisine({ categories, boutons: {} });
+      return true;
+    }
+    const { data: boutons } = await listBoutons(etab);
+    if (etabRef.current !== etab) return false;
+    setCuisine({ categories, boutons: boutons || {} });
+    return true;
+  }, [etabId]);
+  React.useEffect(() => {
+    setCuisine({ categories: [], boutons: {} });
+    setPlatsCat(new Map());
+    platsDemandes.current = new Set();
+    let stop = false;
+    let timer = null;
+    const lire = async () => {
+      const ok = await lireCuisine();
+      if (!ok && !stop) timer = setTimeout(lire, RELECTURE_MS);
+    };
+    lire();
+    return () => { stop = true; if (timer) clearTimeout(timer); };
+  }, [lireCuisine]);
+  const postesActifs = React.useMemo(() => postesEnService(cuisine.categories), [cuisine.categories]);
+  const avecPostes = postesActifs.length > 0;
+
+  // La catégorie de carte des plats au passe, lue une fois par plat.
+  React.useEffect(() => {
+    if (!avecPostes) return;
+    const manquants = [...new Set([...lignes.values()].map((l) => l.platId))]
+      .filter((id) => id && !platsDemandes.current.has(id));
+    if (!manquants.length) return;
+    const etab = etabId;
+    manquants.forEach((id) => platsDemandes.current.add(id));
+    listCategoriesPlats(manquants).then(({ data }) => {
+      if (etabRef.current !== etab) return;
+      if (!data) { manquants.forEach((id) => platsDemandes.current.delete(id)); return; }
+      setPlatsCat((prev) => {
+        const m = new Map(prev);
+        manquants.forEach((id) => m.set(id, data.has(id) ? data.get(id) : null));
+        return m;
+      });
+    });
+  }, [lignes, avecPostes, etabId]);
+
+  const choisirPoste = (id) => {
+    noterGeste();
+    setPoste(id);
+    writeText(CLE_POSTE, id);
+    railRef.current?.scrollTo({ left: 0 });
+    // Le compte « à droite » suit le rail du poste choisi dès qu'il est rendu.
+    requestAnimationFrame(() => mesurerRail());
+  };
+  const choisirOnglet = (id) => {
+    noterGeste();
+    ongletRef.current = id;
+    setOnglet(id);
+  };
 
   // ── Source des bons : la maison est-elle reliée à Lightspeed ? ──
   // Un booléen lu en base (aucun jeton). En cas d'échec de lecture, on ne
@@ -275,10 +378,24 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   }, [isActive]);
 
   // ── Les bons : un par table, rangés en file, fin et terminées ──
-  const bons = React.useMemo(() => construireBons(orders, lignes), [orders, lignes]);
+  const postes = React.useMemo(
+    () => (avecPostes ? posteParPlat({ categories: cuisine.categories, boutons: cuisine.boutons, plats: platsCat }) : null),
+    [avecPostes, cuisine, platsCat],
+  );
+  const bons = React.useMemo(() => construireBons(orders, lignes, postes), [orders, lignes, postes]);
+  // bonsRef garde les bons entiers : un bon se termine seul quand toute la
+  // table est partie, pas seulement le poste affiché.
   React.useEffect(() => { bonsRef.current = bons; }, [bons]);
-  const { file, fin, terminees } = rangerBons(bons, { figes, maintenant: Date.now() });
+  // Un poste gardé sur l'appareil que la maison n'a plus : « Tous ».
+  const posteVu = avecPostes && postesActifs.some((p) => p.id === poste) ? poste : POSTE_TOUS;
+  const enTous = posteVu === POSTE_TOUS;
+  const maintenant = Date.now();
+  const bonsVus = filtrerParPoste(bons, posteVu);
+  const { file, fin, terminees } = rangerBons(bonsVus, { figes, maintenant });
   const nbAFaire = file.filter((b) => !b.sortant).length;
+  const recap = recapitulatif(bonsVus);
+  const aFaireAuPoste = (id) => rangerBons(filtrerParPoste(bons, id), { figes, maintenant })
+    .file.filter((b) => !b.sortant).length;
 
   // Bons à faire dont le début est hors de l'écran, à droite. Mesuré sur le
   // rail rendu : c'est lui qui sait ce qui tient.
@@ -298,6 +415,10 @@ const Kds = ({ user, etablissement, isActive = true }) => {
     const id = setInterval(() => {
       setTick((t) => t + 1);
       mesurerRail();
+      if (ongletRef.current === 'terminees' && Date.now() - dernierGeste.current >= RETOUR_TERMINES_MS) {
+        ongletRef.current = 'cours';
+        setOnglet('cours');
+      }
       const rail = railRef.current;
       if (!rail || rail.scrollLeft <= 0) return;
       if (Date.now() - dernierGeste.current < RETOUR_MS) return;
@@ -332,7 +453,13 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   // ── Plein écran : un calque au-dessus de la coque, de base à chaque
   // arrivée sur le module (le module reste monté quand on part ailleurs) ──
   const immersif = plein && isActive;
-  React.useEffect(() => { if (isActive) setPlein(true); }, [isActive]);
+  // Chaque arrivée sur le module ouvre aussi sur « En cours ».
+  React.useEffect(() => {
+    if (!isActive) return;
+    setPlein(true);
+    ongletRef.current = 'cours';
+    setOnglet('cours');
+  }, [isActive]);
   const basculerPlein = (actif) => {
     setPlein(actif);
     if (actif) entrerPleinNatif(); else sortirPleinNatif();
@@ -415,13 +542,16 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   };
 
   // Valider : tout ce qui est à faire sur le bon est parti. S'il reste des
-  // suites tenues, le bon va attendre à la fin ; sinon il est terminé.
+  // suites tenues, le bon va attendre à la fin ; sinon il est terminé. Vu
+  // d'un poste, seuls ses plats partent, et le bon n'est terminé que si la
+  // table entière n'a plus rien à faire ni à attendre.
   const validerBon = (bon) => {
     const aValider = bon.sections.flatMap((x) => x.plats).filter((p) => p.etat === 'faire');
     if (aValider.length === 0) return;
-    const fini = bon.nbTenus === 0;
+    const complet = bon.complet || bon;
+    const fini = complet.nbTenus === 0 && complet.nbAFaire === aValider.length;
     const quand = new Date().toISOString();
-    const vivants = bon.vivants;
+    const vivants = complet.vivants;
     patchItems(new Set(aValider.map((p) => p.id)), { bumpStatus: 'bumped', bumpedAt: quand });
     if (fini) patchOrders(new Set(vivants.map((o) => o.id)), { completedAt: quand });
     figer(bon);
@@ -546,7 +676,8 @@ const Kds = ({ user, etablissement, isActive = true }) => {
     if (plat.etat === 'tenu') {
       // Sur un bon de la caisse, la suite se lance d'un bloc (bouton de la
       // section). Ailleurs, plat par plat, comme la cuisine les a tenus.
-      const unParUn = !bon.caisse || section.etat !== 'attente';
+      // Lancer une suite vaut pour toute la table : dans « Tous » seulement.
+      const unParUn = enTous && (!bon.caisse || section.etat !== 'attente');
       return (
         <div key={plat.id} style={s.tenuRow} data-cadre="">
           {renderLibelle(plat, 'tenu')}
@@ -588,7 +719,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
           <div style={s.sectionTete}>
             <span style={s.sectionNom(section.etat)}>{nom}</span>
             <span style={s.sectionEtat(section.etat)}>{etat}</span>
-            {section.etat === 'attente' && (
+            {section.etat === 'attente' && enTous && (
               <button style={s.lancerBtn} onClick={() => lancer(bon, section.plats)}>Lancer</button>
             )}
           </div>
@@ -639,12 +770,14 @@ const Kds = ({ user, etablissement, isActive = true }) => {
           {!enFile && bon.etat === 'attente' && (
             <>
               <div style={s.piedTexte}>La suite arrive à la réclamation</div>
-              <button style={s.terminerDiscret} onClick={() => terminerBon(bon)}>Terminer le bon</button>
+              {enTous && <button style={s.terminerDiscret} onClick={() => terminerBon(bon)}>Terminer le bon</button>}
             </>
           )}
-          {!enFile && bon.etat === 'pret' && (
-            <button style={s.terminerBtn} onClick={() => terminerBon(bon)}>Terminer le bon</button>
-          )}
+          {/* Terminer vaut pour toute la table : vu d'un poste, le bon dit
+              seulement que le poste a tout envoyé. */}
+          {!enFile && bon.etat === 'pret' && (enTous
+            ? <button style={s.terminerBtn} onClick={() => terminerBon(bon)}>Terminer le bon</button>
+            : <div style={s.piedTexte}>Tout est parti pour ce poste</div>)}
         </div>
       </div>
     );
@@ -656,32 +789,100 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   // la caisse native n'en voit aucun.
   const avecLightspeed = lightspeed === true;
   const auPasse = file.length + fin.length;
+  // Bons au passe tous postes confondus : un poste vide n'est pas un passe vide.
+  const auPasseTous = enTous ? auPasse : bons.filter((b) => b.etat !== 'termine').length;
   const showOnboarding = avecLightspeed
-    && (conn.state === 'not_connected' || conn.state === 'needs_reconnect') && auPasse === 0;
+    && (conn.state === 'not_connected' || conn.state === 'needs_reconnect') && auPasseTous === 0;
+  const enCours = onglet === 'cours';
+  const ongletsPoste = avecPostes ? [{ id: POSTE_TOUS, label: 'Tous' }, ...postesActifs] : [];
+
+  // Le récap : une colonne par état, le plat le plus nombreux d'abord. Les
+  // noms sont ceux des plats (traduits comme sur les bons), les nombres à part.
+  const renderRecapColonne = (titre, liste, genre) => {
+    const total = liste.reduce((n, x) => n + x.qte, 0);
+    return (
+      <div style={s.recapCol} data-cadre="" data-kds-recap={genre}>
+        <div style={s.recapTete}>
+          <span style={s.recapTitre(genre)}>{titre}</span>
+          <span style={s.recapTotal(genre)} data-no-translate>{total}</span>
+        </div>
+        {/* Deux lignes de plats qui défilent en largeur (une au téléphone) :
+            le récap ne prend jamais la hauteur des bons. */}
+        {liste.length === 0
+          ? <div style={s.recapVide}>{genre === 'direct' ? 'Rien à faire' : 'Rien en attente'}</div>
+          : (
+            <div style={s.recapListe(telephone)}>
+              {liste.map((x) => (
+                <span key={x.nom} style={s.recapPlat}>
+                  <span style={s.recapQte} data-no-translate>{x.qte}</span>
+                  <span style={s.recapNom}>{x.nom}</span>
+                </span>
+              ))}
+            </div>
+          )}
+      </div>
+    );
+  };
+
+  const renderTerminees = () => (terminees.length === 0 ? (
+    <div style={s.empty}>
+      Aucun bon terminé pour l’instant.
+      <div style={s.emptySub}>Les derniers bons terminés restent ici, pour revue.</div>
+    </div>
+  ) : (
+    <div style={s.doneGrid} onPointerDown={noterGeste} data-kds-terminees="">
+      {terminees.map((bon) => (
+        <div key={bon.cle} style={s.doneCard} data-cadre="">
+          <div style={s.doneCardHead}>
+            {renderTable(bon, s.doneTable)}
+            <span style={s.doneQuand}>
+              {bon.fermeEnCaisse
+                ? 'fermée en caisse'
+                : <span><span>terminée</span> <span data-no-translate>{timeLabel(bon.termineLe)}</span></span>}
+            </span>
+          </div>
+          {bon.sections.flatMap((x) => x.plats).map((plat) => (
+            <div key={plat.id} style={{ ...s.doneLine, ...(plat.active ? {} : { textDecoration: 'line-through' }) }}>
+              {plat.qty != null && <span data-no-translate>{plat.qty}× </span>}
+              <span>{plat.nom}</span>
+            </div>
+          ))}
+          {bon.orders.some((o) => o.status === 'open' && o.completedAt) && (
+            <button style={s.reopenBtn} onClick={() => rouvrirBon(bon)}>Rouvrir au passe</button>
+          )}
+        </div>
+      ))}
+    </div>
+  ));
 
   const contenu = (
     <div
       style={immersif ? s.plein : s.root}
       data-kds-source={lightspeed === null ? 'inconnue' : (avecLightspeed ? 'lightspeed' : 'caisse')}
       data-kds-plein={immersif ? 'oui' : 'non'}
+      data-kds-onglet={onglet}
     >
       <div style={s.header}>
         <h2 style={s.title}>KDS Cuisine</h2>
-        <button style={s.puce(true)} onClick={allerAuDebut}>
-          <span style={s.puceNum} data-no-translate>{nbAFaire}</span>
-          <span>à faire</span>
-        </button>
-        {aDroite > 0 && (
-          <button style={s.puce(true)} onClick={avancer}>
-            <span style={s.puceNum} data-no-translate>+{aDroite}</span>
-            <span>à droite</span>
-          </button>
-        )}
-        {fin.length > 0 && (
-          <button style={s.puce(false)} onClick={allerALaFin}>
-            <span style={s.puceNum} data-no-translate>{fin.length}</span>
-            <span>en attente</span>
-          </button>
+        {enCours && (
+          <>
+            <button style={s.puce(true)} onClick={allerAuDebut}>
+              <span style={s.puceNum} data-no-translate>{nbAFaire}</span>
+              <span>à faire</span>
+            </button>
+            {aDroite > 0 && (
+              <button style={s.puce(true)} onClick={avancer}>
+                <span style={s.puceNum} data-no-translate>+{aDroite}</span>
+                <span>à droite</span>
+              </button>
+            )}
+            {fin.length > 0 && (
+              <button style={s.puce(false)} onClick={allerALaFin}>
+                <span style={s.puceNum} data-no-translate>{fin.length}</span>
+                <span>en attente</span>
+              </button>
+            )}
+          </>
         )}
         <div style={s.headerDroite}>
           {avecLightspeed && (
@@ -697,6 +898,35 @@ const Kds = ({ user, etablissement, isActive = true }) => {
             {plein ? 'Quitter le plein écran' : 'Plein écran'}
           </button>
         </div>
+      </div>
+
+      {/* Ce que l'écran montre : les bons en cours ou terminés, puis le
+          poste. Chaque poste ne voit que ses plats, le nombre dit ses bons à
+          faire. Un plat sans poste ne se voit que dans « Tous ». */}
+      <div style={s.vues(telephone)}>
+        <div style={s.onglets} role="tablist" aria-label="Bons du passe">
+          <button role="tab" aria-selected={enCours} style={s.onglet(enCours)} onClick={() => choisirOnglet('cours')}>
+            <span>En cours</span>
+            <span style={s.ongletNum} data-no-translate>{auPasse}</span>
+          </button>
+          <button role="tab" aria-selected={!enCours} style={s.onglet(!enCours)} onClick={() => choisirOnglet('terminees')}>
+            <span>Terminés</span>
+            <span style={s.ongletNum} data-no-translate>{terminees.length}</span>
+          </button>
+        </div>
+        {ongletsPoste.length > 0 && (
+          <div style={s.postes(telephone)} role="tablist" aria-label="Postes" data-kds-postes="">
+            {ongletsPoste.map((p) => {
+              const actif = p.id === posteVu;
+              return (
+                <button key={p.id} role="tab" aria-selected={actif} style={s.poste(actif)} onClick={() => choisirPoste(p.id)} data-kds-poste={p.id}>
+                  <span>{p.label}</span>
+                  <span style={s.posteNum} data-no-translate>{aFaireAuPoste(p.id)}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {lecture === 'echec' && (
@@ -722,54 +952,39 @@ const Kds = ({ user, etablissement, isActive = true }) => {
         <div style={s.empty}>Chargement du passe…</div>
       ) : showOnboarding ? (
         renderOnboarding(conn.state === 'needs_reconnect')
+      ) : !enCours ? (
+        renderTerminees()
       ) : auPasse === 0 ? (
-        <div style={s.empty}>
-          Aucune commande en cours.
-          <div style={s.emptySub}>Les bons apparaissent automatiquement dès l’envoi en caisse.</div>
-        </div>
+        auPasseTous > 0 ? (
+          <div style={s.empty}>
+            Rien pour ce poste.
+            <div style={s.emptySub}>Les autres postes ont encore des bons.</div>
+          </div>
+        ) : (
+          <div style={s.empty}>
+            Aucune commande en cours.
+            <div style={s.emptySub}>Les bons apparaissent automatiquement dès l’envoi en caisse.</div>
+          </div>
+        )
       ) : (
-        <div ref={railRef} style={s.rail} onScroll={surDefilement} onPointerDown={noterGeste} data-kds-rail="">
-          {file.length === 0 && <div style={s.rienAFaire}>Rien à faire pour l’instant</div>}
-          {file.map((bon) => renderBon(bon, true))}
-          {fin.length > 0 && (
-            <div style={s.separateur} data-kds-fin="">
-              <span style={s.separateurTexte}>En attente</span>
+        <>
+          {(recap.direct.length > 0 || recap.aSuivre.length > 0) && (
+            <div style={s.recap} data-kds-recap-bandeau="">
+              {renderRecapColonne('En direct', recap.direct, 'direct')}
+              {renderRecapColonne('À suivre', recap.aSuivre, 'suivre')}
             </div>
           )}
-          {fin.map((bon) => renderBon(bon, false))}
-        </div>
-      )}
-
-      {terminees.length > 0 && (
-        <div style={s.doneWrap}>
-          <div style={s.doneHead}>
-            <span><span>Terminées</span> <span data-no-translate>({terminees.length})</span></span>
-            <span style={s.doneHeadSub}>conservées pour revue</span>
-          </div>
-          <div style={s.doneGrid}>
-            {terminees.map((bon) => (
-              <div key={bon.cle} style={s.doneCard}>
-                <div style={s.doneCardHead}>
-                  {renderTable(bon, s.doneTable)}
-                  <span style={s.doneQuand}>
-                    {bon.fermeEnCaisse
-                      ? 'fermée en caisse'
-                      : <span><span>terminée</span> <span data-no-translate>{timeLabel(bon.termineLe)}</span></span>}
-                  </span>
-                </div>
-                {bon.sections.flatMap((x) => x.plats).map((plat) => (
-                  <div key={plat.id} style={{ ...s.doneLine, ...(plat.active ? {} : { textDecoration: 'line-through' }) }}>
-                    {plat.qty != null && <span data-no-translate>{plat.qty}× </span>}
-                    <span>{plat.nom}</span>
-                  </div>
-                ))}
-                {bon.orders.some((o) => o.status === 'open' && o.completedAt) && (
-                  <button style={s.reopenBtn} onClick={() => rouvrirBon(bon)}>Rouvrir au passe</button>
-                )}
+          <div ref={railRef} style={s.rail} onScroll={surDefilement} onPointerDown={noterGeste} data-kds-rail="">
+            {file.length === 0 && <div style={s.rienAFaire}>Rien à faire pour l’instant</div>}
+            {file.map((bon) => renderBon(bon, true))}
+            {fin.length > 0 && (
+              <div style={s.separateur} data-kds-fin="">
+                <span style={s.separateurTexte}>En attente</span>
               </div>
-            ))}
+            )}
+            {fin.map((bon) => renderBon(bon, false))}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

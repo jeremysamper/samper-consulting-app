@@ -587,12 +587,29 @@ export async function listSuitesLignes(ligneIds) {
   for (let i = 0; i < ids.length; i += 80) {
     const { data, error } = await supabase
       .from('caisse_lignes')
-      .select('id, suite, created_at')
+      .select('id, suite, created_at, plat_id')
       .in('id', ids.slice(i, i + 80));
     if (error) return { data: null, error: mapError(error, 'Suites illisibles. Réessayez.') };
-    (data || []).forEach((l) => lignes.set(l.id, { suite: Number(l.suite) || 1, ordre: l.created_at || '' }));
+    (data || []).forEach((l) => lignes.set(l.id, { suite: Number(l.suite) || 1, ordre: l.created_at || '', platId: l.plat_id || null }));
   }
   return { data: lignes, error: null };
+}
+
+// Catégorie de carte (plats.categorie) de quelques plats, pour ranger leurs
+// lignes au poste de cuisine comme la grille de la caisse les range (KDS,
+// lot L4). Rend Map id de plat -> catégorie (null si le plat n'en a pas).
+export async function listCategoriesPlats(platIds) {
+  const ids = [...new Set(platIds || [])].filter(Boolean);
+  const plats = new Map();
+  for (let i = 0; i < ids.length; i += 80) {
+    const { data, error } = await supabase
+      .from('plats')
+      .select('id, categorie')
+      .in('id', ids.slice(i, i + 80));
+    if (error) return { data: null, error: mapError(error, 'Plats illisibles. Réessayez.') };
+    (data || []).forEach((p) => plats.set(p.id, p.categorie || null));
+  }
+  return { data: plats, error: null };
 }
 
 // (v7) L'ancien encaissement en deux écritures (paiement inséré, puis statut)

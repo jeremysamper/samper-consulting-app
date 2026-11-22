@@ -16,6 +16,16 @@
 //                 ce qu'on le termine ;
 //       termine : tous ses bons KDS sont terminés au passe ou fermés en caisse.
 // Fonctions pures, sans React ni réseau (essais : bons.test.mjs).
+//
+// Depuis le 22.11.2026 (lot L4) :
+//   - chaque plat de la caisse porte le poste de sa catégorie de caisse
+//     (caisse_categories.poste : chaud, froid, pâtisserie, bar), et des
+//     onglets de poste filtrent les plats (filtrerParPoste). Un plat sans
+//     poste, comme un plat Lightspeed, ne se voit que dans « Tous » ;
+//   - le récap compte chaque plat à sortir sur l'ensemble des bons, en deux
+//     colonnes : à faire (« En direct ») et tenu (« À suivre »).
+
+import { rangerArticles, POSTES } from '../caisse/categories.js';
 
 const RE_BON = /^caisse:([0-9a-f-]{36}):(\d+):/i;
 const RE_LIGNE = /^caisse:([0-9a-f-]{36})$/i;
@@ -125,7 +135,9 @@ function finir(bon) {
   };
 }
 
-export function construireBons(orders, lignes) {
+// postes : Map id de plat -> poste (posteParPlat). Un plat sans poste connu
+// (libellé libre, Lightspeed, catégorie sans poste) porte null.
+export function construireBons(orders, lignes, postes = null) {
   const parCle = new Map();
   (orders || []).forEach((order) => {
     const { cle, caisse, suite: suiteDuBon } = cleDuBon(order);
@@ -150,6 +162,7 @@ export function construireBons(orders, lignes) {
         suite,
         rang,
         etat,
+        poste: (ligne?.platId && postes?.get(ligne.platId)) || null,
         ordre: ligne?.ordre || item.firedAt || order.openedAt || '',
         depuis: (caisse ? ms(item.firedAt) : null) ?? ms(order.openedAt),
       });
@@ -195,4 +208,67 @@ export function rangerBons(bons, {
       .sort((a, b) => (b.termineLe ?? 0) - (a.termineLe ?? 0))
       .slice(0, maxTerminees),
   };
+}
+
+// ── Postes de cuisine (lot L4) ──
+// Les postes (caisse_categories.poste) sont décrits avec les catégories.
+export { POSTES };
+export const POSTE_TOUS = 'tous';
+
+// Les postes que la maison a donnés à au moins une catégorie de caisse. Sans
+// aucun, le passe n'a pas d'onglets de poste.
+export function postesEnService(categories) {
+  const pris = new Set((categories || []).map((c) => c?.poste).filter(Boolean));
+  return POSTES.filter((p) => pris.has(p.id));
+}
+
+// Le poste de chaque plat, par la catégorie où la grille de la caisse le
+// range (rangerArticles : catégorie choisie, puis même nom que la catégorie
+// de la carte, puis « Autres »). plats : Map id de plat -> plats.categorie.
+// Les catégories proposées par le code n'ont pas de poste.
+export function posteParPlat({ categories, boutons, plats }) {
+  const articles = [...(plats || new Map())].map(([id, categorie]) => ({ id, categorie }));
+  const { parArticle } = rangerArticles({ articles, boutons: boutons || {}, categoriesMaison: categories || [] });
+  const postes = new Map();
+  parArticle.forEach((categorie, id) => { if (categorie?.poste) postes.set(id, categorie.poste); });
+  return postes;
+}
+
+// Les bons vus d'un poste : seulement ses plats, et l'état de chaque bon
+// recalculé sur eux (un bon dont le froid est parti va à la fin de l'écran
+// du froid, même si le chaud a encore à faire). Un bon sans plat du poste
+// n'y paraît pas. complet : le bon entier, pour les gestes qui valent pour
+// toute la table.
+export function filtrerParPoste(bons, poste) {
+  if (!poste || poste === POSTE_TOUS) return bons || [];
+  const vus = [];
+  (bons || []).forEach((bon) => {
+    const plats = bon.sections.flatMap((x) => x.plats).filter((p) => p.poste === poste);
+    if (!plats.length) return;
+    vus.push({ ...finir({ cle: bon.cle, caisse: bon.caisse, orders: bon.orders, plats }), complet: bon });
+  });
+  return vus;
+}
+
+// Le récap de la passe : chaque plat à sortir compté sur tous les bons, par
+// nom (les précisions de cuisson ne séparent pas les plats). direct : les
+// plats à faire ; aSuivre : les plats tenus. Le plus nombreux d'abord.
+export function recapitulatif(bons) {
+  const direct = new Map();
+  const suivre = new Map();
+  (bons || []).forEach((bon) => bon.sections.forEach((section) => section.plats.forEach((p) => {
+    let cible = null;
+    if (p.etat === 'faire') cible = direct;
+    else if (p.etat === 'tenu') cible = suivre;
+    const nom = String(p.nom || '').trim();
+    if (!cible || !nom) return;
+    const cle = nom.toLocaleLowerCase('fr');
+    const q = Number(p.qty);
+    const n = Number.isFinite(q) && q > 0 ? q : 1;
+    const deja = cible.get(cle);
+    if (deja) deja.qte += n;
+    else cible.set(cle, { nom, qte: n });
+  })));
+  const trier = (m) => [...m.values()].sort((a, b) => b.qte - a.qte || a.nom.localeCompare(b.nom, 'fr'));
+  return { direct: trier(direct), aSuivre: trier(suivre) };
 }
