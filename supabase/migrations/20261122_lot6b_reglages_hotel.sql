@@ -12,10 +12,10 @@
 --   repas      horaires des repas, heures et frais du room service, carte du
 --              room service (libellé, prix).
 --
--- Lecture par toute l'équipe de l'établissement, écriture par la direction de
--- la maison (consultant, patron, resp_cuisine) : policies de reglages_modules,
--- inchangées. L'écran des réglages ne propose ces sections qu'à la direction
--- de l'hôtel (consultant et patron).
+-- Lecture par toute l'équipe de l'établissement (policies de reglages_modules,
+-- inchangées). Écriture : la direction de l'hôtel (consultant et patron), par
+-- un déclencheur qui refuse les autres rôles pour ces trois modules ; l'écran
+-- des réglages ne propose ces sections qu'à elle.
 --
 -- Le front déployé ne lit aucun de ces modules : rien ne change pour lui. Une
 -- ligne absente vaut les valeurs par défaut du front (src/utils/reglagesModules.js).
@@ -197,3 +197,36 @@ alter table public.reglages_modules add constraint reglages_modules_config_check
 
 comment on function public.reglages_modules_hotel_valide(text, jsonb) is
   'Forme des blocs de reglages_modules pour les modules etages, demandes et repas (lot 6b). Faux pour tout autre module.';
+
+-- Parité avec l'écran : les réglages de l'hôtel s'écrivent par la direction
+-- de l'hôtel (consultant et patron), comme hotel_reglages, tarifs et forfaits.
+-- Les policies de reglages_modules laissent aussi écrire le responsable
+-- cuisine ; ce déclencheur le refuse pour ces trois modules seulement, sans
+-- toucher aux policies du lot 2a. Hors session (éditeur SQL, service), il ne
+-- bloque rien : auth.uid() est nul, current_user_role() rend une chaîne vide.
+create or replace function public.reglages_modules_hotel_garde()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $fn$
+declare
+  v_hotel boolean;
+begin
+  if (select auth.uid()) is null then
+    return coalesce(new, old);
+  end if;
+  v_hotel := (tg_op <> 'INSERT' and old.module in ('etages', 'demandes', 'repas'))
+          or (tg_op <> 'DELETE' and new.module in ('etages', 'demandes', 'repas'));
+  if v_hotel and coalesce((select public.current_user_role()), '') not in ('consultant', 'patron') then
+    raise exception 'Ce réglage est réservé à la direction de l''hôtel.' using errcode = '42501';
+  end if;
+  return coalesce(new, old);
+end;
+$fn$;
+
+revoke all on function public.reglages_modules_hotel_garde() from public, anon, authenticated;
+
+create or replace trigger trg_reglages_modules_hotel_garde
+  before insert or update or delete on public.reglages_modules
+  for each row execute function public.reglages_modules_hotel_garde();

@@ -7,6 +7,9 @@
 
 set local lock_timeout = '3s';
 
+drop trigger if exists trg_reglages_modules_hotel_garde on public.reglages_modules;
+drop function if exists public.reglages_modules_hotel_garde();
+
 delete from public.reglages_modules where module in ('etages', 'demandes', 'repas');
 
 alter table public.reglages_modules drop constraint if exists reglages_modules_config_check;
