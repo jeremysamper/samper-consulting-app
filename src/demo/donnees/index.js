@@ -15,7 +15,7 @@ import {
   genererAchats, genererVentesJour, SALAIRES_ESTIMES, genererJournal,
 } from './operations.js';
 import { genererCaisse } from './caisse.js';
-import { REGLAGES_MODULES, MEP_MODELES, COMMANDE_CIBLES } from './reglages.js';
+import { REGLAGES_MODULES, MEP_MODELES, COMMANDE_CIBLES, CANAUX_MESSAGES } from './reglages.js';
 import { genererPos } from './pos.js';
 import { empreinteDemo } from '../rpc.js';
 
@@ -103,7 +103,7 @@ export function creerBase() {
     kit_items: [],
     documents: DOCUMENTS,
     private_messages: genererMessages(),
-    canaux_messages: [],
+    canaux_messages: CANAUX_MESSAGES,
     consultant_messages: [],
     points_reglages: POINTS_REGLAGES,
     points_cadeaux: POINTS_CADEAUX,

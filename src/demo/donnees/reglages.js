@@ -3,7 +3,7 @@
 // (motifs de perte, 14 jours d'alerte des groupes, bons en retard à 12 min),
 // pour que l'écran des réglages montre une maison déjà tenue. Le front déjà
 // en ligne ne lit aucune de ces tables : rien ne change pour lui.
-import { ETAB } from './base.js';
+import { ETAB, aujourdhui, instant } from './base.js';
 
 const LE = '2026-03-01T08:00:00Z';
 
@@ -88,3 +88,24 @@ export const COMMANDE_CIBLES = CIBLES.flatMap(([produit, jours, quantite], i) =>
   created_at: LE,
   updated_at: LE,
 })));
+
+// Fils d'équipe de Messages (décision D5) : canaux_messages, canal 'cuisine',
+// 'restaurant' (affiché « Salle ») et 'tous' (Toute l'équipe). Le front déjà
+// en ligne ne les lit que dans Passations (Hôtel).
+const FIL = [
+  ['tous', 'demo-patron', '09:40', 'Bonjour à tous. Ce soir, 29 couverts et un groupe de 18 personnes à 19 h. Soyez en place à 18 h 15.', []],
+  ['cuisine', 'demo-chef', '10:05', 'Les légumes arrivent demain à 8 h. Videz la chambre froide positive ce soir.', []],
+  ['cuisine', 'demo-cuisinier', '10:12', "C'est noté. Je m'en occupe après le service.", []],
+  ['restaurant', 'demo-serveur', '11:30', 'Table 12 : un client est allergique aux fruits à coque. Julien, vous êtes prévenu.', ['demo-chef']],
+  ['restaurant', 'demo-hote', '11:45', "Le groupe de 18 arrive à 19 h. Je l'installe dans la salle du fond.", []],
+];
+export const CANAUX_MESSAGES = FIL.map(([canal, auteur, heure, contenu, mentions], i) => ({
+  id: '00000000-0000-4000-8000-0000000004' + String(i).padStart(2, '0'),
+  etablissement_id: ETAB,
+  canal,
+  contenu,
+  mentions,
+  created_by: auteur,
+  created_at: instant(aujourdhui(), heure),
+  updated_at: instant(aujourdhui(), heure),
+}));

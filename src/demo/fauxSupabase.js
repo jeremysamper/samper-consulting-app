@@ -26,7 +26,8 @@ const CLE_ROLE = PREFIXE + 'role';
 // plat_formats et cartes.genre. v4 (lot 1, chiffres justes) : type de groupe
 // valide, temps de service des fiches salle non inventé. v5 (lot 2a) : réglages
 // des modules, modèles de mise en place, stocks cibles, livraisons des fournisseurs.
-const VERSION_BASE = 'v5-' + aujourdhui();
+// v6 (lot 2a, D5) : messages des fils d'équipe (canaux_messages).
+const VERSION_BASE = 'v6-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
