@@ -75,30 +75,31 @@ export async function pointerALaBorne(jeton, code) {
   return { ok: false, raison: 'hors_ligne' };
 }
 
-let rejeuEnCours = false;
+let rejeuEnCours = null;
 
 // Rejoue la file. Rend 'oublier' quand la base ne reconnaît plus la borne.
-export async function rejouerFile(jeton) {
-  if (rejeuEnCours) return 'occupe';
-  rejeuEnCours = true;
-  try {
-    for (const e of fileDeLaBorne()) {
-      let r;
-      try {
-        r = await appelBorne(jeton, e.code, e.clientUuid, e.eventAt);
-      } catch (err) {
-        if (isNetworkError(err)) return 'reseau';
-        r = { ok: false, raison: 'erreur' };
-      }
-      const suite = suiteDuRejeu(r);
-      if (suite === 'attendre') return 'attendre';
-      if (suite === 'oublier') return 'oublier';
-      ecrireFile(fileDeLaBorne().filter((x) => x.clientUuid !== e.clientUuid));
+// Un appel pendant un rejeu reçoit le même rejeu : le pointage qui suit part
+// après lui (la base refuse un rejeu plus ancien qu'un appel en ligne).
+export function rejouerFile(jeton) {
+  if (!rejeuEnCours) rejeuEnCours = rejouer(jeton).finally(() => { rejeuEnCours = null; });
+  return rejeuEnCours;
+}
+
+async function rejouer(jeton) {
+  for (const e of fileDeLaBorne()) {
+    let r;
+    try {
+      r = await appelBorne(jeton, e.code, e.clientUuid, e.eventAt);
+    } catch (err) {
+      if (isNetworkError(err)) return 'reseau';
+      r = { ok: false, raison: 'erreur' };
     }
-    return 'vide';
-  } finally {
-    rejeuEnCours = false;
+    const suite = suiteDuRejeu(r);
+    if (suite === 'attendre') return 'attendre';
+    if (suite === 'oublier') return 'oublier';
+    ecrireFile(fileDeLaBorne().filter((x) => x.clientUuid !== e.clientUuid));
   }
+  return 'vide';
 }
 
 // ── Réglages (direction) et compte ───────────────────────────────────────────
