@@ -3549,6 +3549,7 @@ export const UI_GLOSSARY_DE = {
   "Hôte": "Gast",
   "Détail": "Detail",
   "Réception": "Empfang",
+  "Praticienne spa": "Spa-Therapeutin",
   "Technique": "Technik",
   "Pôle": "Abteilung",
   "Rien pour l'instant.": "Noch nichts.",

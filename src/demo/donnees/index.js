@@ -17,6 +17,8 @@ import {
 import { genererCaisse } from './caisse.js';
 import { REGLAGES_MODULES, MEP_MODELES, COMMANDE_CIBLES, CANAUX_MESSAGES } from './reglages.js';
 import { genererPos } from './pos.js';
+import { genererHotel } from './hotel.js';
+import { genererSpa } from './spa.js';
 import { empreinteDemo } from '../rpc.js';
 
 // Codes de pointage de la brigade de démo (borne, lot L6) : Inès 4826,
@@ -141,5 +143,7 @@ export function creerBase() {
     scans_facture: [],
     ...caisse,
     ...genererPos(),
+    ...genererHotel(),
+    ...genererSpa(),
   };
 }

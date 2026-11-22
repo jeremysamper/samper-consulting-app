@@ -10,13 +10,17 @@ import { SOP_TEMPLATES } from '../../data/sopTemplates.js';
 export const PLANNING_GROUPES = [
   { id: '00000000-0000-4000-8000-0000000000c1', etablissement_id: ETAB, nom: 'Cuisine', famille: 'cuisine', ordre: 1, created_at: '2026-02-01T08:00:00Z' },
   { id: '00000000-0000-4000-8000-0000000000c2', etablissement_id: ETAB, nom: 'Salle', famille: 'salle', ordre: 2, created_at: '2026-02-01T08:00:00Z' },
+  // Lot 6a : groupe ajouté par la maison (sans famille de rôle) pour le spa.
+  { id: '00000000-0000-4000-8000-0000000000c3', etablissement_id: ETAB, nom: 'Spa', famille: null, ordre: 3, created_at: '2026-02-01T08:00:00Z' },
 ];
 const G_CUISINE = PLANNING_GROUPES[0].id;
 const G_SALLE = PLANNING_GROUPES[1].id;
+const G_SPA = PLANNING_GROUPES[2].id;
+const groupeDe = (role) => (role === 'praticien_spa' ? G_SPA : ['serveur', 'hote'].includes(role) ? G_SALLE : G_CUISINE);
 
 export const PLANNING_GROUPE_MEMBRES = EQUIPE
   .filter((u) => u.role !== 'patron')
-  .map((u) => ({ etablissement_id: ETAB, user_id: u.id, groupe_id: ['serveur', 'hote'].includes(u.role) ? G_SALLE : G_CUISINE, updated_at: '2026-02-01T08:00:00Z' }));
+  .map((u) => ({ etablissement_id: ETAB, user_id: u.id, groupe_id: groupeDe(u.role), updated_at: '2026-02-01T08:00:00Z' }));
 
 // Horaires types par personne : [jours de repos (0 = dimanche), segments].
 const RYTHMES = {
@@ -29,6 +33,7 @@ const RYTHMES = {
   'demo-serv-2': [[1, 3], [['11:00', '15:00'], ['18:00', '23:30']]],
   'demo-serv-3': [[1, 0], [['17:00', '00:30']]],
   'demo-hote': [[1, 6], [['10:30', '14:30'], ['17:30', '21:30']]],
+  'demo-spa': [[1, 2], [['09:30', '18:30']]],
 };
 
 export function genererShifts() {
