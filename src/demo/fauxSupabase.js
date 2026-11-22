@@ -451,7 +451,9 @@ async function servir(url, input, init) {
     try {
       const r = executerRpc(contexte(), nom, args);
       sauverPlusTard();
-      return reponse(200, r === undefined ? null : r);
+      // Un résultat texte (une date, par exemple) part encodé en JSON, comme
+      // PostgREST : reponse() enverrait sinon la chaîne brute, illisible.
+      return reponse(200, r === undefined ? null : (typeof r === 'string' ? JSON.stringify(r) : r));
     } catch (e) {
       return reponse(e.code === '42501' ? 403 : 400, { code: e.code || 'P0001', message: e.message, details: null, hint: null });
     }

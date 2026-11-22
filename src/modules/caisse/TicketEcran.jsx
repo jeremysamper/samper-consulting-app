@@ -23,7 +23,8 @@ import { libelleSupplement, supplementsPourLigne } from './supplements.js';
 import { REGLAGES_DEFAUT, SUITE_MAX, libelleMode, peutOuvrirMode, suitesVisibles } from './reglages.js';
 import { comptesCommande, photoDuBouton, quantitesParPlat } from './commande.js';
 import { useLargeur } from './mesures.js';
-import { enRupture, libelleCompteRupture, produitsEnRupture, valeurRupture } from './rupture.js';
+import { enRupture, libelleCompteRupture, produitsEnRupture } from './rupture.js';
+import { peutMettreEnRupture } from './gardesCaisse.js';
 import { estPret } from './PlanTables.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,8 +69,9 @@ import { estPret } from './PlanTables.jsx';
 //
 // L2 (22.11.2026) : rupture d'un produit pour la journée (rupture.js). Un appui
 // long sur une case, ou la fiche de la case, propose « Mettre en rupture » ou
-// « Remettre en vente » (consultant, patron, resp_cuisine, comme la RLS de
-// caisse_boutons). La case en rupture est grisée, porte le mot « Rupture » et
+// « Remettre en vente » (consultant, patron, resp_cuisine et serveur, par la
+// RPC caisse_poser_rupture ; « Modifier la case » reste aux trois premiers).
+// La case en rupture est grisée, porte le mot « Rupture » et
 // ne s'ajoute plus : un toucher le rappelle. Un compteur au-dessus de la
 // grille les retrouve et les remet en vente. Les autres postes suivent par le
 // temps réel de caisse_boutons (Caisse.jsx), et le jour se relit à chaque
@@ -178,8 +180,10 @@ export default function TicketEcran({
     return () => document.removeEventListener('keydown', echap);
   }, [feuille, fermerFeuille]);
 
+  // Rupture (L2) : l'habillage, plus le serveur (RPC caisse_poser_rupture).
+  const peutRupture = peutMettreEnRupture(role);
   function debutAppuiLong(plat) {
-    if (!peutHabiller) return;
+    if (!peutRupture) return;
     appuiLong.current.declenche = false;
     appuiLong.current.timer = setTimeout(() => {
       appuiLong.current.declenche = true;
@@ -481,9 +485,9 @@ export default function TicketEcran({
     verrouRupture.current = true;
     setRuptureEnCours(true);
     try {
-      const ruptureLe = valeurRupture(mettre, zurichToday());
+      // Le jour de Zurich est pris par la base (RPC caisse_poser_rupture).
       const resultats = await Promise.all(plats.map((p) => caisse.poserRupture({
-        etablissementId: ticket.etablissement_id, platId: p.id, ruptureLe,
+        etablissementId: ticket.etablissement_id, platId: p.id, mettre,
       })));
       await onBoutonsChange?.();
       const rate = resultats.find((r) => r.error);
@@ -511,7 +515,7 @@ export default function TicketEcran({
   const ruptures = produitsEnRupture(articles, boutons, jour);
   function toucherArticle(plat) {
     if (estEnRupture(plat)) {
-      notify(peutHabiller
+      notify(peutRupture
         ? 'Ce produit est en rupture aujourd\'hui. Appuyez longuement sur la case pour le remettre en vente.'
         : 'Ce produit est en rupture aujourd\'hui. Il revient en vente demain matin.', 'info');
       return;
@@ -557,7 +561,7 @@ export default function TicketEcran({
         onPointerUp={finAppuiLong}
         onPointerLeave={finAppuiLong}
         onPointerCancel={finAppuiLong}
-        onContextMenu={(e) => { if (peutHabiller) e.preventDefault(); }}
+        onContextMenu={(e) => { if (peutRupture) e.preventDefault(); }}
       >
         <span style={{ ...st.caseVisuel, background: couleur ? `var(--caisse-${couleur})` : 'var(--piste)', ...(rupture ? st.caseVisuelRupture : null) }}>
           {avecPhoto ? (
@@ -1075,13 +1079,18 @@ export default function TicketEcran({
             largeur={420}
             pied={(
               <>
-                <button
-                  type="button"
-                  style={fen.secondaire}
-                  onClick={() => { const p = produitAppui; setProduitAppui(null); setBoutonPlat(p); }}
-                >
-                  Modifier la case
-                </button>
+                {/* L'habillage reste aux rôles qui habillent la caisse (RLS). */}
+                {peutHabiller ? (
+                  <button
+                    type="button"
+                    style={fen.secondaire}
+                    onClick={() => { const p = produitAppui; setProduitAppui(null); setBoutonPlat(p); }}
+                  >
+                    Modifier la case
+                  </button>
+                ) : (
+                  <button type="button" style={fen.secondaire} onClick={() => setProduitAppui(null)}>Fermer</button>
+                )}
                 <button
                   type="button"
                   style={fen.primaire}
@@ -1113,7 +1122,7 @@ export default function TicketEcran({
           pied={(
             <>
               <button type="button" style={fen.secondaire} onClick={() => setRupturesOuvert(false)}>Fermer</button>
-              {peutHabiller && ruptures.length > 1 && (
+              {peutRupture && ruptures.length > 1 && (
                 <button
                   type="button"
                   style={fen.primaire}
@@ -1130,7 +1139,7 @@ export default function TicketEcran({
           {ruptures.length > 0 && (
             <>
               <p style={st.appuiTexte}>
-                {peutHabiller
+                {peutRupture
                   ? 'Ils reviennent en vente tout seuls demain matin. Vous pouvez les remettre en vente avant.'
                   : 'Ils reviennent en vente demain matin, ou quand un responsable les remet en vente.'}
               </p>
@@ -1138,7 +1147,7 @@ export default function TicketEcran({
                 {ruptures.map((a) => (
                   <div key={a.id} style={st.ruptureRang} data-rupture-produit={a.id}>
                     <span style={st.ruptureNom} data-no-translate>{boutons[a.id]?.nom_court || a.nom}</span>
-                    {peutHabiller && (
+                    {peutRupture && (
                       <Btn variant="ghost" disabled={ruptureEnCours} onClick={() => changerRupture([a], false)} style={st.btn44}>
                         Remettre en vente
                       </Btn>

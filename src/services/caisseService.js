@@ -423,18 +423,18 @@ export async function upsertBouton({ etablissementId, platId, nomCourt, couleur,
   return { error: null };
 }
 
-// Rupture d'un produit (lot L2) : rupture_le = le jour de Zurich, ou null pour
-// le remettre en vente (règle dans modules/caisse/rupture.js). L'upsert ne
-// nomme que rupture_le : habillage, catégorie et rang restent. Mêmes droits
-// que l'habillage ; une écriture qui ne rend aucune ligne est un refus (RLS).
-export async function poserRupture({ etablissementId, platId, ruptureLe }) {
-  const { data, error } = await supabase
-    .from('caisse_boutons')
-    .upsert({ etablissement_id: etablissementId, plat_id: platId, rupture_le: ruptureLe || null }, { onConflict: 'plat_id' })
-    .select('plat_id, rupture_le');
-  if (error) return { error: mapError(error, ruptureLe ? "La rupture n'a pas pu être enregistrée." : "Le produit n'a pas pu être remis en vente.") };
-  if (!data?.length) return { error: MESSAGES['42501'] };
-  return { error: null, data: data[0] };
+// Rupture d'un produit (lot L2) : la RPC caisse_poser_rupture n'écrit que
+// caisse_boutons.rupture_le (le jour de Zurich, pris côté serveur, ou null
+// pour remettre en vente ; règle de lecture dans modules/caisse/rupture.js).
+// Consultant, patron, resp_cuisine et serveur (décision de Jérémy du
+// 22.11.2026) ; l'habillage reste aux trois premiers par la RLS. Rend le jour
+// posé, ou null.
+export async function poserRupture({ etablissementId, platId, mettre }) {
+  const { data, error } = await supabase.rpc('caisse_poser_rupture', {
+    p_etablissement_id: etablissementId, p_plat_id: platId, p_rupture: Boolean(mettre),
+  });
+  if (error) return { error: mapError(error, mettre ? "La rupture n'a pas pu être enregistrée." : "Le produit n'a pas pu être remis en vente.") };
+  return { error: null, data: data ?? null };
 }
 
 // ── Catégories de caisse (caisse_categories, v4) ──

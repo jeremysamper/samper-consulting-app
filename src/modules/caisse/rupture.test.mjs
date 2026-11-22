@@ -3,7 +3,8 @@
 // vendable tout seul le lendemain.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { enRupture, libelleCompteRupture, produitsEnRupture, valeurRupture } from './rupture.js';
+import { enRupture, libelleCompteRupture, produitsEnRupture } from './rupture.js';
+import { ROLES_RUPTURE, peutHabillerCaisse, peutMettreEnRupture } from './gardesCaisse.js';
 
 const AUJ = '2026-11-22';
 
@@ -53,11 +54,14 @@ test('produitsEnRupture garde l\'ordre des articles en vente', () => {
   assert.deepEqual(produitsEnRupture(null, null, AUJ), []);
 });
 
-test('valeurRupture : le jour pour mettre, null pour remettre', () => {
-  assert.equal(valeurRupture(true, AUJ), AUJ);
-  assert.equal(valeurRupture(false, AUJ), null);
-  assert.equal(valeurRupture(false, undefined), null);
-  assert.throws(() => valeurRupture(true, ''));
+test('qui met en rupture : l\'habillage plus le serveur, comme la RPC', () => {
+  // Même liste que caisse_poser_rupture (20261122_caisse_rupture_rpc.sql).
+  assert.deepEqual([...ROLES_RUPTURE].sort(), ['consultant', 'patron', 'resp_cuisine', 'serveur']);
+  assert.equal(peutMettreEnRupture('serveur'), true);
+  assert.equal(peutMettreEnRupture('resp_cuisine'), true);
+  ['cuisinier', 'hote', 'praticien_spa', null, undefined].forEach((r) => assert.equal(peutMettreEnRupture(r), false));
+  // Le serveur met en rupture mais n'habille pas la caisse.
+  assert.equal(peutHabillerCaisse('serveur'), false);
 });
 
 test('libellé du compteur', () => {

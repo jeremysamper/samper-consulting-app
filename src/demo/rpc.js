@@ -348,6 +348,22 @@ const RPC = {
     lignes.forEach((l) => ctx.maj('caisse_lignes', l, { reclame_at: maintenant() }));
     return { reclamees: lignes.length, suite: a.p_suite };
   },
+  // Rupture d'un produit (lot L2) : comme la vraie fonction, n'écrit que
+  // rupture_le, au jour de Zurich, pour l'habillage et le serveur.
+  caisse_poser_rupture(ctx, a) {
+    if (!['consultant', 'patron', 'resp_cuisine', 'serveur'].includes(profilDe(ctx)?.role)) {
+      throw new ErreurRpc('caisse: rupture reservee', '42501');
+    }
+    if (!ctx.db.plats.some((p) => p.id === a.p_plat_id && p.etablissement_id === a.p_etablissement_id)) {
+      throw new ErreurRpc('caisse: plat inconnu pour cet etablissement');
+    }
+    const jour = a.p_rupture ? jourZurich() : null;
+    const b = ctx.db.caisse_boutons.find((x) => x.plat_id === a.p_plat_id);
+    if (b && b.etablissement_id !== a.p_etablissement_id) throw new ErreurRpc('caisse: plat inconnu pour cet etablissement');
+    if (b) ctx.maj('caisse_boutons', b, { rupture_le: jour, updated_at: maintenant() });
+    else ctx.inserer('caisse_boutons', { etablissement_id: a.p_etablissement_id, plat_id: a.p_plat_id, rupture_le: jour });
+    return jour;
+  },
   caisse_remise(ctx, a) {
     const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id);
     if (!t) throw new ErreurRpc('caisse: ticket introuvable');
