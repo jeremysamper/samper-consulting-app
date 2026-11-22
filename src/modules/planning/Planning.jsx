@@ -45,6 +45,7 @@ import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrir
 import MasquesModal from './MasquesModal.jsx';
 import { LIBELLE_CLOS_D_OFFICE, closDOffice, heuresPointees } from './pointageRegles.js';
 import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
+import { MESSAGE_BORNE, estRefusBorne } from './borne/borneLogique.js';
 import { maisonFermee, periodeDe } from '../../utils/reglagesMaison.js';
 import { useContrats } from './contratsService.js';
 import { calcHeures, periodeEnCours, soldePersonne } from './soldesHeures.js';
@@ -639,6 +640,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   const pointer = async (shift, type) => {
     const label = type === 'arrivee' ? 'arrivée' : 'départ';
+    // Pointage à la borne seulement (Réglages > Planning > Pointage) : le
+    // bouton le dit au lieu de pointer. La base refuse aussi (borne_seulement).
+    if (maison.pointage.borneSeulement) { notifyLegacy(MESSAGE_BORNE, 'info'); return; }
     if (!legacySB) {
       // Mode démo sans bridge : comportement historique conservé.
       const t = nowTime();
@@ -668,7 +672,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
         notifyLegacy('Pointage enregistré : il sera synchronisé au retour du réseau', 'warning');
       }
     } catch (err) {
-      notifyLegacy(`Pointage (${label}) non enregistré. ` + messageErreur(err, 'pointage'), 'error');
+      notifyLegacy(estRefusBorne(err) ? MESSAGE_BORNE : `Pointage (${label}) non enregistré. ` + messageErreur(err, 'pointage'), estRefusBorne(err) ? 'info' : 'error');
     } finally {
       punchEnCoursRef.current.delete(cle);
     }
@@ -682,6 +686,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // hors-ligne, il reste affiché et part en file.
   const pointerHorsPlanning = async () => {
     if (!legacySB || horsPlanningEnCoursRef.current) return;
+    if (maison.pointage.borneSeulement) { notifyLegacy(MESSAGE_BORNE, 'info'); return; }
     horsPlanningEnCoursRef.current = true;
     const provisoire = horaireHorsPlanning({ etablissementId: etabId, userId: user.id, date: zurichToday() });
     setPlanning(prev => [...prev, provisoire]);
@@ -695,7 +700,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
       }
     } catch (err) {
       setPlanning(prev => prev.filter(s => s.id !== provisoire.id));
-      notifyLegacy('Pointage (arrivée) non enregistré. ' + messageErreur(err, 'pointage'), 'error');
+      notifyLegacy(estRefusBorne(err) ? MESSAGE_BORNE : 'Pointage (arrivée) non enregistré. ' + messageErreur(err, 'pointage'), estRefusBorne(err) ? 'info' : 'error');
     } finally {
       horsPlanningEnCoursRef.current = false;
     }

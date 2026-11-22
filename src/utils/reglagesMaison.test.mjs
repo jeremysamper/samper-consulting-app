@@ -36,7 +36,7 @@ test('lecture prudente : ligne absente ou illisible = défauts', () => {
   const f = normaliserFermetures({ jours_fermes: [1, 1, 9, '3'], services_fermes: { 2: ['soir', 'nuit'], 8: ['midi'] }, periodes: [{ du: '2026-02-01', au: '2026-01-01' }, { du: '2026-01-01', au: '2026-01-02', motif: 7 }] });
   assert.deepEqual(f, { joursFermes: [1, 3], servicesFermes: { 2: ['soir'] }, periodes: [{ du: '2026-01-01', au: '2026-01-02', motif: '' }] });
   assert.deepEqual(normaliserPointage({ arrondi_min: 7, avance: 'autre' }), DEFAUTS.pointage);
-  assert.deepEqual(normaliserPointage({ arrondi_min: 15, avance: 'prevue' }), { arrondiMin: 15, avance: 'prevue', clotureAutoH: null });
+  assert.deepEqual(normaliserPointage({ arrondi_min: 15, avance: 'prevue' }), { arrondiMin: 15, avance: 'prevue', clotureAutoH: null, borneSeulement: false });
   assert.deepEqual(normaliserObjectifs({ matiere_pct: '28,5', personnel_pct: 120, ca_mensuel_ht: 90000 }), { matierePct: 28.5, personnelPct: null, caMensuelHt: 90000 });
 });
 
@@ -48,15 +48,28 @@ test("clôture d'office : un entier de 8 à 16, sinon jamais", () => {
   for (const v of [7, 17, 12.5, '12', null, true, -1]) {
     assert.equal(normaliserPointage({ cloture_auto_h: v }).clotureAutoH, null, String(v));
   }
-  assert.deepEqual(versBase.pointage({ arrondiMin: 0, avance: 'pointee', clotureAutoH: null }), { arrondi_min: 0, avance: 'pointee', cloture_auto_h: null });
+  assert.deepEqual(versBase.pointage({ arrondiMin: 0, avance: 'pointee', clotureAutoH: null }), { arrondi_min: 0, avance: 'pointee', cloture_auto_h: null, borne_seulement: false });
   // Un bloc écrit sans le champ (valeur d'avant ce réglage) envoie « jamais ».
   assert.equal(versBase.pointage({ arrondiMin: 0, avance: 'pointee' }).cloture_auto_h, null);
+});
+
+test('pointage à la borne seulement : le booléen true seulement, toujours écrit', () => {
+  assert.equal(DEFAUTS.pointage.borneSeulement, false);
+  assert.equal(normaliserPointage({}).borneSeulement, false);
+  assert.equal(normaliserPointage({ borne_seulement: true }).borneSeulement, true);
+  for (const v of ['true', 1, null, 'oui', {}]) {
+    assert.equal(normaliserPointage({ borne_seulement: v }).borneSeulement, false, String(v));
+  }
+  // La clé part toujours : la base garde la valeur en place seulement quand
+  // un écran d'avant l'oublie (trg_reglages_maison_garde_borne).
+  assert.equal(versBase.pointage({ arrondiMin: 0, avance: 'pointee' }).borne_seulement, false);
+  assert.equal(versBase.pointage({ arrondiMin: 0, avance: 'pointee', borneSeulement: true }).borne_seulement, true);
 });
 
 test('aller-retour avec la base : rien ne se perd', () => {
   const lisible = {
     fermetures: { joursFermes: [1], servicesFermes: { 2: ['soir'] }, periodes: [{ du: '2026-12-24', au: '2027-01-05', motif: 'Vacances' }] },
-    pointage: { arrondiMin: 5, avance: 'prevue', clotureAutoH: 12 },
+    pointage: { arrondiMin: 5, avance: 'prevue', clotureAutoH: 12, borneSeulement: true },
     objectifs: { matierePct: 28, personnelPct: 35, caMensuelHt: 120000 },
   };
   const ligne = Object.fromEntries([['fermetures', versBase.fermetures(lisible.fermetures)], ['pointage', versBase.pointage(lisible.pointage)], ['objectifs', versBase.objectifs(lisible.objectifs)]]);

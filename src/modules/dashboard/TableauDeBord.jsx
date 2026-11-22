@@ -36,6 +36,7 @@ import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { zurichClock, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import { envoyerHorsPlanning, horaireHorsPlanning } from '../planning/pointageDuJour.js';
+import { MESSAGE_BORNE, estRefusBorne } from '../planning/borne/borneLogique.js';
 import { useRegulariteEquipe } from '../planning/contratsService.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { derniersParPerimetre, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
@@ -158,6 +159,8 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   // seul un refus métier annule l'affichage. Ne JAMAIS bloquer un pointage.
   async function pointer(shift, type) {
     setErreurPointage('');
+    // Pointage à la borne seulement : le bouton le dit au lieu de pointer.
+    if (maison.pointage.borneSeulement) { setErreurPointage(MESSAGE_BORNE); notify(MESSAGE_BORNE, 'info'); return; }
     const bridge = dbService.getBridge();
     if (!bridge?.db) { setErreurPointage('Connexion à la base indisponible.'); return; }
     const champ = type === 'arrivee' ? 'pointageDebut' : 'pointageFin';
@@ -180,7 +183,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
       }
     } catch (err) {
       d.remplacerShift(shift);
-      const refus = `Pointage refusé. ${messageErreur(err, 'pointage')}`;
+      const refus = estRefusBorne(err) ? MESSAGE_BORNE : `Pointage refusé. ${messageErreur(err, 'pointage')}`;
       setErreurPointage(refus);
       notify(refus, 'error');
     } finally {
@@ -192,6 +195,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   // l'équipier (pointageDuJour.js, partagé avec le module Planning).
   async function pointerHorsPlanning() {
     setErreurPointage('');
+    if (maison.pointage.borneSeulement) { setErreurPointage(MESSAGE_BORNE); notify(MESSAGE_BORNE, 'info'); return; }
     const bridge = dbService.getBridge();
     if (!bridge?.db) { setErreurPointage('Connexion à la base indisponible.'); return; }
     const provisoire = horaireHorsPlanning({ etablissementId: etabId, userId: user?.id, date: aujourdhui });
@@ -208,7 +212,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
       }
     } catch (err) {
       d.retirerShift(provisoire.id);
-      const refus = `Pointage refusé. ${messageErreur(err, 'pointage')}`;
+      const refus = estRefusBorne(err) ? MESSAGE_BORNE : `Pointage refusé. ${messageErreur(err, 'pointage')}`;
       setErreurPointage(refus);
       notify(refus, 'error');
     } finally {

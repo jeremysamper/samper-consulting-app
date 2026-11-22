@@ -4,6 +4,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from '../App.jsx';
+import { borneAuLancement } from '../modules/planning/borne/borneAppareil.js';
 import BandeauDemo from './BandeauDemo.jsx';
 import { installPreloadErrorRecovery } from '../utils/preloadErrorRecovery.js';
 import { installBrandPrintStyles } from '../design/installPrintStyles.js';
@@ -47,9 +48,12 @@ class Garde extends React.Component {
   }
 }
 
+// Borne de pointage déclarée dans la démo : son écran, comme dans l'app.
+const Borne = React.lazy(() => import('../modules/planning/borne/Borne.jsx'));
+
 createRoot(document.getElementById('root')).render(
   <Garde>
-    <App />
+    {borneAuLancement() ? <React.Suspense fallback={null}><Borne /></React.Suspense> : <App />}
   </Garde>
 );
 

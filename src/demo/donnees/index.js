@@ -16,6 +16,12 @@ import {
 } from './operations.js';
 import { genererCaisse } from './caisse.js';
 import { genererPos } from './pos.js';
+import { empreinteDemo } from '../rpc.js';
+
+// Codes de pointage de la brigade de démo (borne, lot L6) : Inès 4826,
+// Sofia 5937, Hugo 3816. Seule l'empreinte est gardée, comme en base.
+const CODES_POINTAGE = [['demo-cuisinier', '4826'], ['demo-serveur', '5937'], ['demo-cuis-2', '3816']]
+  .map(([user_id, code]) => ({ user_id, etablissement_id: ETAB, code_empreinte: empreinteDemo(`${ETAB}:${code}`), maj_le: '2026-11-20T08:00:00Z' }));
 
 const fournisseursEtab = FOURNISSEURS.map((f) => ({ ...f, etablissement_id: ETAB, actif: true, created_at: '2026-01-10T08:00:00Z', updated_at: '2026-01-10T08:00:00Z' }));
 
@@ -117,6 +123,9 @@ export function creerBase() {
     traductions: [],
     temps_gagne: [],
     reglages_maison: [],
+    bornes_pointage: [],
+    bornes_pointage_essais: [],
+    pointage_codes: CODES_POINTAGE,
     objectifs_maison: [],
     donnees_exemple: [],
     print_agents: [],

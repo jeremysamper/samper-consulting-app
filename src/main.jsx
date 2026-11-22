@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
+import { borneAuLancement } from './modules/planning/borne/borneAppareil.js';
 import { initPwa } from './pwa/registerPwa.js';
 import { installPreloadErrorRecovery } from './utils/preloadErrorRecovery.js';
 import { installBrandPrintStyles } from './design/installPrintStyles.js';
@@ -55,9 +56,13 @@ class RootErrorBoundary extends React.Component {
   }
 }
 
+// Appareil déclaré comme borne de pointage (Réglages > Planning > Pointage) :
+// l'écran de la borne, en plein écran et sans session, à la place de l'app.
+const Borne = React.lazy(() => import('./modules/planning/borne/Borne.jsx'));
+
 createRoot(document.getElementById('root')).render(
   <RootErrorBoundary>
-    <App />
+    {borneAuLancement() ? <React.Suspense fallback={null}><Borne /></React.Suspense> : <App />}
   </RootErrorBoundary>
 );
 

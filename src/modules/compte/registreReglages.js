@@ -97,8 +97,8 @@ const toutLeMonde = () => true;
 export const SECTIONS = [
   // ── Moi ──
   {
-    id: 'mon_compte', libelle: 'Mon compte', detail: 'Nom, téléphone, mot de passe, double authentification, déconnexion',
-    motsCles: 'profil sécurité code', groupe: 'moi', portee: 'personne', garde: toutLeMonde,
+    id: 'mon_compte', libelle: 'Mon compte', detail: 'Nom, téléphone, mot de passe, double authentification, code de pointage',
+    motsCles: 'profil sécurité code pointage borne badgeuse déconnexion', groupe: 'moi', portee: 'personne', garde: toutLeMonde,
     charger: () => import('./sections/SectionMonCompte.jsx'),
   },
 
@@ -206,8 +206,8 @@ export const SECTIONS = [
     charger: () => import('../planning/SectionsPlanning.jsx').then((m) => ({ default: m.SectionContrats })),
   },
   {
-    id: 'planning_pointage', libelle: 'Planning : pointage', onglet: 'Pointage', detail: 'Arrivée en avance et arrondi des heures comptées',
-    motsCles: 'pointer arrondi avance heures comptées salaires', groupe: 'modules', portee: 'maison', module: 'planning',
+    id: 'planning_pointage', libelle: 'Planning : pointage', onglet: 'Pointage', detail: 'Arrivée en avance, arrondi, borne de pointage et codes personnels',
+    motsCles: 'pointer arrondi avance heures comptées salaires borne badgeuse tablette code', groupe: 'modules', portee: 'maison', module: 'planning',
     garde: (ctx) => ouvreLeModule('planning')(ctx) && estDirectionPlanning(ctx.user?.role),
     charger: () => import('../planning/SectionsReglesPlanning.jsx').then((m) => ({ default: m.SectionPointage })),
     signaux: ['reglages_maison'],

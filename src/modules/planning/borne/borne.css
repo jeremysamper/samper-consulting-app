@@ -1,0 +1,301 @@
+/* ────────────────────────────────────────────────────────────────────────────
+   Borne de pointage (lot L6, 22.11.2026), direction Galet : la carte nuit
+   porte l'heure, une carte blanche porte le pavé. Plein écran, sans la coque.
+   Tablette en largeur : côte à côte. Téléphone et tablette en hauteur :
+   l'heure en bandeau au-dessus du pavé.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.borne {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  padding: 24px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  overflow: auto;
+  box-sizing: border-box;
+}
+
+.borne-heure {
+  display: grid;
+  align-content: space-between;
+  gap: 24px;
+  padding: 40px;
+  border-radius: var(--r-xl);
+  background: var(--carte-nuit);
+  background-image: var(--degrade-nuit);
+  color: var(--carte-nuit-texte);
+  box-shadow: var(--sh);
+  min-width: 0;
+}
+
+.borne-lieu {
+  margin: 0;
+  font-size: var(--t3);
+  font-weight: var(--g2);
+  color: var(--carte-nuit-doux);
+  overflow-wrap: anywhere;
+}
+
+.borne-horloge {
+  margin: 0;
+  font-family: var(--font-num);
+  font-weight: var(--g-chiffre);
+  font-size: clamp(72px, 13vw, 156px);
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.borne-date {
+  margin: 12px 0 0;
+  font-size: var(--t4);
+  color: var(--carte-nuit-doux);
+}
+
+
+.borne-pied {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+
+.borne-consigne {
+  margin: 0;
+  font-size: var(--t3);
+  line-height: 1.4;
+  max-width: 34ch;
+}
+
+.borne-file {
+  margin: 0;
+  font-size: var(--t2);
+  color: var(--carte-nuit-doux);
+}
+
+.borne-quitter {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--r-full);
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--carte-nuit-doux);
+  background: transparent;
+  color: var(--carte-nuit-texte);
+  font: inherit;
+  font-size: var(--t2);
+  cursor: pointer;
+}
+
+.borne-pave {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 24px;
+  padding: 32px 24px;
+  border-radius: var(--r-xl);
+  background: var(--zone);
+  border: 1px solid var(--rule-soft);
+  box-shadow: var(--sh);
+  min-width: 0;
+}
+
+.borne-pave-titre {
+  margin: 0;
+  font-size: var(--t5);
+  font-weight: var(--g2);
+  text-align: center;
+}
+
+.borne-pave-attente {
+  margin: -12px 0 0;
+  font-size: var(--t3);
+  color: var(--text2);
+}
+
+.borne-points {
+  display: flex;
+  gap: 16px;
+}
+
+.borne-points i {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 2px solid var(--text);
+  box-sizing: border-box;
+}
+
+.borne-points i.on { background: var(--text); }
+
+.borne-touches {
+  display: grid;
+  grid-template-columns: repeat(3, var(--borne-touche, 88px));
+  gap: 16px;
+}
+
+.borne-touche {
+  width: var(--borne-touche, 88px);
+  height: var(--borne-touche, 88px);
+  border-radius: 50%;
+  border: 1px solid var(--rule-soft);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-num);
+  font-weight: var(--g-chiffre);
+  font-size: var(--t6);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.borne-touche:active:not(:disabled) { background: var(--selection); }
+.borne-touche:disabled { opacity: 0.65; cursor: default; }
+.borne-touche:focus-visible { outline: 2px solid var(--text); outline-offset: 3px; }
+
+.borne-touche--texte {
+  background: transparent;
+  border-color: transparent;
+  font-family: var(--font);
+  font-size: var(--t2);
+  color: var(--text2);
+}
+
+/* Confirmation : la personne, le geste, l'heure du serveur. */
+.borne-resultat-zone {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0;
+}
+
+.borne-resultat {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.borne-resultat-picto {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin-bottom: 8px;
+}
+
+.borne-resultat--succes .borne-resultat-picto { background: var(--success-bg); color: var(--success-text); }
+.borne-resultat--info .borne-resultat-picto { background: var(--info-bg); color: var(--info-text); }
+.borne-resultat--erreur .borne-resultat-picto { background: var(--danger-bg); color: var(--danger-text); }
+
+.borne-resultat-nom {
+  margin: 0;
+  font-size: var(--t5);
+  font-weight: var(--g3);
+  overflow-wrap: anywhere;
+}
+
+.borne-resultat-titre {
+  margin: 0;
+  font-size: var(--t5);
+  font-weight: var(--g2);
+}
+
+.borne-resultat-heure {
+  margin: 4px 0 0;
+  font-family: var(--font-num);
+  font-weight: var(--g-chiffre);
+  font-size: clamp(48px, 8vw, 72px);
+  line-height: 1;
+}
+
+.borne-resultat-detail {
+  margin: 4px 0 0;
+  font-size: var(--t3);
+  color: var(--text2);
+  max-width: 32ch;
+}
+
+.borne-oubliee,
+.borne-quitter-fenetre {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  text-align: center;
+  max-width: 420px;
+}
+
+.borne-quitter-texte {
+  margin: 0;
+  font-size: var(--t3);
+  color: var(--text2);
+  line-height: 1.45;
+}
+
+.borne-quitter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.borne-btn {
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: var(--r-full);
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--btn-bord);
+  background: var(--btn-fond);
+  color: var(--btn-texte);
+  font: inherit;
+  font-size: var(--t2);
+  font-weight: var(--g2);
+  cursor: pointer;
+}
+
+.borne-btn--principal {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Tablette en hauteur et téléphone : l'heure en bandeau, le pavé dessous. */
+@media (max-width: 900px), (orientation: portrait) {
+  .borne {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 16px;
+    padding: 16px;
+  }
+  .borne-heure {
+    padding: 24px;
+    gap: 16px;
+  }
+  .borne-horloge { font-size: clamp(56px, 16vw, 112px); }
+  .borne-date { font-size: var(--t3); margin-top: 6px; }
+  .borne-pave { padding: 24px 16px; gap: 20px; }
+}
+
+@media (max-width: 480px) {
+  .borne { --borne-touche: 72px; }
+  .borne-touches { gap: 14px; }
+  .borne-consigne { font-size: var(--t2); }
+  .borne-heure { padding: 20px; }
+}
+
+@media (max-height: 640px) and (orientation: landscape) {
+  .borne { --borne-touche: 64px; }
+  .borne-touches { gap: 10px; }
+  .borne-pave { gap: 14px; padding: 16px; }
+  .borne-heure { padding: 24px; }
+}

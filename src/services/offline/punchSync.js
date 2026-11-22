@@ -20,6 +20,13 @@ import { supabase } from '../supabase.js';
 import { punchQueue } from './punchQueue.js';
 import { generateUuid, isNetworkError, withTimeout } from './offlineNet.js';
 import { zurichClock } from '../../utils/zurichTime.js';
+import { notify } from '../../components/toast/index.js';
+import { estRefusBorne } from '../../modules/planning/borne/borneLogique.js';
+
+// Jour et heure d'un geste, pour l'avis d'un pointage refusé au rejeu.
+const momentDuGeste = (iso) => new Intl.DateTimeFormat('fr-CH', {
+  timeZone: 'Europe/Zurich', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+}).format(new Date(iso));
 
 // Noms historiques conservés : ces primitives sont désormais partagées avec la
 // file de saisie d'inventaire (offlineNet.js), le comportement est inchangé.
@@ -127,6 +134,16 @@ export async function syncPendingPunches() {
       // ou JWT en cours de rafraîchissement (PGRST301) : file intacte, retry.
       if (isNetworkError(error) || error.code === 'PGRST202' || error.code === 'PGRST301') {
         break;
+      }
+
+      // Pointage à la borne seulement (activé après la mise en file) : la base
+      // refusera toujours ce rejeu. Il sort de la file avec un avis daté, pour
+      // que la personne fasse saisir l'heure par la direction.
+      if (estRefusBorne(error)) {
+        console.warn('[punchSync] Pointage refusé au rejeu (borne seulement)', item);
+        notify(`Pointage hors ligne du ${momentDuGeste(item.eventAt)} refusé : le pointage se fait à la borne de l'établissement. Prévenez la direction pour qu'elle le saisisse.`, 'warning');
+        await punchQueue.remove(item.clientUuid);
+        continue;
       }
 
       const attempts = (item.attempts || 0) + 1;

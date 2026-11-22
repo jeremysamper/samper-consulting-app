@@ -4,12 +4,16 @@ import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
 import { EtatMaison } from '../compte/sections/reglagesMaisonUi.jsx';
 import { ChoixPilules, Ligne, ui } from '../compte/sections/reglagesUi.jsx';
 
+const ReglagesBornes = React.lazy(() => import('./borne/ReglagesBornes.jsx'));
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Réglage du Planning (18.11.2026), table reglages_maison :
 //   Pointage : comment les heures pointées se comptent (pointageRegles.js),
 //     le pointage brut n'étant jamais réécrit ; et la clôture d'office d'un
 //     départ oublié, faite par la base (clore_pointages_oublies, passage
 //     horaire de alerts-evaluator).
+//   Borne : pointer seulement à la borne, les bornes déclarées et les codes
+//     personnels (borne/ReglagesBornes.jsx, lot L6).
 // Écriture : consultant et patron (RLS de reglages_maison).
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -46,7 +50,7 @@ export function SectionPointage({ etablissement }) {
           onChange={(v) => enregistrer({ ...p, arrondiMin: Number(v) })}
         />
       </Ligne>
-      <Ligne colonne derniere titre="Clore un pointage oublié après" aide="Si le départ n'est pas pointé, l'horaire est clos à l'heure de fin prévue, une fois ce délai passé depuis l'arrivée. Le contrôle passe toutes les heures. Le planning affiche l'horaire comme clos d'office. Un départ pointé ensuite, ou une correction, remplace cette heure.">
+      <Ligne colonne titre="Clore un pointage oublié après" aide="Si le départ n'est pas pointé, l'horaire est clos à l'heure de fin prévue, une fois ce délai passé depuis l'arrivée. Le contrôle passe toutes les heures. Le planning affiche l'horaire comme clos d'office. Un départ pointé ensuite, ou une correction, remplace cette heure.">
         <ChoixPilules
           label="Clore un pointage oublié après"
           valeur={p.clotureAutoH == null ? 'jamais' : String(p.clotureAutoH)}
@@ -54,6 +58,9 @@ export function SectionPointage({ etablissement }) {
           onChange={(v) => enregistrer({ ...p, clotureAutoH: v === 'jamais' ? null : Number(v) })}
         />
       </Ligne>
+      <React.Suspense fallback={null}>
+        <ReglagesBornes etablissement={etablissement} pointage={p} enregistrer={enregistrer} />
+      </React.Suspense>
     </div>
   );
 }

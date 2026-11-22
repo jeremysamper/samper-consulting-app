@@ -42,23 +42,63 @@ function totalTicket(ctx, ticketId) {
 
 const arrondi5 = (n) => Math.round(n * 20) / 20;
 
+// ── Borne de pointage (lot L6) ───────────────────────────────────────────────
+// Même contrat que les fonctions de la base (pointer_borne, borne_etat...).
+// Empreinte de démonstration (FNV-1a) : la démo n'a rien à protéger, seule la
+// forme compte (le jeton et le code ne sont jamais gardés en clair).
+
+export const MESSAGE_BORNE_DEMO = "Le pointage se fait à la borne de l'établissement.";
+
+export function empreinteDemo(texte) {
+  let h = 0x811c9dc5;
+  for (const c of String(texte)) { h ^= c.codePointAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(16).padStart(8, '0');
+}
+
+const tablesBorne = (ctx) => {
+  ctx.db.bornes_pointage ||= [];
+  ctx.db.bornes_pointage_essais ||= [];
+  ctx.db.pointage_codes ||= [];
+  return ctx.db;
+};
+
+const estDirection = (ctx) => ['consultant', 'patron'].includes(profilDe(ctx)?.role);
+
+function borneSeulement(ctx, etab) {
+  const r = (ctx.db.reglages_maison || []).find((x) => x.etablissement_id === etab);
+  return r?.pointage?.borne_seulement === true;
+}
+
+const enMinutes = (t) => { const [h, m] = String(t || '0:0').split(':').map(Number); return h * 60 + m; };
+
+function jetonDemo() {
+  const octets = new Uint8Array(32);
+  globalThis.crypto.getRandomValues(octets);
+  return Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('');
+}
+
+const heureDe = (iso) => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+
 // ── Table des fonctions ─────────────────────────────────────────────────────
 
 const RPC = {
   // Pointage : l'heure est celle de Zurich, comme la vraie fonction.
   pointer_arrivee(ctx, a) {
     const s = ctx.db.shifts.find((x) => x.id === (a.shift_id || a.p_shift_id));
+    if (borneSeulement(ctx, s?.etablissement_id)) throw new ErreurRpc(MESSAGE_BORNE_DEMO);
     if (!s || s.pointage_debut) throw new ErreurRpc('Shift introuvable, non autorisé, ou déjà pointé');
     ctx.maj('shifts', s, { pointage_debut: heureZurich() });
     return { ...s };
   },
   pointer_depart(ctx, a) {
     const s = ctx.db.shifts.find((x) => x.id === (a.shift_id || a.p_shift_id));
+    if (borneSeulement(ctx, s?.etablissement_id)) throw new ErreurRpc(MESSAGE_BORNE_DEMO);
     if (!s || !s.pointage_debut || s.pointage_fin) throw new ErreurRpc('Shift introuvable, non autorisé, pas d\'arrivée ou départ déjà pointé');
     ctx.maj('shifts', s, { pointage_fin: heureZurich() });
     return { ...s };
   },
   pointer_hors_planning(ctx, a) {
+    if (borneSeulement(ctx, a.p_etablissement_id)) throw new ErreurRpc(MESSAGE_BORNE_DEMO);
     const ex = ctx.db.shifts.find((x) => x.id === a.p_shift_id);
     if (ex) return { ...ex };
     const h = heureZurich();
@@ -67,7 +107,129 @@ const RPC = {
       pause: 0, poste: null, type_shift: 'simple', statut: 'confirmé', pointage_debut: h, pointage_fin: null, note: 'Pointage hors planning',
     });
   },
-  pointer_offline() { return { applique: true }; },
+  pointer_offline(ctx, a) {
+    const s = ctx.db.shifts.find((x) => x.id === a.p_shift_id);
+    if (borneSeulement(ctx, s?.etablissement_id || a.p_etablissement_id)) throw new ErreurRpc(MESSAGE_BORNE_DEMO);
+    return { applique: true };
+  },
+
+  borne_declarer(ctx, a) {
+    tablesBorne(ctx);
+    if (!estDirection(ctx)) throw new ErreurRpc('Seule la direction déclare une borne.');
+    const nom = String(a.p_nom || '').trim();
+    if (!nom || nom.length > 60) throw new ErreurRpc('Donnez un nom à la borne (60 caractères au plus).');
+    const jeton = jetonDemo();
+    const b = ctx.inserer('bornes_pointage', {
+      id: uuid(), etablissement_id: a.p_etablissement_id, nom, jeton_empreinte: empreinteDemo(jeton), creee_par: ctx.uid,
+      creee_le: maintenant(), revoquee_le: null, dernier_usage_le: null,
+    });
+    return { id: b.id, nom: b.nom, etablissement_id: b.etablissement_id, creee_le: b.creee_le, jeton };
+  },
+  borne_revoquer(ctx, a) {
+    const db = tablesBorne(ctx);
+    if (!estDirection(ctx)) throw new ErreurRpc('Seule la direction révoque une borne.');
+    const b = db.bornes_pointage.find((x) => x.id === a.p_borne_id);
+    if (!b || b.revoquee_le) return false;
+    ctx.maj('bornes_pointage', b, { revoquee_le: maintenant() });
+    return true;
+  },
+  borne_etat(ctx, a) {
+    const db = tablesBorne(ctx);
+    const b = String(a.p_jeton || '').length === 64 ? db.bornes_pointage.find((x) => x.jeton_empreinte === empreinteDemo(a.p_jeton)) : null;
+    if (!b) return { valide: false, raison: 'borne_inconnue' };
+    if (b.revoquee_le) return { valide: false, raison: 'revoquee' };
+    const e = (ctx.db.etablissements || []).find((x) => x.id === b.etablissement_id);
+    return { valide: true, nom: b.nom, etablissement_id: b.etablissement_id, etablissement_nom: e?.nom || '' };
+  },
+  pointer_borne(ctx, a) {
+    const db = tablesBorne(ctx);
+    const b = String(a.p_jeton || '').length === 64 ? db.bornes_pointage.find((x) => x.jeton_empreinte === empreinteDemo(a.p_jeton)) : null;
+    if (!b) return { ok: false, raison: 'borne_inconnue' };
+    if (a.p_client_uuid) {
+      const prec = db.bornes_pointage_essais.find((e) => e.client_uuid === a.p_client_uuid);
+      if (prec) return { ok: ['arrivee', 'depart', 'deja'].includes(prec.resultat), raison: prec.resultat, doublon: true };
+    }
+    const quand = a.p_event_at || maintenant();
+    const journal = (resultat, extra = {}) => ctx.inserer('bornes_pointage_essais', {
+      id: uuid(), borne_id: b.id, etablissement_id: b.etablissement_id, user_id: null, resultat, client_uuid: a.p_client_uuid || null, event_at: quand, created_at: maintenant(), ...extra,
+    });
+    if (b.revoquee_le) { journal('revoquee'); return { ok: false, raison: 'revoquee' }; }
+    // 5 codes faux en 5 minutes : attente jusqu'à 5 minutes après le dernier.
+    const derniers = db.bornes_pointage_essais.filter((e) => e.borne_id === b.id && e.resultat === 'code_faux')
+      .map((e) => Date.parse(e.created_at)).sort((x, y) => y - x).slice(0, 5);
+    if (derniers.length === 5 && derniers[0] - derniers[4] <= 300000 && Date.now() < derniers[0] + 300000) {
+      return { ok: false, raison: 'attente', secondes: Math.max(1, Math.ceil((derniers[0] + 300000 - Date.now()) / 1000)) };
+    }
+    const echecs = db.bornes_pointage_essais.filter((e) => e.borne_id === b.id && e.resultat === 'code_faux' && Date.now() - Date.parse(e.created_at) < 300000);
+    const code = String(a.p_code || '');
+    const c = /^[0-9]{4}$/.test(code)
+      ? db.pointage_codes.find((x) => x.etablissement_id === b.etablissement_id && x.code_empreinte === empreinteDemo(b.etablissement_id + ':' + code))
+      : null;
+    const p = c ? profilDe(ctx, c.user_id) : null;
+    if (!p || p.actif === false || !(p.etablissement_ids || []).includes(b.etablissement_id)) {
+      journal('code_faux');
+      return { ok: false, raison: 'code_faux', restants: Math.max(0, 4 - echecs.length) };
+    }
+    const h = heureZurich().slice(0, 5);
+    const j = jourZurich();
+    const fiche = { prenom: p.prenom || '', nom: p.nom || '' };
+    const recent = db.bornes_pointage_essais
+      .filter((e) => e.user_id === p.id && ['arrivee', 'depart'].includes(e.resultat) && Date.now() - Date.parse(e.event_at) < 120000)
+      .sort((x, y) => Date.parse(y.event_at) - Date.parse(x.event_at))[0];
+    if (recent) {
+      journal('deja', { user_id: p.id });
+      return { ok: true, raison: 'deja', type: recent.resultat, heure: heureDe(recent.event_at), ...fiche };
+    }
+    const duJour = ctx.db.shifts.filter((s) => s.user_id === p.id && s.etablissement_id === b.etablissement_id && s.date === j);
+    const ouvert = duJour.find((s) => s.pointage_debut && !s.pointage_fin);
+    let type = 'arrivee';
+    let hors = false;
+    if (ouvert) {
+      ctx.maj('shifts', ouvert, { pointage_fin: h, pointage_fin_auto: false });
+      type = 'depart';
+    } else {
+      const prochain = duJour.filter((s) => !s.pointage_debut)
+        .sort((x, y) => Math.abs(enMinutes(x.debut) - enMinutes(h)) - Math.abs(enMinutes(y.debut) - enMinutes(h)))[0];
+      if (prochain) ctx.maj('shifts', prochain, { pointage_debut: h });
+      else {
+        ctx.inserer('shifts', {
+          id: uuid(), etablissement_id: b.etablissement_id, user_id: p.id, date: j, debut: h, fin: h, pause: 0, poste: null,
+          type_shift: 'simple', statut: 'confirmé', pointage_debut: h, pointage_fin: null, note: 'Pointage hors planning',
+        });
+        hors = true;
+      }
+    }
+    journal(type, { user_id: p.id });
+    ctx.maj('bornes_pointage', b, { dernier_usage_le: maintenant() });
+    return { ok: true, raison: type, type, heure: h, ...fiche, hors_planning: hors };
+  },
+  pointage_code_definir(ctx, a) {
+    const db = tablesBorne(ctx);
+    const code = String(a.p_code || '');
+    if (!/^[0-9]{4}$/.test(code)) return { ok: false, raison: 'format' };
+    if (/^(.)\1{3}$/.test(code) || '0123456789'.includes(code) || '9876543210'.includes(code)) return { ok: false, raison: 'trop_simple' };
+    const emp = empreinteDemo(a.p_etablissement_id + ':' + code);
+    if (db.pointage_codes.some((x) => x.etablissement_id === a.p_etablissement_id && x.code_empreinte === emp && x.user_id !== ctx.uid)) return { ok: false, raison: 'indisponible' };
+    const mien = db.pointage_codes.find((x) => x.user_id === ctx.uid && x.etablissement_id === a.p_etablissement_id);
+    if (mien) ctx.maj('pointage_codes', mien, { code_empreinte: emp, maj_le: maintenant() });
+    else ctx.inserer('pointage_codes', { user_id: ctx.uid, etablissement_id: a.p_etablissement_id, code_empreinte: emp, maj_le: maintenant() });
+    return { ok: true };
+  },
+  pointage_code_etat(ctx, a) {
+    const c = tablesBorne(ctx).pointage_codes.find((x) => x.user_id === ctx.uid && x.etablissement_id === a.p_etablissement_id);
+    return { defini: Boolean(c), maj_le: c?.maj_le || null };
+  },
+  pointage_codes_equipe(ctx, a) {
+    if (!estDirection(ctx)) throw new ErreurRpc('Réservé à la direction.');
+    return tablesBorne(ctx).pointage_codes.filter((x) => x.etablissement_id === a.p_etablissement_id).map((x) => ({ user_id: x.user_id, maj_le: x.maj_le }));
+  },
+  pointage_code_reinitialiser(ctx, a) {
+    if (!estDirection(ctx)) throw new ErreurRpc('Seule la direction réinitialise un code.');
+    const db = tablesBorne(ctx);
+    const avant = db.pointage_codes.length;
+    db.pointage_codes = db.pointage_codes.filter((x) => !(x.user_id === a.p_user_id && x.etablissement_id === a.p_etablissement_id));
+    return db.pointage_codes.length < avant;
+  },
 
   planning_modeles_remplacer(ctx, a) {
     const etab = a.p_etablissement_id || a.p_etab;

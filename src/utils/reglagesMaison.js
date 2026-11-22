@@ -21,7 +21,9 @@ export const DEFAUTS = {
   // Aucun arrondi et l'arrivée comptée dès le pointage : le calcul d'avant.
   // Aucune clôture d'office : un départ oublié reste ouvert jusqu'à la
   // correction (sinon fonction clore_pointages_oublies, en base).
-  pointage: { arrondiMin: 0, avance: 'pointee', clotureAutoH: null },
+  // Pointage depuis son compte ouvert (borneSeulement faux) : comme avant le
+  // lot L6. Vrai : on ne pointe qu'à la borne de l'établissement.
+  pointage: { arrondiMin: 0, avance: 'pointee', clotureAutoH: null, borneSeulement: false },
   objectifs: { matierePct: null, personnelPct: null, caMensuelHt: null },
 };
 
@@ -62,6 +64,8 @@ export function normaliserPointage(brut) {
     clotureAutoH: Number.isInteger(b.cloture_auto_h) && b.cloture_auto_h >= CLOTURE_MIN_H && b.cloture_auto_h <= CLOTURE_MAX_H
       ? b.cloture_auto_h
       : DEFAUTS.pointage.clotureAutoH,
+    // Le booléen true seulement, comme le lit la base (pointage_borne_seulement).
+    borneSeulement: b.borne_seulement === true,
   };
 }
 
@@ -88,7 +92,7 @@ export function normaliserLigne(ligne) {
 // pour l'écriture.
 export const versBase = {
   fermetures: (f) => ({ jours_fermes: f.joursFermes, services_fermes: f.servicesFermes, periodes: f.periodes }),
-  pointage: (p) => ({ arrondi_min: p.arrondiMin, avance: p.avance, cloture_auto_h: p.clotureAutoH ?? null }),
+  pointage: (p) => ({ arrondi_min: p.arrondiMin, avance: p.avance, cloture_auto_h: p.clotureAutoH ?? null, borne_seulement: p.borneSeulement === true }),
   objectifs: (o) => ({ matiere_pct: o.matierePct, personnel_pct: o.personnelPct, ca_mensuel_ht: o.caMensuelHt }),
 };
 // Où vit chaque bloc : les objectifs ont leur table, lue par la direction seule.

@@ -117,7 +117,7 @@ export function oublierBase() {
 
 // Valeurs par défaut de la base, pour les insertions de l'app.
 const DEFAUTS = {
-  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages'],
+  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages'],
   reservations: { statut: 'confirme', origine: 'equipe', est_groupe: false, passeport_gourmand: false, created_by: () => sessionUid },
   shifts: { pause: 0, type_shift: 'simple', statut: 'confirmé', pointage_debut: null, pointage_fin: null, pointage_fin_auto: false },
   recettes: { statut: 'brouillon', version: 1, portions: 4, prix_vente: 0, allergenes_ids: [], ingredients: [], etapes: [], masquee: false, created_by: () => sessionUid },
@@ -150,6 +150,7 @@ const CLES_PRIMAIRES = {
   compta_reglages: ['etablissement_id'],
   caisse_reglages: ['etablissement_id'],
   reglages_maison: ['etablissement_id'],
+  pointage_codes: ['user_id', 'etablissement_id'],
   objectifs_maison: ['etablissement_id'],
   consultant_messages: ['etablissement_id'],
   points_reglages: ['etablissement_id'],
