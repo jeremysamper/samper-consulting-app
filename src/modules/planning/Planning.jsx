@@ -39,7 +39,7 @@ import { messageErreur } from '../../utils/messageErreur.js';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import AccueilPlanning from './AccueilPlanning.jsx';
-import { equipeParEtat, heuresPrevues } from './accueilPlanning.js';
+import { equipeParEtat, heuresPrevues, serviceDeHoraire, serviceDuJour } from './accueilPlanning.js';
 import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
 import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
 import MasquesModal from './MasquesModal.jsx';
@@ -1413,12 +1413,16 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // celles que l'écran montre (un compte partagé ne voit que ses groupes).
   const duJour = planningVisible.filter(s => s.date === aujourdhuiZ
     && (!(groupesActifs && estComptePoste && !canWrite) || mesGroupesPoste.has(groupeDeId(s.userId))));
+  // Un seul service à la fois (celui en cours, sinon le prochain) : la carte
+  // et les chiffres de l'équipe parlent du même, nommé dans le titre.
+  const serviceEquipe = serviceDuJour(duJour, zurichNowMinutes());
+  const duService = serviceEquipe ? duJour.filter(s => serviceDeHoraire(s) === serviceEquipe) : duJour;
   const equipeDuJour = { pointes: new Set(duJour.filter(s => s.pointageDebut).map(s => s.userId)).size, total: new Set(duJour.map(s => s.userId)).size };
   const lundiZ = ajouterJoursIso(aujourdhuiZ, -((new Date(aujourdhuiZ + 'T12:00:00').getDay() + 6) % 7));
   const horairesSemaine = planningVisible.filter(s => s.date >= lundiZ && s.date <= ajouterJoursIso(lundiZ, 6)).length;
   // Repères et carte de l'accueil (direction Galet) : mêmes horaires que les
   // tuiles, absences du jour sous la garde de la grille (absencesVisibles).
-  const etatsEquipe = equipeParEtat(duJour, zurichNowMinutes());
+  const etatsEquipe = { ...equipeParEtat(duService, zurichNowMinutes()), service: serviceEquipe };
   const heuresSemaine = dureeLisible(heuresPrevues(planningVisible.filter(s => s.date >= lundiZ && s.date <= ajouterJoursIso(lundiZ, 6))));
   const absentsDuJour = absencesDuJour(absencesVisibles, aujourdhuiZ).map(a => nomDe(a.userId));
 

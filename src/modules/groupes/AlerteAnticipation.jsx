@@ -99,9 +99,9 @@ export default function AlerteAnticipation({ groupes, aujourdhui, compact = fals
                 flex: '1 1 auto', minWidth: 0, fontSize: 13, fontWeight: 700,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
-                {libelleGroupe(g.typeGroupe, g.menuNumero)}
+                {g.nom || libelleGroupe(g.typeGroupe, g.menuNumero)}
                 <span style={{ fontWeight: 500, color: 'var(--text2)' }}>
-                  {', '}{formatJourSemaine(g.dateEvenement)} {formatDateCourte(g.dateEvenement)}, {g.nbPax} pax
+                  {', '}{formatJourSemaine(g.dateEvenement)} {formatDateCourte(g.dateEvenement)}, {g.nbPax} couvert{g.nbPax > 1 ? 's' : ''}
                 </span>
               </span>
               <span style={{

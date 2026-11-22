@@ -211,8 +211,12 @@ export const VALEURS_TAG_ALLERGENES = ALLERGENES.map(a => valeurTagAllergene(a.i
 // prédéfinie, la valeur telle quelle sinon (tag libre, ancienne valeur).
 const TAG_VERS_ID = ALLERGENES.reduce((acc, a) => { acc[valeurTagAllergene(a.id)] = a.id; return acc; }, {});
 export const libelleTagAllergene = (valeur) => {
-  const id = TAG_VERS_ID[String(valeur ?? '').trim().toLowerCase()];
-  return id ? labelAllergene(id).toLowerCase() : String(valeur ?? '');
+  const v = String(valeur ?? '').trim();
+  const id = TAG_VERS_ID[v.toLowerCase()];
+  if (!id) return String(valeur ?? '');
+  const l = labelAllergene(id).toLowerCase();
+  // La casse de la valeur enregistrée est gardée (« Lactose » donne « Lait »).
+  return v.charAt(0) !== v.charAt(0).toLowerCase() ? l.charAt(0).toUpperCase() + l.slice(1) : l;
 };
 
 export function idsDeTagAllergene(valeur) {

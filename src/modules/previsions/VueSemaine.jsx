@@ -4,11 +4,17 @@ import { usePrevisionsSemaine } from '../../hooks/usePrevisionsSemaine.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import {
   getLundiSemaine, addDays, formatJourSemaine,
-  formatDateCourte, isAujourdhui,
+  formatDateCourte, isAujourdhui, isoDate,
 } from '../../utils/dateHelpers.js';
 import { SERVICE_META, SERVICES_AFFICHES } from './statutsReservation.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
 import { libelleTagAllergene } from '../../utils/allergenes.js';
+import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
+import { maisonFermee } from '../../utils/reglagesMaison.js';
+
+// Un jour sans couvert : « Fermé » quand la maison est fermée ce jour-là
+// (Réglages > Horaires et fermetures), « Libre » sinon.
+const etatJourVide = (ferme) => (ferme ? 'Fermé' : 'Libre');
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Planning de la semaine : les réservations par NOM, service par service.
@@ -142,7 +148,7 @@ function Allergenes({ tags, max = 3 }) {
 }
 
 // ── Desktop / tablette : une ligne par jour, une colonne par service ─────
-function LigneJour({ jour, services, auj, onDayClick, onOpen, colonnes }) {
+function LigneJour({ jour, services, auj, onDayClick, onOpen, colonnes, ferme = false }) {
   const [survol, setSurvol] = useState(false);
   const total = jour.total_couverts || 0;
   const tags  = Array.isArray(jour.tags_critiques) ? jour.tags_critiques : [];
@@ -171,7 +177,7 @@ function LigneJour({ jour, services, auj, onDayClick, onOpen, colonnes }) {
           </span>
         </div>
         <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
-          {total > 0 ? pluriel(total, 'couvert') : 'Libre'}
+          {total > 0 ? pluriel(total, 'couvert') : etatJourVide(ferme)}
         </div>
         <Allergenes tags={tags} />
       </button>
@@ -200,7 +206,7 @@ function LigneJour({ jour, services, auj, onDayClick, onOpen, colonnes }) {
 }
 
 // ── Mobile : une carte par jour, les services l'un sous l'autre ──────────
-function CarteJour({ jour, services, auj, onDayClick, onOpen }) {
+function CarteJour({ jour, services, auj, onDayClick, onOpen, ferme = false }) {
   const total = jour.total_couverts || 0;
   const tags  = Array.isArray(jour.tags_critiques) ? jour.tags_critiques : [];
   const avecResas = services.filter((svc) => (jour.resas[svc] || []).length > 0);
@@ -228,7 +234,7 @@ function CarteJour({ jour, services, auj, onDayClick, onOpen }) {
           </span>
         </span>
         <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
-          {total > 0 ? pluriel(total, 'couvert') : 'Libre'} ›
+          {total > 0 ? pluriel(total, 'couvert') : etatJourVide(ferme)} ›
         </span>
       </button>
       <div style={{ padding: '0 14px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -257,6 +263,8 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
   const isMobile = useIsMobile();
   const [dateDebut, setDateDebut] = useState(() => getLundiSemaine(new Date()));
   const { semaine, loading, error, nonActualise, fetchSemaine } = usePrevisionsSemaine(etablissementId);
+  const maison = useReglagesMaison(etablissementId);
+  const semaineCourante = isoDate(dateDebut) === isoDate(getLundiSemaine(new Date()));
 
   useEffect(() => { ensureSkeletonStyle(); }, []);
 
@@ -293,7 +301,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
               à côté, serait encore celui de la semaine précédente. */}
           {totalSemaine > 0 && !loading && (
             <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
-              {totalSemaine} couvert{totalSemaine > 1 ? 's' : ''} / sem.
+              {totalSemaine} couvert{totalSemaine > 1 ? 's' : ''} {semaineCourante ? 'cette semaine' : 'sur la semaine'}
             </span>
           )}
         </div>
@@ -368,6 +376,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
               jour={jour}
               services={services}
               auj={isAujourdhui(jour.date_service)}
+              ferme={maisonFermee(maison.fermetures, jour.date_service)}
               onDayClick={onDayClick}
               onOpen={onOpenResa}
             />
@@ -378,6 +387,7 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
               services={services}
               colonnes={colonnes}
               auj={isAujourdhui(jour.date_service)}
+              ferme={maisonFermee(maison.fermetures, jour.date_service)}
               onDayClick={onDayClick}
               onOpen={onOpenResa}
             />

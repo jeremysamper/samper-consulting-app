@@ -7,7 +7,7 @@
 
 import { addDays, isoDate, parseLocalDate } from '../../utils/dateHelpers.js';
 import { absenceDe, absencesDuJour, couvre } from '../../utils/absences.js';
-import { libelleGroupe } from '../groupes/typesGroupe.js';
+import { libelleMenuGroupe } from '../groupes/typesGroupe.js';
 import { dureeMinutes } from '../planning/dureeHoraire.js';
 
 const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
@@ -124,6 +124,22 @@ export function equipeParService(shifts, dateISO) {
     .filter((g) => g.personnes.length > 0);
 }
 
+// Service dont parle la carte de l'équipe : celui en cours (quelqu'un y est en
+// poste, ou pas pointé alors que l'horaire court encore), sinon le prochain
+// (un horaire pas encore commencé), sinon le dernier du jour. null sans
+// horaire. « 0 Terminé » à côté de « Votre service : Terminé » disait deux
+// services sans le dire.
+export function serviceEnVue(shifts, dateISO, maintenant) {
+  const du = shiftsDu(shifts, dateISO);
+  if (!du.length) return null;
+  const etats = du.map((s) => ({ s, e: etatShift(s, maintenant) }));
+  const court = (s) => { const fin = enMinutes(s.fin); return fin == null || fin > maintenant; };
+  const enCours = etats.find(({ s, e }) => e === 'en_poste' || (e === 'en_retard' && court(s)));
+  if (enCours) return serviceDuShift(enCours.s);
+  const prochain = etats.find(({ e }) => e === 'attendu' || e === 'prevu');
+  return serviceDuShift((prochain || etats[etats.length - 1]).s);
+}
+
 // Prochain service d'un équipier après aujourd'hui (dans la fenêtre lue).
 export function prochainShift(shifts, userId, aujourdhui) {
   return (shifts || [])
@@ -143,10 +159,11 @@ export function couvertsDu(couverts, dateISO) {
 // ── Groupes ───────────────────────────────────────────────────────────────
 export const groupesDu = (groupes, dateISO) => (groupes || []).filter((g) => g.dateEvenement === dateISO);
 
-// « Mariage n°2, 14 personnes à 19 h »
+// « Mariage, menu 2, 14 couverts à 19 h » ; « menu 1, 18 couverts à 19 h » pour un simple groupe
 export function phraseGroupe(g) {
   const heure = g.heure ? ` à ${heureParlee(g.heure)}` : '';
-  return `${libelleGroupe(g.typeGroupe, g.menuNumero)}, ${g.nbPax} personne${g.nbPax > 1 ? 's' : ''}${heure}`;
+  const menu = libelleMenuGroupe(g.typeGroupe, g.menuNumero);
+  return `${menu ? `${menu}, ` : ''}${g.nbPax} couvert${g.nbPax > 1 ? 's' : ''}${heure}`;
 }
 
 export const nbAllergies = (g) => (g.allergenesIds || []).length + (g.allergiesNote ? 1 : 0);
@@ -254,9 +271,9 @@ export function reperesDuJour({
     let detail = null;
     if (liste.length === 1) {
       const g = liste[0];
-      detail = g.heure ? [{ n: pax }, { t: 'personnes à' }, { n: heureParlee(g.heure) }] : [{ n: pax }, { t: 'personnes' }];
+      detail = g.heure ? [{ n: pax }, { t: pax > 1 ? 'couverts à' : 'couvert à' }, { n: heureParlee(g.heure) }] : [{ n: pax }, { t: pax > 1 ? 'couverts' : 'couvert' }];
     } else if (liste.length > 1) {
-      detail = [{ n: pax }, { t: 'personnes en tout' }];
+      detail = [{ n: pax }, { t: 'couverts en tout' }];
     }
     reperes.push({
       id: 'groupes', page: 'groupes', valeur: liste.length, echec, vide: !echec && !liste.length,

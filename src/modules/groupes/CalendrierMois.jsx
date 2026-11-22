@@ -19,8 +19,8 @@ import { metaStatut, metaType, rangStatut } from './typesGroupe.js';
 // Le parent décide de ce qu'ouvre un tap selon le nombre de groupes du jour.
 //
 // Trois densités, choisies par le parent d'après la largeur réelle du
-// calendrier : 'large' (iPad couché, bureau) « Apéro dînatoire n°1, 120 pax,
-// 19:00 », 'moyenne' (iPad debout) « Apéro n°1, 120 pax », 'compacte'
+// calendrier : 'large' (iPad couché, bureau) « Mariage Dupont, 120 couverts,
+// 19:00 », 'moyenne' (iPad debout) « Mariage Dupont, 120 couverts », 'compacte'
 // (téléphone) « AD1, 120p ». Dans les trois, le numéro du menu est un élément
 // à part qui ne rétrécit pas : c'est le nom du type qui cède (ellipse), jamais
 // le « n°4 » - « mariage n°4 » est le vocabulaire de la maison.
@@ -99,6 +99,9 @@ export default function CalendrierMois({
                 const m = metaStatut(g.statut);
                 const type = metaType(g.typeGroupe);
                 const nomType = compact ? type.court : densite === 'moyenne' ? type.moyen : type.label;
+                // Le client nomme la case dès qu'elle a la place (iPad, bureau) ;
+                // au téléphone, le sigle du type et du menu.
+                const nomClient = !compact && g.nom ? g.nom : null;
                 return (
                   <span key={g.id} style={{
                     ...s.etiquette,
@@ -111,13 +114,17 @@ export default function CalendrierMois({
                       style={{ ...s.etiquetteTitre, ...(compact ? s.etiquetteTitreCompact : null) }}
                       data-no-translate={compact ? '' : undefined}
                     >
-                      <span style={s.etiquetteType}>{nomType}</span>
-                      {g.menuNumero
-                        ? <span style={s.etiquetteNumero}>{compact ? g.menuNumero : ` n°${g.menuNumero}`}</span>
-                        : null}
+                      {nomClient
+                        ? <span style={s.etiquetteType}>{nomClient}</span>
+                        : <>
+                          <span style={s.etiquetteType}>{nomType}</span>
+                          {g.menuNumero
+                            ? <span style={s.etiquetteNumero}>{compact ? g.menuNumero : ` n°${g.menuNumero}`}</span>
+                            : null}
+                        </>}
                     </span>
                     <span style={s.etiquettePax}>
-                      {g.nbPax}{compact ? 'p' : ' pax'}{densite === 'large' && g.heure ? `, ${g.heure}` : ''}
+                      {g.nbPax}{compact ? 'p' : (g.nbPax > 1 ? ' couverts' : ' couvert')}{densite === 'large' && g.heure ? `, ${g.heure}` : ''}
                     </span>
                   </span>
                 );

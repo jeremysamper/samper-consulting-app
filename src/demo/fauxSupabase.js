@@ -22,8 +22,9 @@ const DEMO_HOTE = new URL(DEMO_URL).hostname;
 const CLE_BASE = PREFIXE + 'base';
 const CLE_ROLE = PREFIXE + 'role';
 // v2 (lot L3) : la commande par QR entre dans les jeux ; une base du jour en
-// cache dans l'onglet serait relue sans elle.
-const VERSION_BASE = 'v2-' + aujourdhui();
+// cache dans l'onglet serait relue sans elle. v3 (lot 1, chiffres justes) :
+// type de groupe valide, temps de service des fiches salle non inventé.
+const VERSION_BASE = 'v3-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 

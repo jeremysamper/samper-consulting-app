@@ -308,7 +308,9 @@ export const FICHES_SALLE = PLATS.map((p) => {
     allergenes,
     accords: VINS[k] ? [{ nom: VINS[k], type: 'vin', note: 'Au verre ou en bouteille.' }] : [],
     infos_service: k === 'boeuf' ? 'Demander la cuisson. Saignant par défaut.' : '',
-    temps_preparation: p.categorie === 'Plats' ? '15 min' : '8 min',
+    // Temps de service saisi pour un seul plat : les autres n'en ont pas, et
+    // l'écran ne l'affiche pas (plus de « 15 min » par défaut partout).
+    temps_preparation: k === 'boeuf' ? '18 min' : null,
     modifie_par: 'demo-serveur',
     accords_generaux: [],
     created_at: '2026-09-25T08:00:00Z',

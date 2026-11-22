@@ -162,7 +162,7 @@ export default function GroupeFiche({
           <div style={{ minWidth: 0 }}>
             <div style={st.titre}>{libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}, {groupe.nom}</div>
             <div style={st.sousTitre}>
-              {dateComplete(groupe.dateEvenement)}{groupe.heure ? ` à ${groupe.heure}` : ''}, {groupe.nbPax} pax
+              {dateComplete(groupe.dateEvenement)}{groupe.heure ? ` à ${groupe.heure}` : ''}, {groupe.nbPax} couvert{groupe.nbPax > 1 ? 's' : ''}
               {menu?.nom ? `, menu ${menu.nom}` : ''}
             </div>
           </div>

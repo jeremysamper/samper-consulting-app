@@ -38,3 +38,14 @@ test('heures prévues : pause déduite, fin après minuit, horaire illisible ign
   ]), 11);
   assert.equal(heuresPrevues([]), 0);
 });
+
+test('service du jour : en cours, sinon le prochain, sinon le dernier', async () => {
+  const { serviceDuJour } = await import('./accueilPlanning.js');
+  const midi = { userId: 'a', debut: '11:00', fin: '14:30', pointageDebut: '10:58', pointageFin: '14:34' };
+  const soir = { userId: 'a', debut: '18:00', fin: '23:00' };
+  assert.equal(serviceDuJour([midi, soir], 17 * 60), 'soir');
+  assert.equal(serviceDuJour([{ ...midi, pointageFin: null }, soir], 12 * 60), 'midi');
+  assert.equal(serviceDuJour([{ ...midi, pointageDebut: null, pointageFin: null }, soir], 17 * 60), 'soir');
+  assert.equal(serviceDuJour([midi], 20 * 60), 'midi');
+  assert.equal(serviceDuJour([], 600), null);
+});

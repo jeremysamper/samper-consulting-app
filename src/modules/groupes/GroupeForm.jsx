@@ -58,7 +58,7 @@ function valider(form) {
   const pax = Number(form.nbPax);
   if (!form.nom.trim()) erreurs.push('Le nom du client ou du groupe est obligatoire.');
   if (!form.dateEvenement) erreurs.push('La date est obligatoire.');
-  if (!Number.isInteger(pax) || pax < 1 || pax > 5000) erreurs.push('Indiquez le nombre de personnes.');
+  if (!Number.isInteger(pax) || pax < 1 || pax > 5000) erreurs.push('Indiquez le nombre de couverts.');
   return erreurs;
 }
 
@@ -257,7 +257,7 @@ export default function GroupeForm({
               />
             </div>
             <div style={{ flex: '1 1 200px', minWidth: 0 }}>
-              <label style={st.label} htmlFor="groupe-pax">Nombre de personnes</label>
+              <label style={st.label} htmlFor="groupe-pax">Nombre de couverts</label>
               <div style={{ display: 'flex', gap: 6 }}>
                 <button type="button" onClick={() => ajusterPax(-1)} aria-label="Une personne de moins" style={st.pas}>−</button>
                 <input

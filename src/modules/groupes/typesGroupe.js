@@ -41,6 +41,16 @@ export function metaType(id) {
   return TYPE_PAR_ID[id] || { id, label: nom, moyen: nom, court: nom.slice(0, 2).toUpperCase() };
 }
 
+// Le menu d'un groupe dans une phrase qui nomme déjà le client (tableau de
+// bord) : « menu 1 » pour un simple groupe, « Mariage, menu 2 » sinon ; sans
+// menu arrêté, le type seul (rien pour un simple groupe).
+export function libelleMenuGroupe(typeId, numero) {
+  const menu = numero ? `menu ${numero}` : '';
+  if (!typeId || typeId === 'groupe') return menu;
+  const t = metaType(typeId);
+  return menu ? `${t.label}, ${menu}` : t.label;
+}
+
 // « Mariage n°4 », ou « Mariage » tant que le menu n'est pas arrêté.
 export function libelleGroupe(typeId, numero) {
   const t = metaType(typeId);

@@ -52,7 +52,7 @@ import { EnTete } from './EnTeteJour.jsx';
 import { blocsDeGestion } from './ChiffresGestion.jsx';
 import GrilleWidgets from './widgets/GrilleWidgets.jsx';
 import { useDisposition } from './widgets/useDisposition.js';
-import { modulesDuMenu as filtrerMenu, raccourcisAffiches } from './widgets/dispositionLogique.js';
+import { modulesDuMenu as filtrerMenu, raccourcisAffiches, widgetsAffiches } from './widgets/dispositionLogique.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { usePointsEtat } from '../points/pointsEtat.js';
 import { useResumePoints } from '../points/useResumePoints.js';
@@ -334,7 +334,13 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
     modulesDuMenu: menu,
   };
 
+  // Widgets rendus : l'en-tête et les widgets ne redisent pas un chiffre qu'un
+  // autre widget affiché porte déjà (les couverts du jour, ceux de la semaine).
+  const affiches = widgetsAffiches(disposition, poste, ctx);
+  const couvertsJourAffiches = affiches.has('reservations') || affiches.has('repere-couverts');
+
   const t = {
+    affiches,
     user, aujourdhui, maintenant, mobile, etabId, consultant, direction, d, absences, absencesLues, telephones, nbMessages,
     nonLu, peutOuvrir, ouvrir, reperes, items, blocsGestion, regularite, publierMessage, points, haussesPrix, tempsGagne, miseEnRoute,
     avecPlanning, avecGroupes, avecCouvertsLus, avecGroupesLus,
@@ -351,7 +357,7 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
         salutation={salutation}
         prenom={user?.prenom}
         pret={d.pret}
-        service={service}
+        service={service && couvertsJourAffiches ? { ...service, couverts: null } : service}
         onAssistant={consultant && peutOuvrir('faq') ? () => ouvrir('faq') : null}
         onPersonnaliser={d.pret && !personnaliser ? () => setPersonnaliser(true) : null}
       />
