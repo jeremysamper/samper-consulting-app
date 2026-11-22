@@ -124,16 +124,17 @@ comment on function public.reglages_modules_bureau_valide(text, jsonb) is
   'Forme des blocs de reglages_modules pour les modules journal et statistiques (lot 5). Faux pour tout autre module.';
 
 -- Les deux contraintes se reposent à l'identique de celles du lot 6b, élargies
--- aux deux modules du bureau. Une ligne existante reste valide.
-alter table public.reglages_modules drop constraint if exists reglages_modules_module_check;
-alter table public.reglages_modules add constraint reglages_modules_module_check
-  check (module in ('pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue', 'etages', 'demandes', 'repas', 'journal', 'statistiques'));
-
-alter table public.reglages_modules drop constraint if exists reglages_modules_config_check;
-alter table public.reglages_modules add constraint reglages_modules_config_check
-  check (public.reglages_modules_config_valide(module, config)
-    or public.reglages_modules_hotel_valide(module, config)
-    or public.reglages_modules_bureau_valide(module, config));
+-- aux deux modules du bureau, en une seule instruction comme au lot 6b (la
+-- table n'est jamais sans contrainte). Une ligne existante reste valide.
+alter table public.reglages_modules
+  drop constraint if exists reglages_modules_module_check,
+  add constraint reglages_modules_module_check
+    check (module in ('pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue', 'etages', 'demandes', 'repas', 'journal', 'statistiques')),
+  drop constraint if exists reglages_modules_config_check,
+  add constraint reglages_modules_config_check
+    check (public.reglages_modules_config_valide(module, config)
+      or public.reglages_modules_hotel_valide(module, config)
+      or public.reglages_modules_bureau_valide(module, config));
 
 -- Le journal se lit par le consultant et le patron (RLS de journal_activite) :
 -- eux seuls règlent sa vue et son export. Hors session (éditeur SQL,
@@ -148,7 +149,13 @@ begin
   if (select auth.uid()) is null then
     return coalesce(new, old);
   end if;
-  if ((tg_op <> 'INSERT' and old.module = 'journal') or (tg_op <> 'DELETE' and new.module = 'journal'))
+  -- Chaque opération ne lit que la ligne qu'elle a (comme la garde du lot 6b) :
+  -- new à l'insertion, old à la suppression, les deux à la modification.
+  if (case tg_op
+        when 'INSERT' then new.module = 'journal'
+        when 'DELETE' then old.module = 'journal'
+        else old.module = 'journal' or new.module = 'journal'
+      end)
      and coalesce((select public.current_user_role()), '') not in ('consultant', 'patron') then
     raise exception 'Ce réglage est réservé au consultant et au patron.' using errcode = '42501';
   end if;
