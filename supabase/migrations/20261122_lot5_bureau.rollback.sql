@@ -6,6 +6,8 @@
 -- colonnes du lot partent. Les lignes 'journal' et 'statistiques' de
 -- reglages_modules sont supprimées : la contrainte du lot 6b les refuserait.
 -- Les réglages d'exercice, de cartes et de dossiers réservés sont perdus.
+-- Revenir d'abord sur le front (Instant Rollback), puis jouer ce fichier. Le
+-- droit de mise à jour des colonnes du lot 2a sur compta_reglages reste.
 -- -----------------------------------------------------------------------------
 
 set local lock_timeout = '3s';
@@ -38,17 +40,19 @@ create policy documents_storage_delete on storage.objects
   for delete to authenticated
   using (bucket_id = 'documents' and user_can_access_etab(split_part(name, '/', 1)));
 
+drop trigger if exists trg_documents_garde_suppression on public.documents;
+drop function if exists public.documents_garde_suppression();
 drop trigger if exists trg_documents_garde_visibilite on public.documents;
 drop function if exists public.documents_garde_visibilite();
 drop function if exists public.document_objet_visible(text);
 drop function if exists public.document_visible(text);
 drop index if exists public.documents_storage_path_idx;
-drop index if exists public.documents_parent_id_idx;
 alter table public.documents drop constraint if exists documents_roles_visibles_check;
 alter table public.documents drop column if exists roles_visibles;
 
 -- B. compta_reglages
 alter table public.compta_reglages drop constraint if exists compta_reglages_cartes_check;
+drop function if exists public.compta_cartes_distinctes(text[]);
 alter table public.compta_reglages drop constraint if exists compta_reglages_exercice_check;
 alter table public.compta_reglages drop column if exists cartes_accueil;
 alter table public.compta_reglages drop column if exists exercice_debut_mois;

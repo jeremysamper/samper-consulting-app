@@ -60,6 +60,17 @@ begin
   if v_inconnues is not null then
     raise exception 'Policies inattendues sur le stockage documents : %', v_inconnues;
   end if;
+
+  -- Les policies se cumulent en OU : une policy du stockage sans filtre de
+  -- bucket ouvrirait aussi 'documents', sans passer par la visibilité.
+  select string_agg(policyname, ', ') into v_inconnues
+  from pg_policies
+  where schemaname = 'storage' and tablename = 'objects'
+    and cmd in ('SELECT', 'UPDATE', 'DELETE', 'ALL')
+    and coalesce(qual, '') not like '%bucket_id%';
+  if v_inconnues is not null then
+    raise exception 'Policies du stockage sans filtre de bucket : %', v_inconnues;
+  end if;
 end $$;
 
 -- ═════════════════════════════════════════════════════════════════════════════
@@ -163,11 +174,34 @@ alter table public.compta_reglages drop constraint if exists compta_reglages_exe
 alter table public.compta_reglages add constraint compta_reglages_exercice_check
   check (exercice_debut_mois between 1 and 12);
 
+-- Une carte une seule fois : une contrainte ne porte pas de sous-requête, la
+-- règle passe par une fonction immuable.
+create or replace function public.compta_cartes_distinctes(p text[])
+returns boolean
+language sql
+immutable
+set search_path = pg_catalog
+as $fn$
+  select p is null or cardinality(p) = (select count(distinct x) from unnest(p) as x);
+$fn$;
+
+revoke all on function public.compta_cartes_distinctes(text[]) from public, anon, authenticated;
+grant execute on function public.compta_cartes_distinctes(text[]) to authenticated, service_role;
+
 alter table public.compta_reglages drop constraint if exists compta_reglages_cartes_check;
 alter table public.compta_reglages add constraint compta_reglages_cartes_check
   check (cartes_accueil is null
     or (cardinality(cartes_accueil) between 1 and 4
-        and cartes_accueil <@ array['ca', 'matiere', 'personnel', 'resultat']::text[]));
+        and cartes_accueil <@ array['ca', 'matiere', 'personnel', 'resultat']::text[]
+        and public.compta_cartes_distinctes(cartes_accueil)));
+
+-- compta_reglages a des droits de mise à jour par colonne (migration
+-- 20261030_comptabilite) : chaque colonne réglée par l'écran est ouverte ici.
+-- Les deux colonnes du lot 2a (délai de paiement, catégories de charges) ne
+-- l'étaient pas : la section « Conditions de paiement » du lot 2b aurait
+-- échoué. Le droit est ajouté ici aussi, sans effet si le lot 2a le pose.
+grant update (exercice_debut_mois, cartes_accueil) on public.compta_reglages to authenticated;
+grant update (delai_paiement_jours, categories_charges) on public.compta_reglages to authenticated;
 
 comment on column public.compta_reglages.exercice_debut_mois is
   'Mois où commence l''exercice de la maison (1 = janvier). La période « Année » de la Comptabilité le suit (lot 5).';
@@ -190,15 +224,16 @@ alter table public.documents add constraint documents_roles_visibles_check
 comment on column public.documents.roles_visibles is
   'Dossier réservé (lot 5) : null = toute l''équipe ; {} = la direction seule ; sinon ces rôles en plus du consultant et du patron. Le contenu suit la règle.';
 
--- La remontée des dossiers parents (policies ci-dessous) et la lecture d'un
--- objet du stockage par son chemin.
-create index if not exists documents_parent_id_idx on public.documents (parent_id);
+-- La lecture d'un objet du stockage par son chemin. La remontée des parents
+-- et le filtre d'établissement ont déjà leurs index (idx_documents_parent,
+-- idx_documents_etab, vus en production le 22.11.2026).
 create index if not exists documents_storage_path_idx on public.documents (storage_path) where storage_path is not null;
 
--- Un document est-il visible pour la personne connectée ? Le document et
--- chaque dossier au-dessus doivent laisser passer son rôle. SECURITY DEFINER :
--- la remontée lit la table sans repasser par ses policies (pas de boucle).
--- Une chaîne cassée (parent disparu) s'arrête là ; 30 niveaux au plus.
+-- Un document est-il visible pour la personne connectée ? Il doit être de
+-- l'un de ses établissements, et lui et chaque dossier au-dessus doivent
+-- laisser passer son rôle. SECURITY DEFINER : la remontée lit la table sans
+-- repasser par ses policies (pas de boucle). Appelée en RPC, elle ne dit rien
+-- d'un autre établissement. Au-delà de 30 niveaux (ou en boucle) : fermé.
 create or replace function public.document_visible(p_id text)
 returns boolean
 language plpgsql
@@ -212,7 +247,10 @@ declare
   v_roles  text[];
   v_parent text;
   v_n      int := 0;
+  v_etab   text;
 begin
+  select d.etablissement_id into v_etab from public.documents d where d.id = p_id;
+  if found and not public.user_can_access_etab(v_etab) then return false; end if;
   if v_role in ('consultant', 'patron') then return true; end if;
   while v_cur is not null and v_n < 30 loop
     select d.roles_visibles, d.parent_id into v_roles, v_parent
@@ -222,17 +260,18 @@ begin
     v_cur := v_parent;
     v_n := v_n + 1;
   end loop;
-  return true;
+  return v_cur is null;
 end;
 $fn$;
 
 revoke all on function public.document_visible(text) from public, anon, authenticated;
 grant execute on function public.document_visible(text) to authenticated, service_role;
 
--- Un objet du stockage 'documents' est-il visible ? Caché seulement si une
--- ligne de documents le porte et que cette ligne est cachée : un fichier en
--- cours d'envoi (pas encore de ligne) reste lisible par son auteur, comme
--- avant.
+-- Un objet du stockage 'documents' est-il visible ? Hors de ses
+-- établissements, jamais (rien n'est dit d'une autre maison). Sinon caché
+-- seulement si une ligne de documents le porte et que cette ligne est cachée :
+-- un fichier en cours d'envoi (pas encore de ligne) reste lisible par son
+-- auteur, comme avant.
 create or replace function public.document_objet_visible(p_chemin text)
 returns boolean
 language sql
@@ -240,10 +279,11 @@ stable
 security definer
 set search_path = pg_catalog, public
 as $fn$
-  select not exists (
-    select 1 from public.documents d
-    where d.storage_path = p_chemin and not public.document_visible(d.id)
-  );
+  select public.user_can_access_etab(split_part(p_chemin, '/', 1))
+    and not exists (
+      select 1 from public.documents d
+      where d.storage_path = p_chemin and not public.document_visible(d.id)
+    );
 $fn$;
 
 revoke all on function public.document_objet_visible(text) from public, anon, authenticated;
@@ -276,6 +316,39 @@ drop trigger if exists trg_documents_garde_visibilite on public.documents;
 create trigger trg_documents_garde_visibilite
   before insert or update of roles_visibles on public.documents
   for each row execute function public.documents_garde_visibilite();
+
+-- Un dossier réservé ne part pas par la suppression d'un dossier visible
+-- au-dessus : la clé parent_id est en cascade et la cascade passe au-dessus
+-- des policies. Les déclencheurs « before delete » des lignes filles se
+-- déclenchent dans la cascade : chaque dossier réservé est contrôlé.
+create or replace function public.documents_garde_suppression()
+returns trigger
+language plpgsql
+security invoker
+set search_path = pg_catalog, public
+as $fn$
+declare
+  v_role text;
+begin
+  if (select auth.uid()) is null then
+    return old;
+  end if;
+  v_role := coalesce((select public.current_user_role()), '');
+  if old.roles_visibles is not null
+     and v_role not in ('consultant', 'patron')
+     and not (v_role = any (old.roles_visibles)) then
+    raise exception 'Ce dossier contient un dossier réservé : suppression refusée.' using errcode = '42501';
+  end if;
+  return old;
+end;
+$fn$;
+
+revoke all on function public.documents_garde_suppression() from public, anon, authenticated;
+
+drop trigger if exists trg_documents_garde_suppression on public.documents;
+create trigger trg_documents_garde_suppression
+  before delete on public.documents
+  for each row execute function public.documents_garde_suppression();
 
 -- Policies de documents : l'établissement, comme avant, plus la visibilité.
 -- Un document neuf se range dans un dossier visible.
