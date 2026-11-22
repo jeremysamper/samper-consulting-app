@@ -361,7 +361,7 @@ export default function Statistiques({ user, etablissement }) {
   const vuesNommees = useMemo(() => vuesNommeesLues(reglages.settings[CLE_VUES]), [reglages.settings]);
 
   const bornes = useMemo(() => bornesDe(vue?.periode || { id: '30j' }, aujourdhui), [vue?.periode, aujourdhui]);
-  const bornesComp = useMemo(() => bornesDeComparaison(bornes, vue?.comparaison || ''), [bornes, vue?.comparaison]);
+  const bornesComp = useMemo(() => bornesDeComparaison(bornes, vue?.comparaison || '', aujourdhui), [bornes, vue?.comparaison, aujourdhui]);
   const pas = vue?.pas || 'jour';
   const tranches = useMemo(() => tranchesDe(bornes.debut, bornes.fin, pas), [bornes, pas]);
   const tranchesComp = useMemo(() => (bornesComp ? tranchesDe(bornesComp.debut, bornesComp.fin, pas) : null), [bornesComp, pas]);

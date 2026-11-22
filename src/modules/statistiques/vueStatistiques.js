@@ -12,7 +12,7 @@
 // graphique de plus.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { ajouterJours, periodeAnnee, periodeMois, periodeTrimestre } from '../comptabilite/periodesCompta.js';
+import { ajouterJours, nbJours, periodeAnnee, periodeMois, periodeTrimestre } from '../comptabilite/periodesCompta.js';
 import { ajouterMois, bornesComparaison, bornesPeriode, debutMois, finMois } from '../previsions/rapport/periodesRapport.js';
 import { pasPossibles } from './agregation.js';
 
@@ -99,10 +99,17 @@ export function filtresEffectifs(filtres, perimetres, lus) {
   return f;
 }
 
-// Bornes de la comparaison, ou null sans comparaison.
-export function bornesDeComparaison(bornes, mode) {
+// Bornes de la comparaison, ou null sans comparaison. Une période entamée
+// (ce mois, ce trimestre, cette semaine en cours) se compare aux mêmes jours
+// écoulés : le 1er au 22 octobre pour novembre au 22, jamais tout octobre.
+export function bornesDeComparaison(bornes, mode, aujourdhui = null) {
   if (mode !== 'precedente' && mode !== 'n1') return null;
-  return bornesComparaison(bornes, mode);
+  const comp = bornesComparaison(bornes, mode);
+  if (aujourdhui && bornes.debut <= aujourdhui && bornes.fin > aujourdhui) {
+    const fin = ajouterJours(comp.debut, nbJours(bornes.debut, aujourdhui) - 1);
+    if (fin < comp.fin) return { debut: comp.debut, fin };
+  }
+  return comp;
 }
 
 const graphiqueVide = () => ({ mesures: [], ventilation: '', type: '', choix: {} });
@@ -125,9 +132,13 @@ function tableauNettoye(brut, parId) {
   return { mesures: ok.map((m) => m.id), ventilation, choix, titre, ...(brut.part === true ? { part: true } : {}), ...(brut.tri === 'decroissant' ? { tri: 'decroissant' } : {}), ...(brut.comparaison === true ? { comparaison: true } : {}), ...(brut.apres === true ? { apres: true } : {}) };
 }
 
-// Première ouverture (D13) : la première mesure visible, sur 30 jours.
+// Première ouverture (D13) : les ventes de la maison sur 30 jours, quelle que
+// soit sa caisse (ventes de la Comptabilité : chiffre du jour saisi ou clôturé,
+// à défaut la caisse reliée, plus les notes de séjour). Sans elles (rôle qui
+// ne voit pas la Comptabilité), la première mesure visible.
+const MESURE_VENTES_MAISON = 'comptabilite.ca_ttc';
 export function vueParDefaut(mesuresVisibles = []) {
-  const premiere = mesuresVisibles[0]?.id;
+  const premiere = mesuresVisibles.some((m) => m.id === MESURE_VENTES_MAISON) ? MESURE_VENTES_MAISON : mesuresVisibles[0]?.id;
   return {
     periode: { id: '30j' },
     pas: 'jour',

@@ -30,9 +30,11 @@ export function plafondRond(max) {
 
 // Échelle d'un axe pour une liste de valeurs (les null sont ignorés) : part de
 // zéro, descend sous zéro seulement s'il y a des valeurs négatives.
-//   → { min, max, graduations } ; sans aucune valeur : 0 à 1.
+//   → { min, max, graduations } ; sans aucune valeur : 0 à 1, une seule
+//   graduation (zéro), au lieu de « 0, 1, 1 » qui inventait une échelle.
 export function echelleDe(valeurs) {
   const connues = (valeurs || []).filter(estNombre);
+  if (!connues.length) return { min: 0, max: 1, graduations: [0] };
   const haut = plafondRond(Math.max(0, ...connues));
   const plusBas = Math.min(0, ...connues);
   const bas = plusBas < 0 ? -plafondRond(-plusBas) : 0;
@@ -50,8 +52,9 @@ const nombreFr = (v, decimales) => v.toLocaleString('fr-CH', { minimumFractionDi
 
 // Le nombre seul, sans son unité (rendue dans son propre nœud à l'écran).
 //   court : pour l'axe (francs sans centimes, pour cent sans décimale).
+export const SANS_CHIFFRE = 'pas de chiffre';
 export function nombreDe(valeur, unite, { court = false } = {}) {
-  if (!estNombre(valeur)) return 'n/a';
+  if (!estNombre(valeur)) return SANS_CHIFFRE;
   if (unite === 'pct') return nombreFr(valeur * 100, court ? 0 : 1);
   if (unite === 'chf') return nombreFr(valeur, court ? 0 : 2);
   if (unite === 'min') return nombreFr(valeur, 0);
@@ -61,6 +64,14 @@ export function nombreDe(valeur, unite, { court = false } = {}) {
 }
 
 export const libelleUnite = (unite) => UNITES[unite]?.label || '';
+
+// Étiquettes d'un axe : la forme courte (francs sans centimes), sauf si deux
+// graduations y deviendraient identiques (« CHF 0, CHF 1, CHF 1 » pour une
+// échelle de 0 à 1) ; alors la forme entière, qui les distingue.
+export function etiquettesAxe(graduations, unite) {
+  const courtes = (graduations || []).map((g) => nombreDe(g, unite, { court: true }));
+  return new Set(courtes).size === courtes.length ? courtes : (graduations || []).map((g) => nombreDe(g, unite));
+}
 
 // Valeur d'une cellule de tableur : le nombre exact (les pour cent en pour
 // cent), ou vide pour « n/a ».

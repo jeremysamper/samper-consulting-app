@@ -27,13 +27,13 @@ const st = {
 const NATURE = { flux: 'total', taux: 'recalculé sur la période', stock: 'dernier relevé', etat: "valeur d'aujourd'hui" };
 
 function Ecart({ e, unite }) {
-  if (!e || e.valeur == null) return <span style={st.avant}><span>écart :</span> <span>n/a</span></span>;
+  if (!e || e.valeur == null) return <span style={st.avant}><span>écart :</span> <span>pas de chiffre</span></span>;
   const signe = e.valeur > 0 ? '+' : '';
   return (
     <span style={st.avant} data-no-translate>
       <span>{signe}{nombreDe(e.valeur, unite)}</span>
       {unite === 'pct' ? <span> pts</span> : null}
-      {unite !== 'pct' ? <span>{e.pct == null ? ' (n/a)' : ` (${e.pct > 0 ? '+' : ''}${nombreDe(e.pct, 'pct')} %)`}</span> : null}
+      {unite !== 'pct' ? <span>{e.pct == null ? '' : ` (${e.pct > 0 ? '+' : ''}${nombreDe(e.pct, 'pct')} %)`}</span> : null}
     </span>
   );
 }

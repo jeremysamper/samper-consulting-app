@@ -13,6 +13,7 @@ import { CATEGORIES_PRODUITS, affinerCategorie, categorieAffichee } from './cate
 import { Pencil, Trash2 } from 'lucide-react';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { prixAffiche } from './prixAffiche.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
@@ -37,6 +38,9 @@ const Catalogue = ({ user, etablissement }) => {
   const [activeTab, setActiveTab] = React.useState('produits'); // 'produits' | 'fournisseurs'
   const [search, setSearch] = React.useState('');
   const [catFilter, setCatFilter] = React.useState('Tous');
+  // Filtre « sans fournisseur » : dit une fois en tête, au lieu de « Aucun »
+  // écrit dans le sélecteur de chaque ligne.
+  const [sansFournisseur, setSansFournisseur] = React.useState(false);
   const [showProdForm, setShowProdForm] = React.useState(false);
   const [showFournForm, setShowFournForm] = React.useState(false);
   const [editProd, setEditProd] = React.useState(null);
@@ -103,9 +107,11 @@ const Catalogue = ({ user, etablissement }) => {
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);
 
+  const nbSansFournisseur = produits.filter(p => !p.fournisseurId).length;
   const searchValue = normalizeSearch(search);
   const filtered = produits.filter(p =>
     (catFilter === 'Tous' || categorieAffichee(p) === catFilter) &&
+    (!sansFournisseur || !p.fournisseurId) &&
     (searchValue === '' || normalizeSearch(p.nom).includes(searchValue) ||
      normalizeSearch(p.fournisseurNom).includes(searchValue))
   );
@@ -483,6 +489,17 @@ const Catalogue = ({ user, etablissement }) => {
               onChange={setCatFilter}
               tabs={cats.map(c => ({ id: c, label: c === 'Tous' ? `Tous (${produits.length})` : c }))}
             />
+            {(nbSansFournisseur > 0 || sansFournisseur) && (
+              <button
+                type="button"
+                aria-pressed={sansFournisseur}
+                onClick={() => setSansFournisseur(v => !v)}
+                style={{ ...cat.filtreFournisseur, ...(sansFournisseur ? cat.filtreFournisseurActif : null) }}
+                data-filtre-sans-fournisseur=""
+              >
+                <span>Sans fournisseur</span> <span data-no-translate>({nbSansFournisseur})</span>
+              </button>
+            )}
           </div>
 
           {/* Table produits */}
@@ -588,8 +605,8 @@ const Catalogue = ({ user, etablissement }) => {
                   <thead>
                     <tr>
                       {canWrite && <th style={{ ...cat.th, width: 36 }}></th>}
-                      {['Produit', 'Référence', 'Catégorie', 'Fournisseur', 'Prix / unité', 'Unité', ''].map(h => (
-                        <th key={h} style={{ ...cat.th, ...(h === 'Prix / unité' ? { textAlign: 'right' } : null) }}>{h}</th>
+                      {['Produit', 'Référence', 'Catégorie', 'Fournisseur', 'Prix', ''].map(h => (
+                        <th key={h} style={{ ...cat.th, ...(h === 'Prix' ? { textAlign: 'right' } : null) }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -626,7 +643,7 @@ const Catalogue = ({ user, etablissement }) => {
                               }}
                               style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontFamily: 'var(--font)', background: 'var(--bg)', color: p.fournisseurId ? 'var(--text)' : 'var(--text2)', maxWidth: 160, cursor: 'pointer' }}
                             >
-                              <option value="">Aucun</option>
+                              <option value="" aria-label="Sans fournisseur"></option>
                               {(fournisseurs || []).map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                             </select>
                           ) : (
@@ -634,9 +651,8 @@ const Catalogue = ({ user, etablissement }) => {
                           )}
                         </td>
                         <td style={{ ...cat.td, fontWeight: 'var(--g-chiffre)', color: 'var(--lien)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                          {p.prixUnitaire > 0 ? `CHF ${p.prixUnitaire.toFixed(4)}` : <span style={{ color: 'var(--text2)' }}>-</span>}
+                          {p.prixUnitaire > 0 ? prixAffiche(p.prixUnitaire, p.uniteRef) : <span style={{ color: 'var(--text2)' }}>-</span>}
                         </td>
-                        <td style={{ ...cat.td, color: 'var(--text2)' }}>/{p.uniteRef}</td>
                         <td style={cat.tdAction}>
                           {canWrite && (
                             <>
@@ -934,7 +950,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
               <label style={{ ...cat.lbl, margin: 0 }}>Prix retenu pour le chiffrage</label>
               <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g-chiffre)', color: 'var(--lien)', fontFamily: 'var(--font-num)' }}>
-                CHF {prixRetenu.toFixed(4)} <span style={{ color: 'var(--text2)', fontWeight: 'var(--g1)' }}>/{form.uniteRef}</span>
+                {prixAffiche(prixRetenu, form.uniteRef) || 'CHF 0.00'}
               </div>
             </div>
             <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 8 }}>{provenancePrix}</div>
@@ -1047,7 +1063,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                         <td style={cat.td}>CHF {pf.prixAchat}</td>
                         <td style={cat.td}>{pf.conditionnement || '-'}</td>
                         <td style={{ ...cat.td, fontWeight: 'var(--g2)', color: 'var(--lien)' }}>
-                          {pf.prixUnitaire ? `${parseFloat(pf.prixUnitaire).toFixed(4)}` : '-'}
+                          {pf.prixUnitaire ? prixAffiche(pf.prixUnitaire, form.uniteRef) : '-'}
                         </td>
                         <td style={cat.td}>{pf.estPrincipal ? 'Principal' : ''}</td>
                       </tr>
@@ -1130,7 +1146,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                           <td style={cat.td}>{(h.releveLe || '').split('-').reverse().join('.')}</td>
                           <td style={cat.td}>{h.fournisseurNom || '-'}</td>
                           <td style={{ ...cat.td, fontWeight: 'var(--g2)' }}>
-                            {Number(h.prixUnitaire).toFixed(4)}
+                            {prixAffiche(h.prixUnitaire, form.uniteRef) || '-'}
                             {delta !== null && Math.abs(delta) >= 0.5 && (
                               <span style={{
                                 marginLeft: 6, fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
@@ -1215,6 +1231,8 @@ const cat = {
   tabActive: { borderBottomColor: 'var(--accent)', color: 'var(--lien)' },
   // Une seule ligne : loupe + onglets de catégories qui coulissent.
   filters: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' },
+  filtreFournisseur: { flexShrink: 0, minHeight: 36, padding: '6px 14px', borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', whiteSpace: 'nowrap' },
+  filtreFournisseurActif: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
   filterBtn: { padding: '5px 12px', borderRadius: 'var(--r)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   filterActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' },
   tableWrap: { overflowX: 'auto', background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)' },

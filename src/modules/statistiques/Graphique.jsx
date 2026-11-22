@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { bornesTranche, libelleTranche } from './agregation.js';
-import { libelleUnite, nombreDe, positionSur, rangsEtiquettes } from './echelles.js';
+import { SANS_CHIFFRE, etiquettesAxe, libelleUnite, nombreDe, positionSur, rangsEtiquettes } from './echelles.js';
 
 // ═════════════════════════════════════════════════════════════════════
 // Le graphique des Statistiques (D5) : un seul composant, en SVG fait main sur
@@ -61,7 +61,7 @@ export function NomSerie({ s }) {
 // Valeur exacte et son unité, dans deux nœuds (D18).
 export function Valeur({ v, unite, court = false }) {
   const u = libelleUnite(unite);
-  if (!estNombre(v)) return <span style={st.valeur}>n/a</span>;
+  if (!estNombre(v)) return <span style={st.valeur}>{SANS_CHIFFRE}</span>;
   return (
     <span style={{ whiteSpace: 'nowrap' }} data-no-translate>
       {unite === 'chf' ? <><span>{u}</span>{' '}</> : null}
@@ -158,17 +158,19 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
 
   const rangsAxe = genre === 'temps' ? rangsEtiquettes(n, 7) : [];
   const libelleAxeDroit = unites[1] ? libelleUnite(unites[1]) : '';
+  const etiquettesGauche = etiquettesAxe(echelles.g.graduations, unites[0]);
 
   return (
     <div style={{ minWidth: 0 }} data-stat-graphique={type}>
       <Legende series={series} comparaison={comparaison && type === 'courbe'} libelleComparaison={libelleComparaison} />
       <div style={{ position: 'relative', height: hauteur, marginTop: 14, marginRight: type === 'courbe' ? 26 : 0 }} data-stat-trace="">
-        {echelles.g.graduations.map((g) => {
+        {echelles.g.graduations.map((g, ig) => {
           const frac = positionSur(echelles.g, g);
           const droite = echelles.d ? echelles.d.min + frac * (echelles.d.max - echelles.d.min) : null;
+          const etiquette = etiquettesGauche[ig];
           return (
             <div key={g} style={{ ...st.graduation, bottom: `${frac * 100}%`, borderTopColor: g === 0 && echelles.g.min < 0 ? 'var(--text3)' : 'var(--border)' }} data-no-translate>
-              <span style={{ ...st.chiffreAxe, left: 0 }}>{unites[0] === 'chf' ? 'CHF ' : ''}{nombreDe(g, unites[0], { court: true })}{unites[0] === 'pct' ? ' %' : unites[0] === 'min' ? ' min' : ''}</span>
+              <span style={{ ...st.chiffreAxe, left: 0 }}>{unites[0] === 'chf' ? 'CHF ' : ''}{etiquette}{unites[0] === 'pct' ? ' %' : unites[0] === 'min' ? ' min' : ''}</span>
               {droite != null ? <span style={{ ...st.chiffreAxe, right: 0 }}>{unites[1] === 'chf' ? 'CHF ' : ''}{nombreDe(droite, unites[1], { court: true })}{libelleAxeDroit && unites[1] !== 'chf' ? ` ${libelleAxeDroit}` : ''}</span> : null}
             </div>
           );
@@ -249,7 +251,7 @@ export default function Graphique({ composition, tranches, hauteur = 260, libell
               data-stat-colonne=""
               style={{ flex: '1 1 0', minWidth: 0, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', cursor: 'pointer', background: sel === i && genre !== 'temps' ? 'var(--bg2)' : 'transparent', opacity: sel === i && genre !== 'temps' ? 0.35 : 1 }}
             >
-              {type !== 'courbe' && c.barres.every((b) => !estNombre(b.v)) ? <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: '14px', paddingBottom: 2 }}>n/a</span> : null}
+              {type !== 'courbe' && c.barres.every((b) => !estNombre(b.v)) ? <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: '14px', paddingBottom: 2 }}>vide</span> : null}
             </div>
           ))}
         </div>
