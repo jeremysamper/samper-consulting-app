@@ -181,6 +181,33 @@ export function genererCaisse() {
     caisse_tpe_transactions: [],
     caisse_tpe_bouclements: [],
     caisse_prets_avis: [],
+    ...commandesQr(),
     caisse_compteurs: [{ etablissement_id: ETAB, cle: 'ticket:' + aujourdhui().slice(0, 4), valeur: numero, updated_at: instant(jour(-1), '23:45') }],
+  };
+}
+
+// Commande par QR (lot L3) : la démo ouvre ses boissons au QR, à l'adresse
+// réservée « demo » (/commande/demo, carte de démo sans base), et deux
+// commandes attendent le bar, posées quelques minutes avant la visite.
+function commandesQr() {
+  const boissons = CAISSE_CATEGORIES.find((c) => c.nom === 'Boissons');
+  const b = (id) => BOISSONS.find((x) => x.id === 'pl-b-' + id);
+  const ligne = (id, quantite) => ({ plat_id: b(id).id, libelle: b(id).nom, quantite, prix_unitaire: b(id).prix_vente });
+  const ilYA = (min) => new Date(Date.now() - min * 60000).toISOString();
+  const commande = (n, champs, lignes, min) => ({
+    id: uid('8005', n), etablissement_id: ETAB, table_id: null, table_nom: null, au_bar: false,
+    statut: 'a_valider', motif_refus: null, traitee_par: null, traitee_at: null, ticket_id: null,
+    lignes, total: deuxDec(lignes.reduce((s, l) => s + l.quantite * l.prix_unitaire, 0)),
+    created_at: ilYA(min), ...champs,
+  });
+  return {
+    caisse_commande_qr_parametres: [{
+      etablissement_id: ETAB, actif: true, slug: 'demo', categories: boissons ? [boissons.id] : [], plages: [],
+      created_at: '2026-11-22T08:00:00Z', updated_at: '2026-11-22T08:00:00Z',
+    }],
+    caisse_commandes_qr: [
+      commande(1, { table_id: 'tb-4', table_nom: '4', prenom: 'Léa' }, [ligne('biere', 2), ligne('fendant-verre', 1)], 6),
+      commande(2, { au_bar: true, prenom: 'Marc' }, [ligne('pinot-verre', 2)], 2),
+    ],
   };
 }

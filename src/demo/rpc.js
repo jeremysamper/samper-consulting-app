@@ -489,6 +489,50 @@ const RPC = {
     if (b) ctx.maj('caisse_bons_cadeaux', b, { valable_jusqu_au: a.p_valable_jusqu_au });
     return b ? { ...b } : null;
   },
+
+  // Commande par QR (lot L3) : mêmes réponses que commande_qr_accepter et
+  // commande_qr_refuser. Le bon de cuisine n'est pas simulé : les lignes
+  // passent « envoyées », comme caisse_envoyer_bon de la démo.
+  commande_qr_accepter(ctx, a) {
+    const c = (ctx.db.caisse_commandes_qr || []).find((x) => x.id === a.p_commande_id);
+    if (!c) throw new ErreurRpc('commande_qr: commande introuvable');
+    if (c.statut !== 'a_valider') return { deja: c.statut, ticket_id: c.ticket_id };
+    if (Date.now() - new Date(c.created_at).getTime() > 3 * 3600000) {
+      ctx.maj('caisse_commandes_qr', c, { statut: 'refusee', motif_refus: 'Commande expirée', traitee_par: ctx.uid, traitee_at: maintenant() });
+      return { deja: 'refusee', expiree: true };
+    }
+    let ticketId;
+    if (!c.au_bar) {
+      ticketId = RPC.caisse_ouvrir_ticket(ctx, { p_etablissement_id: c.etablissement_id, p_table_id: c.table_id, p_qui: 'passage', p_couverts: 1 }).ticket_id;
+    } else {
+      const heure = heureZurich().slice(0, 5);
+      ticketId = ctx.inserer('caisse_tickets', {
+        etablissement_id: c.etablissement_id, table_id: null, statut: 'ouvert', ouvert_par: ctx.uid, note: `Commande QR de ${c.prenom}`, closed_at: null,
+        reservation_id: null, client_id: null, couverts: null, qui: null, test: false, numero: null, annee: null,
+        service: heure < '16:00' ? 'midi' : 'soir', jour_exploitation: jourZurich(), a_emporter: false, total_ttc: null,
+      }).id;
+    }
+    const plats = new Map(ctx.db.plats.map((p) => [p.id, p]));
+    (c.lignes || []).forEach((l) => {
+      const p = plats.get(l.plat_id);
+      if (!p) return;
+      ctx.inserer('caisse_lignes', {
+        ticket_id: ticketId, plat_id: p.id, libelle: p.nom, quantite: l.quantite, prix_unitaire: p.prix_vente, suite: 1,
+        statut: 'envoye', envoye_at: maintenant(), envoye_par: ctx.uid,
+      });
+    });
+    ctx.maj('caisse_commandes_qr', c, { statut: 'acceptee', ticket_id: ticketId, traitee_par: ctx.uid, traitee_at: maintenant() });
+    return { ticket_id: ticketId, lignes: (c.lignes || []).length, bon_id: null };
+  },
+  commande_qr_refuser(ctx, a) {
+    const c = (ctx.db.caisse_commandes_qr || []).find((x) => x.id === a.p_commande_id);
+    if (!c) throw new ErreurRpc('commande_qr: commande introuvable');
+    if (c.statut !== 'a_valider') return { deja: c.statut };
+    const motif = String(a.p_motif || '').trim();
+    if (motif.length < 3 || motif.length > 200) throw new ErreurRpc('commande_qr: motif de 3 a 200 signes');
+    ctx.maj('caisse_commandes_qr', c, { statut: 'refusee', motif_refus: motif, traitee_par: ctx.uid, traitee_at: maintenant() });
+    return { ok: true };
+  },
 };
 
 export function executerRpc(ctx, nom, args) {

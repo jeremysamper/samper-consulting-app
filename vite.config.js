@@ -59,6 +59,10 @@ function reservationPubliqueDevPlugin() {
         if (/^\/reserver\/[a-z0-9-]+(\/integrer)?\/?$/i.test(chemin) || /^\/table\/[a-z0-9-]+\/?$/i.test(chemin)) {
           req.url = `/reserver.html${requete ? `?${requete}` : ''}`;
         }
+        // /commande/<adresse> : commande de boissons par QR (lot L3), entrée à part.
+        if (/^\/commande\/[a-z0-9-]+\/?$/i.test(chemin)) {
+          req.url = `/commande.html${requete ? `?${requete}` : ''}`;
+        }
         // /demo : l'application sur un Supabase simulé (src/demo), comme
         // cleanUrls le sert en production.
         if (/^\/demo\/?$/i.test(chemin)) {
@@ -122,7 +126,8 @@ export default defineConfig({
         // /reserver/ et /table/ : pages publiques de réservation (spas,
         // restaurants ; entrée à part), jamais remplacées par l'app shell.
         // /demo : la démo publique (src/demo) ne passe jamais par l'app shell.
-        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//, /^\/confidentialite/, /^\/demo/],
+        // /commande/ : la commande par QR (lot L3), page publique à part.
+        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//, /^\/commande\//, /^\/confidentialite/, /^\/demo/],
         cleanupOutdatedCaches: true,
         // Caches runtime : l'ordre compte (première route qui matche gagne).
         // Les clés de cache sont les URL PostgREST complètes : le filtre
@@ -236,7 +241,10 @@ export default defineConfig({
         reserver: 'reserver.html',
         // Démo publique de l'application (/demo), sur un Supabase simulé dans
         // le navigateur : aucune requête vers la base de production.
-        demo: 'demo.html'
+        demo: 'demo.html',
+        // Commande de boissons par QR (/commande/<adresse>, lot L3), sans le
+        // bundle de l'app.
+        commande: 'commande.html'
       },
       output: {
         manualChunks: {

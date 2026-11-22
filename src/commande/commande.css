@@ -1,0 +1,187 @@
+/* Commande par QR (/commande/<adresse>) : mise en page, états et mouvements.
+   Page publique autonome, sans app.css : elle reprend la direction de l'app
+   (fond gris froid, cartes blanches à grand rayon et ombre douce, pilules,
+   aplat sombre pour l'action et le choix) avec ses propres jetons --q-*,
+   posés en ligne sur .cq-racine par CommandeQr.jsx. Pensée pour le
+   téléphone ; au-delà, la colonne garde 560 px. */
+
+.cq-racine {
+  min-height: 100vh; min-height: 100dvh;
+  background: var(--q-bg); color: var(--q-ink);
+  font-family: var(--font); font-size: 16px; line-height: 1.45;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+.cq-racine ::selection { background: var(--q-selection); }
+.cq-page { max-width: 560px; margin: 0 auto; padding: 24px 16px 32px; }
+
+/* ── En-tête ── */
+.cq-tete { padding: 8px 4px 20px; }
+.cq-sur { margin: 0 0 4px; font-size: 14px; color: var(--q-ink2); }
+.cq-titre { margin: 0; font-size: 29px; font-weight: 500; line-height: 1.15; letter-spacing: -0.01em; min-height: 1.15em; }
+
+/* ── Cartes ── */
+.cq-carte {
+  background: var(--q-surface); border-radius: 20px; box-shadow: var(--q-sh);
+  border-width: 1px; border-style: solid; border-color: var(--q-line);
+}
+.cq-message { padding: 20px; }
+.cq-message p { margin: 0 0 12px; color: var(--q-ink2); }
+.cq-message p:last-child { margin-bottom: 0; }
+.cq-message .cq-bouton { margin-top: 4px; }
+.cq-fort { color: var(--q-ink) !important; font-weight: 500; }
+.cq-plages { margin: 0 0 12px; padding-left: 20px; color: var(--q-ink); }
+.cq-doux { color: var(--q-ink3); margin: 0; }
+
+.cq-bloc { padding: 20px; margin-bottom: 16px; }
+.cq-bloc-titre { margin: 0 0 12px; font-size: 17px; font-weight: 600; }
+
+/* ── Catégories : rangée de pilules, collée en haut au défilement ── */
+.cq-onglets {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; gap: 8px; overflow-x: auto;
+  margin: 0 -16px 8px; padding: 8px 16px 12px;
+  background: var(--q-bg);
+  scrollbar-width: none; -webkit-overflow-scrolling: touch;
+}
+.cq-onglets::-webkit-scrollbar { display: none; }
+
+.cq-pilule {
+  flex-shrink: 0; min-height: 44px; padding: 0 18px;
+  border-radius: 999px; border-width: 1px; border-style: solid; border-color: var(--q-btn-bord);
+  background: var(--q-surface); color: var(--q-ink);
+  font-family: var(--font); font-size: 15px; font-weight: 500; cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease, transform 0.14s ease;
+}
+.cq-pilule:active { transform: scale(0.96); }
+.cq-pilule[data-actif="1"] { background: var(--q-accent); color: var(--q-on-accent); border-color: var(--q-accent); }
+@media (hover: hover) {
+  .cq-pilule:not([data-actif="1"]):hover { background: var(--q-selection); border-color: var(--q-selection); }
+}
+
+/* ── Sections et lignes de produit ── */
+.cq-section { margin-bottom: 24px; scroll-margin-top: 72px; }
+.cq-section-titre { margin: 0 4px 10px; font-size: 20px; font-weight: 500; }
+.cq-liste { padding: 0 16px; }
+.cq-bloc .cq-liste { padding: 0; }
+
+.cq-ligne {
+  display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 0;
+  border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--q-line);
+}
+.cq-liste > .cq-ligne:last-child { border-bottom-width: 0; }
+.cq-photo { width: 52px; height: 52px; border-radius: 14px; object-fit: cover; flex-shrink: 0; background: var(--q-piste); }
+.cq-ligne-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cq-nom { font-size: 16px; font-weight: 500; overflow-wrap: anywhere; }
+.cq-prix { font-size: 14px; color: var(--q-ink2); font-variant-numeric: tabular-nums; }
+
+.cq-pas { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+.cq-quantite { min-width: 28px; text-align: center; font-size: 17px; font-variant-numeric: tabular-nums; }
+.cq-rond {
+  width: 44px; height: 44px; border-radius: 999px; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-width: 1px; border-style: solid; border-color: var(--q-accent);
+  background: var(--q-accent); color: var(--q-on-accent); cursor: pointer;
+  transition: transform 0.14s ease, opacity 0.18s ease, background-color 0.18s ease;
+}
+.cq-rond:active:not(:disabled) { transform: scale(0.92); }
+.cq-rond:disabled { opacity: 0.65; cursor: default; background: var(--q-piste); color: var(--q-ink3); border-color: var(--q-line); }
+.cq-rond-doux { background: var(--q-surface); color: var(--q-ink); border-color: var(--q-btn-bord); }
+
+/* ── Pied : le panier, collé en bas de l'écran ── */
+.cq-pied-espace { height: 88px; }
+.cq-pied {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 3;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+  background: var(--q-bg);
+  animation: cq-monte 0.32s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.cq-pied-bouton { width: 100%; max-width: 528px; margin: 0 auto; display: flex; min-height: 56px; box-shadow: var(--q-sh-lg); }
+.cq-pied-detail { margin-left: auto; font-variant-numeric: tabular-nums; opacity: 0.9; }
+
+/* ── Boutons ── */
+.cq-bouton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; padding: 0 20px; border-radius: 999px;
+  border-width: 1px; border-style: solid;
+  font-family: var(--font); font-size: 16px; font-weight: 500; cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease, transform 0.14s ease, opacity 0.18s ease;
+}
+.cq-bouton:active:not(:disabled) { transform: scale(0.98); }
+.cq-bouton:disabled { cursor: default; opacity: 0.65; }
+.cq-principal { background: var(--q-accent); color: var(--q-on-accent); border-color: var(--q-accent); }
+.cq-secondaire { background: var(--q-surface); color: var(--q-ink); border-color: var(--q-btn-bord); }
+.cq-lien { background: transparent; color: var(--q-ink); border-color: transparent; padding: 0 8px; }
+.cq-retour { margin: 0 0 12px -8px; }
+.cq-envoyer { width: 100%; min-height: 56px; margin-top: 4px; }
+@media (hover: hover) {
+  .cq-principal:not(:disabled):hover { opacity: 0.9; }
+  .cq-secondaire:hover, .cq-lien:hover { background: var(--q-selection); border-color: var(--q-selection); }
+}
+
+/* ── Panier ── */
+.cq-total {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding-top: 14px; margin-top: 4px;
+  border-top-width: 1px; border-top-style: solid; border-top-color: var(--q-line);
+  font-size: 17px; font-weight: 500;
+}
+.cq-chiffre { font-variant-numeric: tabular-nums; font-size: 20px; font-weight: 400; }
+.cq-choix { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.cq-champ-bloc { display: block; margin-top: 12px; }
+.cq-label { display: block; font-size: 14px; color: var(--q-ink2); margin-bottom: 6px; }
+.cq-champ {
+  width: 100%; min-height: 48px; padding: 0 14px; border-radius: 14px;
+  border-width: 1px; border-style: solid; border-color: var(--q-champ);
+  background: var(--q-surface); color: var(--q-ink);
+  font-family: var(--font); font-size: 16px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+.cq-champ::placeholder { color: var(--q-ink3); }
+.cq-champ:focus { outline: none; border-color: var(--q-ink); box-shadow: 0 0 0 1px var(--q-ink); }
+
+.cq-avis {
+  margin: 0 0 16px; padding: 16px 18px; border-radius: 20px;
+  background: var(--q-ciel); color: var(--q-ciel-texte); font-size: 15px;
+}
+.cq-avis p { margin: 0 0 6px; }
+.cq-avis p:last-child { margin-bottom: 0; }
+.cq-erreur {
+  margin: 0 0 12px; padding: 12px 16px; border-radius: 14px;
+  background: var(--q-danger-soft); color: var(--q-danger); font-size: 15px;
+}
+
+/* ── Envoyée ── */
+.cq-envoye { text-align: center; padding: 28px 20px; }
+.cq-envoye .cq-bloc-titre { font-size: 24px; font-weight: 500; margin: 12px 0 8px; }
+.cq-coche { display: block; margin: 0 auto; animation: cq-rond 0.42s cubic-bezier(0.2, 0.8, 0.2, 1.2) both; }
+.cq-coche path { stroke-dasharray: 1; animation: cq-trait 0.42s 0.24s cubic-bezier(0.4, 0, 0.2, 1) both; }
+
+/* ── Chargement ── */
+@keyframes cq-respire { 0%, 100% { opacity: 0.45; } 50% { opacity: 1; } }
+.cq-squelette { height: 52px; margin: 12px 16px; border-radius: 14px; background: var(--q-piste); animation: cq-respire 1.3s ease-in-out infinite; }
+
+@keyframes cq-tourne { to { transform: rotate(360deg); } }
+.cq-roue {
+  width: 16px; height: 16px; border-radius: 999px; flex-shrink: 0;
+  border-width: 2px; border-style: solid; border-color: currentColor; border-top-color: transparent;
+  animation: cq-tourne 0.7s linear infinite;
+}
+
+/* ── Mouvements ── */
+@keyframes cq-entree { from { opacity: 0; translate: 0 10px; } to { opacity: 1; translate: 0 0; } }
+@keyframes cq-monte { from { translate: 0 100%; } to { translate: 0 0; } }
+@keyframes cq-rond { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes cq-trait { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.cq-entree { animation: cq-entree 0.46s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: var(--cq-delai, 0ms); }
+
+/* ── Focus au clavier : hors de la pilule, visible sur l'aplat sombre ── */
+.cq-racine :focus-visible { outline: 2px solid var(--q-focus); outline-offset: 2px; }
+.cq-racine .cq-champ:focus-visible { outline: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cq-racine *, .cq-racine *::before, .cq-racine *::after {
+    animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important; scroll-behavior: auto !important;
+  }
+}

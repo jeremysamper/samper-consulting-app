@@ -7,6 +7,7 @@ import * as caisse from '../../services/caisseService.js';
 import { libellePoste } from './modeTest.js';
 import ListeTriable from './ListeTriable.jsx';
 import SectionTerminal from './tpe/SectionTerminal.jsx';
+import SectionCommandeQr from './commandeQr/SectionCommandeQr.jsx';
 import { pictoParId } from './boutons.js';
 import { ChoixCouleur, ChoixPicto } from './ChoixHabillage.jsx';
 import {
@@ -58,6 +59,8 @@ const SECTIONS = [
   { id: 'cartes', label: 'Cartes en vente' },
   { id: 'no_show', label: 'No-show' },
   { id: 'test', label: 'Mode test' },
+  // L3 : commande de boissons par QR, réglée par la direction.
+  { id: 'qr', label: 'Commande par QR' },
 ];
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -67,7 +70,7 @@ const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 export default function ReglagesCaisse({
   etablissementId, articles, boutons, categories, cartes = [], config, onChange,
   poste = null, peutLireJournalTests = false, onTestsVides,
-  role = null, terminaux = [], lectureTerminaux = 'lue', onTerminauxChange,
+  role = null, terminaux = [], lectureTerminaux = 'lue', onTerminauxChange, nomEtablissement = '',
 }) {
   const [section, setSection] = React.useState('categories');
   // Copie locale de la config : l'écran suit le geste sans attendre la base.
@@ -221,6 +224,14 @@ export default function ReglagesCaisse({
                 Passé ce délai après l'heure réservée, une réservation confirmée sans table ouverte apparaît dans « Réservations sans ticket ». La caisse ne marque jamais un no-show seule : un tap le confirme.
               </p>
             </div>
+          )}
+          {section === 'qr' && (
+            <SectionCommandeQr
+              etablissementId={etablissementId}
+              nomEtablissement={nomEtablissement}
+              categories={categories}
+              role={role}
+            />
           )}
           {section === 'test' && (
             <SectionTest

@@ -26,6 +26,8 @@ import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
 import { useMaintenant } from './mesures.js';
+import { useCommandesQr } from './commandeQr/useCommandesQr.js';
+import BandeauCommandesQr from './commandeQr/BandeauCommandesQr.jsx';
 import { peutGererReservations } from '../previsions/gardeEnLigne.js';
 import {
   ajustementsDuService, lignesDeplacement, lignesReunion, lignesSeparation, reservationDirecte,
@@ -142,6 +144,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const [cleTest, setCleTest] = React.useState(() => lireModeTest(etabId));
   const modeTest = Boolean(cleTest);
   const peutActiverTest = ROLES_MODE_TEST.includes(user?.role);
+  // L3 : commandes de boissons par QR en attente (temps réel). Un poste en
+  // mode test ne les lit pas : elles deviendraient de vrais tickets.
+  const commandesQr = useCommandesQr(etabId, { actif: !modeTest });
   // Bon cadeau ouvert depuis son QR (bonEnAttente, App.jsx) : l'écran des bons
   // s'ouvre sur sa fiche. Jamais en mode test, qui ne montre aucun vrai bon.
   const [bonAOuvrir, setBonAOuvrir] = React.useState(null);
@@ -717,6 +722,14 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         )}
         {/* Hors mode test : un poste en essai ne s'abonne à rien. */}
         {!modeTest && <InvitationAvisPret user={user} etablissement={etablissement} />}
+        {/* L3 : commandes QR à valider, en tête du plan. */}
+        {!modeTest && (
+          <BandeauCommandesQr
+            commandes={commandesQr.commandes}
+            maintenant={commandesQr.maintenant}
+            onTraitee={() => Promise.all([commandesQr.recharger(), rechargerTickets()])}
+          />
+        )}
         <div className="module-actions caisse-actions no-print" data-caisse-actions="">
           <Btn variant="primary" onClick={venteDirecte} style={st.btn44}>Vente directe</Btn>
           <Btn onClick={() => setEcran('tickets')} style={st.btn44}>

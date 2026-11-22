@@ -21,7 +21,9 @@ export const DEMO_URL = 'https://demo.invalid';
 const DEMO_HOTE = new URL(DEMO_URL).hostname;
 const CLE_BASE = PREFIXE + 'base';
 const CLE_ROLE = PREFIXE + 'role';
-const VERSION_BASE = 'v1-' + aujourdhui();
+// v2 (lot L3) : la commande par QR entre dans les jeux ; une base du jour en
+// cache dans l'onglet serait relue sans elle.
+const VERSION_BASE = 'v2-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -117,7 +119,7 @@ export function oublierBase() {
 
 // Valeurs par défaut de la base, pour les insertions de l'app.
 const DEFAUTS = {
-  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages'],
+  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres'],
   reservations: { statut: 'confirme', origine: 'equipe', est_groupe: false, passeport_gourmand: false, created_by: () => sessionUid },
   shifts: { pause: 0, type_shift: 'simple', statut: 'confirmé', pointage_debut: null, pointage_fin: null, pointage_fin_auto: false },
   recettes: { statut: 'brouillon', version: 1, portions: 4, prix_vente: 0, allergenes_ids: [], ingredients: [], etapes: [], masquee: false, created_by: () => sessionUid },
@@ -160,6 +162,7 @@ const CLES_PRIMAIRES = {
   app_settings: ['key'],
   factures_compteurs: ['etablissement_id', 'date'],
   caisse_compteurs: ['etablissement_id', 'cle'],
+  caisse_commande_qr_parametres: ['etablissement_id'],
 };
 
 let sessionUid = null;
