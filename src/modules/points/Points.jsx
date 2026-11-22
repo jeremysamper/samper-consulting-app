@@ -15,7 +15,11 @@ import './points.css';
 // LegacyModuleHost ferme la page à qui ne la verrait pas dans le menu.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// « Accueil » d'abord : le solde de l'équipe, les cadeaux à remettre, le
+// prochain cadeau et le podium (l'onglet des commandes était vide le plus
+// souvent).
 const ONGLETS_GESTION = [
+  { id: 'accueil', label: 'Accueil' },
   { id: 'commandes', label: 'Commandes' },
   { id: 'boutique', label: 'Boutique' },
   { id: 'equipe', label: 'Équipe' },
@@ -57,7 +61,7 @@ export default function Points({ user, etablissement, permissions = null }) {
         <SegmentedTabs tabs={onglets} active={courant} onChange={setOnglet} />
         {courant === 'moi'
           ? <MesPoints user={user} etablissement={etablissement} permissions={permissions} bareme={etat.bareme} plafonds={{ jour: etat.plafondJour, mois: etat.plafondMois }} sansTitre />
-          : <GestionPoints key={`${etabId}-${courant}`} onglet={courant} user={user} etablissement={etablissement} etat={etat} />}
+          : <GestionPoints key={`${etabId}-${courant}`} onglet={courant} user={user} etablissement={etablissement} etat={etat} onOnglet={setOnglet} />}
       </div>
     </div>
   );

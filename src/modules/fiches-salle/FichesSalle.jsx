@@ -25,7 +25,7 @@ import VignetteFiche from '../../components/fiches/VignetteFiche.jsx';
 import SectionFiches, { GrilleFiches } from '../../components/fiches/SectionFiches.jsx';
 import PhotoFiche from '../../components/fiches/PhotoFiche.jsx';
 import AllergenesFiche from '../../components/fiches/AllergenesFiche.jsx';
-import { estCategorieTechnique, photoDeFicheSalle } from '../../components/fiches/rangementFiches.js';
+import { allergenesDeFicheSalle, estCategorieTechnique, photoDeFicheSalle } from '../../components/fiches/rangementFiches.js';
 import { categorieDuPlat, categoriesPresentes, grouperParCategorie } from '../../utils/categoriesPlat.js';
 
 
@@ -320,7 +320,10 @@ const FichesSalle = ({ user, etablissement }) => {
   // affiché, dans l'ordre de service (Fromages et Boissons ne s'affichent plus
   // vides). Un filtre qui pointe une catégorie absente de la carte choisie
   // retombe sur « Tous » plutôt que d'afficher une grille vide.
-  const fichesCarte = fiches.filter(f => activeCarteTab === ALL_TAB || (f.carteIds || []).includes(activeCarteTab));
+  // Les brouillons (fiches rédigées pas encore relues) ne sont montrés qu'à qui
+  // gère les fiches : la salle ne lit que des fiches publiées.
+  const fichesVues = canEdit ? fiches : fiches.filter(f => f.statut !== 'brouillon');
+  const fichesCarte = fichesVues.filter(f => activeCarteTab === ALL_TAB || (f.carteIds || []).includes(activeCarteTab));
   const catsPresentes = categoriesPresentes(fichesCarte);
   const cats = ['Tous', ...catsPresentes];
   const catFilterEff = cats.includes(catFilter) ? catFilter : 'Tous';
@@ -532,7 +535,9 @@ const FichesSalle = ({ user, etablissement }) => {
             temperatureService: ai.temperatureService,
             dressageNotes: '',
             infosService,
-            tempsPreparation: ai.tempsPreparation,
+            // Le temps de service se saisit : un temps proposé par la
+            // rédaction ne s'affiche pas comme s'il avait été mesuré.
+            tempsPreparation: '',
             allergenes: allergIds,
             accords: ai.accords,
             accordsGeneraux: ai.accordsGeneraux || [],
@@ -570,7 +575,7 @@ const FichesSalle = ({ user, etablissement }) => {
   };
 
   // ── Détail fiche ──
-  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} photo={photoDeFicheSalle(selected, plats, recettes)} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} cartes={cartes}/>;
+  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} photo={photoDeFicheSalle(selected, plats, recettes)} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} plats={plats} cartes={cartes}/>;
 
   return (
     <div style={fss.root}>
@@ -677,7 +682,7 @@ const FichesSalle = ({ user, etablissement }) => {
       ) : (
         <>
           {statutLecture === 'error' && <BandeauNonActualise onRetry={relireFiches} />}
-          {fiches.length === 0 ? (
+          {fichesVues.length === 0 ? (
             <div className="fv-etat">
               <p className="fv-etat-titre">Aucune fiche salle pour le moment.</p>
               {canEdit && <p className="fv-etat-texte">La première se crée avec « Nouvelle fiche ».</p>}
@@ -702,7 +707,7 @@ const FichesSalle = ({ user, etablissement }) => {
                         photo={photoDeFicheSalle(f, plats, recettes)}
                         categorie={categorieDuPlat(f)}
                         texte={f.descriptionService}
-                        allergenes={f.allergenes}
+                        allergenes={allergenesDeFicheSalle(f, plats, recettes)}
                         meta={[
                           f.tempsPreparation && { cle: 'temps', Icone: Clock, contenu: f.tempsPreparation },
                           nbAccords > 0 && { cle: 'accords', Icone: Wine, contenu: <><span data-no-translate="">{nbAccords}</span> {nbAccords > 1 ? 'accords' : 'accord'}</> },
@@ -735,7 +740,7 @@ const FichesSalle = ({ user, etablissement }) => {
 };
 
 // ── Détail d'une fiche ──
-const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], cartes = [] }) => {
+const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], plats = [], cartes = [] }) => {
   // Un onglet par famille réellement présente sur la fiche. Un type inconnu
   // (import ancien, famille ajoutée plus tard) garde son propre onglet plutôt
   // que d'être avalé : sans ça l'accord n'a pas d'onglet, donc il est invisible
@@ -827,7 +832,7 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
             )}
           </div>
           <div className="fv-col fv-col-b">
-            <AllergenesFiche ids={fiche.allergenes} variante="bandeau" />
+            <AllergenesFiche ids={allergenesDeFicheSalle(fiche, plats, recettes)} variante="bandeau" />
             {fiche.infosService && (
               <div style={{...encadreStyle('alerte'),fontSize: 'var(--t2)',lineHeight:1.5}}>
                 <strong style={encadreTitreStyle('alerte')}>Info service :</strong> {fiche.infosService}

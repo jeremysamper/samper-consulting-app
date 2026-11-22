@@ -1,5 +1,6 @@
 import React from 'react';
-import { Btn, Panneau, ligneStyle } from '../../components/ui/index.jsx';
+import { Coins, Gift, Trophy } from 'lucide-react';
+import { Btn, CarteRepere, Panneau, ligneStyle } from '../../components/ui/index.jsx';
 import { Fenetre, Options, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { roles as ROLES, isModuleActiveForEtab } from '../moduleConfig.js';
@@ -16,7 +17,7 @@ import { NombrePoints, PodiumCartes } from './Podium.jsx';
 import PhotoCadeau from './PhotoCadeau.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { usePlanningMasques } from '../../hooks/usePlanningMasques.js';
-import { classerEquipe } from './classement.js';
+import { classerEquipe, prochainCadeau } from './classement.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Gestion des points (qui gère « points », défaut consultant et patron) :
@@ -308,6 +309,61 @@ function OngletBoutique({ etabId, donnees, charger }) {
   );
 }
 
+// ─── Accueil ────────────────────────────────────────────────────────────────
+// L'écran d'arrivée de qui gère les points (lot 1, chiffres justes) : le solde
+// de l'équipe, les cadeaux à remettre, le prochain cadeau à portée et le
+// podium, au lieu de l'onglet des commandes, vide la plupart du temps. Rien
+// n'est lu de plus que les autres onglets (soldes, commandes, cadeaux).
+
+function OngletAccueil({ etabId, donnees, onOnglet }) {
+  const { masques, status: statutMasques } = usePlanningMasques(etabId);
+  const masquesLus = statutMasques === 'ready' || statutMasques === 'absent';
+  const { podium } = React.useMemo(() => classerEquipe(donnees.soldes, masques), [donnees.soldes, masques]);
+  const participants = (donnees.soldes || []).filter((p) => p.participant && !p.exclu);
+  const total = participants.reduce((n, p) => n + (Number(p.solde) || 0), 0);
+  const aTraiter = donnees.commandes.filter((k) => k.statut === 'demandee').length;
+  const proche = prochainCadeau(donnees.soldes, donnees.cadeaux);
+  const versEquipe = onOnglet ? () => onOnglet('equipe') : undefined;
+  return (
+    <>
+      <div className="points-reperes" data-points-accueil="">
+        <CarteRepere
+          Icone={Coins}
+          valeur={total}
+          libelle={total > 1 ? "points à dépenser dans l'équipe" : "point à dépenser dans l'équipe"}
+          detail={<><span data-no-translate>{participants.length}</span> <span>{participants.length > 1 ? 'personnes gagnent des points' : 'personne gagne des points'}</span></>}
+          onClick={versEquipe}
+        />
+        <CarteRepere
+          Icone={Gift}
+          valeur={aTraiter}
+          libelle={aTraiter > 1 ? 'cadeaux à remettre' : 'cadeau à remettre'}
+          onClick={onOnglet ? () => onOnglet('commandes') : undefined}
+        />
+        {proche ? (
+          <CarteRepere
+            Icone={Trophy}
+            valeur={proche.ecart}
+            libelle={<><span>{proche.ecart > 1 ? 'points avant' : 'point avant'}</span> <span data-no-translate>{proche.cadeau.nom}</span></>}
+            detail={<span data-no-translate>{nomPersonne(proche.personne)}</span>}
+            onClick={onOnglet ? () => onOnglet('boutique') : undefined}
+          />
+        ) : (
+          <CarteRepere Icone={Trophy} texte="Aucun cadeau à portée pour l'instant" />
+        )}
+      </div>
+      {!masquesLus ? null : podium.length ? (
+        <PodiumCartes podium={podium} onOuvrir={versEquipe || (() => {})} />
+      ) : (
+        <Panneau>
+          <h2 className="points-section-titre">Podium</h2>
+          <p className="points-aide">Personne n'a encore de points. Le podium se remplit avec les premiers points gagnés.</p>
+        </Panneau>
+      )}
+    </>
+  );
+}
+
 // ─── Équipe ─────────────────────────────────────────────────────────────────
 
 function OngletEquipe({ etabId, user, donnees, charger, exclus }) {
@@ -588,7 +644,7 @@ function OngletReglages({ etabId, user, etat, etablissement }) {
   );
 }
 
-export default function GestionPoints({ onglet, user, etablissement, etat }) {
+export default function GestionPoints({ onglet, user, etablissement, etat, onOnglet = null }) {
   const etabId = etablissement?.id;
   const { donnees, echec, charger } = useDonneesGestion(etabId);
 
@@ -604,6 +660,7 @@ export default function GestionPoints({ onglet, user, etablissement, etat }) {
   return (
     <>
       {echec && <p className="points-aide" role="status">Écran non actualisé : la dernière lecture a échoué.</p>}
+      {onglet === 'accueil' && <OngletAccueil etabId={etabId} donnees={donnees} onOnglet={onOnglet} />}
       {onglet === 'commandes' && <OngletCommandes donnees={donnees} charger={charger} />}
       {onglet === 'boutique' && <OngletBoutique etabId={etabId} donnees={donnees} charger={charger} />}
       {onglet === 'equipe' && <OngletEquipe etabId={etabId} user={user} donnees={donnees} charger={charger} exclus={etat.exclus} />}

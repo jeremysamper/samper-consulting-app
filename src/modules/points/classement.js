@@ -40,3 +40,19 @@ export function classerEquipe(soldes, masques) {
     hors: visibles.filter((p) => !classe(p)).sort(parNom),
   };
 }
+
+// Le cadeau le plus proche d'être gagné : pour chaque personne qui gagne des
+// points, le premier cadeau proposé au-dessus de son solde ; on garde le plus
+// petit écart. null sans cadeau à portée.
+export function prochainCadeau(soldes, cadeaux) {
+  const proposes = (cadeaux || []).filter((c) => c.actif !== false && Number(c.cout) > 0);
+  let meilleur = null;
+  (soldes || []).filter((p) => p.participant && !p.exclu).forEach((p) => {
+    const solde = Number(p.solde) || 0;
+    proposes.forEach((c) => {
+      const ecart = Number(c.cout) - solde;
+      if (ecart > 0 && (!meilleur || ecart < meilleur.ecart)) meilleur = { cadeau: c, personne: p, ecart };
+    });
+  });
+  return meilleur;
+}
