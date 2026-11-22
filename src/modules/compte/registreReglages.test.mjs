@@ -97,6 +97,8 @@ const AVANT = {
   achats_categories: DIRECTION,
   // Plan 15, lot 5 : le journal, réglé par qui le lit (consultant, patron).
   journal: DIRECTION,
+  // Statistiques : direction de la maison qui ouvre le module.
+  statistiques: ['consultant', 'patron', 'resp_cuisine'],
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {

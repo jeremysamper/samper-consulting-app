@@ -33,6 +33,8 @@ import { perimetreDe } from '../factures-achats/analysesAchats.js';
 import { SERVICES_LABELS } from '../previsions/rapport/computeReservationStats.js';
 import { dateComparable } from '../previsions/rapport/periodesRapport.js';
 import { ORDRE_ANALYSES, RACCOURCIS, demandeRaccourci } from './raccourcisStatistiques.js';
+import { QUESTIONS, demandeQuestion } from './questionsStatistiques.js';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
 
 // Le rapport complet de la caisse, chargé à sa première ouverture.
 const RapportCaisse = lazy(() => import('./RapportCaisse.jsx'));
@@ -86,6 +88,7 @@ const st = {
   note: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.45 },
   etat: { fontSize: 'var(--t2)', color: 'var(--text2)', minHeight: 44, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   bouton: { minHeight: 44, flexShrink: 0 },
+  questions: { display: 'flex', flexWrap: 'wrap', gap: 8, minWidth: 0 },
   menu: { ...stFenetre.secondaire, minHeight: 44, flexShrink: 0 },
 };
 
@@ -366,6 +369,9 @@ export default function Statistiques({ user, etablissement }) {
   const [vuesOuvertes, setVuesOuvertes] = useState(false);
   const [pdfEnCours, setPdfEnCours] = useState(false);
   const reglages = useUserSettings([CLE_VUE, CLE_VUES]);
+  // Lot 5 : vue d'office de la maison (Réglages > Statistiques), pour qui n'a
+  // pas encore de vue à lui.
+  const reglagesStats = useReglagesModule(etabId, 'statistiques');
   const vuesNommees = useMemo(() => vuesNommeesLues(reglages.settings[CLE_VUES]), [reglages.settings]);
 
   const bornes = useMemo(() => bornesDe(vue?.periode || { id: '30j' }, aujourdhui), [vue?.periode, aujourdhui]);
@@ -423,12 +429,16 @@ export default function Statistiques({ user, etablissement }) {
     return demande;
   }, []);
   useEffect(() => {
-    if (vue || !etabId || reglages.loading || !sondesPretes) return;
+    if (vue || !etabId || reglages.loading || !sondesPretes || reglagesStats.status === 'loading') return;
     const demande = prendreLien();
     const depuisLien = vueDepuisLien(demande, mesures, aujourdhui);
     setRaccourci(depuisLien ? raccourciDe(demande) : null);
-    setVue(depuisLien || nettoyerVue(reglages.settings[CLE_VUE], mesures, aujourdhui));
-  }, [vue, etabId, reglages.loading, reglages.settings, sondesPretes, mesures, aujourdhui, prendreLien]);
+    const sienne = reglages.settings[CLE_VUE];
+    const defautMaison = !depuisLien && !sienne && reglagesStats.reglages.vue_defaut
+      ? vueDepuisLien(demandeQuestion(reglagesStats.reglages.vue_defaut), mesures, aujourdhui)
+      : null;
+    setVue(depuisLien || defautMaison || nettoyerVue(sienne, mesures, aujourdhui));
+  }, [vue, etabId, reglages.loading, reglages.settings, sondesPretes, mesures, aujourdhui, prendreLien, reglagesStats.status, reglagesStats.reglages.vue_defaut]);
   // Module déjà monté (gardé en arrière-plan) : le lien prévient par un événement.
   useEffect(() => {
     const w = getBrowserWindow();
@@ -732,6 +742,15 @@ export default function Statistiques({ user, etablissement }) {
     setVue(v);
     setRaccourci({ id, vue: premiere.id });
   };
+  // Lot 5 : réponses toutes faites, une touche chacune. La vue ouverte dure
+  // le temps de la visite, comme une analyse : « Ma vue » reste la sienne.
+  const questions = useMemo(() => QUESTIONS.filter((q) => vueDepuisLien(q.demande, mesures, aujourdhui)), [mesures, aujourdhui]);
+  const poserQuestion = (q) => {
+    const v = vueDepuisLien(q.demande, mesures, aujourdhui);
+    if (!v) return;
+    setVue(v);
+    setRaccourci({ id: `question:${q.id}`, vue: q.id });
+  };
   // Retour du rapport monté : la première vue tracée de son analyse.
   const quitterEcranMonte = () => {
     const tracee = (vuesRaccourci || []).find((v) => !v.ecran);
@@ -787,7 +806,23 @@ export default function Statistiques({ user, etablissement }) {
         <>
           {analyses.length ? (
             <div data-stat-analyses="" style={{ minWidth: 0 }}>
-              <SegmentedTabs tabs={[{ id: 'libre', label: 'Ma vue' }, ...analyses]} active={raccourci && RACCOURCIS[raccourci.id] ? raccourci.id : 'libre'} onChange={choisirAnalyse} retourLigne />
+              <SegmentedTabs tabs={[{ id: 'libre', label: 'Ma vue' }, ...analyses]} active={raccourci && RACCOURCIS[raccourci.id] ? raccourci.id : (raccourci ? '' : 'libre')} onChange={choisirAnalyse} retourLigne />
+            </div>
+          ) : null}
+          {questions.length ? (
+            <div data-stat-questions="" role="group" aria-label="Réponses toutes faites" style={st.questions}>
+              {questions.map((q) => {
+                const choisie = raccourci?.id === `question:${q.id}`;
+                return (
+                  <Btn key={q.id} variant={choisie ? 'primary' : 'ghost'} onClick={() => poserQuestion(q)} title={q.detail} style={st.bouton}>
+                    {q.libelle}
+                  </Btn>
+                );
+              })}
+              {/* Sans rangée d'analyses, le retour à « Ma vue » se fait ici. */}
+              {!analyses.length && String(raccourci?.id || '').startsWith('question:') ? (
+                <Btn variant="ghost" onClick={() => choisirAnalyse('libre')} style={st.bouton}>Ma vue</Btn>
+              ) : null}
             </div>
           ) : null}
           {vuesRaccourci && vuesRaccourci.length > 1 ? (
