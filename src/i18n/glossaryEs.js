@@ -2542,6 +2542,8 @@ export const UI_GLOSSARY_ES = {
   "pour les jours suivants. Une réservation annulée depuis ne compte d'aucun côté.": 'para los días siguientes. Una reserva cancelada desde entonces no cuenta en ningún lado.',
   'Composition des tables': 'Composición de las mesas',
   'Taille des tables': 'Tamaño de las mesas',
+  'Tables réduites à': 'Mesas reducidas al',
+  'Taille des tables enregistrée': 'Tamaño de las mesas guardado',
   '1 couvert': '1 cubierto',
   '2 couverts': '2 cubiertos',
   '3 à 4 couverts': '3 a 4 cubiertos',

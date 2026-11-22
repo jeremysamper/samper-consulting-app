@@ -14,6 +14,7 @@ const CODES_SCHEMA_ABSENT = new Set(['42P01', 'PGRST205', '42703', 'PGRST204']);
 // dépendance, pour que les fonctions pures qui les lisent (plan du service de
 // la caisse) se testent sous Node. Rendus ici pour les lecteurs d'avant.
 export { PLAN_W, PLAN_H, PLAN_GRID } from './planSalleCanevas.js';
+import { tailleParDefaut } from '../modules/salle/planEchelle.js';
 
 // Le plan de salle repose sur des tables ajoutées par les migrations
 // 20260817. Tant qu'elles ne sont pas passées, PostgREST répond « relation
@@ -51,27 +52,10 @@ function mapError(error) {
   return 'Erreur technique. Réessayez ou contactez le support.';
 }
 
-// Gabarits par forme : une table de 8 est plus grande qu'un deux-couverts, et
-// une rectangulaire est plus large que profonde. Le plan reste lisible sans
-// demander à personne de redimensionner quoi que ce soit à la main.
-export function tailleParDefaut(forme, nbPlaces) {
-  // Place de bar : un tabouret, à peu près la moitié d'une table de deux,
-  // quel que soit le nombre de places qu'on lui donne.
-  if (forme === 'tabouret') return { largeur: 50, hauteur: 50 };
-  const p = Math.max(1, Number(nbPlaces) || 2);
-  if (forme === 'rectangle') {
-    // ~55 unités de long par paire de couverts, borné pour rester dans le plan
-    const largeur = Math.min(340, 110 + Math.ceil(p / 2) * 55);
-    return { largeur, hauteur: 90 };
-  }
-  if (forme === 'carree') {
-    const cote = Math.min(200, 80 + p * 8);
-    return { largeur: cote, hauteur: cote };
-  }
-  // ronde
-  const d = Math.min(200, 76 + p * 9);
-  return { largeur: d, hauteur: d };
-}
+// Gabarits par forme, à l'échelle de la salle : planEchelle.js, sans
+// dépendance, pour que les calculs se testent sous Node. Rendu ici pour les
+// lecteurs d'avant.
+export { tailleParDefaut };
 
 /**
  * Plan de salle : les tables (le mobilier) et leur placement (qui est assis
@@ -146,7 +130,9 @@ export function usePlanSalle(etablissementId) {
     async function createTable(partial) {
       const forme  = partial.forme || 'ronde';
       const places = partial.nb_places ?? 2;
-      const taille = tailleParDefaut(forme, places);
+      // `echelle` : celle de la salle, pour une table posée sans taille.
+      // Elle n'est pas une colonne de la table.
+      const taille = tailleParDefaut(forme, places, partial.echelle);
       const { data, error } = await supabase
         .from(TABLE_PLAN)
         .insert({
@@ -184,6 +170,26 @@ export function usePlanSalle(etablissementId) {
     async function deleteTable(id) {
       const { error } = await supabase.from(TABLE_PLAN).delete().eq('id', id);
       if (error) return { error: mapError(error) };
+      return { error: null };
+    }
+
+    // Taille des tables d'une salle : l'échelle d'abord (elle porte le droit
+    // et prouve que la colonne existe : un refus n'a rien écrit), puis la
+    // géométrie de chaque table, en parallèle.
+    // `lignes` : [{ id, pos_x, pos_y, largeur, hauteur }] (planEchelle.js).
+    async function redimensionnerSalle(salleId, echelle, lignes) {
+      const now = new Date().toISOString();
+      const { error: eS } = await supabase
+        .from(TABLE_SALLES)
+        .update({ echelle_tables: echelle, updated_at: now })
+        .eq('id', salleId);
+      if (eS) return { error: mapError(eS) };
+      const retours = await Promise.all((lignes || []).map((l) => supabase
+        .from(TABLE_PLAN)
+        .update({ pos_x: l.pos_x, pos_y: l.pos_y, largeur: l.largeur, hauteur: l.hauteur, updated_at: now })
+        .eq('id', l.id)));
+      const echec = retours.find((r) => r.error);
+      if (echec) return { error: mapError(echec.error) };
       return { error: null };
     }
 
@@ -374,7 +380,7 @@ export function usePlanSalle(etablissementId) {
 
     return {
       listSalles, createSalle, updateSalle, deleteSalle,
-      listTables, createTable, updateTable, deleteTable,
+      listTables, createTable, updateTable, deleteTable, redimensionnerSalle,
       listLiensPourResas, assigner, retirer, retirerToutesPourResa,
       listAjustements, enregistrerAjustements, effacerAjustements,
       listElements, createElement, updateElement, deleteElement,

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { tailleParDefaut } from '../../hooks/usePlanSalle.js';
+import { echelleDeSalle, tailleChangeeDeSalle } from '../salle/planEchelle.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Réglages d'une table du plan : nom, couverts, forme, zone, activité.
@@ -51,13 +52,16 @@ export default function PlanTableForm({
   }, []);
 
   function tailleFinale() {
-    // La taille suit la forme et le nombre de places, sauf si ni l'une ni
-    // l'autre n'a bougé : on garde alors ce qui est en base.
+    // La taille suit la forme et le nombre de places, à l'échelle de la
+    // salle, sauf si ni l'une ni l'autre n'a bougé : on garde alors ce qui
+    // est en base, ramené à l'échelle de la salle d'arrivée si la table en
+    // change.
     const formeChangee  = forme  !== (table.forme || 'ronde');
     const placesChangee = places !== (table.nb_places || 2);
+    const echelleDe = (id) => echelleDeSalle(salles.find((s) => s.id === id));
     const base = (formeChangee || placesChangee)
-      ? tailleParDefaut(forme, places)
-      : { largeur: Number(table.largeur), hauteur: Number(table.hauteur) };
+      ? tailleParDefaut(forme, places, echelleDe(salleId))
+      : tailleChangeeDeSalle(table, echelleDe(table.salle_id || salleId), echelleDe(salleId));
     // L'orientation survit au changement de couverts : une table dressée
     // contre un mur ne doit pas se recoucher parce qu'on lui ajoute deux
     // places.

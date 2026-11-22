@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Pencil, Scaling, Trash2 } from 'lucide-react';
+import { echelleDeSalle, echelleDisponible, enPourcent } from '../salle/planEchelle.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Gestion des salles : ajouter, renommer, réordonner, supprimer.
@@ -13,11 +14,14 @@ import { Pencil, Trash2 } from 'lucide-react';
 // Supprimer une salle emporte ses tables et donc leur placement : la
 // confirmation annonce le nombre de tables perdues, sinon on efface une
 // terrasse de douze tables sur un tap malheureux.
+//
+// « Taille des tables » (onTaille) ferme la fenêtre et ouvre le curseur sur
+// le plan de la salle : l'aperçu se voit sur la salle elle-même.
 // ═══════════════════════════════════════════════════════════════════════════
 
 export default function PlanSallesManager({
   salles, nbTablesParSalle, nbTablesReellesParSalle,
-  onClose, onCreate, onRename, onReorder, onDelete,
+  onClose, onCreate, onRename, onReorder, onDelete, onTaille = null,
 }) {
   const isMobile = useIsMobile();
   const [nouveau,  setNouveau]  = useState('');
@@ -170,6 +174,12 @@ export default function PlanSallesManager({
                         </div>
                         <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>
                           {nbTables} table{nbTables > 1 ? 's' : ''}
+                          {echelleDeSalle(s) < 1 && (
+                            <>
+                              <span>, </span><span>tables réduites à</span>{' '}
+                              <span data-no-translate="">{enPourcent(echelleDeSalle(s))} %</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     )}
@@ -192,6 +202,13 @@ export default function PlanSallesManager({
                       </>
                     ) : (
                       <>
+                        {onTaille && echelleDisponible(s) && (
+                          <button type="button" aria-label="Taille des tables" title="Taille des tables"
+                            onClick={() => onTaille(s.id)}
+                            style={btnIcone(true)}>
+                            <Scaling size={15} aria-hidden="true" />
+                          </button>
+                        )}
                         <button type="button" aria-label={`Renommer ${s.nom}`}
                           onClick={() => { setEditId(s.id); setEditNom(s.nom); setConfirm(null); }}
                           style={btnIcone(true)}>

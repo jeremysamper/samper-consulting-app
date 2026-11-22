@@ -2518,6 +2518,8 @@ export const UI_GLOSSARY_DE = {
   "pour les jours suivants. Une réservation annulée depuis ne compte d'aucun côté.": "für die folgenden Tage. Eine seither stornierte Reservation zählt auf keiner Seite.",
   "Composition des tables": "Zusammensetzung der Tische",
   "Taille des tables": "Grösse der Tische",
+  "Tables réduites à": "Tische verkleinert auf",
+  "Taille des tables enregistrée": "Tischgrösse gespeichert",
   "1 couvert": "1 Gedeck",
   "2 couverts": "2 Gedecke",
   "3 à 4 couverts": "3 bis 4 Gedecke",

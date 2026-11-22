@@ -122,6 +122,7 @@ const DEFAUTS = {
   shifts: { pause: 0, type_shift: 'simple', statut: 'confirmé', pointage_debut: null, pointage_fin: null, pointage_fin_auto: false },
   recettes: { statut: 'brouillon', version: 1, portions: 4, prix_vente: 0, allergenes_ids: [], ingredients: [], etapes: [], masquee: false, created_by: () => sessionUid },
   plats: { categorie: 'Plats', ordre: 0, actif: true },
+  salles: { ordre: 0, actif: true, echelle_tables: 1 },
   cartes: { plats: [], archive: false, masquee: false, ordre: 0 },
   produits: { categorie: 'Autres', unite_ref: 'g', actif: true, allergenes: [], strategie_prix: 'max', prix_verrouille: false },
   pertes: { quantite: 0, unite: 'pcs', valeur_unit: 0, valide: false },

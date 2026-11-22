@@ -6,7 +6,7 @@ import { ElementDecor } from '../previsions/planDecor.jsx';
 import { readJson, writeJson } from '../../utils/storage.js';
 import { useHauteurRestante, useLargeur, useMaintenant } from './mesures.js';
 import { ATTENTE_COMMANDE_MIN, cadreDe, decalageBorne, tableSous } from './planService.js';
-import { TABLE_LISIBLE, borne, cadrage, chaises, medianeTables } from '../salle/planVue.js';
+import { TABLE_LISIBLE, borne, cadrage, chaises, medianeTables, numeroSeul } from '../salle/planVue.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Plan de salle de la caisse : le plan du service tel que Réservations l'a
@@ -662,7 +662,9 @@ function ContenuTable({ t, w, h, k, echelle, ronde, e, attendue, nom, ticket, af
   const fNum = taille(15);
   const fTexte = taille(12);
   const ligneH = fTexte * 1.25;
-  const place = Math.max(0, Math.floor((h - 10 - fNum * 1.2) / ligneH));
+  // Petite table (salle réduite) : le numéro seul, comme au plan des
+  // réservations ; l'état reste dit par la couleur.
+  const place = numeroSeul(w, h) ? 0 : Math.max(0, Math.floor((h - 10 - fNum * 1.2) / ligneH));
   // Largeur utile (un rond n'offre que le carré inscrit) et largeur estimée
   // d'un texte : ce qui ne tient pas n'est pas rendu, plutôt que coupé.
   const utile = (ronde ? w * 0.78 : w) - 10;

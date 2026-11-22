@@ -6,6 +6,9 @@ import { readJson, writeJson } from '../../utils/storage.js';
 import { useVuePlan } from '../salle/useVuePlan.js';
 import { useLargeur } from '../caisse/mesures.js';
 import { aligner } from '../salle/planVue.js';
+import {
+  ECHELLE_MAX, ECHELLE_MIN, PAS_ECHELLE, bornerEchelle, echelleDeSalle, echelleDisponible, enPourcent, redimensionnerTables,
+} from '../salle/planEchelle.js';
 import { bornesCurseur, enRetard, etatTablee, hhmm, minutesDe, planifier, proposer, tableesLibres, PAS_CURSEUR } from '../salle/planTemps.js';
 import PlanTable, { COULEUR_ETAT } from './PlanTable.jsx';
 import PlanListe from './PlanListe.jsx';
@@ -348,6 +351,10 @@ export default function PlanSalle({
   const [tableChoisie, setTableChoisie] = useState(null);   // dessin : table choisie
   const [guides,       setGuides]       = useState([]);     // dessin : lignes d'alignement
   const [annulations,  setAnnulations]  = useState([]);     // dessin : gestes à défaire
+  // Taille des tables d'une salle en cours de réglage : { salleId, avant,
+  // echelle }. Tant qu'il n'est pas validé, le plan montre la salle à cette
+  // échelle sans rien écrire.
+  const [apercuTaille, setApercuTaille] = useState(null);
   const [planTous,     setPlanTous]     = useState(null);   // « placer les restants » à confirmer
   const [minute, setMinute] = useState(() => zurichNowMinutes());
   useEffect(() => {
@@ -500,7 +507,7 @@ export default function PlanSalle({
   const ajustRef = useRef(ajustParTable);
   ajustRef.current = ajustParTable;
 
-  const tablesVues = useMemo(() => {
+  const tablesAjustees = useMemo(() => {
     if (!tables) return tables;
     if (!ajustParTable.size) return tables;
     return tables.map((t) => {
@@ -521,6 +528,19 @@ export default function PlanSalle({
       };
     });
   }, [tables, ajustParTable]);
+  // Aperçu de la taille des tables : la salle réglée à sa nouvelle échelle,
+  // chaque table depuis son centre (planEchelle.js), sans rien écrire.
+  const tablesVues = useMemo(() => {
+    if (!apercuTaille || !tablesAjustees) return tablesAjustees;
+    const { salleId: sid, avant, echelle } = apercuTaille;
+    // Même rattachement que l'affichage : une orpheline compte pour la
+    // première salle.
+    const premiere = (salles || [])[0]?.id ?? null;
+    const dans = tablesAjustees.filter((t) => (t.salle_id || premiere) === sid);
+    const geo = new Map(redimensionnerTables(dans, avant, echelle).map((g) => [g.id, g]));
+    if (!geo.size) return tablesAjustees;
+    return tablesAjustees.map((t) => (geo.has(t.id) ? { ...t, ...geo.get(t.id) } : t));
+  }, [tablesAjustees, apercuTaille, salles]);
   const tablesVuesRef = useRef(tablesVues);
   tablesVuesRef.current = tablesVues;
 
@@ -569,6 +589,11 @@ export default function PlanSalle({
     return tablesVues.filter((t) => salleDeTable(t) === salleId);
   }, [tablesVues, salles, salleId, salleDeTable]);
 
+  // Échelle des tables de la salle affichée : les tables posées ensuite y
+  // naissent (planEchelle.js).
+  const salleAffichee = (salles || []).find((sa) => sa.id === salleId) || null;
+  const echelleSalle = echelleDeSalle(salleAffichee);
+
   // Décor de la salle affichée. Les zones d'abord : elles se dessinent au
   // sol, sous les murs et le mobilier.
   const elementsSalle = useMemo(() => (elements || [])
@@ -594,7 +619,10 @@ export default function PlanSalle({
 
   // Changer de salle ou quitter le dessin désélectionne : la barre d'actions
   // parlerait d'un élément qu'on ne voit plus.
-  useEffect(() => { setSelection(null); setTableChoisie(null); setSupprEnAttente(false); }, [salleId, mode]);
+  useEffect(() => {
+    setSelection(null); setTableChoisie(null); setSupprEnAttente(false);
+    setApercuTaille((a) => (a && a.salleId !== salleId ? null : a));
+  }, [salleId, mode]);
 
   // Contour des tablées rapprochées de la salle affichée : un cadre autour
   // des tables réunies.
@@ -1461,7 +1489,7 @@ export default function PlanSalle({
   // première se pose le long du bar de la salle, du côté où il reste de la
   // place ; sans bar dessiné, comme une table.
   function positionTabouret() {
-    const T = 50;
+    const T = tailleParDefaut('tabouret', 1, echelleSalle).largeur;
     const bar = elementsSalle.find((el) => el.type === 'bar');
     const vertical = bar ? Number(bar.hauteur) > Number(bar.largeur) : false;
     const derniere = [...tablesSalle.filter(estTabouret)].sort(parNumero).pop();
@@ -1481,7 +1509,7 @@ export default function PlanSalle({
         y = by + bh + 10 + T <= PLAN_H ? by + bh + 10 : by - 10 - T;
       }
     } else {
-      return positionLibre(tablesSalle.length);
+      return positionLibre(tablesSalle.length, { largeur: T, hauteur: T });
     }
     return { pos_x: clamp(x, 0, PLAN_W - T), pos_y: clamp(y, 0, PLAN_H - T) };
   }
@@ -1491,7 +1519,7 @@ export default function PlanSalle({
     if (!cible) return;
     const { data, error: e } = await plan.createTable({
       nom: prochainNumeroBar(), nb_places: 1, forme: 'tabouret',
-      salle_id: cible, ...positionTabouret(),
+      salle_id: cible, echelle: echelleSalle, ...positionTabouret(),
     });
     if (e) { notify(e, 'error'); return; }
     // Pas de réglages ouverts : on pose une rangée de tabourets d'affilée.
@@ -1507,10 +1535,10 @@ export default function PlanSalle({
     if (!cible) return;
     const forme = modele?.forme ?? 'ronde';
     const nbPlaces = modele?.nb_places ?? 2;
-    const { pos_x, pos_y } = positionLibre(tablesSalle.length, tailleParDefaut(forme, nbPlaces));
+    const { pos_x, pos_y } = positionLibre(tablesSalle.length, tailleParDefaut(forme, nbPlaces, echelleSalle));
     const { data, error: e } = await plan.createTable({
       nom: prochainNumero(), nb_places: nbPlaces, forme,
-      salle_id: cible, pos_x, pos_y,
+      salle_id: cible, pos_x, pos_y, echelle: echelleSalle,
     });
     if (e) { notify(e, 'error'); return; }
     setTables((prev) => [...(prev || []), data]);
@@ -1637,6 +1665,9 @@ export default function PlanSalle({
   }
 
   async function annulerDernier() {
+    // Un aperçu de taille ouvert se referme sans rien écrire : c'est lui le
+    // dernier geste en cours.
+    if (apercuTaille) { setApercuTaille(null); return; }
     const liste = annulationsRef.current;
     const dernier = liste[liste.length - 1];
     if (!dernier) return;
@@ -1652,6 +1683,11 @@ export default function PlanSalle({
     } else if (dernier.kind === 'creationTable') {
       setTableChoisie((c) => (c === dernier.id ? null : c));
       await supprimerTable(dernier.id);
+    } else if (dernier.kind === 'taille') {
+      const { salleId: sid, echelle, tables: geo } = dernier.avant;
+      appliquerGeometrie(sid, echelle, geo);
+      const { error: e } = await plan.redimensionnerSalle(sid, echelle, geo);
+      if (e) { notify(e, 'error'); load(); }
     } else if (dernier.kind === 'creationElement') {
       setSelection((c) => (c === dernier.id ? null : c));
       setElements((prev) => (prev || []).filter((x) => x.id !== dernier.id));
@@ -1710,7 +1746,7 @@ export default function PlanSalle({
         const pas = e.shiftKey ? 50 : PLAN_GRID;
         const dir = { ArrowLeft: [-pas, 0], ArrowRight: [pas, 0], ArrowUp: [0, -pas], ArrowDown: [0, pas] }[e.key];
         if (dir && (tableChoisie || selection)) { e.preventDefault(); pousser(dir[0], dir[1]); return; }
-        if (e.key === 'Escape') { setTableChoisie(null); setSelection(null); setSupprEnAttente(false); }
+        if (e.key === 'Escape') { setTableChoisie(null); setSelection(null); setSupprEnAttente(false); setApercuTaille(null); }
         return;
       }
       if (e.key === 'Escape' && (choisieId || armee)) { setChoisieId(null); setArmee(null); }
@@ -1750,6 +1786,50 @@ export default function PlanSalle({
       const { error: e } = await plan.updateSalle(s.id, { ordre: s.ordre });
       if (e) { notify(e, 'error'); load(); return; }
     }
+  }
+
+  // ── Taille des tables d'une salle ───────────────────────────────────
+  // Ouverte depuis la fenêtre des salles : elle se ferme, la salle s'affiche
+  // et la rangée du dessin devient le curseur. Le plan montre la salle à
+  // l'échelle choisie (tablesVues) ; « Valider » écrit tout d'un coup, et
+  // « Annuler » ou Ctrl + Z défait la salle entière.
+  function ouvrirTaille(id) {
+    const sa = (salles || []).find((x) => x.id === id);
+    if (!sa || !echelleDisponible(sa)) return;
+    setGestionSalles(false);
+    setTableChoisie(null);
+    setSelection(null);
+    setSupprEnAttente(false);
+    setSalleId(id);
+    const e = echelleDeSalle(sa);
+    setApercuTaille({ salleId: id, avant: e, echelle: e });
+  }
+
+  // Géométrie posée à l'écran sans attendre la base (validation, annulation).
+  function appliquerGeometrie(sid, echelle, lignes) {
+    const geo = new Map((lignes || []).map((l) => [l.id, l]));
+    setTables((prev) => (prev || []).map((t) => (geo.has(t.id)
+      ? { ...t, pos_x: geo.get(t.id).pos_x, pos_y: geo.get(t.id).pos_y, largeur: geo.get(t.id).largeur, hauteur: geo.get(t.id).hauteur }
+      : t)));
+    setSalles((prev) => (prev || []).map((sa) => (sa.id === sid ? { ...sa, echelle_tables: echelle } : sa)));
+  }
+
+  async function validerTaille() {
+    const a = apercuTaille;
+    if (!a) return;
+    setApercuTaille(null);
+    const echelle = bornerEchelle(a.echelle);
+    if (echelle === bornerEchelle(a.avant)) return;
+    const base = (tablesRef.current || []).filter((t) => salleDeTable(t) === a.salleId);
+    const lignes = redimensionnerTables(base, a.avant, echelle);
+    const avant = base.map((t) => ({
+      id: t.id, pos_x: Number(t.pos_x), pos_y: Number(t.pos_y), largeur: Number(t.largeur), hauteur: Number(t.hauteur),
+    }));
+    appliquerGeometrie(a.salleId, echelle, lignes);
+    pousserAnnulation({ kind: 'taille', avant: { salleId: a.salleId, echelle: bornerEchelle(a.avant), tables: avant } });
+    const { error: e } = await plan.redimensionnerSalle(a.salleId, echelle, lignes);
+    if (e) { notify(e, 'error'); load(); return; }
+    notify('Taille des tables enregistrée', 'success');
   }
 
   async function supprimerSalle(id) {
@@ -1913,7 +1993,8 @@ export default function PlanSalle({
   const nonCarree = (t) => Number(t.largeur) !== Number(t.hauteur);
   const tournerSurCanevas = (t) => {
     if (!canEdit) return null;
-    if (modePlan) return nonCarree(t) ? tournerTableBase : null;
+    // Pendant l'aperçu de taille, le plan ne se touche pas.
+    if (modePlan) return nonCarree(t) && !apercuTaille ? tournerTableBase : null;
     if (!ajusterActif || pivotIndispo) return null;
     const role = roleTablee.get(t.id);
     if (role === 'principale') return tournerTablee;
@@ -2330,7 +2411,32 @@ export default function PlanSalle({
   };
   const rangeeDessin = modePlan ? (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 2 }}>
-      {elementChoisi ? (
+      {apercuTaille ? (
+        <>
+          <span style={{ flexShrink: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+            Taille des tables
+          </span>
+          <input
+            type="range"
+            min={ECHELLE_MIN * 100}
+            max={ECHELLE_MAX * 100}
+            step={PAS_ECHELLE * 100}
+            value={enPourcent(apercuTaille.echelle)}
+            onChange={(e) => {
+              const v = bornerEchelle(Number(e.target.value) / 100);
+              setApercuTaille((a) => (a ? { ...a, echelle: v } : a));
+            }}
+            aria-label="Taille des tables"
+            aria-valuetext={`${enPourcent(apercuTaille.echelle)} %`}
+            style={{ flex: '1 1 160px', minWidth: 120, maxWidth: 320, accentColor: 'var(--accent)', minHeight: 32 }}
+          />
+          <span data-no-translate="" style={{ flexShrink: 0, minWidth: 48, fontFamily: 'var(--font-num)', fontSize: 'var(--t3)', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+            {enPourcent(apercuTaille.echelle)} %
+          </span>
+          <button type="button" style={ui.puce} onClick={validerTaille}>Valider</button>
+          <button type="button" style={ui.puce} onClick={() => setApercuTaille(null)}>Annuler</button>
+        </>
+      ) : elementChoisi ? (
         <>
           <span style={{ flexShrink: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginRight: 4, whiteSpace: 'nowrap' }}>
             {defChoisi?.label}
@@ -2406,6 +2512,9 @@ export default function PlanSalle({
       style={{ position: 'absolute', left: -vuePlan.origineX, top: -vuePlan.origineY, width: vuePlan.canevasW, height: vuePlan.canevasH }}
     >
       {modePlan && <GrillePlan fine={vuePlan.canevasW >= 700} />}
+      {modePlan && apercuTaille && (
+        <div aria-hidden="true" data-apercu-taille="" style={{ position: 'absolute', inset: 0, zIndex: 9 }} />
+      )}
       {elementsSalle.map((el) => (
         <ElementDecor
           key={el.id}
@@ -2782,6 +2891,7 @@ export default function PlanSalle({
           onRename={renommerSalle}
           onReorder={reordonnerSalles}
           onDelete={supprimerSalle}
+          onTaille={ouvrirTaille}
         />
       )}
     </div>

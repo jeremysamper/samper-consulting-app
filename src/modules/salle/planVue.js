@@ -16,6 +16,13 @@ export const TABLE_LISIBLE = 64;
 
 export const borne = (v, min, max) => Math.min(max, Math.max(min, v));
 
+// Sous ce côté à l'écran, en pixels, une table ne porte plus que son numéro :
+// le nom, l'heure ou les places y seraient écrits trop serrés pour être lus
+// (une salle réduite à 60 % sur une tablette). L'état reste dit par la
+// couleur de la table et de ses chaises.
+export const COTE_NUMERO_SEUL = 56;
+export const numeroSeul = (w, h) => Math.min(Number(w) || 0, Number(h) || 0) < COTE_NUMERO_SEUL;
+
 // Petit côté médian des tables : la taille typique d'une table de la salle.
 export function medianeTables(tables) {
   const cotes = (tables || [])

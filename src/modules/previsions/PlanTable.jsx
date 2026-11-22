@@ -1,5 +1,5 @@
 import { RotateCw, TriangleAlert } from 'lucide-react';
-import { chaises } from '../salle/planVue.js';
+import { chaises, numeroSeul } from '../salle/planVue.js';
 import { hhmm, minutesDe } from '../salle/planTemps.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,7 +57,9 @@ export default function PlanTable({
   const fTxt = cote >= 110 ? 14 : 12;
   const utile = (ronde ? w * 0.74 : w) - 10;
   const tient = (texte, f) => String(texte).length * f * 0.56 <= utile;
-  const lignesPossibles = Math.max(0, Math.floor((h - 8 - fNum * 1.15) / (fTxt * 1.3)));
+  // Petite table (salle réduite, tablette) : le numéro seul, l'état reste
+  // dit par la couleur de la table et des chaises.
+  const lignesPossibles = numeroSeul(w, h) ? 0 : Math.max(0, Math.floor((h - 8 - fNum * 1.15) / (fTxt * 1.3)));
   // Une ligne est faite de morceaux : les nombres et les noms (données) ne
   // partent pas au traducteur, les mots autour passent au glossaire.
   const lignes = [];

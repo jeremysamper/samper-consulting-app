@@ -3,8 +3,8 @@
 import { ETAB, aujourdhui, jour, jourSemaine, instant, graine } from './base.js';
 
 export const SALLES = [
-  { id: 'salle-principale', etablissement_id: ETAB, nom: 'Salle', ordre: 0, actif: true, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-01T08:00:00Z' },
-  { id: 'salle-terrasse', etablissement_id: ETAB, nom: 'Véranda', ordre: 1, actif: true, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-01T08:00:00Z' },
+  { id: 'salle-principale', etablissement_id: ETAB, nom: 'Salle', ordre: 0, actif: true, echelle_tables: 1, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-01T08:00:00Z' },
+  { id: 'salle-terrasse', etablissement_id: ETAB, nom: 'Véranda', ordre: 1, actif: true, echelle_tables: 1, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-01T08:00:00Z' },
 ];
 
 const table = (id, nom, places, forme, x, y, salle = 'salle-principale', zone = null) => ({
