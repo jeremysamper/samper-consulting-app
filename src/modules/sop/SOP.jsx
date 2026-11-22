@@ -20,6 +20,9 @@ import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { compteSop } from './serieSop.js';
+import { useDemandeOuverture } from '../../hooks/useDemandeOuverture.js';
+import { UI_STORAGE_KEYS } from '../../utils/storage.js';
+import { zurichToday } from '../../utils/zurichTime.js';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING - MODULE SOP & CHECKLISTS
@@ -58,6 +61,14 @@ const SOP = ({ user, etablissement }) => {
   const [selectedSop, setSelectedSop] = React.useState(null);  // pour éditer
   const [runningExec, setRunningExec] = React.useState(null);  // pour exécuter
   const [showTemplates, setShowTemplates] = React.useState(false);
+  // Plan 15, lot 5 : « Lancer » ou « Reprendre » depuis « À faire maintenant »
+  // (ouvrirSop) : la demande attend la fin du chargement.
+  const demandeRef = React.useRef(null);
+  const [tourDemande, setTourDemande] = React.useState(0);
+  useDemandeOuverture(UI_STORAGE_KEYS.sopOuvrir, 'sc:sop-ouvrir', (d) => {
+    demandeRef.current = d;
+    setTourDemande((n) => n + 1);
+  });
 
   // Chargement initial + realtime
   React.useEffect(() => {
@@ -111,6 +122,29 @@ const SOP = ({ user, etablissement }) => {
       notifyLegacy(messageErreur(err, 'sop'), 'error');
     }
   };
+
+  // Lance une exécution neuve. Celle qu'on a commencée et pas finie se reprend
+  // par setRunningExec : la checklist relit ses étapes cochées.
+  const lancer = async (sop) => {
+    try {
+      const exec = await legacySB.db.startSopExecution({
+        sopId: sop.id, etabId, userId: user.id, userName: user.nom || user.email
+      });
+      setRunningExec(exec);
+    } catch (err) { notifyLegacy(messageErreur(err, 'sop'), 'error'); }
+  };
+  const lancerRef = React.useRef(lancer);
+  lancerRef.current = lancer;
+
+  React.useEffect(() => {
+    const d = demandeRef.current;
+    if (!d || loading) return;
+    demandeRef.current = null;
+    const exec = d.execId ? executions.find((e) => e.id === d.execId && e.statut === 'en_cours') : null;
+    if (exec) { setRunningExec(exec); return; }
+    const sop = sops.find((x) => x.id === d.sopId && x.actif);
+    if (sop) lancerRef.current(sop);
+  }, [loading, tourDemande, executions, sops]);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
 
@@ -191,14 +225,8 @@ const SOP = ({ user, etablissement }) => {
         legacySB={legacySB}
         onEdit={(s) => setSelectedSop(s)}
         onAddToTemplates={addToTemplates}
-        onStart={async (sop) => {
-          try {
-            const exec = await legacySB.db.startSopExecution({
-              sopId: sop.id, etabId, userId: user.id, userName: user.nom || user.email
-            });
-            setRunningExec(exec);
-          } catch (err) { notifyLegacy(messageErreur(err, 'sop'), 'error'); }
-        }}
+        onStart={lancer}
+        onResume={(exec) => setRunningExec(exec)}
       />
 
       {/* Modale templates */}
@@ -215,7 +243,7 @@ const SOP = ({ user, etablissement }) => {
 };
 
 // ─── Liste des SOPs ───
-const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, etabId, legacySB, onEdit, onStart, onAddToTemplates, versInventaire = false }) => {
+const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, etabId, legacySB, onEdit, onStart, onResume, onAddToTemplates, versInventaire = false }) => {
   const [search, setSearch] = React.useState('');
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
@@ -292,7 +320,19 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
   // ─── Carte des SOPs déjà exécutées (terminées) aujourd'hui ───
   // Permet d'afficher un badge "Fait aujourd'hui" et d'éviter les doublons accidentels.
   // On ne compte que les exécutions au statut 'terminee' du jour courant.
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Jour de Zurich (et non d'UTC : entre minuit et 1 h, c'était la veille).
+  const todayStr = zurichToday();
+  // Plan 15, lot 5 : une exécution commencée par la personne aujourd'hui et
+  // pas finie se reprend là où elle s'est arrêtée.
+  const enCoursMap = React.useMemo(() => {
+    const map = {};
+    (executions || []).forEach(e => {
+      if (e.statut !== 'en_cours' || e.operateurId !== user.id) return;
+      if ((e.dateExecution || '').slice(0, 10) !== todayStr) return;
+      if (!map[e.sopId] || String(e.heureDebut || '') > String(map[e.sopId].heureDebut || '')) map[e.sopId] = e;
+    });
+    return map;
+  }, [executions, todayStr, user.id]);
   const doneTodayMap = React.useMemo(() => {
     const map = {};
     (executions || []).forEach(e => {
@@ -475,13 +515,22 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                       )}
                     </div>
                     <div style={ss.sopCardActions}>
-                      <button
-                        style={ss.gererBtn}
-                        onClick={() => handleStart(sop)}
-                        title={doneToday && sop.frequence === 'quotidien'
-                            ? "Relancer (déjà validée aujourd'hui)"
-                            : "Lancer la checklist"}
-                      >{doneToday && sop.frequence === 'quotidien' ? 'Relancer' : 'Lancer'}</button>
+                      {enCoursMap[sop.id] && onResume ? (
+                        <button
+                          style={ss.gererBtn}
+                          onClick={() => onResume(enCoursMap[sop.id])}
+                          title="Reprendre là où vous vous êtes arrêté"
+                          data-sop-reprendre=""
+                        >Reprendre</button>
+                      ) : (
+                        <button
+                          style={ss.gererBtn}
+                          onClick={() => handleStart(sop)}
+                          title={doneToday && sop.frequence === 'quotidien'
+                              ? "Relancer (déjà validée aujourd'hui)"
+                              : "Lancer la checklist"}
+                        >{doneToday && sop.frequence === 'quotidien' ? 'Relancer' : 'Lancer'}</button>
+                      )}
                     </div>
                   </div>
                 </div>

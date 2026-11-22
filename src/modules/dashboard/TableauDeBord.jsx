@@ -56,6 +56,10 @@ import { modulesDuMenu as filtrerMenu, raccourcisAffiches, widgetsAffiches } fro
 import { messageErreur } from '../../utils/messageErreur.js';
 import { usePointsEtat } from '../points/pointsEtat.js';
 import { useResumePoints } from '../points/useResumePoints.js';
+import { useCadeauxATraiter } from '../points/useCadeauxATraiter.js';
+import { useSopDuJour } from '../sop/useSopDuJour.js';
+import { rappelsDuJour } from '../sop/rappelsSop.js';
+import { ouvrirSop } from '../../services/navigationService.js';
 import { useHaussesTableau } from '../factures-achats/haussesTableau.js';
 import { demanderEcran } from '../../services/demandeEcran.js';
 import { useTempsGagne } from '../../hooks/useTempsGagne.js';
@@ -145,6 +149,12 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
   // participe.
   const pointsEtat = usePointsEtat(etabId, user?.id, { gereFront: canManageModule(role, 'points'), enabled: perms.points !== false });
   const points = useResumePoints({ etabId, userId: user?.id, enabled: pointsEtat.actif && pointsEtat.participant });
+  // Plan 15, lot 5 : « À faire maintenant » porte aussi les cadeaux demandés
+  // (qui gère les points : « Remettre » en une touche) et les procédures du
+  // moment chez la personne au planning (« Lancer » ou « Reprendre »).
+  const cadeaux = useCadeauxATraiter({ etabId, enabled: pointsEtat.actif && pointsEtat.gere && actif('points') });
+  const avecSop = actif('sop') && perms.sop !== false && avecPlanning;
+  const sopJour = useSopDuJour({ etabId, jour: aujourdhui, enabled: avecSop });
   const { disposition, enregistrer } = useDisposition(user?.id || null);
   const [personnaliser, setPersonnaliser] = React.useState(false);
 
@@ -259,10 +269,36 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
     couverts: couvertsJour, groupes: groupesJour, equipe: equipeDu(d.shifts, aujourdhui), absents: absentsJour, absencesLues,
     avecCouverts: avecCouvertsLus, avecGroupes: avecGroupesLus, avecPlanning, nonLu,
   });
-  const items = aFaire({
+  const rappels = avecSop && sopJour.lu && !nonLu('shifts')
+    ? rappelsDuJour({ sops: sopJour.sops, executions: sopJour.executions, shifts: d.shifts, userId: user?.id, role, jour: aujourdhui, maintenant })
+    : [];
+  const itemsLot5 = [
+    ...rappels.map((r) => ({
+      id: `sop-${r.sop.id}`,
+      ton: r.retard ? 'warning' : 'info',
+      icone: 'sop',
+      titre: r.sop.titre,
+      detail: r.detail,
+      page: 'sop',
+      rang: 2,
+      action: { libelle: r.enCours ? 'Reprendre' : 'Lancer', faire: () => ouvrirSop({ sopId: r.sop.id, execId: r.exec?.id || null }) },
+    })),
+    ...cadeaux.commandes.map((k) => ({
+      id: `cadeau-${k.id}`,
+      ton: 'info',
+      icone: 'points',
+      titre: <><span>Cadeau demandé :</span>{' '}<span data-no-translate>{cadeaux.cadeaux.get(k.cadeauId)?.nom || 'cadeau retiré'}</span></>,
+      detail: <><span data-no-translate>{nomDe(k.userId)}</span>{', '}<span data-no-translate>{k.cout}</span>{' '}<span>points</span></>,
+      page: 'points',
+      rang: 4,
+      action: { libelle: 'Remettre', faire: () => cadeaux.remettre(k.id) },
+    })),
+  ];
+  const poidsTon = { danger: 0, warning: 1, info: 2 };
+  const items = [...aFaire({
     aujourdhui, maintenant, haccp: d.haccp, groupes: d.groupes, shifts: d.shifts, absences,
     nbMessages, pertes: d.pertes, avecHaccp: avecHaccp && !fermeAujourdhui, avecGroupes, avecPlanning, direction, nomDe,
-  });
+  }), ...itemsLot5].sort((a, b) => (poidsTon[a.ton] - poidsTon[b.ton]) || (a.rang - b.rang));
   const chiffres = chiffresGestion({ pertes: d.pertes, shifts: d.shifts, couverts: d.couverts, aujourdhui });
   const derniers = derniersParPerimetre(d.inventaires || []);
   const plusAncien = derniers.slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))[0];
