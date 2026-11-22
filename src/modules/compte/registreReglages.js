@@ -391,7 +391,7 @@ export const SECTIONS = [
   // Plan 15, lot 6b (22.11.2026) : trois modules de l'hôtel réglés dans
   // reglages_modules (migration 20261122_lot6b_reglages_hotel). La base n'en
   // laisse écrire que la direction de l'hôtel (déclencheur) ; les sections ne
-  // proposées qu'à la direction de l'hôtel, comme ses autres réglages.
+  // sont proposées qu'à elle, comme ses autres réglages.
   {
     id: 'etages', libelle: 'Étages', detail: 'Temps de ménage et linge par type de chambre',
     motsCles: 'ménage temps tournée linge draps serviettes catégorie chambre', groupe: 'modules', portee: 'maison', module: 'etages',
