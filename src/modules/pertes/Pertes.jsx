@@ -349,7 +349,7 @@ const Pertes = ({ user, etablissement }) => {
                     aria-label={p.produit}
                     checked={sel.isSelected(p.id)}
                     onChange={() => sel.toggle(p.id)}
-                    style={{ width: 18, height: 18, margin: 0, cursor: 'pointer' }}
+                    style={{ width: 24, height: 24, margin: 0, cursor: 'pointer' }}
                   />
                 </label>
               )}

@@ -540,7 +540,7 @@ const Catalogue = ({ user, etablissement }) => {
                         if (e.target.checked) setSelected(new Set(filtered.map(p => p.id)));
                         else setSelected(new Set());
                       }}
-                      style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent)' }}
+                      style={{ width: 24, height: 24, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }}
                     />
                     {selected.size > 0
                       ? `${selected.size} produit${selected.size > 1 ? 's' : ''} sélectionné${selected.size > 1 ? 's' : ''}`
@@ -658,7 +658,7 @@ const Catalogue = ({ user, etablissement }) => {
                                   e.target.checked ? next.add(p.id) : next.delete(p.id);
                                   setSelected(next);
                                 }}
-                                style={{ width: 16, height: 16, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }}
+                                style={{ width: 24, height: 24, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }}
                               />
                             </label>
                           </td>
@@ -841,7 +841,7 @@ function ListeProduitsTactile({ produits, canWrite, selection, selected, onBascu
           return (
             <label key={p.id} style={{ ...ligne, cursor: 'pointer' }}>
               <span style={cat.caseLigne}>
-                <input type="checkbox" aria-label={p.nom} checked={coche} onChange={() => onBasculer(p.id)} style={{ width: 18, height: 18, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }} />
+                <input type="checkbox" aria-label={p.nom} checked={coche} onChange={() => onBasculer(p.id)} style={{ width: 24, height: 24, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }} />
               </span>
               <span style={{ ...cat.ligneBouton, paddingLeft: 4 }}>{contenu}</span>
             </label>

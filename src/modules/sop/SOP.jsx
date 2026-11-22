@@ -416,7 +416,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                         aria-label={sop.titre}
                         checked={sel.isSelected(sop.id)}
                         onChange={() => sel.toggle(sop.id)}
-                        style={{ width: 18, height: 18, margin: 0, cursor: 'pointer' }}
+                        style={{ width: 24, height: 24, margin: 0, cursor: 'pointer' }}
                       />
                     </label>
                   )}
