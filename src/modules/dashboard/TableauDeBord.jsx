@@ -278,7 +278,10 @@ export default function TableauDeBord({ user, etablissement, setPage }) {
       ton: r.retard ? 'warning' : 'info',
       icone: 'sop',
       titre: r.sop.titre,
-      detail: r.detail,
+      // L'heure dans son nœud : la phrase reste une clé du glossaire.
+      detail: !r.enCours && r.sop.rappelMoment === 'heure'
+        ? <><span>À faire à</span>{' '}<span data-no-translate>{String(r.sop.rappelHeure || '').slice(0, 5)}</span></>
+        : r.detail,
       page: 'sop',
       rang: 2,
       action: { libelle: r.enCours ? 'Reprendre' : 'Lancer', faire: () => ouvrirSop({ sopId: r.sop.id, execId: r.exec?.id || null }) },
