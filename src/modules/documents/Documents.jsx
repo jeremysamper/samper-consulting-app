@@ -14,6 +14,10 @@ import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { pictoCercleStyle } from '../../components/ui/index.jsx';
 import './documents.css';
+import { roles as ROLES } from '../moduleConfig.js';
+import { UI_STORAGE_KEYS } from '../../utils/storage.js';
+import { useDemandeOuverture } from '../../hooks/useDemandeOuverture.js';
+import { ROLES_TOUT_VOIR, documentVisible, peutReglerVisibilite, trouverDossier } from './gardesDocuments.js';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // MODULE DOCUMENTS - dossiers et fichiers de l'établissement
@@ -45,6 +49,9 @@ const FORMATS = {
   heic: 'image/heic', heif: 'image/heif',
 };
 const ACCEPT = 'application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.pdf,.jpg,.jpeg,.png,.webp,.heic,.heif';
+
+// Rôles proposés pour un dossier réservé : tous, sauf ceux qui voient tout.
+const ROLES_DOCUMENTS = Object.keys(ROLES).filter(r => !ROLES_TOUT_VOIR.includes(r));
 
 const RETRY_MIN_MS = 4000;
 const RETRY_MAX_MS = 30000;
@@ -89,7 +96,7 @@ const Documents = ({ user, etablissement }) => {
   const canRead = perms.documents !== false;
   const canWrite = canRead && canManageModule(user.role, 'documents');
 
-  const [allDocs, setAllDocs] = React.useState([]);
+  const [docsLus, setAllDocs] = React.useState([]);
   // 'loading' = premier chargement · 'ready' · 'error' = dernière lecture
   // ratée, la liste affichée est la précédente (conservée).
   const [status, setStatus] = React.useState(legacySB ? 'loading' : 'ready');
@@ -159,6 +166,15 @@ const Documents = ({ user, etablissement }) => {
   const recharger = React.useCallback(() => { reloadRef.current && reloadRef.current(); }, []);
   useResumeRefresh(recharger);
 
+  // Plan 15, lot 5 : un dossier réservé à des rôles et son contenu ne sont
+  // montrés qu'à ces rôles (miroir de la RLS de documents ; consultant et
+  // patron voient tout).
+  const allDocs = React.useMemo(() => {
+    const ids = new Map(docsLus.map(d => [d.id, d]));
+    return docsLus.filter(d => documentVisible(d, user.role, ids));
+  }, [docsLus, user.role]);
+  const [visibilite, setVisibilite] = React.useState(null); // { doc, roles: [] | null } | null
+
   // ═══ Index de l'arborescence ═══
   const parId = React.useMemo(() => new Map(allDocs.map(d => [d.id, d])), [allDocs]);
   const enfants = React.useMemo(() => {
@@ -180,6 +196,31 @@ const Documents = ({ user, etablissement }) => {
     if (parId.get(id)?.type === 'folder') setCurrentFolder(id);
     removeStorageKeys(['sc_documents_open_folder']);
   }, [status, parId]);
+
+  // Plan 15, lot 5 : un module ouvre son dossier par son nom (ouvrirDossier).
+  // Absent, il est créé à la racine pour qui écrit dans Documents.
+  const demandeDossier = React.useRef(null);
+  const [tourDossier, setTourDossier] = React.useState(0);
+  useDemandeOuverture(UI_STORAGE_KEYS.documentsOuvrir, 'sc:documents-ouvrir', (d) => {
+    demandeDossier.current = d;
+    setTourDossier(n => n + 1);
+  });
+  React.useEffect(() => {
+    const d = demandeDossier.current;
+    if (!d || !d.nom || status !== 'ready') return;
+    demandeDossier.current = null;
+    const dossier = trouverDossier(allDocs, d.nom);
+    if (dossier) { setSearch(''); setCurrentFolder(dossier.id); return; }
+    if (!canWrite || !legacySB) { notifyLegacy(`Aucun dossier « ${d.nom} » pour le moment.`, 'info'); return; }
+    legacySB.db.createFolder({ etablissementId: etabId, parentId: null, nom: d.nom, userId: user.id })
+      .then((cree) => {
+        setAllDocs(prev => (prev.some(x => x.id === cree.id) ? prev : [...prev, cree]));
+        setSearch('');
+        setCurrentFolder(cree.id);
+        notifyLegacy(`Dossier « ${d.nom} » créé.`, 'success');
+      })
+      .catch((err) => notifyLegacy('Dossier non créé. ' + messageErreur(err, 'documents'), 'error'));
+  }, [status, tourDossier, allDocs, canWrite, legacySB, etabId, user.id]);
 
   // Dossier courant supprimé ou déplacé hors d'atteinte (autre poste) : retour
   // à la racine plutôt qu'un écran vide sans chemin.
@@ -309,6 +350,23 @@ const Documents = ({ user, etablissement }) => {
     return (enfants.get(parentId || null) || []).some(d => d.id !== saufId && (d.nom || '').trim().toLowerCase() === cle);
   };
 
+  // Plan 15, lot 5 : qui voit un dossier (consultant et patron, gardé en
+  // base par le déclencheur documents_garde_visibilite).
+  const enregistrerVisibilite = async () => {
+    if (!visibilite || !legacySB || busy) return;
+    setBusy(true);
+    try {
+      const maj = await legacySB.db.setDocumentRolesVisibles(visibilite.doc.id, visibilite.roles);
+      setAllDocs(prev => prev.map(d => (d.id === maj.id ? { ...d, rolesVisibles: maj.rolesVisibles } : d)));
+      notifyLegacy(maj.rolesVisibles ? 'Dossier réservé aux rôles choisis.' : "Dossier visible par toute l'équipe.", 'success');
+      setVisibilite(null);
+    } catch (err) {
+      notifyLegacy('Réglage non enregistré. ' + messageErreur(err, 'documents'), 'error');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const creerDossier = async () => {
     const nom = (nouveauDossier || '').trim();
     if (!nom || !legacySB) return;
@@ -416,7 +474,9 @@ const Documents = ({ user, etablissement }) => {
   const metaDe = (doc) => {
     if (doc.type === 'folder') {
       const n = (enfants.get(doc.id) || []).length;
-      return n ? pluriel(n, 'élément') : 'Vide';
+      const contenu = n ? pluriel(n, 'élément') : 'Vide';
+      // Dossier réservé : les rôles qui le voient, consultant et patron en plus.
+      return doc.rolesVisibles ? `${contenu}, réservé : ${doc.rolesVisibles.map(r => ROLES[r]?.label || r).join(', ')}` : contenu;
     }
     return [formatTaille(doc.taille), formatDate(doc.createdAt)].filter(Boolean).join(', ');
   };
@@ -657,10 +717,61 @@ const Documents = ({ user, etablissement }) => {
                 <>
                   <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); setRenommage({ doc: d, nom: d.nom }); }}>Renommer</button>
                   <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); setDeplacement(d); }}>Déplacer</button>
+                  {actions.type === 'folder' && peutReglerVisibilite(user.role) && (
+                    <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); setVisibilite({ doc: d, roles: d.rolesVisibles }); }}>Qui voit ce dossier</button>
+                  )}
                   <button type="button" style={{ ...ds.menuItem, color: 'var(--danger-strong)' }} onClick={() => { const d = actions; setActions(null); supprimer([d]); }}>Supprimer</button>
                 </>
               )}
             </div>
+        </Fenetre>
+      )}
+
+      {/* ── Qui voit ce dossier (plan 15, lot 5) ── */}
+      {visibilite && (
+        <Fenetre
+          id="documents-visibilite"
+          titre="Qui voit ce dossier"
+          sousTitre={visibilite.doc.nom}
+          onClose={() => setVisibilite(null)}
+          largeur={460}
+          pied={(
+            <>
+              <button type="button" style={ds.btnGhost} onClick={() => setVisibilite(null)}>Annuler</button>
+              <button
+                type="button"
+                style={{ ...ds.btnPrimaire, opacity: busy || (visibilite.roles && !visibilite.roles.length) ? 0.5 : 1 }}
+                disabled={busy || Boolean(visibilite.roles && !visibilite.roles.length)}
+                onClick={enregistrerVisibilite}
+              >Enregistrer</button>
+            </>
+          )}
+        >
+          <div style={ds.fenetreCorps}>
+            <label style={ds.choixLigne}>
+              <input type="radio" name="documents-visibilite" checked={!visibilite.roles} onChange={() => setVisibilite(v => ({ ...v, roles: null }))} />
+              <span>Toute l'équipe</span>
+            </label>
+            <label style={ds.choixLigne}>
+              <input type="radio" name="documents-visibilite" checked={Boolean(visibilite.roles)} onChange={() => setVisibilite(v => ({ ...v, roles: v.roles || [] }))} />
+              <span>Seulement ces rôles</span>
+            </label>
+            {visibilite.roles && (
+              <div style={ds.rolesGrille}>
+                {ROLES_DOCUMENTS.map(r => (
+                  <label key={r} style={ds.choixLigne}>
+                    <input
+                      type="checkbox"
+                      checked={visibilite.roles.includes(r)}
+                      onChange={(e) => setVisibilite(v => ({ ...v, roles: e.target.checked ? [...v.roles, r] : v.roles.filter(x => x !== r) }))}
+                    />
+                    <span>{ROLES[r]?.label || r}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+            <div style={ds.aide}>Le consultant et le patron voient toujours tous les dossiers. Les sous-dossiers suivent la même règle.</div>
+          </div>
         </Fenetre>
       )}
 
@@ -820,6 +931,9 @@ const ds = {
 
   // Corps des fenêtres : Fenetre porte le cadre, le titre et le rembourrage.
   fenetreCorps: { display: 'flex', flexDirection: 'column', gap: 10 },
+  // Choix dans sa cible de 44 px (case ou bouton radio et son texte).
+  choixLigne: { display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer', fontSize: 'var(--t2)', color: 'var(--text)' },
+  rolesGrille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 180px), 1fr))', gap: '0 12px', paddingLeft: 12 },
   menuListe: { display: 'flex', flexDirection: 'column', padding: 6 },
   menuItem: { minHeight: 48, flexShrink: 0, padding: '0 16px', textAlign: 'left', background: 'none', border: 'none', borderRadius: 'var(--r)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', cursor: 'pointer', fontFamily: 'var(--font)' },
   champLabel: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', marginBottom: 6 },

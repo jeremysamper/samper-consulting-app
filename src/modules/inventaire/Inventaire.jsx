@@ -6,6 +6,8 @@ import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { UI_STORAGE_KEYS, removeStorageKeys } from '../../utils/storage.js';
 import { useDemandeOuverture } from '../../hooks/useDemandeOuverture.js';
+import { ouvrirDossier } from '../../services/navigationService.js';
+import { DOSSIERS_MODULES, peutOuvrirDocuments } from '../documents/gardesDocuments.js';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { PERIMETRE_DEFAUT, PERIMETRES_SUGGERES, perimetreOf, listePerimetres, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
@@ -50,7 +52,7 @@ import { Btn } from '../../components/ui/index.jsx';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import GererInventaire from './GererInventaire.jsx';
 import { peutGererInventaire } from './gardesInventaire.js';
-import { LigneRegler } from '../../components/ui/BoutonRegler.jsx';
+import BoutonRegler, { LigneRegler } from '../../components/ui/BoutonRegler.jsx';
 
 // La consommation et les documents de « Écarts et documents » embarquent le
 // rapprochement et la visionneuse : chargés seulement quand on y va, le
@@ -210,6 +212,7 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire', ecranReglage = nu
   // la même règle (déclencheur achats_documents_garde_reglement). Hors de ce
   // droit, aucun statut de paiement n'apparaît dans le module.
   const canRegler = canManageModule(user.role, 'factures_achat');
+  const voitDocuments = peutOuvrirDocuments(user, etablissement, perms);
   // File des documents à vérifier après lecture (ids), dans l'ordre d'import ;
   // les documents déjà « à compléter » passent en tête à l'ouverture d'une
   // tuile d'import. `suiteVerification` : l'écran repris une fois la file vide.
@@ -1756,7 +1759,14 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire', ecranReglage = nu
       {/* Factures & achats : hausses de prix, conditions de paiement et
           catégories de charges dans Réglages (plan 15, lot 2). */}
       {ecran === ECRAN_ACCUEIL && achatsVue && (
-        <LigneRegler section="achats_paiement" user={user} etablissement={etablissement} style={{ justifyContent: 'flex-end' }} />
+        voitDocuments ? (
+          // Plan 15, lot 5 : le dossier Fournisseurs de Documents (contrats,
+          // conditions, attestations), à côté de « Régler ».
+          <div className="module-actions no-print" style={{ justifyContent: 'flex-end' }}>
+            <Btn variant="ghost" onClick={() => ouvrirDossier(DOSSIERS_MODULES.fournisseurs)} style={{ minHeight: 44 }}>Dossier des fournisseurs</Btn>
+            <BoutonRegler section="achats_paiement" user={user} etablissement={etablissement} />
+          </div>
+        ) : <LigneRegler section="achats_paiement" user={user} etablissement={etablissement} style={{ justifyContent: 'flex-end' }} />
       )}
       {ecran === ECRAN_ACCUEIL && (
         <AccueilInventaire

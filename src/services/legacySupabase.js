@@ -1900,6 +1900,15 @@ export function installLegacySupabase() {
       return this.mapDocumentFromDB(data);
     },
 
+    // Plan 15, lot 5 : rôles qui voient un dossier (null = toute l'équipe).
+    // Consultant et patron seulement (déclencheur documents_garde_visibilite).
+    async setDocumentRolesVisibles(id, roles) {
+      const valeur = Array.isArray(roles) && roles.length ? roles : null;
+      const { data, error } = await client.from('documents').update({ roles_visibles: valeur }).eq('id', id).select().single();
+      if (error) throw error;
+      return this.mapDocumentFromDB(data);
+    },
+
     async moveDocument(id, newParentId) {
       const { data, error } = await client.from('documents')
         .update({ parent_id: newParentId || null })
@@ -1922,6 +1931,8 @@ export function installLegacySupabase() {
         uploadedBy: row.uploaded_by,
         description: row.description || '',
         createdAt: row.created_at,
+        // Plan 15, lot 5 : rôles qui voient ce dossier (null = toute l'équipe).
+        rolesVisibles: Array.isArray(row.roles_visibles) && row.roles_visibles.length ? row.roles_visibles : null,
       };
     },
 

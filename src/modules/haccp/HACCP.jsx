@@ -1,6 +1,8 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
-import { getDemoData, canManageModule } from '../../data/demoData.js';
+import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/demoData.js';
+import { ouvrirDossier } from '../../services/navigationService.js';
+import { DOSSIERS_MODULES, peutOuvrirDocuments } from '../documents/gardesDocuments.js';
 import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { CRENEAUX_PRESETS, CTRL_TYPES, ECRANS_HACCP, INITIAL_CONTROLS, INITIAL_CTRL_TPL, INITIAL_RELEVES, INITIAL_ZONES, ZONE_TYPES } from './HACCP.constants.js';
@@ -841,6 +843,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   };
 
   // ─── Barres d'actions ───
+  const voitDocuments = peutOuvrirDocuments(user, etablissement, getPermissionsForRole(user?.role));
   const boutonExporter = (cible) => (
     <BoutonActions
       id="haccp-exporter"
@@ -850,7 +853,12 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
       sections={[{ items: [
         { titre: 'Télécharger le PDF', detail: cible === 'releves' ? 'Journalier ou mensuel, au choix ensuite.' : 'La vue affichée.', onClick: () => cible === 'releves' ? setExportRelevesMode('pdf') : pdfUtils?.exportElementToPdf(cible, 'registre-haccp.pdf') },
         { titre: 'Imprimer', detail: 'Le même registre, envoyé à l\'imprimante.', onClick: () => cible === 'releves' ? setExportRelevesMode('print') : pdfUtils?.printElement(cible, 'Registre HACCP') },
-      ] }]}
+      ] }, {
+        // Plan 15, lot 5 : le dossier HACCP de Documents (certificats,
+        // analyses, attestations), pour qui ouvre Documents.
+        titre: 'Classer',
+        items: [voitDocuments && { titre: 'Dossier HACCP dans Documents', detail: 'Certificats, analyses et attestations de la maison.', onClick: () => ouvrirDossier(DOSSIERS_MODULES.haccp) }],
+      }]}
     />
   );
 
