@@ -8,7 +8,9 @@
 
 import { zurichDateHeure } from '../../utils/zurichTime.js';
 
-export const MODULES_JOURNAL = { recettes: 'Recettes', produits: 'Produits', pertes: 'Pertes', inventaires: 'Inventaires', caisse: 'Caisse' };
+// Lot 5 : HACCP, planning et réservations, présents dans la démo, ont aussi
+// leur nom (le déclencheur de la base ne les journalise pas aujourd'hui).
+export const MODULES_JOURNAL = { recettes: 'Recettes', produits: 'Produits', pertes: 'Pertes', inventaires: 'Inventaires', caisse: 'Caisse', haccp: 'HACCP', planning: 'Planning', reservations: 'Réservations' };
 export const OPERATIONS_JOURNAL = { INSERT: 'Création', UPDATE: 'Modification', DELETE: 'Suppression' };
 
 const ajouter = (acc, cle) => { acc[cle] = (acc[cle] || 0) + 1; };

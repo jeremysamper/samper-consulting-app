@@ -542,7 +542,7 @@ export function genererJournal() {
     .map((h) => ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'inventaires', 'UPDATE', 'Général', 0, h, ['lignes', 'updated_at']]);
   const lignes = [
     ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'recettes', 'UPDATE', 'Sauce au poivre', -1, '15:20', ['etapes', 'ingredients', 'updated_at']],
-    ['demo-cuisinier', 'Inès Garnier', 'cuisinier', 'haccp', 'INSERT', 'Relevé Chambre froide positive', 0, '08:31', null],
+    ['demo-cuisinier', 'Inès Garnier', 'cuisinier', 'haccp', 'INSERT', 'Relevé Chambre froide positive', 0, '08:50', null],
     ['demo-patron', 'Claire Morel', 'patron', 'planning', 'UPDATE', 'Horaire de Lucas Meier', -1, '11:02', null],
     ['demo-hote', 'Nina Rossi', 'hote', 'reservations', 'INSERT', 'Réservation Bernard Élise', 0, '10:12', null],
     ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'pertes', 'UPDATE', 'Perte validée : Crème entière 35 %', 0, '09:15', ['valide', 'valide_par']],
