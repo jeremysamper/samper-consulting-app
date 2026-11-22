@@ -55,6 +55,10 @@ export function genererCaisse() {
     categorie_id: categorieDe(pl),
     ordre: i,
     taux_tva: null,
+    photo_url: null,
+    // Rupture du jour (lot L2) : plus de féra aujourd'hui, pour que la démo
+    // montre une case grisée et le compteur.
+    rupture_le: pl.id === 'pl-fera' ? aujourdhui() : null,
   }));
 
   const alea = graine('caisse-' + aujourdhui());

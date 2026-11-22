@@ -9,7 +9,7 @@ import { BoutonActions, Fenetre, st as fen } from '../../components/ui/Fenetres.
 import { notify } from '../../components/toast/index.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
-import { zurichDateHeure } from '../../utils/zurichTime.js';
+import { zurichDateHeure, zurichToday } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
 import FicheLigne from './FicheLigne.jsx';
 import BoutonFiche from './BoutonFiche.jsx';
@@ -23,6 +23,7 @@ import { libelleSupplement, supplementsPourLigne } from './supplements.js';
 import { REGLAGES_DEFAUT, SUITE_MAX, libelleMode, peutOuvrirMode, suitesVisibles } from './reglages.js';
 import { comptesCommande, photoDuBouton, quantitesParPlat } from './commande.js';
 import { useLargeur } from './mesures.js';
+import { enRupture, libelleCompteRupture, produitsEnRupture, valeurRupture } from './rupture.js';
 import { estPret } from './PlanTables.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -64,6 +65,15 @@ import { estPret } from './PlanTables.jsx';
 // Une vente directe reste anonyme : pas de bandeau.
 // Quand la maison vend plus d'une carte, le menu propose la carte affichée ;
 // il s'ouvre sur « Toutes les cartes » et le choix tient le temps du ticket.
+//
+// L2 (22.11.2026) : rupture d'un produit pour la journée (rupture.js). Un appui
+// long sur une case, ou la fiche de la case, propose « Mettre en rupture » ou
+// « Remettre en vente » (consultant, patron, resp_cuisine, comme la RLS de
+// caisse_boutons). La case en rupture est grisée, porte le mot « Rupture » et
+// ne s'ajoute plus : un toucher le rappelle. Un compteur au-dessus de la
+// grille les retrouve et les remet en vente. Les autres postes suivent par le
+// temps réel de caisse_boutons (Caisse.jsx), et le jour se relit à chaque
+// rendu (l'horloge de Caisse.jsx en donne un toutes les 30 s).
 //
 // v6 : la cuisine voit ce qui arrive, la salle voit ce qui est prêt. Au
 // premier envoi, les lignes des modes suivants sont annoncées en cuisine,
@@ -128,6 +138,12 @@ export default function TicketEcran({
   // Plat touché qui contient un allergène signalé par la table : { plat,
   // allergenes } ; la fenêtre « Attention allergène » demande de confirmer.
   const [alerteAllergene, setAlerteAllergene] = React.useState(null);
+  // Rupture (L2) : produit dont la feuille de l'appui long est ouverte, liste
+  // des produits en rupture, et écriture en cours (verrou immédiat en ref).
+  const [produitAppui, setProduitAppui] = React.useState(null);
+  const [rupturesOuvert, setRupturesOuvert] = React.useState(false);
+  const [ruptureEnCours, setRuptureEnCours] = React.useState(false);
+  const verrouRupture = React.useRef(false);
   const appuiLong = React.useRef({ timer: null, declenche: false });
   const minuterieFeuille = React.useRef(null);
 
@@ -167,7 +183,7 @@ export default function TicketEcran({
     appuiLong.current.declenche = false;
     appuiLong.current.timer = setTimeout(() => {
       appuiLong.current.declenche = true;
-      setBoutonPlat(plat);
+      setProduitAppui(plat);
     }, 550);
   }
   function finAppuiLong() {
@@ -455,6 +471,32 @@ export default function TicketEcran({
     onClos();
   }
 
+  // Rupture (L2) : met en rupture ou remet en vente un ou plusieurs produits.
+  // Une écriture à la fois (verrou en ref, deux touchers dans la même image
+  // n'écrivent pas deux fois) ; la grille suit par le rechargement des
+  // boutons, ici tout de suite et sur les autres postes par le temps réel.
+  // Rend vrai si toutes les écritures ont passé.
+  async function changerRupture(plats, mettre) {
+    if (verrouRupture.current || !plats.length) return false;
+    verrouRupture.current = true;
+    setRuptureEnCours(true);
+    try {
+      const ruptureLe = valeurRupture(mettre, zurichToday());
+      const resultats = await Promise.all(plats.map((p) => caisse.poserRupture({
+        etablissementId: ticket.etablissement_id, platId: p.id, ruptureLe,
+      })));
+      await onBoutonsChange?.();
+      const rate = resultats.find((r) => r.error);
+      if (rate) { notify(rate.error, 'error'); return false; }
+      if (mettre) notify("Produit en rupture jusqu'à demain matin.", 'success');
+      else notify(plats.length > 1 ? 'Produits remis en vente.' : 'Produit remis en vente.', 'success');
+      return true;
+    } finally {
+      verrouRupture.current = false;
+      setRuptureEnCours(false);
+    }
+  }
+
   if (!ticket) return null;
 
   const allergies = allergiesDe(reservation);
@@ -462,7 +504,18 @@ export default function TicketEcran({
   // avec les fiches de chaque plat : contour sur la case, confirmation au toucher.
   const allergenesTable = allergenesIdsDe(reservation);
   const conflitsDe = (plat) => allergenesEnConflit(plat, allergenesTable, allergenesFiches);
+  // Jour de Zurich relu à chaque rendu : une rupture d'hier tombe d'elle-même.
+  const jour = zurichToday();
+  const estEnRupture = (plat) => enRupture(boutons[plat.id], jour);
+  // Produits en rupture parmi tous ceux en vente, quelle que soit la carte affichée.
+  const ruptures = produitsEnRupture(articles, boutons, jour);
   function toucherArticle(plat) {
+    if (estEnRupture(plat)) {
+      notify(peutHabiller
+        ? 'Ce produit est en rupture aujourd\'hui. Appuyez longuement sur la case pour le remettre en vente.'
+        : 'Ce produit est en rupture aujourd\'hui. Il revient en vente demain matin.', 'info');
+      return;
+    }
     const conflits = conflitsDe(plat);
     if (conflits.length) { setAlerteAllergene({ plat, allergenes: conflits }); return; }
     ajouterArticle(plat);
@@ -481,6 +534,7 @@ export default function TicketEcran({
     const avecPhoto = Boolean(photo) && !photosEnEchec.has(photo);
     const conflits = conflitsDe(a);
     const n = quantites.get(a.id) || 0;
+    const rupture = estEnRupture(a);
     return (
       <button
         key={a.id}
@@ -490,8 +544,10 @@ export default function TicketEcran({
         data-produit={a.id}
         data-photo={avecPhoto ? '' : undefined}
         data-allergene={conflits.length ? '' : undefined}
-        title={conflits.length ? `Attention : contient ${conflits.join(', ')}` : undefined}
-        style={{ ...st.case, ...(conflits.length ? st.caseAllergene : null) }}
+        data-rupture={rupture ? '' : undefined}
+        aria-disabled={rupture || undefined}
+        title={rupture ? 'En rupture aujourd\'hui' : (conflits.length ? `Attention : contient ${conflits.join(', ')}` : undefined)}
+        style={{ ...st.case, ...(conflits.length ? st.caseAllergene : null), ...(rupture ? st.caseRupture : null) }}
         onClick={() => {
           if (appuiLong.current.declenche) { appuiLong.current.declenche = false; return; }
           if (editionBoutons && peutHabiller) { setBoutonPlat(a); return; }
@@ -503,7 +559,7 @@ export default function TicketEcran({
         onPointerCancel={finAppuiLong}
         onContextMenu={(e) => { if (peutHabiller) e.preventDefault(); }}
       >
-        <span style={{ ...st.caseVisuel, background: couleur ? `var(--caisse-${couleur})` : 'var(--piste)' }}>
+        <span style={{ ...st.caseVisuel, background: couleur ? `var(--caisse-${couleur})` : 'var(--piste)', ...(rupture ? st.caseVisuelRupture : null) }}>
           {avecPhoto ? (
             <img
               src={photo}
@@ -524,14 +580,16 @@ export default function TicketEcran({
         </span>
         <span style={st.caseTexte}>
           {/* Nom complet sur deux lignes au plus (la case coupe le reste). */}
-          <span style={st.caseNom} data-no-translate>{hab?.nom_court || a.nom}</span>
-          {conflits.length > 0 && (
+          <span style={{ ...st.caseNom, ...(rupture ? st.caseNomRupture : null) }} data-no-translate>{hab?.nom_court || a.nom}</span>
+          {conflits.length > 0 && !rupture && (
             <span style={st.caseAlerte}>
               <TriangleAlert size={13} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
               <span>{conflits.join(', ')}</span>
             </span>
           )}
-          <span style={st.casePrix}>{chf(a.prixVente)}</span>
+          {rupture
+            ? <span style={st.caseRuptureMot} data-cadre="" data-caisse-rupture-mot="">Rupture</span>
+            : <span style={st.casePrix}>{chf(a.prixVente)}</span>}
         </span>
       </button>
     );
@@ -842,6 +900,14 @@ export default function TicketEcran({
   // ── La grille ──
   const grille = (
     <main style={st.zoneGrille} data-caisse-grille="">
+      {/* Compteur discret des ruptures du jour : il ouvre leur liste. */}
+      {ruptures.length > 0 && (
+        <button type="button" style={st.compteRupture} onClick={() => setRupturesOuvert(true)} data-caisse-ruptures="">
+          <span style={st.compteRupturePilule} data-cadre="">
+            <span style={st.num}>{ruptures.length}</span> <span>{libelleCompteRupture(ruptures.length)}</span>
+          </span>
+        </button>
+      )}
       {enRecherche ? (
         <div style={styleGrille}>{trouves.map(({ a, c }) => caseProduit(a, c))}</div>
       ) : sections.map((c) => {
@@ -997,10 +1063,100 @@ export default function TicketEcran({
 
       {/* ── Fenêtres et feuilles : hors de la feuille qui glisse (une
           transformation en cours cadrerait leur position fixe). ── */}
+      {/* Appui long sur une case (L2) : la rupture d'abord, l'habillage ensuite. */}
+      {produitAppui && (() => {
+        const rupture = estEnRupture(produitAppui);
+        return (
+          <Fenetre
+            id="caisse-produit-appui"
+            titre="Produit de la caisse"
+            titreMasque
+            onClose={() => setProduitAppui(null)}
+            largeur={420}
+            pied={(
+              <>
+                <button
+                  type="button"
+                  style={fen.secondaire}
+                  onClick={() => { const p = produitAppui; setProduitAppui(null); setBoutonPlat(p); }}
+                >
+                  Modifier la case
+                </button>
+                <button
+                  type="button"
+                  style={fen.primaire}
+                  disabled={ruptureEnCours}
+                  data-caisse-rupture-action={rupture ? 'remettre' : 'mettre'}
+                  onClick={async () => { if (await changerRupture([produitAppui], !rupture)) setProduitAppui(null); }}
+                >
+                  {rupture ? 'Remettre en vente' : 'Mettre en rupture'}
+                </button>
+              </>
+            )}
+          >
+            <div style={fen.titre} data-no-translate>{boutons[produitAppui.id]?.nom_court || produitAppui.nom}</div>
+            <p style={st.appuiTexte}>
+              {rupture
+                ? 'Ce produit est en rupture jusqu\'à demain matin. Remis en vente, il se commande de nouveau sur toutes les caisses.'
+                : 'En rupture, la case est grisée sur toutes les caisses et le produit ne se commande plus. Il revient en vente tout seul demain matin.'}
+            </p>
+          </Fenetre>
+        );
+      })()}
+      {/* Liste des produits en rupture (compteur au-dessus de la grille). */}
+      {rupturesOuvert && (
+        <Fenetre
+          id="caisse-ruptures"
+          titre="Produits en rupture"
+          onClose={() => setRupturesOuvert(false)}
+          largeur={460}
+          pied={(
+            <>
+              <button type="button" style={fen.secondaire} onClick={() => setRupturesOuvert(false)}>Fermer</button>
+              {peutHabiller && ruptures.length > 1 && (
+                <button
+                  type="button"
+                  style={fen.primaire}
+                  disabled={ruptureEnCours}
+                  onClick={async () => { if (await changerRupture(ruptures, false)) setRupturesOuvert(false); }}
+                >
+                  Tout remettre en vente
+                </button>
+              )}
+            </>
+          )}
+        >
+          {!ruptures.length && <p style={st.appuiTexte}>Aucun produit en rupture.</p>}
+          {ruptures.length > 0 && (
+            <>
+              <p style={st.appuiTexte}>
+                {peutHabiller
+                  ? 'Ils reviennent en vente tout seuls demain matin. Vous pouvez les remettre en vente avant.'
+                  : 'Ils reviennent en vente demain matin, ou quand un responsable les remet en vente.'}
+              </p>
+              <div style={st.rupturesListe} data-caisse-ruptures-liste="">
+                {ruptures.map((a) => (
+                  <div key={a.id} style={st.ruptureRang} data-rupture-produit={a.id}>
+                    <span style={st.ruptureNom} data-no-translate>{boutons[a.id]?.nom_court || a.nom}</span>
+                    {peutHabiller && (
+                      <Btn variant="ghost" disabled={ruptureEnCours} onClick={() => changerRupture([a], false)} style={st.btn44}>
+                        Remettre en vente
+                      </Btn>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </Fenetre>
+      )}
       {boutonPlat && (
         <BoutonFiche
           plat={boutonPlat}
           bouton={boutons[boutonPlat.id]}
+          enRupture={estEnRupture(boutonPlat)}
+          ruptureEnCours={ruptureEnCours}
+          onRupture={(mettre) => changerRupture([boutonPlat], mettre)}
           etablissementId={ticket.etablissement_id}
           onEnregistrer={async (valeurs) => {
             const { error } = await caisse.upsertBouton({
@@ -1233,6 +1389,33 @@ const st = {
     fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--danger-text)', lineHeight: 1.2, overflowWrap: 'anywhere',
   },
   casePrix: { fontSize: 'var(--t1)', color: 'var(--text2)', fontFamily: 'var(--font-num)' },
+  // Case en rupture (L2) : fond gris, sans ombre, visuel en gris à 0,65 (le
+  // plancher d'un élément éteint), nom et mot « Rupture » à pleine encre.
+  caseRupture: { background: 'var(--piste)', boxShadow: 'none', borderWidth: 1, borderColor: 'var(--rule-soft)', cursor: 'default' },
+  caseVisuelRupture: { opacity: 0.65, filter: 'grayscale(1)' },
+  caseNomRupture: { color: 'var(--text2)' },
+  caseRuptureMot: {
+    alignSelf: 'flex-start', padding: '1px 9px', borderRadius: 'var(--r-full)', background: 'var(--surface)', color: 'var(--text)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', lineHeight: 1.4,
+  },
+  // Compteur des ruptures : une petite pilule dans une cible de 44 px.
+  compteRupture: {
+    alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: 44, padding: 0, flexShrink: 0,
+    background: 'transparent', borderWidth: 0, borderStyle: 'solid', borderColor: 'transparent', cursor: 'pointer',
+    color: 'var(--text)', fontFamily: 'var(--font)',
+  },
+  compteRupturePilule: {
+    display: 'inline-flex', alignItems: 'center', gap: '0.3em', minHeight: 32, padding: '0 12px', boxSizing: 'border-box',
+    borderRadius: 'var(--r-full)', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+    fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text)', whiteSpace: 'nowrap',
+  },
+  appuiTexte: { margin: '6px 0 0', fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text2)' },
+  rupturesListe: { display: 'flex', flexDirection: 'column', marginTop: 10, minWidth: 0 },
+  ruptureRang: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 52, padding: '4px 0', minWidth: 0,
+    borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
+  },
+  ruptureNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflowWrap: 'anywhere', minWidth: 0 },
   vide: { color: 'var(--text2)', fontSize: 'var(--t2)', margin: '12px 2px' },
   // Panneau de la commande, à droite sur tablette.
   panneau: {

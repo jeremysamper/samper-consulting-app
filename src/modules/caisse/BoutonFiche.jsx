@@ -21,9 +21,16 @@ import { ChoixCouleur, ChoixPicto } from './ChoixHabillage.jsx';
 // maison peut en poser une autre (envoyée tout de suite, réduite en vignette,
 // gardée à l'Enregistrer) ou choisir « Sans photo ». photo vaut null (fiche),
 // '' (sans photo) ou l'adresse envoyée.
+//
+// Rupture (L2, 22.11.2026) : en tête de la fiche, « Mettre en rupture » ou
+// « Remettre en vente », écrit tout de suite (geste de service), sans attendre
+// l'Enregistrer de l'habillage.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function BoutonFiche({ plat, bouton, etablissementId, onEnregistrer, onClose }) {
+export default function BoutonFiche({
+  plat, bouton, etablissementId, onEnregistrer, onClose,
+  enRupture = false, ruptureEnCours = false, onRupture = null,
+}) {
   const [nomCourt, setNomCourt] = React.useState(bouton?.nom_court || '');
   const [couleur, setCouleur] = React.useState(bouton?.couleur || null);
   const [picto, setPicto] = React.useState(bouton?.picto || null);
@@ -106,6 +113,19 @@ export default function BoutonFiche({ plat, bouton, etablissementId, onEnregistr
           <Btn variant="ghost" onClick={onClose} style={st.btn44}>Fermer</Btn>
         </div>
 
+        {onRupture && (
+          <div style={st.ruptureRang} data-caisse-fiche-rupture={enRupture ? 'rupture' : 'en_vente'}>
+            <p style={st.ruptureTexte}>
+              {enRupture
+                ? 'En rupture jusqu\'à demain matin. La case est grisée sur toutes les caisses.'
+                : 'En vente. Mis en rupture, il ne se commande plus jusqu\'à demain matin.'}
+            </p>
+            <Btn variant="ghost" disabled={ruptureEnCours} onClick={() => onRupture(!enRupture)} style={st.btn44}>
+              {enRupture ? 'Remettre en vente' : 'Mettre en rupture'}
+            </Btn>
+          </div>
+        )}
+
         <div style={st.rangTitre}>Nom court</div>
         <Input
           value={nomCourt}
@@ -185,4 +205,9 @@ const st = {
   photoActions: { display: 'flex', gap: 8, flexWrap: 'wrap', minWidth: 0 },
   photoAide: { margin: '6px 0 0', fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.4 },
   btn44: { minHeight: 44, flexShrink: 0 },
+  ruptureRang: {
+    display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginTop: 10, padding: '10px 12px', minWidth: 0,
+    background: 'var(--piste)', borderRadius: 'var(--r)',
+  },
+  ruptureTexte: { margin: 0, flex: '1 1 220px', minWidth: 0, fontSize: 'var(--t2)', lineHeight: 1.4, color: 'var(--text)' },
 };
