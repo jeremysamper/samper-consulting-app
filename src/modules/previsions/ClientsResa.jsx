@@ -5,6 +5,7 @@ import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import BandeauNonActualise from './BandeauNonActualise.jsx';
 import ClientFiche from './ClientFiche.jsx';
+import { HABITUE } from './ficheClient.js';
 import { Panneau, ligneStyle } from '../../components/ui/index.jsx';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -30,9 +31,6 @@ const FILTRES = [
   { id: 'emails', label: 'Acceptent les e-mails' },
   { id: 'archives', label: 'Archivés' },
 ];
-
-// Habitué : trois venues ou plus.
-const HABITUE = 3;
 
 export default function ClientsResa({ etablissementId, canEdit, peutEffacer = false, refreshKey }) {
   const clients = useResaClients(etablissementId);

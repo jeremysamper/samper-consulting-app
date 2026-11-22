@@ -36,3 +36,30 @@
   }
   .resa-actions.module-actions { margin-left: 0; }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Fiche client (lot L8) : le fil d'activité au centre, les propriétés à
+   droite. Le corps de la fenêtre est le conteneur de requêtes, la grille est
+   son enfant. Sous 680 px de corps (téléphone, fenêtre étroite), une seule
+   colonne, les propriétés d'abord (ordre du document).
+   ───────────────────────────────────────────────────────────────────────────── */
+.fiche-client-corps {
+  container-type: inline-size;
+  container-name: fiche-client;
+  min-width: 0;
+}
+.fiche-client-grille {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+@container fiche-client (min-width: 680px) {
+  .fiche-client-grille {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-areas: "fil cote";
+    gap: 24px;
+  }
+  .fiche-client-cote { grid-area: cote; }
+  .fiche-client-fil { grid-area: fil; }
+}

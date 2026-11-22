@@ -299,7 +299,7 @@ export async function listTicketsClient(clientId, reservationIds = []) {
   const ids = (reservationIds || []).filter(simple);
   let requete = supabase
     .from('caisse_tickets')
-    .select('id, statut, created_at, closed_at, couverts, table_id, salle_tables(nom), caisse_lignes(libelle, quantite, prix_unitaire)')
+    .select('id, statut, created_at, closed_at, couverts, table_id, reservation_id, salle_tables(nom), caisse_lignes(libelle, quantite, prix_unitaire)')
     .neq('statut', 'annule')
     // v6 : jamais un ticket de test sur une fiche client.
     .eq('test', false)

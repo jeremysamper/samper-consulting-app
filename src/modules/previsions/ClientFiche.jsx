@@ -1,19 +1,28 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { notify } from '../../components/toast/index.js';
+import { CarteAvant, SegmentedTabs } from '../../components/ui/index.jsx';
+import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { useResaClients, nomClient } from '../../hooks/useResaClients.js';
 import { confirmationEffacement, effacerPersonne, exporterPersonne, telechargerExport } from '../../services/personneService.js';
 import { listTicketsClient } from '../../services/caisseService.js';
-import { zurichDateHeure } from '../../utils/zurichTime.js';
-import { metaStatut, SERVICE_META, serviceAffiche } from './statutsReservation.js';
+import { zurichToday } from '../../utils/zurichTime.js';
+import { ficheClient, jourRelatif } from './ficheClient.js';
+import { SERVICE_META, serviceAffiche } from './statutsReservation.js';
+import './reservations.css';
 
 // ═══════════════════════════════════════════════════════════════════════════
-// Fiche client d'un restaurant : coordonnées, accord pour les actualités et
-// bons cadeaux, et l'historique de ses réservations avec les tables occupées.
+// Fiche client d'un restaurant (lot L8, composition d'un CRM).
 //
-// Depuis la caisse v5, la fiche montre aussi ses derniers tickets (ceux ouverts
-// à son nom ou sur l'une de ses réservations) : date et heure de Zurich, table,
-// couverts, total, articles repliés. Lecture seule, ouverte à qui lit la fiche.
+// Au centre, le fil d'activité daté, du plus récent au plus ancien :
+// réservations, visites avec le montant de leurs tickets (articles repliés),
+// notes, allergies ajoutées. À droite, les propriétés (visites, dépense
+// moyenne, table préférée, allergies, étiquettes, prochaine venue) et, dessous,
+// une suggestion calculée sur les données, sans IA ; sans données
+// suffisantes, elle n'est pas rendue. Les coordonnées et l'accord pour les
+// actualités restent modifiables dans l'onglet Coordonnées. Au téléphone et
+// dans une fenêtre étroite, les propriétés passent en premier.
+// Les calculs sont dans ficheClient.js (testés).
 //
 // Ouverte depuis l'onglet Clients ou depuis une réservation. Même contrat que
 // les autres modales du module : pendant un enregistrement, « Enregistrer »
@@ -22,8 +31,6 @@ import { metaStatut, SERVICE_META, serviceAffiche } from './statutsReservation.j
 // ═══════════════════════════════════════════════════════════════════════════
 
 const pad = (n) => String(n).padStart(2, '0');
-// « 30.09.2026 » : l'historique traverse les années, le jour de la semaine
-// importe moins que l'année.
 const dateCh = (iso) => {
   if (!iso) return '';
   const [y, m, d] = String(iso).slice(0, 10).split('-');
@@ -34,15 +41,32 @@ const dateHeureCh = (iso) => {
   const d = new Date(iso);
   return `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`;
 };
-const pluriel = (n, mot) => `${n} ${mot}${n > 1 ? 's' : ''}`;
-
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
-const totalTicket = (t) => (t.caisse_lignes || []).reduce((s, l) => s + Number(l.quantite) * Number(l.prix_unitaire), 0);
-const TICKETS_VISIBLES = 5;
+
+// Le fil se déplie au-delà de ce nombre d'événements.
+const FIL_VISIBLE = 15;
 
 const FORM_VIDE = {
   prenom: '', nom: '', email: '', telephone: '', dateNaissance: '',
   allergies: '', preferences: '', notes: '',
+};
+
+const ONGLETS = [
+  { id: 'activite', label: 'Activité' },
+  { id: 'coordonnees', label: 'Coordonnées' },
+];
+
+const MOT_JOUR = { aujourdhui: 'Aujourd\'hui', hier: 'Hier', demain: 'Demain' };
+const TEXTE_ETAT = {
+  a_venir: 'À venir', a_confirmer: 'À confirmer', annulee: 'Annulée', no_show: 'No-show', non_confirmee: 'Non confirmée',
+};
+const ENCRE_ETAT = {
+  a_venir: 'var(--lien)', a_confirmer: 'var(--warning-text)', annulee: 'var(--text3)', no_show: 'var(--danger-text)', non_confirmee: 'var(--text3)',
+};
+// Point du fil : la visite en aplat d'accent, la note neutre, l'allergie en
+// rouge d'alerte (la réservation prend l'encre de son état, en anneau).
+const POINT = {
+  visite: 'var(--accent)', note: 'var(--text3)', allergie: 'var(--danger-text)',
 };
 
 function Champ({ label, children, aide }) {
@@ -57,9 +81,215 @@ function Champ({ label, children, aide }) {
 
 const champ = {
   width: '100%', boxSizing: 'border-box', padding: '10px 12px', minHeight: 44,
-  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)',
-  background: 'var(--bg)', color: 'var(--text)', fontSize: 'var(--t3)', fontFamily: 'var(--font)',
+  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)',
+  background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t3)', fontFamily: 'var(--font)',
 };
+
+const boutonSecondaire = {
+  minHeight: 44, padding: '8px 14px', borderRadius: 'var(--r-full)',
+  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+  background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer',
+};
+
+const Num = ({ children }) => <span style={{ fontFamily: 'var(--font-num)' }}>{children}</span>;
+
+const puce = (fond, encre) => ({
+  display: 'inline-block', padding: '2px 10px', margin: '0 4px 4px 0', borderRadius: 'var(--r-full)',
+  background: fond, color: encre, fontSize: 'var(--t1)', fontWeight: 'var(--g2)', lineHeight: 1.5,
+});
+const PUCE_ETIQUETTE = {
+  habitue: puce('var(--success-bg-soft)', 'var(--success-text)'),
+  regime: puce('var(--success-bg-soft)', 'var(--success-text)'),
+  autre: puce('var(--surface)', 'var(--text2)'),
+};
+
+function Propriete({ label, children, detail }) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(96px, 40%) minmax(0, 1fr)', gap: 10, padding: '8px 0', alignItems: 'baseline' }}>
+      <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>{label}</span>
+      <div style={{ minWidth: 0, fontSize: 'var(--t2)', color: 'var(--text)', overflowWrap: 'anywhere' }}>
+        <div>{children}</div>
+        {detail && <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 2 }}>{detail}</div>}
+      </div>
+    </div>
+  );
+}
+
+function Jour({ jour, aujourdhui }) {
+  const j = jourRelatif(jour, aujourdhui);
+  return j.mot ? <span>{MOT_JOUR[j.mot]}</span> : <Num>{j.date}</Num>;
+}
+
+function Proprietes({ p, aujourdhui }) {
+  return (
+    <div data-fiche-proprietes="" style={{ background: 'var(--piste)', borderRadius: 'var(--r-lg)', padding: '12px 16px' }}>
+      <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginBottom: 2 }}>Propriétés</div>
+      <Propriete
+        label="Visites"
+        detail={p.derniere ? <><span>dernière le</span> <Num>{dateCh(p.derniere)}</Num></> : null}
+      >
+        <Num>{p.visites}</Num>
+      </Propriete>
+      {p.depenseMoyenne != null && (
+        <Propriete label="Dépense moyenne">
+          <Num>{Math.round(p.depenseMoyenne)}</Num> <span>CHF</span>
+        </Propriete>
+      )}
+      {p.tablePreferee && (
+        <Propriete
+          label="Table préférée"
+          detail={<><Num>{p.tablePreferee.fois}</Num> <span>visites sur</span> <Num>{p.tablePreferee.sur}</Num></>}
+        >
+          <span data-no-translate>{p.tablePreferee.nom}</span>
+        </Propriete>
+      )}
+      {p.allergies.length > 0 && (
+        <Propriete label="Allergies">
+          {p.allergies.map((a) => <span key={a} style={puce('var(--danger-bg-soft)', 'var(--danger-text)')}>{a}</span>)}
+        </Propriete>
+      )}
+      {p.etiquettes.length > 0 && (
+        <Propriete label="Étiquettes">
+          {p.etiquettes.map((e) => <span key={e.libelle} style={PUCE_ETIQUETTE[e.type] || PUCE_ETIQUETTE.autre}>{e.libelle}</span>)}
+        </Propriete>
+      )}
+      {p.prochaine && (
+        <Propriete
+          label="Prochaine venue"
+          detail={(
+            <>
+              {p.prochaine.couverts ? <><Num>{p.prochaine.couverts}</Num> <span>{p.prochaine.couverts > 1 ? 'couverts' : 'couvert'}</span></> : null}
+              {p.prochaine.etat === 'a_confirmer' && <span style={{ color: 'var(--warning-text)', marginLeft: 8 }}>{TEXTE_ETAT.a_confirmer}</span>}
+            </>
+          )}
+        >
+          <Jour jour={p.prochaine.jour} aujourdhui={aujourdhui} />{p.prochaine.heure ? <>, <Num>{p.prochaine.heure}</Num></> : null}
+        </Propriete>
+      )}
+      {p.noShows > 0 && (
+        <Propriete label="No-show"><Num>{p.noShows}</Num></Propriete>
+      )}
+    </div>
+  );
+}
+
+function Rythme({ r }) {
+  if (r.n === 1) return <span>{r.unite === 'semaine' ? 'chaque semaine' : 'chaque mois'}</span>;
+  return r.unite === 'semaine'
+    ? <><span>toutes les</span> <Num>{r.n}</Num> <span>semaines</span></>
+    : <><span>tous les</span> <Num>{r.n}</Num> <span>mois</span></>;
+}
+
+function Suggestion({ s }) {
+  return (
+    <CarteAvant ton="ciel" titre="À savoir" data-fiche-suggestion="" style={{ gap: 8, padding: '14px 16px' }}>
+      {s.article && (
+        <div style={{ fontSize: 'var(--t2)', lineHeight: 1.45 }}>
+          <span>Souvent commandé</span> : <span data-no-translate style={{ fontWeight: 'var(--g3)' }}>{s.article.libelle}</span>
+          {', '}<Num>{s.article.visites}</Num> <span>visites sur</span> <Num>{s.article.sur}</Num>.{' '}
+          <span>À proposer avant la carte.</span>
+        </div>
+      )}
+      {s.rythme && (
+        <div style={{ fontSize: 'var(--t2)', lineHeight: 1.45 }}>
+          <span>Revient environ</span> <Rythme r={s.rythme} />.
+        </div>
+      )}
+    </CarteAvant>
+  );
+}
+
+function LigneFil({ e, aujourdhui, derniere, deplie, onBasculer }) {
+  const svc = e.service ? SERVICE_META[serviceAffiche(e.service)] : null;
+  // Une réservation non venue est un anneau à l'encre de son état ; ce qui a
+  // eu lieu est un point plein.
+  const anneau = e.type === 'reservation';
+  const point = anneau ? ENCRE_ETAT[e.etat] : POINT[e.type];
+  const lignes = e.type === 'visite' ? (e.tickets || []).flatMap((t) => t.caisse_lignes || []) : [];
+  const couverts = e.couverts
+    ? <>, <Num>{e.couverts}</Num> <span>{e.couverts > 1 ? 'couverts' : 'couvert'}</span></>
+    : null;
+
+  let titre;
+  if (e.type === 'visite') {
+    titre = (
+      <>
+        <span>Visite</span>{couverts}
+        {e.montant != null && <>, <Num>{chf(e.montant)}</Num> <span>CHF</span></>}
+      </>
+    );
+  } else if (e.type === 'reservation') {
+    titre = <><span>Réservation pour</span> <Num>{e.couverts}</Num></>;
+  } else if (e.type === 'note') {
+    titre = <><span>Note</span> : <span data-no-translate style={{ fontWeight: 'var(--g1)' }}>{e.texte}</span></>;
+  } else {
+    titre = <><span>Allergie ajoutée</span> : <span style={{ color: 'var(--danger-text)' }}>{e.libelle}</span></>;
+  }
+
+  const details = [];
+  if (svc) details.push(<span key="svc" style={{ color: svc.couleur || 'var(--text2)', fontWeight: 'var(--g2)' }}>{svc.label}</span>);
+  if (e.tables?.length) details.push(<span key="tab"><span>Table</span> <span data-no-translate>{e.tables.join(' + ')}</span></span>);
+  if (e.occasions?.length) details.push(<span key="occ">{e.occasions.join(', ')}</span>);
+  if (e.type === 'reservation') details.push(<span key="etat" style={{ color: ENCRE_ETAT[e.etat], fontWeight: 'var(--g3)' }}>{TEXTE_ETAT[e.etat]}</span>);
+  if (e.enCours) details.push(<span key="cours" style={{ color: 'var(--success-text)', fontWeight: 'var(--g3)' }}>en cours</span>);
+  if (e.origine === 'en_ligne') details.push(<span key="lig">en ligne</span>);
+
+  return (
+    <div
+      data-fil-type={e.type}
+      style={{
+        display: 'grid', gridTemplateColumns: '16px minmax(0, 1fr) auto', columnGap: 12,
+        padding: '12px 0', opacity: e.etat === 'annulee' ? 0.7 : 1,
+        borderBottomWidth: derniere ? 0 : 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
+      }}
+    >
+      <span aria-hidden="true" style={{
+        width: 10, height: 10, borderRadius: '50%', boxSizing: 'border-box', marginTop: 5, justifySelf: 'center',
+        background: anneau ? 'transparent' : point,
+        borderWidth: anneau ? 2 : 0, borderStyle: 'solid', borderColor: point,
+      }} />
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflowWrap: 'anywhere' }}>{titre}</div>
+        {details.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
+            {details}
+          </div>
+        )}
+        {lignes.length > 0 && (
+          <button
+            type="button"
+            aria-expanded={deplie}
+            onClick={onBasculer}
+            style={{
+              marginTop: 6, minHeight: 36, padding: '4px 12px', borderRadius: 'var(--r-full)',
+              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+              background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t1)', fontFamily: 'var(--font)', cursor: 'pointer',
+            }}
+          >
+            <Num>{lignes.length}</Num> <span>articles</span>
+          </button>
+        )}
+        {deplie && (
+          <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {lignes.map((l, i) => (
+              <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'var(--t1)', color: 'var(--text2)' }}>
+                <span style={{ fontFamily: 'var(--font-num)', minWidth: 22, textAlign: 'right' }}>{Number(l.quantite)}</span>
+                <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }} data-no-translate>{l.libelle}</span>
+                <span style={{ fontFamily: 'var(--font-num)' }}>{chf(Number(l.quantite) * Number(l.prix_unitaire))}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ textAlign: 'right', fontSize: 'var(--t1)', color: 'var(--text2)', whiteSpace: 'nowrap' }}>
+        <div><Jour jour={e.jour} aujourdhui={aujourdhui} /></div>
+        {(e.type === 'visite' || e.type === 'reservation') && e.heure && (
+          <div style={{ color: 'var(--text3)', fontFamily: 'var(--font-num)' }}>{e.heure}</div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function ClientFiche({ etablissementId, clientId = null, canEdit = false, peutEffacer = false, onClose, onSaved }) {
   const isMobile = useIsMobile();
@@ -69,8 +299,9 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
   const [historique, setHistorique] = useState(null);
   // Tickets de caisse du client : null tant que non lus, [] s'il n'en a pas.
   const [tickets, setTickets] = useState(null);
-  const [tousTickets, setTousTickets] = useState(false);
-  const [ticketOuvert, setTicketOuvert] = useState(null);
+  const [onglet, setOnglet] = useState('activite');
+  const [filComplet, setFilComplet] = useState(false);
+  const [deplie, setDeplie] = useState(null);
   const [chargement, setChargement] = useState(Boolean(clientId));
   const [erreur, setErreur] = useState(null);
   const [enCours, setEnCours] = useState(false);
@@ -91,23 +322,27 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
       if (fiche.error || !fiche.data) { setErreur(fiche.error || 'Fiche introuvable.'); setChargement(false); return; }
       setClient(fiche.data);
       setForm({ ...FORM_VIDE, ...Object.fromEntries(Object.keys(FORM_VIDE).map((k) => [k, fiche.data[k] || ''])) });
-      // Plus récentes d'abord, quel que soit l'ordre rendu par la lecture.
-      const cle = (r) => `${r.date_service || ''} ${r.heure_arrivee || ''}`;
-      setHistorique(histo.error ? [] : [...histo.data].sort((a, b) => cle(b).localeCompare(cle(a))));
+      setHistorique(histo.error ? [] : histo.data);
       setChargement(false);
       // Les tickets arrivent après la fiche : elle ne les attend pas. Une
-      // lecture en échec laisse le bloc absent, sans gêner le reste.
+      // lecture en échec laisse les visites sans montant, sans gêner le reste.
       const lus = await listTicketsClient(clientId, histo.error ? [] : histo.data.map((r) => r.id));
       if (vivant && !lus.error) setTickets(lus.data);
     })();
     return () => { vivant = false; };
   }, [clientId, clients]);
 
+  const aujourdhui = zurichToday();
+  const calcul = useMemo(
+    () => (historique ? ficheClient({ client, historique, tickets: tickets || [], aujourdhui }) : null),
+    [client, historique, tickets, aujourdhui],
+  );
+
   const set = (k, v) => setForm((p) => ({ ...p, [k]: v }));
 
   async function enregistrer() {
-    if (!form.prenom.trim() && !form.nom.trim()) { notify('Indiquez au moins un nom.', 'error'); return; }
-    if (form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) { notify('L\'e-mail semble incorrect.', 'error'); return; }
+    if (!form.prenom.trim() && !form.nom.trim()) { setOnglet('coordonnees'); notify('Indiquez au moins un nom.', 'error'); return; }
+    if (form.email.trim() && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(form.email.trim())) { setOnglet('coordonnees'); notify('L\'e-mail semble incorrect.', 'error'); return; }
     setEnCours(true);
     const res = nouveau ? await clients.create(form) : await clients.update(clientId, form);
     setEnCours(false);
@@ -167,16 +402,68 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
     if (ouvertRef.current) onClose();
   }
 
-  // Chiffres calculés sur l'historique chargé (même règle que la vue
-  // resa_clients_stats : une venue est une réservation passée, honorée).
-  const aujourdhui = new Date().toISOString().slice(0, 10);
-  const venues = (historique || []).filter((r) => ['confirme', 'arrive', 'parti'].includes(r.statut) && r.date_service <= aujourdhui);
-  const noShows = (historique || []).filter((r) => r.statut === 'no_show').length;
-  const aVenir = (historique || []).filter((r) => ['confirme', 'demande'].includes(r.statut) && r.date_service >= aujourdhui);
-  const derniere = venues.map((r) => r.date_service).sort().pop();
-  const prochaine = aVenir.map((r) => r.date_service).sort()[0];
-
   const lecture = !canEdit;
+  const nom = nomClient(client || form);
+  const actionsRares = !nouveau && client ? [
+    canEdit ? { titre: client.archive ? 'Sortir des archives' : 'Archiver', onClick: basculerArchive } : null,
+    peutEffacer ? { titre: 'Exporter', onClick: exporterDonnees } : null,
+    peutEffacer ? { titre: 'Effacer les données', onClick: effacerDonnees, danger: true } : null,
+  ].filter(Boolean) : [];
+  const fil = calcul?.fil || [];
+  const filVisible = filComplet ? fil : fil.slice(0, FIL_VISIBLE);
+
+  const coordonnees = (
+    <>
+      {/* Accord pour les actualités */}
+      {!nouveau && client && (
+        <div style={{
+          padding: '10px 12px', borderRadius: 'var(--r)',
+          borderWidth: 1, borderStyle: 'solid',
+          borderColor: client.consentementMarketing ? 'var(--success-bd)' : 'var(--rule-soft)',
+          background: client.consentementMarketing ? 'var(--success-bg-soft)' : 'var(--surface)',
+        }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: canEdit && client.email ? 'pointer' : 'default', minHeight: 44 }}>
+            <input
+              type="checkbox"
+              checked={client.consentementMarketing}
+              disabled={!canEdit || enCours || (!client.email && !client.consentementMarketing)}
+              onChange={basculerConsentement}
+              style={{ width: 20, height: 20, accentColor: 'var(--accent)', flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 'var(--t2)', color: 'var(--text)', fontWeight: 'var(--g2)' }}>
+              Accepte de recevoir les actualités et les bons cadeaux par e-mail
+            </span>
+          </label>
+          <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginLeft: 30 }}>
+            {client.consentementMarketing && client.consentementAt
+              ? `Accord donné ${client.consentementSource === 'en_ligne' ? 'en ligne' : 'à l\'équipe'} le ${dateHeureCh(client.consentementAt)}`
+              : client.desinscritAt
+                ? `Désinscrit le ${dateHeureCh(client.desinscritAt)}`
+                : client.email
+                  ? 'Pas d\'accord : aucun envoi d\'actualités.'
+                  : 'Ajoutez un e-mail pour pouvoir lui écrire.'}
+          </div>
+        </div>
+      )}
+
+      {/* Coordonnées : deux colonnes dès que la place les tient (un champ date
+          d'iPad demande environ 200 px). */}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+        <Champ label="Prénom"><input style={champ} value={form.prenom} readOnly={lecture} onChange={(e) => set('prenom', e.target.value)} autoComplete="off" /></Champ>
+        <Champ label="Nom"><input style={champ} value={form.nom} readOnly={lecture} onChange={(e) => set('nom', e.target.value)} autoComplete="off" /></Champ>
+        <Champ label="E-mail"><input style={champ} type="email" inputMode="email" value={form.email} readOnly={lecture} onChange={(e) => set('email', e.target.value)} autoComplete="off" /></Champ>
+        <Champ label="Téléphone"><input style={champ} type="tel" inputMode="tel" value={form.telephone} readOnly={lecture} onChange={(e) => set('telephone', e.target.value)} autoComplete="off" /></Champ>
+        <Champ label="Date de naissance"><input style={champ} type="date" value={form.dateNaissance} readOnly={lecture} onChange={(e) => set('dateNaissance', e.target.value)} /></Champ>
+        <Champ label="Allergies, régime"><input style={champ} value={form.allergies} readOnly={lecture} placeholder="Gluten, végétarien…" onChange={(e) => set('allergies', e.target.value)} /></Champ>
+      </div>
+      <Champ label="Préférences" aide="Table préférée, vins, habitudes : ce que la salle doit savoir en l'accueillant.">
+        <textarea style={{ ...champ, minHeight: 64, resize: 'vertical' }} value={form.preferences} readOnly={lecture} onChange={(e) => set('preferences', e.target.value)} />
+      </Champ>
+      <Champ label="Notes">
+        <textarea style={{ ...champ, minHeight: 64, resize: 'vertical' }} value={form.notes} readOnly={lecture} onChange={(e) => set('notes', e.target.value)} />
+      </Champ>
+    </>
+  );
 
   return (
     <div
@@ -195,29 +482,38 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
         aria-label={nouveau ? 'Nouveau client' : 'Fiche client'}
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'var(--surface)', borderRadius: isMobile ? 0 : 14,
-          width: 640, maxWidth: '100%', maxHeight: isMobile ? '100%' : '90vh', height: isMobile ? '100%' : 'auto',
-          display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+          background: 'var(--surface)', borderRadius: isMobile ? 0 : 'var(--r-xl)',
+          width: nouveau ? 640 : 1000, maxWidth: '100%',
+          maxHeight: isMobile ? '100%' : '90vh', height: isMobile ? '100%' : 'auto',
+          minHeight: isMobile || nouveau ? undefined : 'min(560px, 90vh)',
+          display: 'flex', flexDirection: 'column', boxShadow: 'var(--sh-lg)', overflow: 'hidden',
         }}
       >
         {/* En-tête */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
-          padding: '14px 18px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          padding: '14px 18px', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
         }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontWeight: 'var(--g3)', fontSize: 'var(--t3)', color: 'var(--text)', fontFamily: 'var(--font)' }}>
-              {nouveau ? 'Nouveau client' : <span data-no-translate>{nomClient(client || form)}</span>}
-              {client?.archive && <span style={{ marginLeft: 8, fontSize: 'var(--t1)', color: 'var(--text3)' }}>archivée</span>}
-            </div>
-            {!nouveau && historique && (
-              <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
-                {pluriel(venues.length, 'venue')}
-                {derniere ? `, dernière le ${dateCh(derniere)}` : ''}
-                {prochaine ? `, prochaine le ${dateCh(prochaine)}` : ''}
-                {noShows ? `, ${pluriel(noShows, 'no-show')}` : ''}
-              </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+            {!nouveau && (
+              <span aria-hidden="true" data-no-translate style={{
+                width: 44, height: 44, borderRadius: '50%', background: 'var(--piste)', color: 'var(--text2)', flexShrink: 0,
+                display: 'grid', placeItems: 'center', fontSize: 'var(--t3)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
+              }}>
+                {(nom.trim()[0] || '?').toUpperCase()}
+              </span>
             )}
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 'var(--g2)', fontSize: 'var(--t4)', color: 'var(--text)', fontFamily: 'var(--font)', overflowWrap: 'anywhere' }}>
+                {nouveau ? 'Nouveau client' : <span data-no-translate>{nom}</span>}
+                {client?.archive && <span style={{ marginLeft: 8, fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text3)' }}>archivée</span>}
+              </div>
+              {!nouveau && calcul?.proprietes.premiere && (
+                <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2 }}>
+                  <span>Première visite le</span> <Num>{dateCh(calcul.proprietes.premiere)}</Num>
+                </div>
+              )}
+            </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Fermer" className="ui-fermer" style={{
             background: 'none', border: 'none', fontSize: 'var(--t4)', cursor: 'pointer', color: 'var(--text2)',
@@ -225,227 +521,87 @@ export default function ClientFiche({ etablissementId, clientId = null, canEdit 
           }}>×</button>
         </div>
 
-        {/* Corps */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Corps : conteneur de requêtes de la grille à deux colonnes. */}
+        <div className="fiche-client-corps" style={{ flex: 1, overflowY: 'auto', padding: '16px 18px' }}>
           {chargement && <div style={{ padding: 24, textAlign: 'center', color: 'var(--text3)', fontSize: 'var(--t2)' }}>Chargement…</div>}
           {erreur && <div style={{ padding: 12, color: 'var(--danger-text)', fontSize: 'var(--t2)' }}>{erreur}</div>}
 
-          {!chargement && !erreur && (
-            <>
-              {/* Accord pour les actualités */}
-              {!nouveau && client && (
-                <div style={{
-                  padding: '10px 12px', borderRadius: 'var(--r)',
-                  borderWidth: 1, borderStyle: 'solid',
-                  borderColor: client.consentementMarketing ? 'var(--success-bd)' : 'var(--border)',
-                  background: client.consentementMarketing ? 'var(--success-bg-soft)' : 'var(--bg)',
-                }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: canEdit && client.email ? 'pointer' : 'default', minHeight: 44 }}>
-                    <input
-                      type="checkbox"
-                      checked={client.consentementMarketing}
-                      disabled={!canEdit || enCours || (!client.email && !client.consentementMarketing)}
-                      onChange={basculerConsentement}
-                      style={{ width: 20, height: 20, accentColor: 'var(--accent)', flexShrink: 0 }}
-                    />
-                    <span style={{ fontSize: 'var(--t2)', color: 'var(--text)', fontWeight: 'var(--g2)' }}>
-                      Accepte de recevoir les actualités et les bons cadeaux par e-mail
-                    </span>
-                  </label>
-                  <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginLeft: 30 }}>
-                    {client.consentementMarketing && client.consentementAt
-                      ? `Accord donné ${client.consentementSource === 'en_ligne' ? 'en ligne' : 'à l\'équipe'} le ${dateHeureCh(client.consentementAt)}`
-                      : client.desinscritAt
-                        ? `Désinscrit le ${dateHeureCh(client.desinscritAt)}`
-                        : client.email
-                          ? 'Pas d\'accord : aucun envoi d\'actualités.'
-                          : 'Ajoutez un e-mail pour pouvoir lui écrire.'}
-                  </div>
-                </div>
-              )}
+          {!chargement && !erreur && nouveau && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>{coordonnees}</div>
+          )}
 
-              {/* Coordonnées */}
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
-                <Champ label="Prénom"><input style={champ} value={form.prenom} readOnly={lecture} onChange={(e) => set('prenom', e.target.value)} autoComplete="off" /></Champ>
-                <Champ label="Nom"><input style={champ} value={form.nom} readOnly={lecture} onChange={(e) => set('nom', e.target.value)} autoComplete="off" /></Champ>
-                <Champ label="E-mail"><input style={champ} type="email" inputMode="email" value={form.email} readOnly={lecture} onChange={(e) => set('email', e.target.value)} autoComplete="off" /></Champ>
-                <Champ label="Téléphone"><input style={champ} type="tel" inputMode="tel" value={form.telephone} readOnly={lecture} onChange={(e) => set('telephone', e.target.value)} autoComplete="off" /></Champ>
-                <Champ label="Date de naissance"><input style={champ} type="date" value={form.dateNaissance} readOnly={lecture} onChange={(e) => set('dateNaissance', e.target.value)} /></Champ>
-                <Champ label="Allergies, régime"><input style={champ} value={form.allergies} readOnly={lecture} placeholder="Gluten, végétarien…" onChange={(e) => set('allergies', e.target.value)} /></Champ>
-              </div>
-              <Champ label="Préférences" aide="Table préférée, vins, habitudes : ce que la salle doit savoir en l'accueillant.">
-                <textarea style={{ ...champ, minHeight: 64, resize: 'vertical' }} value={form.preferences} readOnly={lecture} onChange={(e) => set('preferences', e.target.value)} />
-              </Champ>
-              <Champ label="Notes">
-                <textarea style={{ ...champ, minHeight: 64, resize: 'vertical' }} value={form.notes} readOnly={lecture} onChange={(e) => set('notes', e.target.value)} />
-              </Champ>
+          {!chargement && !erreur && !nouveau && calcul && (
+            <div className="fiche-client-grille">
+              <aside className="fiche-client-cote" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0 }}>
+                <Proprietes p={calcul.proprietes} aujourdhui={aujourdhui} />
+                {calcul.suggestion && <Suggestion s={calcul.suggestion} />}
+              </aside>
 
-              {/* Derniers tickets de caisse (v5) */}
-              {!nouveau && tickets && tickets.length > 0 && (
-                <div data-fiche-tickets="">
-                  <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 8 }}>
-                    <span>Derniers tickets</span> <span>({tickets.length})</span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {(tousTickets ? tickets : tickets.slice(0, TICKETS_VISIBLES)).map((t) => {
-                      const quand = zurichDateHeure(t.created_at);
-                      const lignes = t.caisse_lignes || [];
-                      const deplie = ticketOuvert === t.id;
-                      return (
-                        <div key={t.id} style={{
-                          padding: '8px 10px', borderRadius: 'var(--r)',
-                          borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                        }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '2px 10px' }}>
-                            <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font-num)' }}>{quand.date}</span>
-                            <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)', fontFamily: 'var(--font-num)' }}>{quand.heure}</span>
-                            <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
-                              {t.salle_tables?.nom
-                                ? <><span>Table</span> <span data-no-translate>{t.salle_tables.nom}</span></>
-                                : <span>Table non notée</span>}
-                            </span>
-                            {t.couverts ? (
-                              <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
-                                <span style={{ fontFamily: 'var(--font-num)' }}>{t.couverts}</span> <span>couverts</span>
-                              </span>
-                            ) : null}
-                            {t.statut === 'ouvert' && <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--success-text)' }}>en cours</span>}
-                            <span style={{ flex: 1 }} />
-                            <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
-                              <span>{chf(totalTicket(t))}</span> <span style={{ fontWeight: 'var(--g1)', color: 'var(--text2)' }}>CHF</span>
-                            </span>
-                            <button
-                              type="button"
-                              aria-expanded={deplie}
-                              onClick={() => setTicketOuvert(deplie ? null : t.id)}
-                              style={{
-                                minHeight: 44, padding: '6px 10px', borderRadius: 'var(--r)',
-                                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
-                                background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t1)', fontFamily: 'var(--font)', cursor: 'pointer',
-                              }}
-                            >
-                              <span style={{ fontFamily: 'var(--font-num)' }}>{lignes.length}</span> <span>articles</span>
-                            </button>
-                          </div>
-                          {deplie && (
-                            <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                              {lignes.map((l, i) => (
-                                <div key={i} style={{ display: 'flex', gap: 8, fontSize: 'var(--t1)', color: 'var(--text2)' }}>
-                                  <span style={{ fontFamily: 'var(--font-num)', minWidth: 22, textAlign: 'right' }}>{Number(l.quantite)}</span>
-                                  <span style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }} data-no-translate>{l.libelle}</span>
-                                  <span style={{ fontFamily: 'var(--font-num)' }}>{chf(Number(l.quantite) * Number(l.prix_unitaire))}</span>
-                                </div>
-                              ))}
-                              {!lignes.length && <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>Aucun article.</div>}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  {tickets.length > TICKETS_VISIBLES && !tousTickets && (
-                    <button
-                      type="button"
-                      onClick={() => setTousTickets(true)}
-                      style={{
-                        marginTop: 8, minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
-                        borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
-                        background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer',
-                      }}
-                    >
-                      Voir tout
-                    </button>
-                  )}
-                </div>
-              )}
+              <section className="fiche-client-fil" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <SegmentedTabs tabs={ONGLETS} active={onglet} onChange={setOnglet} />
 
-              {/* Historique */}
-              {!nouveau && (
-                <div>
-                  <div style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)', marginBottom: 8 }}>
-                    Historique ({pluriel((historique || []).length, 'réservation')})
+                {onglet === 'activite' && (
+                  <div data-fiche-fil="">
+                    {fil.length === 0 && (
+                      <div style={{ padding: '16px 0', fontSize: 'var(--t2)', color: 'var(--text3)' }}>Aucune activité pour l'instant.</div>
+                    )}
+                    {filVisible.map((e, i) => (
+                      <LigneFil
+                        key={e.id}
+                        e={e}
+                        aujourdhui={aujourdhui}
+                        derniere={i === filVisible.length - 1}
+                        deplie={deplie === e.id}
+                        onBasculer={() => setDeplie(deplie === e.id ? null : e.id)}
+                      />
+                    ))}
+                    {fil.length > FIL_VISIBLE && !filComplet && (
+                      <button
+                        type="button"
+                        onClick={() => setFilComplet(true)}
+                        style={{
+                          marginTop: 8, minHeight: 44, padding: '8px 16px', borderRadius: 'var(--r-full)',
+                          borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+                          background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer',
+                        }}
+                      >
+                        Voir tout
+                      </button>
+                    )}
                   </div>
-                  {(historique || []).length === 0 && (
-                    <div style={{ fontSize: 'var(--t2)', color: 'var(--text3)' }}>Aucune réservation rattachée.</div>
-                  )}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                    {(historique || []).map((r) => {
-                      const meta = metaStatut(r.statut);
-                      const svc = SERVICE_META[serviceAffiche(r.service)];
-                      const tags = (r.reservation_tags || []).map((t) => t.valeur).filter(Boolean);
-                      return (
-                        <div key={r.id} style={{
-                          padding: '8px 10px', borderRadius: 'var(--r)',
-                          borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)',
-                          borderLeftWidth: 3, borderLeftColor: svc?.bordure || 'var(--border)',
-                          opacity: r.statut === 'annule' ? 0.55 : 1,
-                        }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 10px' }}>
-                            <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font-num)' }}>
-                              {dateCh(r.date_service)}
-                            </span>
-                            <span style={{ fontSize: 'var(--t1)', color: svc?.couleur || 'var(--text2)', fontWeight: 'var(--g2)' }}>
-                              {svc?.label || r.service} {(r.heure_arrivee || '').slice(0, 5)}
-                            </span>
-                            <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>{pluriel(r.nb_couverts || 0, 'couvert')}</span>
-                            <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: r.tables.length ? 'var(--success-text)' : 'var(--text3)' }}>
-                              {r.tables.length ? `Table ${r.tables.join(' + ')}` : 'Table non notée'}
-                            </span>
-                            <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: r.statut === 'annule' ? 'var(--text3)' : meta.texte }}>
-                              {r.statut === 'annule' ? 'Annulée'
-                                : r.statut === 'confirme' && r.date_service < aujourdhui ? 'Confirmée'
-                                  : meta.label}
-                            </span>
-                            {r.origine === 'en_ligne' && <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>en ligne</span>}
-                          </div>
-                          {(tags.length > 0 || r.notes_libres) && (
-                            <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 3 }}>
-                              {tags.join(', ')}{tags.length && r.notes_libres ? '. ' : ''}
-                              {r.notes_libres ? <span data-no-translate>{r.notes_libres}</span> : ''}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </>
+                )}
+
+                {onglet === 'coordonnees' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>{coordonnees}</div>
+                )}
+              </section>
+            </div>
           )}
         </div>
 
         {/* Pied */}
         <div style={{
           display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-          padding: '12px 18px', borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--border)',
+          padding: '12px 18px', borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--rule-soft)',
         }}>
-          {canEdit && !nouveau && client && (
-            <button type="button" onClick={basculerArchive} disabled={enCours} style={{
-              minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
-              borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
-              background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer',
-            }}>
-              {client.archive ? 'Sortir des archives' : 'Archiver'}
+          {/* Actions rares : archiver, et pour le consultant et le patron le
+              droit d'accès et le droit à l'effacement (SI3). Seule, l'action
+              reste un bouton ; à plusieurs, elles passent au menu « Gérer »
+              (le pied tient sur une ligne au téléphone). */}
+          {actionsRares.length === 1 && (
+            <button type="button" onClick={actionsRares[0].onClick} disabled={enCours} style={boutonSecondaire}>
+              {actionsRares[0].titre}
             </button>
           )}
-          {/* Droit d'accès et droit à l'effacement (SI3) : consultant et patron. */}
-          {peutEffacer && !nouveau && client && (
-            <>
-              <button type="button" onClick={exporterDonnees} disabled={enCours} style={{
-                minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
-                background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer',
-              }}>
-                Exporter
-              </button>
-              <button type="button" onClick={effacerDonnees} disabled={enCours} style={{
-                minHeight: 44, padding: '8px 12px', borderRadius: 'var(--r)',
-                borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
-                background: 'var(--btn-fond)', color: 'var(--danger-text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', cursor: 'pointer',
-              }}>
-                Effacer les données
-              </button>
-            </>
+          {actionsRares.length > 1 && (
+            <BoutonActions
+              id="fiche-client-gerer"
+              label="Gérer"
+              style={boutonSecondaire}
+              disabled={enCours}
+              titre={nom}
+              sections={[{ items: actionsRares }]}
+            />
           )}
           <div style={{ flex: 1 }} />
           <button type="button" onClick={onClose} style={{
