@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays, ChevronLeft, ChevronRight, HeartPulse, LayoutGrid, List, Plus, Waves,
 } from 'lucide-react';
@@ -24,7 +24,23 @@ import { ACTIF_SPA, minutesSpa } from './serieSpa.js';
 
 // Soins actifs et minutes en cabine : règles partagées avec les Statistiques (D3).
 const ACTIF = ACTIF_SPA;
-const PX_MIN = 1.2;           // 1 minute = 1,2 px → 1 heure = 72 px
+// 1 minute = 1,2 px (1 heure = 72 px, créneau de 36 px) à la souris ; 1,5 px au
+// doigt, pour un créneau de 45 px, au-dessus de la cible de 44 px (lot 6b).
+const PX_MIN_SOURIS = 1.2;
+const PX_MIN_DOIGT = 1.5;
+const REQUETE_DOIGT = '(pointer: coarse)';
+function usePxMin() {
+  const lire = () => (typeof window !== 'undefined' && window.matchMedia?.(REQUETE_DOIGT).matches ? PX_MIN_DOIGT : PX_MIN_SOURIS);
+  const [px, setPx] = useState(lire);
+  useEffect(() => {
+    const mq = window.matchMedia?.(REQUETE_DOIGT);
+    if (!mq) return undefined;
+    const suivre = () => setPx(lire());
+    mq.addEventListener?.('change', suivre);
+    return () => mq.removeEventListener?.('change', suivre);
+  }, []);
+  return px;
+}
 const PAS_CRENEAU = 30;       // créneaux cliquables toutes les 30 min
 const SANS_PRATICIEN = '__sans__';
 
@@ -65,7 +81,7 @@ export default function AgendaSpa({
              elle-même ouvre le calendrier (champ natif posé par-dessus). ── */}
       <div style={s.barre}>
         <div style={s.navJour}>
-          <button type="button" onClick={() => setDate(decalerJour(date, -1))} aria-label="Jour précédent" style={s.fleche}>
+          <button type="button" onClick={() => setDate(decalerJour(date, -1))} aria-label="Jour précédent" className="spa-fleche-jour" style={s.fleche}>
             <ChevronLeft size={17} strokeWidth={1.8} aria-hidden="true" />
           </button>
           <label style={s.dateBouton}>
@@ -80,19 +96,23 @@ export default function AgendaSpa({
               style={s.dateCachee}
             />
           </label>
-          <button type="button" onClick={() => setDate(decalerJour(date, 1))} aria-label="Jour suivant" style={s.fleche}>
+          <button type="button" onClick={() => setDate(decalerJour(date, 1))} aria-label="Jour suivant" className="spa-fleche-jour" style={s.fleche}>
             <ChevronRight size={17} strokeWidth={1.8} aria-hidden="true" />
           </button>
         </div>
         {!estAujourdhui && (
           <button type="button" onClick={() => setDate(aujourdhui)} style={{ ...st.lien, minHeight: 36 }}>Aujourd'hui</button>
         )}
-        <span style={s.resume}>
-          {status === 'loading' && !reservations.length ? 'Chargement…'
-            : actifs.length
-              ? `${actifs.length} soin${actifs.length > 1 ? 's' : ''}, ${dureeLisible(minutesSoins)} en cabine`
-              : 'Aucun soin prévu'}
-        </span>
+        {/* Le jour même, l'en-tête du spa dit déjà « N soins aujourd'hui » et
+            le temps en cabine : le résumé n'est rendu que pour un autre jour. */}
+        {(!estAujourdhui || (status === 'loading' && !reservations.length)) && (
+          <span style={s.resume}>
+            {status === 'loading' && !reservations.length ? 'Chargement…'
+              : actifs.length
+                ? `${actifs.length} soin${actifs.length > 1 ? 's' : ''}, ${dureeLisible(minutesSoins)} en cabine`
+                : 'Aucun soin prévu'}
+          </span>
+        )}
         <div style={s.outils}>
           {!mobile && (
             <div role="group" aria-label="Affichage" style={s.bascule}>
@@ -188,6 +208,7 @@ function Planning({ date, estAujourdhui, maintenant, actifs, praticiensConnus, c
     return liste;
   }, [actifs, praticiensConnus]);
 
+  const PX_MIN = usePxMin();
   // Amplitude : 9 h - 20 h au minimum, élargie aux soins qui débordent.
   const debut = Math.min(9 * 60, ...actifs.map((r) => Math.floor(minutes(r.heureDebut) / 60) * 60));
   const fin = Math.max(20 * 60, ...actifs.map((r) => Math.ceil((minutes(r.heureDebut) + r.dureeMin) / 60) * 60));
