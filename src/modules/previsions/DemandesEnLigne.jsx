@@ -72,8 +72,10 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
               </div>
               <button
                 type="button"
+                className="touch-target"
                 onClick={() => onAllerAuJour?.(r.date_service)}
                 style={{
+                  display: 'flex', alignItems: 'center', minHeight: 24,
                   padding: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left',
                   fontSize: 'var(--t1)', color: 'var(--lien)', fontFamily: 'var(--font)', fontWeight: 'var(--g2)',
                 }}
@@ -84,7 +86,7 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
                 <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2, overflowWrap: 'anywhere' }} data-no-translate>{r.notes_libres}</div>
               )}
               {r.telephone && (
-                <a href={`tel:${String(r.telephone).replace(/\s/g, '')}`} style={{ display: 'block', width: 'fit-content', fontSize: 'var(--t1)', color: 'var(--text2)', textDecoration: 'none' }}>
+                <a href={`tel:${String(r.telephone).replace(/\s/g, '')}`} className="touch-target" style={{ display: 'flex', alignItems: 'center', minHeight: 24, width: 'fit-content', fontSize: 'var(--t1)', color: 'var(--text2)', textDecoration: 'none' }}>
                   {r.telephone}
                 </a>
               )}
@@ -92,6 +94,7 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
             <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
               <button
                 type="button"
+                className="touch-target"
                 disabled={enCours === r.id}
                 onClick={() => traiter(r, 'refus')}
                 style={{
@@ -105,6 +108,7 @@ export default function DemandesEnLigne({ etablissementId, refreshKey, onTraitee
               </button>
               <button
                 type="button"
+                className="touch-target"
                 disabled={enCours === r.id}
                 onClick={() => traiter(r, 'confirmation')}
                 style={{

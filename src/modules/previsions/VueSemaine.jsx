@@ -3,7 +3,7 @@ import { Btn, Panneau } from '../../components/ui/index.jsx';
 import { usePrevisionsSemaine } from '../../hooks/usePrevisionsSemaine.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
 import {
-  getLundiSemaine, addDays, formatJourSemaine,
+  addDays, formatJourSemaine,
   formatDateCourte, isAujourdhui, isoDate,
 } from '../../utils/dateHelpers.js';
 import { SERVICE_META, SERVICES_AFFICHES } from './statutsReservation.js';
@@ -25,7 +25,17 @@ const etatJourVide = (ferme) => (ferme ? 'Fermé' : 'Libre');
 // services (midi orange, soir bleu). Le brunch est dans la colonne du midi :
 // c'est le midi du dimanche. Un nom ouvre sa fiche, le jour ouvre la vue
 // jour. Le total de couverts reste en petit, pour la cuisine.
+//
+// Les sept jours partent d'aujourd'hui (lot 3) : un dimanche, la semaine du
+// lundi était presque passée. Les flèches avancent de sept jours. Au doigt,
+// chaque réservation est une cible de 44 px (classe touch-target d'app.css).
 // ═══════════════════════════════════════════════════════════════════════════
+
+// Début du jour local : premier des sept jours affichés à l'ouverture.
+function debutDuJour() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
 
 // Injection de l'animation skeleton une seule fois dans le DOM
 let skeletonStyleInjected = false;
@@ -78,8 +88,9 @@ function ResaPuce({ resa, svc, onOpen }) {
       title={titre}
       aria-label={titre}
       onClick={(e) => { e.stopPropagation(); onOpen?.(resa); }}
+      className="touch-target"
       style={{
-        display: 'inline-flex', alignItems: 'baseline', gap: 5,
+        display: 'inline-flex', alignItems: 'center', gap: 5,
         maxWidth: '100%', minWidth: 0, minHeight: 30,
         padding: '4px 8px', borderRadius: 'var(--r)',
         // Une demande venue du site n'est pas encore une réservation : trait
@@ -261,10 +272,10 @@ function CarteJour({ jour, services, auj, onDayClick, onOpen, ferme = false }) {
 // ── Composant principal ────────────────────────────────────
 export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, refreshKey, onNouvelle = null }) {
   const isMobile = useIsMobile();
-  const [dateDebut, setDateDebut] = useState(() => getLundiSemaine(new Date()));
+  const [dateDebut, setDateDebut] = useState(debutDuJour);
   const { semaine, loading, error, nonActualise, fetchSemaine } = usePrevisionsSemaine(etablissementId);
   const maison = useReglagesMaison(etablissementId);
-  const semaineCourante = isoDate(dateDebut) === isoDate(getLundiSemaine(new Date()));
+  const depuisAujourdhui = isoDate(dateDebut) === isoDate(debutDuJour());
 
   useEffect(() => { ensureSkeletonStyle(); }, []);
 
@@ -296,12 +307,12 @@ export default function VueSemaine({ etablissementId, onDayClick, onOpenResa, re
           <Btn small ariaLabel="Semaine suivante" onClick={() => setDateDebut((d) => addDays(d, 7))}>→</Btn>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <Btn small onClick={() => setDateDebut(getLundiSemaine(new Date()))}>Cette semaine</Btn>
+          <Btn small onClick={() => setDateDebut(debutDuJour())}>Aujourd'hui</Btn>
           {/* Masqué pendant un changement de semaine : ce total-là, sans date
               à côté, serait encore celui de la semaine précédente. */}
           {totalSemaine > 0 && !loading && (
             <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>
-              {totalSemaine} couvert{totalSemaine > 1 ? 's' : ''} {semaineCourante ? 'cette semaine' : 'sur la semaine'}
+              {totalSemaine} couvert{totalSemaine > 1 ? 's' : ''} {depuisAujourdhui ? 'sur les sept prochains jours' : 'sur la semaine'}
             </span>
           )}
         </div>

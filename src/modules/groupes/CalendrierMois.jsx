@@ -115,7 +115,7 @@ export default function CalendrierMois({
                       data-no-translate={compact ? '' : undefined}
                     >
                       {nomClient
-                        ? <span style={s.etiquetteType}>{nomClient}</span>
+                        ? <span style={s.etiquetteClient}>{nomClient}</span>
                         : <>
                           <span style={s.etiquetteType}>{nomType}</span>
                           {g.menuNumero
@@ -252,6 +252,12 @@ const s = {
   etiquetteTitre: { display: 'flex', minWidth: 0, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap' },
   etiquetteTitreCompact: { fontSize: 13 },
   etiquetteType: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' },
+  // Le nom du client sur deux lignes au plus (lot 3) : coupé sur une ligne, il
+  // ne se lisait pas dans une case de tablette (« Association des am… »).
+  etiquetteClient: {
+    minWidth: 0, whiteSpace: 'normal', overflowWrap: 'anywhere', overflow: 'hidden',
+    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+  },
   etiquetteNumero: { flexShrink: 0, whiteSpace: 'pre' },
   etiquettePax: {
     fontSize: 11,

@@ -11,7 +11,7 @@ import { Anneau, Btn } from '../../components/ui/index.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
-import { ArrowLeft, Check, ChevronDown, ChevronRight, FilePlus2, History, Library, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronRight, FilePlus2, History, Library, MoreHorizontal, Trash2 } from 'lucide-react';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
@@ -394,7 +394,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
         const Chevron = plie ? ChevronRight : ChevronDown;
         return (
         <div key={freq.id} style={{ marginBottom: 24 }}>
-          <button type="button" className="mini" style={ss.groupHeader} onClick={() => basculerFrequence(freq.id)} aria-expanded={!plie}>
+          <button type="button" className="mini touch-target" style={ss.groupHeader} onClick={() => basculerFrequence(freq.id)} aria-expanded={!plie}>
             <Chevron size={16} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--text2)' }} />
             <span style={ss.groupTitle}>{freq.label}</span>
             <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>({byFreq[freq.id].length})</span>
@@ -410,20 +410,49 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                   ...(sel.active && sel.isSelected(sop.id) ? { borderColor: 'var(--accent)' } : {}),
                 }}>
                   {sel.active && (
-                    <input
-                      type="checkbox"
-                      checked={sel.isSelected(sop.id)}
-                      onChange={() => sel.toggle(sop.id)}
-                      style={{ width: 18, height: 18, cursor: 'pointer', alignSelf: 'center', marginRight: 4, flexShrink: 0 }}
-                    />
+                    <label style={ss.caseCible}>
+                      <input
+                        type="checkbox"
+                        aria-label={sop.titre}
+                        checked={sel.isSelected(sop.id)}
+                        onChange={() => sel.toggle(sop.id)}
+                        style={{ width: 24, height: 24, margin: 0, cursor: 'pointer' }}
+                      />
+                    </label>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={ss.sopCardTitle}>{sop.titre}</div>
+                    {/* « Lancer » seul sur la ligne d'actions (lot 3) : la
+                        gestion de la procédure passe dans le menu rond du
+                        coin, pour qui gère les SOP. */}
+                    <div style={ss.sopCardTete}>
+                      <div style={{ ...ss.sopCardTitle, flex: '1 1 auto', minWidth: 0 }}>{sop.titre}</div>
+                      {canManage && !sel.active && (
+                        <BoutonActions
+                          id={`sop-gerer-${sop.id}`}
+                          label={<MoreHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />}
+                          ariaLabel="Gérer"
+                          style={ss.menuRond}
+                          titre={sop.titre}
+                          sousTitre={(
+                            <>
+                              {sop.categorie || 'SOP'}, {totalSteps} {totalSteps > 1 ? 'étapes' : 'étape'}
+                              {inTemplates && <>. <span>Déjà dans la bibliothèque</span>.</>}
+                            </>
+                          )}
+                          sections={[{
+                            items: [
+                              { titre: 'Modifier', detail: 'Titre, description, fréquence, sections et étapes.', onClick: () => onEdit(sop) },
+                              !inTemplates && { titre: 'Ajouter à la bibliothèque', detail: 'La proposer comme template aux autres établissements.', onClick: () => onAddToTemplates && onAddToTemplates(sop) },
+                            ],
+                          }]}
+                        />
+                      )}
+                    </div>
                     {sop.description && <div style={ss.sopCardDesc}>{sop.description}</div>}
                     {versInventaire && /inventaire/i.test(sop.titre || '') && (
                       <div style={ss.sopCardDesc} data-sop-renvoi="inventaire">
                         <span>Le comptage se fait dans le module Inventaire.</span>{' '}
-                        <button type="button" style={ss.lienRenvoi} onClick={() => navigateToPage('inventaire')}>Ouvrir l'inventaire</button>
+                        <button type="button" className="touch-target" style={ss.lienRenvoi} onClick={() => navigateToPage('inventaire')}>Ouvrir l'inventaire</button>
                       </div>
                     )}
                     <div style={ss.sopCardMeta}>
@@ -448,26 +477,6 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                             ? "Relancer (déjà validée aujourd'hui)"
                             : "Lancer la checklist"}
                       >{doneToday && sop.frequence === 'quotidien' ? 'Relancer' : 'Lancer'}</button>
-                      {canManage && (
-                        <BoutonActions
-                          id={`sop-gerer-${sop.id}`}
-                          label="Gérer"
-                          style={ss.gererBtn}
-                          titre={sop.titre}
-                          sousTitre={(
-                            <>
-                              {sop.categorie || 'SOP'}, {totalSteps} {totalSteps > 1 ? 'étapes' : 'étape'}
-                              {inTemplates && <>. <span>Déjà dans la bibliothèque</span>.</>}
-                            </>
-                          )}
-                          sections={[{
-                            items: [
-                              { titre: 'Modifier', detail: 'Titre, description, fréquence, sections et étapes.', onClick: () => onEdit(sop) },
-                              !inTemplates && { titre: 'Ajouter à la bibliothèque', detail: 'La proposer comme template aux autres établissements.', onClick: () => onAddToTemplates && onAddToTemplates(sop) },
-                            ],
-                          }]}
-                        />
-                      )}
                     </div>
                   </div>
                 </div>
@@ -1260,19 +1269,24 @@ const ss = {
   chipActive: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
   empty: { ...carte, padding: 40, textAlign: 'center' },
   // Titre d'un groupe de fréquence : un bouton qui replie le groupe.
-  groupHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' },
+  groupHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, minHeight: 24, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' },
   groupTitle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
   cardsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 12 },
   sopCard: { ...carte, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 },
   sopCardTitle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', lineHeight: 1.3 },
   sopCardDesc: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 },
-  lienRenvoi: { background: 'none', borderWidth: 0, borderStyle: 'none', padding: '6px 0', minHeight: 32, color: 'var(--lien)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t1)' },
+  lienRenvoi: { display: 'inline-flex', alignItems: 'center', background: 'none', borderWidth: 0, borderStyle: 'none', padding: '6px 0', minHeight: 32, color: 'var(--lien)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t1)' },
   sopCardMeta: { display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' },
   sopCardSteps: { fontSize: 'var(--t1)', color: 'var(--text2)' },
   sopCardCat: etiquette,
   sopCardTag: etiquette,
   sopCardFait: { ...etiquette, color: 'var(--success-text)', background: 'var(--success-bg-soft)' },
   sopCardActions: { display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' },
+  sopCardTete: { display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 },
+  // Menu de la procédure : cercle de 44 px en haut à droite de la carte.
+  menuRond: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0, margin: '-10px -8px 0 0', padding: 0, borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', cursor: 'pointer' },
+  // Case de sélection : le label est la cible, 44 x 44 (règle de l'iPad).
+  caseCible: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0, alignSelf: 'center', cursor: 'pointer' },
   gererBtn: { padding: '7px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap' },
   iconBtn: { width: 30, height: 30, padding: 0, background: 'var(--piste)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-full)', cursor: 'pointer', fontSize: 'var(--t1)', color: 'var(--text2)' },
   // « × » discret : texte --text3, rouge au survol et au focus (classe btn-suppr-discret).

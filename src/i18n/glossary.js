@@ -6314,6 +6314,17 @@ export const UI_GLOSSARY = {
   'sur la semaine': 'over the week',
   'vide': 'empty',
   'à déclarer': 'to declare',
+  // Lot 3 « la tablette » (22.11.2026)
+  'Tous les motifs': 'All reasons',
+  'Toutes les catégories': 'All categories',
+  'Actions sur les fiches': 'Sheet actions',
+  'sur les sept prochains jours': 'over the next seven days',
+  'Gérer les fiches salle': 'Manage the service sheets',
+  'La première se crée avec « Gérer », puis « Nouvelle fiche ».': 'Create the first one with “Manage”, then “New sheet”.',
+  'Plus de choix': 'More options',
+  'Moins de choix': 'Fewer options',
+  'Voir le détail': 'Show the details',
+  'Replier le détail': 'Hide the details',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

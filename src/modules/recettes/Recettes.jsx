@@ -2052,8 +2052,9 @@ const Recettes = ({ user, etablissement }) => {
 
   // ─── Écran d'arrivée ──────────────────────────────────────────────────────
   // Tout sur un écran, sans accueil à tuiles : la recherche dans toutes les
-  // fiches, les actions (Nouvelle fiche, Allergènes, Exporter, Une étiquette),
-  // le menu « Gérer » (cartes et fiches, pour qui gère les cartes), les
+  // fiches, « Nouvelle fiche », un seul menu (« Gérer » pour qui gère les
+  // cartes, « Actions » sinon : Chiffrage, Allergènes, Exporter, Une étiquette,
+  // puis les cartes et les fiches), les
   // onglets de cartes et l'onglet Bibliothèque. Le module s'ouvre sur la carte
   // du moment : la carte d'accueil choisie, sinon la première ; sans aucune
   // carte, sur la bibliothèque. Une recherche montre la bibliothèque filtrée,
@@ -2090,19 +2091,24 @@ const Recettes = ({ user, etablissement }) => {
           <RechercheFiches value={search} onChange={setSearch} />
           {!selection.active && (
             <div className="module-actions rc-actions">
+              {/* Deux entrées (lot 3, tablette) : « Nouvelle fiche » et un seul
+                  menu. Chiffrage, Allergènes, Exporter et Une étiquette y
+                  passent, chacun avec sa garde d'avant ; qui ne gère pas les
+                  cartes y trouve les mêmes outils, sous le nom « Actions ». */}
               {canFiches && <Btn variant="primary" onClick={creerFiche}>Nouvelle fiche</Btn>}
-              {canChiffrer && <Btn onClick={() => { setFicheChiffrage(null); setEcran('chiffrage'); }} title="Coûts, prix de vente et marges des fiches et des plats">Chiffrage</Btn>}
-              <Btn onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</Btn>
-              <Btn onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</Btn>
-              {canEtiqueter && <Btn onClick={() => setEcran('etiquette')} title="DLC d'une préparation">Une étiquette</Btn>}
-              {canManageCartes && (
-                <BoutonActions
+              <BoutonActions
                   id="recettes-gerer"
-                  label="Gérer"
+                  label={canManageCartes ? 'Gérer' : 'Actions'}
                   style={rs.gererBtn}
-                  titre="Gérer les cartes et les fiches"
+                  titre={canManageCartes ? 'Gérer les cartes et les fiches' : 'Actions sur les fiches'}
                   sections={[
-                    { titre: 'Cartes', items: [
+                    { titre: canManageCartes ? 'Outils' : undefined, items: [
+                      canChiffrer && { titre: 'Chiffrage', detail: 'Coûts, prix de vente et marges des fiches et des plats', onClick: () => { setFicheChiffrage(null); setEcran('chiffrage'); } },
+                      { titre: 'Allergènes', detail: 'Trouver dans quelles recettes un ingrédient ou allergène apparaît', onClick: () => setShowIngredientSearch(true) },
+                      { titre: 'Exporter', detail: 'Exporter une carte entière, des plats ou des recettes dans un seul PDF', onClick: () => setShowExportModal(true) },
+                      canEtiqueter && { titre: 'Une étiquette', detail: "DLC d'une préparation", onClick: () => setEcran('etiquette') },
+                    ] },
+                    canManageCartes && { titre: 'Cartes', items: [
                       { titre: 'Ajouter une carte', detail: 'Un onglet de plus, à remplir de plats', onClick: () => barreCartesRef.current?.creer() },
                       activeCarte && {
                         titre: 'Modifier la carte',
@@ -2116,14 +2122,13 @@ const Recettes = ({ user, etablissement }) => {
                         onClick: () => barreCartesRef.current?.archives(),
                       },
                     ] },
-                    { titre: 'Fiches', items: [
+                    canManageCartes && { titre: 'Fiches', items: [
                       canFiches && { titre: 'Importer des fiches', detail: peutLireFichesParIA(user) ? 'Depuis une photo, un PDF ou le modèle Excel, rangées dans une carte' : 'Depuis le modèle Excel, une ou plusieurs à la fois, rangées dans une carte', onClick: () => setShowImport(true) },
                       canFiches && { titre: 'Sélectionner des fiches', detail: 'Pour les rattacher à des plats, les archiver ou les supprimer', onClick: entrerSelection },
                       isConsultant && { titre: 'Détecter les allergènes', detail: 'Analyse des ingrédients de chaque fiche, à vérifier ensuite', onClick: () => detectionRef.current?.lancer() },
                     ] },
-                  ]}
+                  ].filter(Boolean)}
                 />
-              )}
             </div>
           )}
         </div>
