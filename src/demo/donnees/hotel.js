@@ -200,7 +200,9 @@ export const SEJOURS = SEJOURS_BRUTS.map(([n, numero, iHote, a, d, statut, pensi
   return {
     id: uid('06', n),
     etablissement_id: ETAB,
-    chambre_id: chambre.id,
+    // Lot 6b : une arrivée du jour sans chambre encore, pour montrer le
+    // check-in qui en propose une (fiche du séjour).
+    chambre_id: n === 12 ? null : chambre.id,
     client_id: null,
     hote_id: hote.id,
     tarif_id: tarifRetenu.id,
@@ -365,6 +367,9 @@ export function genererDemandes() {
     [6, '203', 11, 'collegue', 'etages', 'Bouteille et fleurs en chambre', 'Anniversaire de mariage. Avant 15 h.', 'haute', [0, '15:00'], 'ouverte', false, HOTE, [-1, '17:00'], PATRON],
     [7, '104', 5, 'hote', 'technique', 'Télévision sans signal', 'Le décodeur ne s\'allume plus.', 'normale', [-1, '18:00'], 'en_cours', false, PATRON, [-1, '16:40'], HOTE],
     [8, '301', 7, 'hote', 'spa', 'Massage demain à 10 h', 'Massage suédois de 60 minutes.', 'normale', [0, '17:00'], 'faite', false, 'demo-spa', [-1, '20:15'], HOTE],
+    // Lot 6b : une demande du pôle Technique sans ordre de travail encore,
+    // que la technique transforme en ordre en un toucher.
+    [9, '202', 6, 'hote', 'technique', 'Lampe de chevet en panne', 'Côté fenêtre. L\'ampoule a été changée, rien ne s\'allume.', 'normale', [0, '20:00'], 'ouverte', false, null, [0, '09:40'], HOTE],
   ];
   const demandes = brutes.map(([n, numero, s, origine, pole, titre, detail, priorite, [ed, eh], statut, escaladee, assignee, [cd, chh], par]) => ({
     id: uid('14', n),

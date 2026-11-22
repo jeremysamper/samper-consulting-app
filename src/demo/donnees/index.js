@@ -37,6 +37,13 @@ function reglagesUtilisateurs() {
     { user_id: u.id, key: 'alertes_carte', value: { plus_tard: '2099-01-01T00:00:00.000Z' }, updated_at: '2026-11-15T08:00:00Z' },
     { user_id: u.id, key: 'current_etab_id', value: ETAB, updated_at: '2026-11-15T08:00:00Z' },
     { user_id: u.id, key: `cartes_default:${ETAB}`, value: 'carte-automne', updated_at: '2026-11-15T08:00:00Z' },
+  ]).concat([
+    // Lot 6b : la dernière facture émise pour la Brasserie Démo, que la
+    // facturation du consultant propose de reprendre en un toucher.
+    {
+      user_id: 'demo-patron', key: `facture_derniere:${ETAB}`, updated_at: '2026-10-31T09:00:00Z',
+      value: { numero: 'FAC-20261031-01', date: '2026-10-31', prestation: 'Mission de consulting culinaire, octobre 2026', montant: '2900', devise: 'CHF', htOuTtc: 'HT', referenceContratDevis: '20260224' },
+    },
   ]);
 }
 

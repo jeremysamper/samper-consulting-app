@@ -4,8 +4,11 @@ import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { Btn } from '../../components/ui/index.jsx';
+import { LigneRegler } from '../../components/ui/BoutonRegler.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
+import { delaiLisible, echeanceDepuis, trierCourantes } from './demandesCourantes.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { dbService } from '../../services/dbService.js';
@@ -14,7 +17,7 @@ import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { Puce } from '../dashboard/tableauUi.jsx';
 import {
   ACTIONS_DEMANDE, POLES, PRIORITES, STATUTS_DEMANDE, dateCourte, dateHeureZurich, demandeEnRetard, demandeOuverte, equipeDe,
-  libelleDe, nomPersonne, poleDuRole, tonDe, trierChambres, useChambres, useDemandes, useDemandesJournal, useSejours,
+  libelleDe, nomPersonne, poleDuRole, quandLisible, tonDe, trierChambres, useChambres, useDemandes, useDemandesJournal, useSejours,
 } from '../hebergement/hotelData.js';
 import { Champ, Liste, Vide, h } from '../hebergement/hotelUi.jsx';
 
@@ -55,6 +58,8 @@ export default function Demandes({ user, etablissement }) {
   const chambres = useChambres(etabId);
   const sejours = useSejours(etabId);
   const equipe = React.useMemo(() => equipeDe(etabId), [etabId]);
+  // Lot 6b : les demandes courantes de la maison (Réglages, Demandes).
+  const { reglages: reglagesDemandes } = useReglagesModule(etabId, 'demandes');
 
   const [pole, setPole] = React.useState(() => poleDuRole(role) || 'tous');
   const [vue, setVue] = React.useState('a_traiter');
@@ -89,8 +94,12 @@ export default function Demandes({ user, etablissement }) {
     return res;
   };
 
+  // Lot 6b : un pôle sans demande ouverte n'a pas d'onglet, sauf le pôle
+  // choisi et celui de la personne (huit onglets avant, dont trois vides).
+  const monPole = poleDuRole(role);
   const ongletsPoles = [{ id: 'tous', label: <><span>Tous</span>{nbParPole('tous') ? <><span aria-hidden="true"> </span><span>{nbParPole('tous')}</span></> : null}</> },
-    ...POLES.map((p) => ({ id: p.id, label: <><span>{p.label}</span>{nbParPole(p.id) ? <><span aria-hidden="true"> </span><span>{nbParPole(p.id)}</span></> : null}</> }))];
+    ...POLES.filter((p) => nbParPole(p.id) > 0 || p.id === pole || p.id === monPole)
+      .map((p) => ({ id: p.id, label: <><span>{p.label}</span>{nbParPole(p.id) ? <><span aria-hidden="true"> </span><span>{nbParPole(p.id)}</span></> : null}</> }))];
 
   const etatLecture = demandes.status === 'absent' ? 'Les demandes ne sont pas encore activées sur la base de données.'
     : demandes.status === 'error' ? 'Les demandes n\'ont pas pu être lues. Nouvel essai en cours…' : null;
@@ -107,6 +116,7 @@ export default function Demandes({ user, etablissement }) {
             </Btn>
             <SegmentedTabs size="sm" tabs={[{ id: 'a_traiter', label: 'À traiter' }, { id: 'faites', label: 'Faites et annulées' }]} active={vue} onChange={setVue} />
             <SearchToggle value={recherche} onChange={setRecherche} placeholder="Titre, chambre, hôte…" />
+            <LigneRegler section="demandes" user={user} etablissement={etablissement} className="" style={{ marginLeft: 'auto' }} />
           </div>
           <SegmentedTabs tabs={ongletsPoles} active={pole} onChange={setPole} retourLigne />
           {etatLecture && <Vide>{etatLecture}</Vide>}
@@ -116,7 +126,7 @@ export default function Demandes({ user, etablissement }) {
           {liste.length > 0 && (
             <Liste>
               {liste.map((dm) => (
-                <LigneDemande key={dm.id} demande={dm} chambre={chambreDe(dm.chambreId)} hote={hoteDe(dm.sejourId)} maintenant={maintenant} onClick={() => setFicheId(dm.id)} />
+                <LigneDemande key={dm.id} demande={dm} chambre={chambreDe(dm.chambreId)} hote={hoteDe(dm.sejourId)} maintenant={maintenant} aujourdhui={aujourdhui} onClick={() => setFicheId(dm.id)} />
               ))}
             </Liste>
           )}
@@ -127,6 +137,7 @@ export default function Demandes({ user, etablissement }) {
         <DemandeForm
           demande={form.demande} chambres={trierChambres(chambres.rows.filter((c) => c.actif))} sejours={sejours.rows} demandes={demandes}
           etabId={etabId} roleParDefaut={poleDuRole(role)} aujourdhui={aujourdhui} user={user}
+          courantes={form.demande ? [] : trierCourantes(reglagesDemandes.categories, poleDuRole(role))}
           onClose={() => setForm(null)}
           onCree={() => journal.reload()}
         />
@@ -145,18 +156,21 @@ export default function Demandes({ user, etablissement }) {
   );
 }
 
-function LigneDemande({ demande: dm, chambre, hote, maintenant, onClick }) {
+function LigneDemande({ demande: dm, chambre, hote, maintenant, aujourdhui, onClick }) {
   const retard = demandeEnRetard(dm, maintenant);
+  // Lot 6b : chaque donnée a son mot (chambre, hôte, « pris par »), et une
+  // échéance proche se lit « aujourd'hui 15:00 » au lieu de « 22.11.2026 15:00 ».
+  const quand = quandLisible(dm.echeance, aujourdhui);
   return (
     <button type="button" className="tdb-lien" style={{ ...h.ligne, ...(dm.escaladee || retard ? h.ligneEtat : null) }} onClick={onClick} data-demande={dm.id}>
       <span style={h.ligneGauche}>
         <span style={h.nomHote} data-no-translate>{dm.titre}</span>
         <span style={h.detail}>
           <span>{libelleDe(POLES, dm.pole)}</span>
-          {chambre && <><span aria-hidden="true"> </span><span>Chambre</span> <span data-no-translate>{chambre.numero}</span></>}
-          {hote && <><span aria-hidden="true"> </span><span data-no-translate>{hote}</span></>}
-          {dm.assigneeA && <><span aria-hidden="true"> </span><span data-no-translate>{nomPersonne(dm.assigneeA)}</span></>}
-          {dm.echeance && <><span aria-hidden="true"> </span><span style={retard ? { color: 'var(--danger-text)', fontWeight: 500 } : null}>{retard ? 'En retard' : 'Pour le'}</span> <span data-no-translate>{dateHeureZurich(dm.echeance)}</span></>}
+          {chambre && <>, <span>chambre</span> <span data-no-translate>{chambre.numero}</span></>}
+          {hote && <>, <span data-no-translate>{hote}</span></>}
+          {dm.assigneeA && <>, <span>pris par</span> <span data-no-translate>{nomPersonne(dm.assigneeA)}</span></>}
+          {quand && <>, <span style={retard ? { color: 'var(--danger-text)', fontWeight: 500 } : null}>{retard ? 'en retard depuis' : 'pour'}</span> {quand.jour ? <span>{quand.jour}</span> : <span data-no-translate>{quand.date}</span>} <span data-no-translate>{quand.heure}</span></>}
         </span>
       </span>
       <span style={h.ligneDroite}>
@@ -188,13 +202,21 @@ function versIso(local) {
   return new Date(utcDevine - decalage).toISOString();
 }
 
-function DemandeForm({ demande, chambres, sejours, demandes, etabId, roleParDefaut, aujourdhui, user, onClose, onCree }) {
+function DemandeForm({ demande, chambres, sejours, demandes, etabId, roleParDefaut, aujourdhui, user, courantes = [], onClose, onCree }) {
   const [f, setF] = React.useState(() => demande
     ? { ...demande, chambreId: demande.chambreId || '', sejourId: demande.sejourId || '', echeanceLocale: versLocal(demande.echeance) }
     : { titre: '', detail: '', origine: 'hote', pole: roleParDefaut && roleParDefaut !== 'reception' ? 'reception' : 'etages', priorite: 'normale', chambreId: '', sejourId: '', echeanceLocale: '', photoUrl: null });
   const [erreur, setErreur] = React.useState('');
   const [enCours, setEnCours] = React.useState(false);
   const champ = (k) => (ev) => setF((p) => ({ ...p, [k]: ev.target.value }));
+  // Lot 6b : un toucher sur une demande courante remplit la demande, son pôle,
+  // sa priorité et son échéance (maintenant plus le délai de la maison).
+  const [courante, setCourante] = React.useState('');
+  const choisirCourante = (c) => {
+    setCourante(c.libelle);
+    const echeance = echeanceDepuis(c.delai_minutes);
+    setF((p) => ({ ...p, titre: c.libelle, pole: c.pole, priorite: c.priorite, echeanceLocale: echeance ? versLocal(echeance) : '' }));
+  };
   const sejoursDeLaChambre = f.chambreId
     ? sejours.filter((s) => s.chambreId === f.chambreId && (s.statut === 'prevu' || s.statut === 'en_maison' || s.depart >= aujourdhui)).slice(0, 20)
     : [];
@@ -238,9 +260,37 @@ function DemandeForm({ demande, chambres, sejours, demandes, etabId, roleParDefa
         </>
       )}
     >
+      {courantes.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={h.sousTitre}>Demandes courantes</div>
+          <div className="segmented-tabs segmented-tabs--retour" role="group" aria-label="Demandes courantes" style={{ maxWidth: '100%' }}>
+            {courantes.map((c) => (
+              <button
+                key={c.libelle}
+                type="button"
+                className={`segmented-tab${courante === c.libelle ? ' is-active' : ''}`}
+                aria-pressed={courante === c.libelle}
+                onClick={() => choisirCourante(c)}
+              >
+                <span data-no-translate>{c.libelle}</span>
+              </button>
+            ))}
+          </div>
+          {courante && (() => {
+            const c = courantes.find((x) => x.libelle === courante);
+            return c ? (
+              <div style={h.detail}>
+                <span>{libelleDe(POLES, c.pole)}</span>, <span>{libelleDe(PRIORITES, c.priorite).toLowerCase()}</span>
+                {c.delai_minutes ? <>, <span>à faire dans</span> <span data-no-translate>{delaiLisible(c.delai_minutes)}</span></> : null}.
+                {' '}<span>Choisissez la chambre, puis envoyez.</span>
+              </div>
+            ) : null;
+          })()}
+        </div>
+      )}
       <div style={h.grille}>
         <Champ label="Demande" large>
-          <input style={h.saisie} value={f.titre} onChange={champ('titre')} autoFocus placeholder="Oreiller en plus, douche qui fuit…" />
+          <input style={h.saisie} value={f.titre} onChange={(ev) => { setCourante(''); champ('titre')(ev); }} autoFocus={!courantes.length} placeholder="Oreiller en plus, douche qui fuit…" />
         </Champ>
         <Champ label="Pour quel pôle">
           <select style={h.saisie} value={f.pole} onChange={champ('pole')}>

@@ -40,3 +40,25 @@ test('rien à dire : une phrase, jamais un texte inventé', () => {
   const r = brouillonPassation({ aujourdhui: '2026-11-18', prochain: { jour: '2026-11-18', service: 'soir' } });
   assert.equal(r.texte, "Ce soir : aucune réservation pour l'instant.");
 });
+
+// Lot 6b : le pôle choisit les rubriques.
+test('par pôle : la réception lit l\'hôtel, jamais les pertes de la cuisine', () => {
+  const donnees = {
+    aujourdhui: '2026-11-22',
+    prochain: { jour: '2026-11-23', service: 'midi' },
+    pertes: [{ produit: 'beurre blanc', quantite: 0.5, unite: 'l', motif: 'Surproduction' }],
+    tachesRestantes: ['Préparer les arrivées du lendemain'],
+    hotel: { arriveesDemain: 2, departsDemain: 1, demandes: [{ titre: 'Fuite sous le lavabo', priorite: 'urgente' }, { titre: 'Taxi', priorite: 'normale' }], aFaire: 3, horsService: ['304'], ordres: [] },
+  };
+  const reception = brouillonPassation({ ...donnees, pole: 'reception' });
+  assert.equal(reception.texte, [
+    'Demain : 2 arrivées et 1 départ.',
+    '2 demandes ouvertes, dont Fuite sous le lavabo.',
+    'Tâches non faites : Préparer les arrivées du lendemain.',
+  ].join('\n'));
+  const etages = brouillonPassation({ ...donnees, pole: 'etages', tachesRestantes: [] });
+  assert.equal(etages.texte, ['Demain : 2 arrivées et 1 départ.', '3 chambres restent à faire.', 'Hors service : chambre 304.'].join('\n'));
+  const cuisine = brouillonPassation({ ...donnees, pole: 'cuisine' });
+  assert.ok(cuisine.texte.startsWith('Pertes du jour'));
+  assert.ok(!cuisine.texte.includes('Demain : 2 arrivées'));
+});

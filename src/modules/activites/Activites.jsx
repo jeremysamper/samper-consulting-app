@@ -17,6 +17,7 @@ import {
   useActivites, useChambres, useConsommations, useForfaitDroits, useForfaits, useInscriptions, useSejours,
 } from '../hebergement/hotelData.js';
 import { estDirectionHotel } from '../hebergement/gardesHotel.js';
+import InscriptionsSejour from './InscriptionsSejour.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Activités (branche Hôtel, lot H5) : le programme (une activité, ses places,
@@ -40,7 +41,14 @@ function useAujourdhui() {
   return jour;
 }
 
-const activiteVide = (jour) => ({ titre: '', description: '', lieu: '', jour, debut: '10:00', fin: '11:00', places: '', prix: '', inclusForfait: true, responsable: '', annulee: false });
+const activiteVide = (jour) => ({ titre: '', description: '', lieu: '', jour, debut: '10:00', fin: '11:00', places: '', prix: '', inclusForfait: true, responsable: '', annulee: false, repetition: 'aucune' });
+
+// Lot 6b : une activité qui revient se crée une fois pour la semaine ou le mois.
+const REPETITIONS = [
+  { id: 'aucune', label: 'Une seule fois', jours: [0] },
+  { id: 'jour', label: 'Chaque jour pendant une semaine', jours: [0, 1, 2, 3, 4, 5, 6] },
+  { id: 'semaine', label: 'Chaque semaine pendant un mois', jours: [0, 7, 14, 21] },
+];
 
 function ActiviteForm({ activite, equipe, activites, aujourdhui, onClose }) {
   const [f, setF] = React.useState(() => (activite
@@ -60,10 +68,19 @@ function ActiviteForm({ activite, equipe, activites, aujourdhui, onClose }) {
       places: String(f.places).trim() === '' ? null : Math.max(1, parseInt(f.places, 10) || 1),
       prix: Number(String(f.prix).replace(',', '.')) || 0, inclus_forfait: !!f.inclusForfait, responsable: f.responsable || null, annulee: !!f.annulee,
     };
-    const res = activite ? await activites.modifier(activite.id, valeurs) : await activites.inserer(valeurs);
+    let res;
+    const decalages = activite ? [0] : (REPETITIONS.find((r) => r.id === f.repetition) || REPETITIONS[0]).jours;
+    if (activite) res = await activites.modifier(activite.id, valeurs);
+    else {
+      for (const d of decalages) {
+        const jour = zurichAjouterJours(f.jour, d);
+        res = await activites.inserer({ ...valeurs, debut: isoZurich(jour, f.debut), fin: isoZurich(jour, f.fin) });
+        if (res.error) break;
+      }
+    }
     setEnCours(false);
     if (res.error) { setErreur(res.error); return; }
-    notify(activite ? 'Activité modifiée.' : 'Activité créée.', 'success');
+    notify(activite ? 'Activité modifiée.' : decalages.length > 1 ? `${decalages.length} activités créées.` : 'Activité créée.', 'success');
     onClose();
   };
   return (
@@ -87,6 +104,13 @@ function ActiviteForm({ activite, equipe, activites, aujourdhui, onClose }) {
         <Champ label="Fin"><input type="time" style={h.saisie} value={f.fin} onChange={champ('fin')} /></Champ>
         <Champ label="Places (vide = sans limite)"><input type="number" min="1" inputMode="numeric" style={h.saisie} value={f.places} onChange={champ('places')} /></Champ>
         <Champ label="Prix par personne (CHF, 0 = inclus)"><input type="number" min="0" step="0.05" inputMode="decimal" style={h.saisie} value={f.prix} onChange={champ('prix')} /></Champ>
+        {!activite && (
+          <Champ label="Répéter">
+            <select style={h.saisie} value={f.repetition} onChange={champ('repetition')}>
+              {REPETITIONS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+            </select>
+          </Champ>
+        )}
         <Champ label="Responsable">
           <select style={h.saisie} value={f.responsable} onChange={champ('responsable')} data-no-translate>
             <option value="">{'Personne'}</option>
@@ -270,6 +294,7 @@ function Pointage({ sejours, chambres, forfaits, droits, consommations, activite
             </div>
             <button type="button" style={st.secondaire} onClick={() => libre.trim() && pointer(null, libre.trim())} disabled={enCours || !libre.trim()}>Pointer</button>
           </div>
+          <InscriptionsSejour sejour={sejour} activites={activites} inscriptions={inscriptions} aujourdhui={aujourdhui} />
           {mesActivites.length > 0 && (
             <div>
               <div style={h.sousTitre}>Itinéraire</div>

@@ -3,6 +3,8 @@ import { Btn } from '../../components/ui/index.jsx';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { Puce } from '../dashboard/tableauUi.jsx';
 import { Champ, h } from './hotelUi.jsx';
+import { chambreProposee } from './checkin.js';
+import InscriptionsSejour from '../activites/InscriptionsSejour.jsx';
 import {
   PENSIONS, STATUTS_SEJOUR, chf, dateCourte, libelleDe, personnes, sejourEnConflit, tonDe, trierChambres,
 } from './hotelData.js';
@@ -16,14 +18,21 @@ import {
 // étages le note par déclencheur.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tarifs = [], forfaits = [], restaurant = null, note = null, onNote, onOccupants, onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
+export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tarifs = [], forfaits = [], restaurant = null, note = null, activites = null, onNote, onOccupants, onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
   const s = sejour;
-  const [chambreId, setChambreId] = React.useState(s.chambreId || '');
+  // Lot 6b : un séjour prévu sans chambre se voit proposer une chambre libre
+  // (catégorie du tarif, prête d'abord) : le check-in l'affecte en un toucher.
+  const proposee = React.useMemo(
+    () => (s.statut === 'prevu' && !s.chambreId ? chambreProposee(chambres, sejours, s, tarifs.find((t) => t.id === s.tarifId) || null) : null),
+    [chambres, sejours, s, tarifs],
+  );
+  const [chambreId, setChambreId] = React.useState(s.chambreId || proposee?.id || '');
   const [erreur, setErreur] = React.useState('');
   const [enCours, setEnCours] = React.useState('');
-  React.useEffect(() => { setChambreId(s.chambreId || ''); }, [s.chambreId]);
+  React.useEffect(() => { setChambreId(s.chambreId || proposee?.id || ''); }, [s.chambreId, proposee?.id]);
 
   const chambre = chambres.find((c) => c.id === s.chambreId) || null;
+  const chambreChoisie = chambres.find((c) => c.id === chambreId) || null;
   const chambresTriees = trierChambres(chambres.filter((c) => c.actif || c.id === s.chambreId));
   const libre = (c) => !sejourEnConflit(sejours, { ...s, chambreId: c.id });
   const occupe = s.statut === 'prevu' || s.statut === 'en_maison';
@@ -46,8 +55,17 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tar
     return onAffecter(s, cible);
   });
 
+  // Le check-in affecte d'abord la chambre choisie (ou proposée) si elle
+  // n'est pas encore celle du séjour, puis passe le séjour en maison.
   const checkIn = () => lancer('check_in', async () => {
-    if (!s.chambreId) return { error: 'Affecte une chambre avant le check-in.' };
+    const cible = chambreId || s.chambreId || null;
+    if (!cible) return { error: 'Choisissez une chambre avant le check-in.' };
+    if (cible !== s.chambreId) {
+      const conflit = sejourEnConflit(sejours, { ...s, chambreId: cible });
+      if (conflit) return { error: `Chambre déjà prise du ${dateCourte(conflit.arrivee)} au ${dateCourte(conflit.depart)} (${conflit.nomHote}).` };
+      const res = await onAffecter(s, cible);
+      if (res?.error) return res;
+    }
     return onStatut(s, 'en_maison');
   });
 
@@ -79,7 +97,11 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tar
             </button>
           )}
           {s.statut === 'prevu' && (
-            <button type="button" style={st.primaire} onClick={checkIn} disabled={!!enCours}>Check-in</button>
+            <button type="button" style={st.primaire} onClick={checkIn} disabled={!!enCours}>
+              {chambreChoisie && chambreChoisie.id !== s.chambreId
+                ? <><span>Check-in en chambre</span> <span data-no-translate>{chambreChoisie.numero}</span></>
+                : <span>Check-in</span>}
+            </button>
           )}
           {s.statut === 'en_maison' && (
             <button type="button" style={st.primaire} onClick={() => lancer('check_out', () => onCheckOut(s).then((r) => ({ ...r, fermer: !r?.error })))} disabled={!!enCours}>
@@ -118,7 +140,11 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tar
             <Btn small onClick={() => onCreerHote?.(s)}>Créer la fiche</Btn>
           </span>, false);
         })()}
-        {ligne('Chambre', chambre ? chambre.numero : 'Pas encore affectée', !!chambre)}
+        {ligne('Chambre', chambre
+          ? chambre.numero
+          : proposee
+            ? <><span>Pas encore affectée.</span> <span>Proposée :</span> <span data-no-translate>{proposee.numero}{proposee.categorie ? ` (${proposee.categorie})` : ''}</span></>
+            : 'Pas encore affectée', !!chambre)}
         {ligne('Personnes', <><span>{s.nbAdultes}</span> <span>{s.nbAdultes > 1 ? 'adultes' : 'adulte'}</span>{s.nbEnfants ? <>, <span>{s.nbEnfants}</span> <span>{s.nbEnfants > 1 ? 'enfants' : 'enfant'}</span></> : null}</>)}
         {ligne('Pension', libelleDe(PENSIONS, s.pension))}
         {(s.tarifId || s.prixNuit != null) && (() => {
@@ -158,6 +184,9 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tar
           )}
         </div>
       )}
+
+      {/* Lot 6b : inscrire le séjour à une activité, en un toucher. */}
+      {activites && occupe && <InscriptionsSejour sejour={s} activites={activites.liste} inscriptions={activites.inscriptions} aujourdhui={aujourdhui} />}
 
       {/* Lot H4 : note de séjour et registre des personnes hébergées (lecture avec le droit Modifier). */}
       {peutGerer && (onNote || onOccupants) && (

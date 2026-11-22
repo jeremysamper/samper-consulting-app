@@ -1,11 +1,15 @@
 import React from 'react';
-import { History, Moon, Package, Shirt } from 'lucide-react';
-import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
+import { History, Package, Shirt } from 'lucide-react';
+import { BoutonActions, Choix, Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { Btn } from '../../components/ui/index.jsx';
+import { LigneRegler } from '../../components/ui/BoutonRegler.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
+import { lingeDepart, tempsMenage } from '../../utils/reglagesModules.js';
 import { zurichToday } from '../../utils/zurichTime.js';
+import { dureeLisible, etapeSuivante, natureMenage, ordreTournee } from './tournee.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
 import {
   STATUTS_MENAGE, STATUTS_OBJET, TYPES_LINGE, dateCourte, dateHeureZurich, equipeDe, libelleDe, nomPersonne,
@@ -61,18 +65,41 @@ export default function Etages({ user, etablissement }) {
   const [historiquePour, setHistoriquePour] = React.useState(null);
   const [minibarPour, setMinibarPour] = React.useState(null);
   const [lingePour, setLingePour] = React.useState(null);
+  const [attribuerPour, setAttribuerPour] = React.useState(null);
   const [objetForm, setObjetForm] = React.useState(null); // { objet: null | objet }
   const [enCours, setEnCours] = React.useState('');
+  // Lot 6b : temps de ménage et linge par type de chambre (Réglages, Étages).
+  const { reglages: reglagesEtages } = useReglagesModule(etabId, 'etages');
 
   const actives = trierChambres(chambres.rows.filter((c) => c.actif));
   const sejourDe = (c) => sejourDeLaChambre(sejours.rows, c.id, aujourdhui);
   const arriveAujourdhui = (c) => sejours.rows.some((s) => s.chambreId === c.id && s.statut === 'prevu' && s.arrivee === aujourdhui);
   const enTete = actives.filter(arriveAujourdhui);
-  const etages = [...new Set(actives.map((c) => c.etage || ''))];
+  // Une chambre d'arrivée est dite une fois, en tête : elle ne revient pas dans son étage.
+  const parEtage = actives.filter((c) => !arriveAujourdhui(c));
+  const etages = [...new Set(parEtage.map((c) => c.etage || ''))];
   const turndownDe = (c) => turndown.rows.find((t) => t.chambreId === c.id && t.jour === aujourdhui) || null;
+  const natureDe = (c) => natureMenage(c, sejours.rows, aujourdhui);
+  const minutesDe = (c) => tempsMenage(reglagesEtages, c.categorie, natureDe(c) === 'recouche' ? 'recouche' : 'depart');
+  const totalMinutes = (liste) => liste.filter((c) => c.statutMenage === 'a_faire' || c.statutMenage === 'en_cours').reduce((n, c) => n + minutesDe(c), 0);
   // Ma tournée : mes chambres, les arrivées du jour puis les « à faire » d'abord.
   const maTournee = actives.filter((c) => c.attribueeA === user?.id)
     .sort((a, b) => (Number(arriveAujourdhui(b)) - Number(arriveAujourdhui(a))) || (ORDRE_MENAGE[a.statutMenage] - ORDRE_MENAGE[b.statutMenage]));
+  // Lot 6b : la tournée du jour, préparée depuis les arrivées, les départs et
+  // les recouches : les chambres à faire que personne n'a encore prises.
+  const tourneeDuJour = ordreTournee(actives.filter((c) => !c.attribueeA), sejours.rows, aujourdhui);
+  const prendreTournee = async () => {
+    setEnCours('tournee');
+    let erreur = null;
+    for (const c of tourneeDuJour) {
+      // Une chambre à la fois : la base vérifie chaque écriture (RLS).
+      const res = await chambres.modifier(c.id, { attribuee_a: user?.id || null });
+      if (res.error) { erreur = res.error; break; }
+    }
+    setEnCours('');
+    if (erreur) notify(erreur, 'error');
+    else notify(tourneeDuJour.length > 1 ? `${tourneeDuJour.length} chambres prises.` : 'Chambre prise.', 'success');
+  };
 
   const changer = async (c, valeurs, message) => {
     setEnCours(c.id);
@@ -106,9 +133,9 @@ export default function Etages({ user, etablissement }) {
 
   const nbParStatut = STATUTS_MENAGE.map((s) => ({ ...s, n: actives.filter((c) => c.statutMenage === s.id).length }));
   const props = (c) => ({
-    chambre: c, sejour: sejourDe(c), aujourdhui, equipe, peutGerer, peutInspecter, enCours: enCours === c.id, turndownFait: !!turndownDe(c),
-    onStatut: changerStatut, onAttribuer: attribuer, onHistorique: setHistoriquePour, onMinibar: setMinibarPour, onLinge: setLingePour, onTurndown: basculerTurndown,
-    arrivee: arriveAujourdhui(c),
+    chambre: c, sejour: sejourDe(c), aujourdhui, peutGerer, peutInspecter, enCours: enCours === c.id || enCours === 'tournee', turndownFait: !!turndownDe(c),
+    onStatut: changerStatut, onAttribuer: setAttribuerPour, onHistorique: setHistoriquePour, onMinibar: setMinibarPour, onLinge: setLingePour, onTurndown: basculerTurndown,
+    arrivee: arriveAujourdhui(c), minutes: minutesDe(c), nature: natureDe(c),
   });
 
   const etatLecture = chambres.status === 'absent' ? 'Le socle hôtel n\'est pas encore activé sur la base de données.'
@@ -119,7 +146,10 @@ export default function Etages({ user, etablissement }) {
       {!etabId && <Vide>Aucun établissement sélectionné.</Vide>}
       {etabId && (
         <>
-          <SegmentedTabs tabs={ONGLETS} active={onglet} onChange={setOnglet} />
+          <div className="module-actions">
+            <SegmentedTabs tabs={ONGLETS} active={onglet} onChange={setOnglet} />
+            <LigneRegler section="etages" user={user} etablissement={etablissement} className="" style={{ marginLeft: 'auto' }} />
+          </div>
           {etatLecture && <Vide>{etatLecture}</Vide>}
         </>
       )}
@@ -143,19 +173,42 @@ export default function Etages({ user, etablissement }) {
             </Groupe>
           )}
           {etages.map((etage) => (
-            <Groupe key={etage || 'sans'} titre={etage ? <><span>Étage</span> <span data-no-translate>{etage}</span></> : <span>Sans étage</span>}>
-              {actives.filter((c) => (c.etage || '') === etage).map((c) => <CarteChambre key={c.id} {...props(c)} />)}
+            <Groupe key={etage || 'sans'} titre={!etage ? <span>Sans étage</span> : /\p{L}/u.test(etage) ? <span data-no-translate>{etage}</span> : <><span>Étage</span> <span data-no-translate>{etage}</span></>}>
+              {parEtage.filter((c) => (c.etage || '') === etage).map((c) => <CarteChambre key={c.id} {...props(c)} />)}
             </Groupe>
           ))}
         </>
       )}
 
-      {etabId && onglet === 'tournee' && (
-        maTournee.length
-          ? <Groupe titre={<><span>{maTournee.length}</span> <span>{maTournee.length > 1 ? 'chambres attribuées, les arrivées puis les « à faire » d\'abord' : 'chambre attribuée'}</span></>}>
-            {maTournee.map((c) => <CarteChambre key={c.id} {...props(c)} />)}
-          </Groupe>
-          : <Vide>Aucune chambre ne t'est attribuée aujourd'hui.</Vide>
+      {etabId && onglet === 'tournee' && maTournee.length > 0 && (
+        <Groupe titre={<>
+          <span>{maTournee.length}</span> <span>{maTournee.length > 1 ? 'chambres attribuées' : 'chambre attribuée'}</span>
+          {totalMinutes(maTournee) > 0 && <>, <span>environ</span> <span data-no-translate>{dureeLisible(totalMinutes(maTournee))}</span> <span>de ménage</span></>}
+        </>}>
+          {maTournee.map((c) => <CarteChambre key={c.id} {...props(c)} />)}
+        </Groupe>
+      )}
+      {etabId && onglet === 'tournee' && !maTournee.length && peutGerer && tourneeDuJour.length > 0 && (
+        <>
+          <div style={e.tournee} data-cadre="">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: '1 1 240px' }}>
+              <span style={e.tourneeTitre}>La tournée du jour</span>
+              <span style={h.detail}>
+                <span>{tourneeDuJour.length}</span> <span>{tourneeDuJour.length > 1 ? 'chambres à faire' : 'chambre à faire'}</span>, <span>environ</span> <span data-no-translate>{dureeLisible(totalMinutes(tourneeDuJour))}</span>.
+                {' '}<span>Les arrivées d'abord, puis les départs, puis les recouches.</span>
+              </span>
+            </div>
+            <Btn variant="primary" onClick={prendreTournee} disabled={!!enCours} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
+              {tourneeDuJour.length > 1
+                ? <><span>Prendre ces</span><span data-no-translate>{tourneeDuJour.length}</span><span>chambres</span></>
+                : <span>Prendre cette chambre</span>}
+            </Btn>
+          </div>
+          <div style={e.grille}>{tourneeDuJour.map((c) => <CarteChambre key={c.id} {...props(c)} />)}</div>
+        </>
+      )}
+      {etabId && onglet === 'tournee' && !maTournee.length && (!peutGerer || !tourneeDuJour.length) && (
+        <Vide>{peutGerer ? 'Toutes les chambres sont faites ou déjà prises.' : 'Aucune chambre ne vous est attribuée aujourd\'hui.'}</Vide>
       )}
 
       {etabId && onglet === 'objets' && (
@@ -189,7 +242,15 @@ export default function Etages({ user, etablissement }) {
       {lingePour && (
         <LingeForm
           chambre={lingePour.sansChambre ? null : lingePour} chambres={actives} linge={linge} user={user} aujourdhui={aujourdhui}
+          jeu={lingePour.sansChambre || natureDe(lingePour) === 'recouche' ? {} : lingeDepart(reglagesEtages, lingePour.categorie)}
           onClose={() => setLingePour(null)}
+        />
+      )}
+      {attribuerPour && (
+        <AttribuerChambre
+          chambre={attribuerPour} equipe={equipe}
+          onClose={() => setAttribuerPour(null)}
+          onChoisir={async (userId) => { const res = await attribuer(attribuerPour, userId); if (!res.error) setAttribuerPour(null); }}
         />
       )}
       {objetForm && (
@@ -211,7 +272,7 @@ function Groupe({ titre, children }) {
   );
 }
 
-function CarteChambre({ chambre: c, sejour: s, aujourdhui, equipe, peutGerer, peutInspecter, enCours, turndownFait, onStatut, onAttribuer, onHistorique, onMinibar, onLinge, onTurndown, arrivee }) {
+function CarteChambre({ chambre: c, sejour: s, aujourdhui, peutGerer, peutInspecter, enCours, turndownFait, onStatut, onAttribuer, onHistorique, onMinibar, onLinge, onTurndown, arrivee, minutes, nature }) {
   const occupant = s ? (
     <span style={h.detail}>
       {s.statut === 'en_maison'
@@ -221,6 +282,12 @@ function CarteChambre({ chambre: c, sejour: s, aujourdhui, equipe, peutGerer, pe
       <span data-no-translate>{s.nomHote}</span>
     </span>
   ) : <span style={h.detail}>Libre</span>;
+  // Lot 6b : une seule action visible, l'étape suivante du ménage ; le reste
+  // (autre statut, attribution, minibar, linge, couverture, historique) passe
+  // dans « Gérer ». Avant : cinq statuts, une liste et quatre boutons par carte.
+  const etape = peutGerer ? etapeSuivante(c.statutMenage, peutInspecter) : null;
+  const aFaire = c.statutMenage === 'a_faire' || c.statutMenage === 'en_cours';
+  const autresStatuts = STATUTS_MENAGE.filter((x) => x.id !== c.statutMenage && x.id !== etape?.statut && (x.id !== 'inspectee' || peutInspecter));
 
   return (
     <div style={{ ...h.carte, ...(arrivee ? e.carteArrivee : null) }} data-cadre="" data-chambre={c.numero} data-statut={c.statutMenage}>
@@ -231,74 +298,66 @@ function CarteChambre({ chambre: c, sejour: s, aujourdhui, equipe, peutGerer, pe
           <Puce ton={tonDe(STATUTS_MENAGE, c.statutMenage)}>{libelleDe(STATUTS_MENAGE, c.statutMenage)}</Puce>
         </span>
       </div>
-      {c.categorie && <span style={h.detail} data-no-translate>{c.categorie}</span>}
+      {(c.categorie || aFaire) && (
+        <span style={h.detail}>
+          {c.categorie && <span data-no-translate>{c.categorie}</span>}
+          {c.categorie && aFaire && <span>, </span>}
+          {aFaire && <><span>{nature === 'recouche' ? 'recouche' : 'ménage complet'}</span> <span data-no-translate>{dureeLisible(minutes)}</span></>}
+        </span>
+      )}
       {occupant}
       {c.statutMenage === 'hors_service' && c.horsServiceMotif && (
         <span style={h.detail}><span>Motif :</span> <span data-no-translate>{c.horsServiceMotif}</span></span>
       )}
-      {c.attribueeA && !peutGerer && (
-        <span style={h.detail}><span>Attribuée à</span> <span data-no-translate>{nomPersonne(c.attribueeA)}</span></span>
-      )}
-      {peutGerer && (
-        <div style={e.statuts} role="group" aria-label={`Statut de la chambre ${c.numero}`}>
-          {STATUTS_MENAGE.map((st_) => {
-            const actif = st_.id === c.statutMenage;
-            const interdit = st_.id === 'inspectee' && !peutInspecter;
-            return (
-              <button
-                key={st_.id}
-                type="button"
-                className="ui-btn"
-                aria-pressed={actif}
-                disabled={enCours || interdit}
-                title={interdit ? 'Demande le droit Inspecter les chambres' : undefined}
-                onClick={() => onStatut(c, st_.id)}
-                style={{ ...e.bouton, ...(actif ? e.boutonActif : null), ...(interdit ? { opacity: 0.5, cursor: 'default' } : null) }}
-              >
-                {st_.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        {peutGerer && (
-          <div style={{ flex: '1 1 140px', minWidth: 0 }}>
-            <Champ label="Attribuée à">
-              <select style={h.saisie} value={c.attribueeA || ''} onChange={(ev) => onAttribuer(c, ev.target.value)} disabled={enCours}>
-                <option value="">Pas attribuée</option>
-                {equipe.map((p) => <option key={p.id} value={p.id}>{p.nom}</option>)}
-                {c.attribueeA && !equipe.some((p) => p.id === c.attribueeA) && <option value={c.attribueeA}>{nomPersonne(c.attribueeA)}</option>}
-              </select>
-            </Champ>
-          </div>
+      <span style={h.detail}>
+        {c.attribueeA ? <><span>Attribuée à</span> <span data-no-translate>{nomPersonne(c.attribueeA)}</span></> : <span>Pas attribuée</span>}
+      </span>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 'auto' }}>
+        {etape && (
+          <button type="button" className="ui-btn" style={e.etape} disabled={enCours} onClick={() => onStatut(c, etape.statut)}>
+            {etape.label}
+          </button>
         )}
-      </div>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        {peutGerer && (
-          <>
-            <Btn onClick={() => onMinibar(c)} disabled={enCours}>
-              <Package size={16} strokeWidth={1.75} aria-hidden="true" />
-              <span>Minibar</span>
-            </Btn>
-            <Btn onClick={() => onLinge(c)} disabled={enCours}>
-              <Shirt size={16} strokeWidth={1.75} aria-hidden="true" />
-              <span>Linge</span>
-            </Btn>
-            {/* Bouton à bascule : Btn ne transmet pas aria-pressed, la pilule
-                est écrite ici avec les jetons du secondaire. */}
-            <button type="button" className="ui-btn ui-btn--ghost" style={{ ...e.action, ...(turndownFait ? e.actionActive : null) }} onClick={() => onTurndown(c)} disabled={enCours} aria-pressed={turndownFait}>
-              <Moon size={16} strokeWidth={1.75} aria-hidden="true" />
-              <span>{turndownFait ? 'Couverture faite' : 'Couverture du soir'}</span>
-            </button>
-          </>
+        {peutGerer ? (
+          <BoutonActions
+            id={`chambre-gerer-${c.id}`}
+            label="Gérer"
+            style={e.gerer}
+            disabled={enCours}
+            titre={<><span>Chambre</span> <span data-no-translate>{c.numero}</span></>}
+            sections={[
+              { titre: 'Statut', items: autresStatuts.map((x) => ({ titre: x.label, onClick: () => onStatut(c, x.id) })) },
+              { titre: 'La chambre', items: [
+                { titre: c.attribueeA ? 'Changer la personne' : 'Attribuer la chambre', onClick: () => onAttribuer(c) },
+                { titre: 'Linge', onClick: () => onLinge(c) },
+                { titre: 'Minibar', onClick: () => onMinibar(c) },
+                { titre: turndownFait ? 'Annuler la couverture du soir' : 'Couverture du soir faite', onClick: () => onTurndown(c) },
+                { titre: 'Historique', onClick: () => onHistorique(c) },
+              ] },
+            ]}
+          />
+        ) : (
+          <Btn onClick={() => onHistorique(c)}>
+            <History size={16} strokeWidth={1.75} aria-hidden="true" />
+            <span>Historique</span>
+          </Btn>
         )}
-        <Btn onClick={() => onHistorique(c)} ariaLabel={`Historique de la chambre ${c.numero}`}>
-          <History size={16} strokeWidth={1.75} aria-hidden="true" />
-          <span>Historique</span>
-        </Btn>
       </div>
     </div>
+  );
+}
+
+// Lot 6b : attribuer une chambre, en un toucher sur la personne.
+function AttribuerChambre({ chambre, equipe, onChoisir, onClose }) {
+  return (
+    <Fenetre id="chambre-attribuer" titre={<><span>Attribuer la chambre</span> <span data-no-translate>{chambre.numero}</span></>} onClose={onClose} largeur={480}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        {equipe.map((p) => (
+          <Choix key={p.id} titre={<span data-no-translate>{p.nom}</span>} actif={chambre.attribueeA === p.id} onClick={() => onChoisir(p.id)} />
+        ))}
+        {chambre.attribueeA && <Choix titre="Personne" detail="La chambre n'est plus attribuée." onClick={() => onChoisir(null)} />}
+      </div>
+    </Fenetre>
   );
 }
 
@@ -404,17 +463,26 @@ function MinibarChambre({ chambre, sejour, minibar, peutGerer, user, onClose }) 
   );
 }
 
-// Un mouvement de linge : sale sorti ou propre entré, par type et quantité.
-function LingeForm({ chambre, chambres, linge, user, aujourdhui, onClose }) {
+// Un mouvement de linge : sale sorti ou propre entré, une quantité par type.
+// Lot 6b : au départ d'un hôte, les quantités viennent du linge réglé pour la
+// catégorie de la chambre (Réglages, Étages) : un toucher les enregistre.
+function LingeForm({ chambre, chambres, linge, user, aujourdhui, jeu = {}, onClose }) {
   const [chambreId, setChambreId] = React.useState(chambre?.id || '');
   const [sens, setSens] = React.useState('sale');
-  const [type, setType] = React.useState('draps');
-  const [quantite, setQuantite] = React.useState(1);
+  const [quantites, setQuantites] = React.useState(() => Object.fromEntries(TYPES_LINGE.map((t) => [t.id, jeu[t.id] || 0])));
   const [erreur, setErreur] = React.useState('');
+  const [enCours, setEnCours] = React.useState(false);
+  const prerempli = Object.values(jeu).some((n) => n > 0);
   const enregistrer = async () => {
     setErreur('');
-    const res = await linge.inserer({ chambre_id: chambreId || null, jour: aujourdhui, sens, type, quantite: Math.max(1, quantite), par: user?.id || null });
-    if (res.error) { setErreur(res.error); return; }
+    const lignes = TYPES_LINGE.filter((t) => (quantites[t.id] || 0) > 0);
+    if (!lignes.length) { setErreur('Indiquez au moins une quantité.'); return; }
+    setEnCours(true);
+    for (const t of lignes) {
+      const res = await linge.inserer({ chambre_id: chambreId || null, jour: aujourdhui, sens, type: t.id, quantite: quantites[t.id], par: user?.id || null });
+      if (res.error) { setEnCours(false); setErreur(res.error); return; }
+    }
+    setEnCours(false);
     notify('Linge noté.', 'success');
     onClose();
   };
@@ -422,11 +490,12 @@ function LingeForm({ chambre, chambres, linge, user, aujourdhui, onClose }) {
     <Fenetre
       id="linge-form"
       titre={chambre ? <><span>Linge de la chambre</span> <span data-no-translate>{chambre.numero}</span></> : 'Linge'}
+      sousTitre={prerempli ? "Le linge d'un départ pour cette catégorie de chambre. Corrigez si besoin." : undefined}
       onClose={onClose}
       pied={(
         <>
           <button type="button" style={st.secondaire} onClick={onClose}>Annuler</button>
-          <button type="button" style={st.primaire} onClick={enregistrer}>Enregistrer</button>
+          <button type="button" style={st.primaire} onClick={enregistrer} disabled={enCours}>{enCours ? 'Enregistrement…' : 'Enregistrer'}</button>
         </>
       )}
     >
@@ -439,20 +508,18 @@ function LingeForm({ chambre, chambres, linge, user, aujourdhui, onClose }) {
             </select>
           </Champ>
         )}
-        <Champ label="Sens">
+        <Champ label="Sens" large>
           <select style={h.saisie} value={sens} onChange={(ev) => setSens(ev.target.value)}>
             <option value="sale">Sale sorti</option>
             <option value="propre">Propre entré</option>
           </select>
         </Champ>
-        <Champ label="Type">
-          <select style={h.saisie} value={type} onChange={(ev) => setType(ev.target.value)}>
-            {TYPES_LINGE.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
-          </select>
-        </Champ>
-        <Champ label="Quantité">
-          <input type="number" min="1" inputMode="numeric" style={h.saisie} value={quantite} onChange={(ev) => setQuantite(parseInt(ev.target.value, 10) || 1)} />
-        </Champ>
+        {TYPES_LINGE.map((t) => (
+          <Champ key={t.id} label={t.label}>
+            <input type="number" min="0" max="99" inputMode="numeric" style={h.saisie} value={quantites[t.id]}
+              onChange={(ev) => setQuantites((p) => ({ ...p, [t.id]: Math.max(0, parseInt(ev.target.value, 10) || 0) }))} />
+          </Champ>
+        ))}
       </div>
       {erreur && <div style={h.erreur} role="alert">{erreur}</div>}
     </Fenetre>
@@ -635,20 +702,15 @@ const e = {
   carteArrivee: { borderColor: 'var(--accent)' },
   numero: { fontFamily: 'var(--font-num)', fontSize: 'var(--t5)', fontWeight: 'var(--g-chiffre)', lineHeight: 1.05, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   nombre: { fontFamily: 'var(--font-num)', fontSize: 'var(--t4)', fontWeight: 'var(--g-chiffre)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
-  statuts: { display: 'flex', flexWrap: 'wrap', gap: 6 },
-  // Statuts de ménage : un groupe de pilules sur la piste, le statut choisi
-  // en aplat sombre. Taille et retrait de la primitive Btn.
-  bouton: {
-    minHeight: 44, padding: '8px 14px', fontSize: 13, fontFamily: 'var(--font)', fontWeight: 'var(--g2)', cursor: 'pointer',
-    background: 'var(--piste)', color: 'var(--text)', borderRadius: 'var(--r-full)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'transparent', flex: '1 1 auto',
-  },
-  boutonActif: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)', fontWeight: 'var(--g3)' },
-  action: {
-    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: 38, padding: '8px 14px', fontSize: 13, fontFamily: 'var(--font)', fontWeight: 'var(--g2)',
+  // Lot 6b : l'étape suivante et « Gérer », deux pilules secondaires (une
+  // seule pilule sombre par écran : « Prendre ces chambres »).
+  etape: {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', minHeight: 44, padding: '8px 18px', fontSize: 'var(--t2)', fontFamily: 'var(--font)', fontWeight: 'var(--g3)',
     background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderRadius: 'var(--r-full)', cursor: 'pointer',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', flexShrink: 0, whiteSpace: 'nowrap',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', flex: '1 1 auto', whiteSpace: 'nowrap',
   },
-  actionActive: { borderColor: 'var(--accent)', color: 'var(--accent)' },
+  gerer: { ...st.secondaire, minHeight: 44, flex: '0 0 auto' },
+  tournee: { ...h.carte, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
+  tourneeTitre: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' },
   ligneJournal: { display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', padding: '6px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)' },
 };
