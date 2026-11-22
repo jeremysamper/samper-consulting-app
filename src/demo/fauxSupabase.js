@@ -28,7 +28,8 @@ const CLE_ROLE = PREFIXE + 'role';
 // des modules, modèles de mise en place, stocks cibles, livraisons des fournisseurs.
 // v6 (lot 2a, D5) : messages des fils d'équipe (canaux_messages).
 // v7 (lot 6a, D4) : branche Hôtel et Spa, praticienne spa dans l'équipe.
-const VERSION_BASE = 'v7-' + aujourdhui();
+// v8 (lot 6b) : réglages des modules Étages, Demandes et Repas hôtel.
+const VERSION_BASE = 'v8-6b-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 

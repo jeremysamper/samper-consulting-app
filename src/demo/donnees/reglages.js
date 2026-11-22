@@ -43,6 +43,60 @@ export const REGLAGES_MODULES = [
       ],
     },
   },
+  // Lot 6b (migration 20261122_lot6b_reglages_hotel) : la branche Hôtel de la
+  // démo (lot 6a) a ses temps de ménage, ses demandes courantes et la carte du
+  // room service.
+  {
+    module: 'etages',
+    config: {
+      temps_defaut: { depart: 30, recouche: 15 },
+      types: [
+        { categorie: 'Simple', depart: 25, recouche: 12, linge: { draps: 1, serviettes: 2, tapis: 1 } },
+        { categorie: 'Double', depart: 30, recouche: 15, linge: { draps: 2, serviettes: 4, tapis: 1 } },
+        { categorie: 'Twin', depart: 30, recouche: 15, linge: { draps: 2, serviettes: 4, tapis: 1 } },
+        { categorie: 'Junior suite', depart: 45, recouche: 20, linge: { draps: 3, serviettes: 6, peignoirs: 2, tapis: 1 } },
+        { categorie: 'Familiale', depart: 50, recouche: 25, linge: { draps: 4, serviettes: 8, tapis: 2 } },
+      ],
+    },
+  },
+  {
+    module: 'demandes',
+    config: {
+      categories: [
+        { libelle: 'Oreillers en plus', pole: 'etages', priorite: 'normale', delai_minutes: 30 },
+        { libelle: 'Serviettes en plus', pole: 'etages', priorite: 'normale', delai_minutes: 30 },
+        { libelle: 'Peignoirs pour le spa', pole: 'etages', priorite: 'normale', delai_minutes: 45 },
+        { libelle: 'Lit bébé', pole: 'etages', priorite: 'haute', delai_minutes: 60 },
+        { libelle: 'Fuite d\'eau', pole: 'technique', priorite: 'urgente', delai_minutes: 30 },
+        { libelle: 'Chauffage ou climatisation', pole: 'technique', priorite: 'haute', delai_minutes: 60 },
+        { libelle: 'Télévision ou wifi', pole: 'technique', priorite: 'normale', delai_minutes: 120 },
+        { libelle: 'Taxi à commander', pole: 'reception', priorite: 'haute', delai_minutes: 30 },
+        { libelle: 'Départ tardif', pole: 'reception', priorite: 'normale', delai_minutes: 120 },
+        { libelle: 'Table au restaurant', pole: 'restaurant', priorite: 'normale', delai_minutes: 60 },
+        { libelle: 'Repas sans allergène', pole: 'cuisine', priorite: 'haute', delai_minutes: 180 },
+      ],
+    },
+  },
+  {
+    module: 'repas',
+    config: {
+      horaires: {
+        petit_dejeuner: { debut: '07:00', fin: '10:30' },
+        dejeuner: { debut: '12:00', fin: '14:00' },
+        diner: { debut: '18:30', fin: '21:30' },
+      },
+      room_service: { heures: { debut: '11:00', fin: '22:00' }, frais: 5 },
+      carte: [
+        { libelle: 'Club sandwich', prix: 24 },
+        { libelle: 'Salade valaisanne', prix: 22 },
+        { libelle: 'Assiette valaisanne', prix: 28 },
+        { libelle: 'Tarte aux abricots', prix: 9 },
+        { libelle: 'Eau minérale 50 cl', prix: 5 },
+        { libelle: 'Verre de Fendant', prix: 8 },
+        { libelle: 'Café', prix: 4.5 },
+      ],
+    },
+  },
 ].map((r) => ({ etablissement_id: ETAB, updated_at: LE, updated_by: 'demo-patron', ...r }));
 
 export const MEP_MODELES = [

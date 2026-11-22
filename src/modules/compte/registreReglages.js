@@ -92,6 +92,9 @@ export const MODULES = {
   points: 'Points',
   spa: 'Spa',
   hebergement: 'Hébergement',
+  etages: 'Étages',
+  demandes: 'Demandes',
+  repas: 'Repas hôtel',
   activites: 'Activités',
   passations: 'Passations',
   technique: 'Technique',
@@ -384,6 +387,31 @@ export const SECTIONS = [
     garde: (ctx) => ouvreLeModule('hebergement')(ctx) && estDirectionHotel(ctx.user?.role),
     charger: () => import('../hebergement/SectionChambresHotel.jsx'),
     signaux: ['table:chambres'],
+  },
+  // Plan 15, lot 6b (22.11.2026) : trois modules de l'hôtel réglés dans
+  // reglages_modules (migration 20261122_lot6b_reglages_hotel). La RLS de la
+  // table laisse écrire la direction de la maison ; les sections ne sont
+  // proposées qu'à la direction de l'hôtel, comme ses autres réglages.
+  {
+    id: 'etages', libelle: 'Étages', detail: 'Temps de ménage et linge par type de chambre',
+    motsCles: 'ménage temps tournée linge draps serviettes catégorie chambre', groupe: 'modules', portee: 'maison', module: 'etages',
+    garde: (ctx) => ouvreLeModule('etages')(ctx) && estDirectionHotel(ctx.user?.role),
+    charger: () => import('../etages/SectionReglagesEtages.jsx'),
+    signaux: ['reglages_modules:etages', 'table:chambres'],
+  },
+  {
+    id: 'demandes', libelle: 'Demandes', detail: 'Demandes courantes, pôle, priorité et délai',
+    motsCles: 'catégorie délai échéance priorité pôle demande courante', groupe: 'modules', portee: 'maison', module: 'demandes',
+    garde: (ctx) => ouvreLeModule('demandes')(ctx) && estDirectionHotel(ctx.user?.role),
+    charger: () => import('../demandes/SectionReglagesDemandes.jsx'),
+    signaux: ['reglages_modules:demandes'],
+  },
+  {
+    id: 'repas', libelle: 'Repas hôtel', detail: 'Horaires des repas, heures et carte du room service',
+    motsCles: 'horaire petit-déjeuner déjeuner dîner room service carte menu livraison frais', groupe: 'modules', portee: 'maison', module: 'repas',
+    garde: (ctx) => ouvreLeModule('repas')(ctx) && estDirectionHotel(ctx.user?.role),
+    charger: () => import('../repas/SectionReglagesRepas.jsx'),
+    signaux: ['reglages_modules:repas'],
   },
   {
     id: 'activites_forfaits', libelle: 'Activités : forfaits', detail: 'Les forfaits et ce que chacun donne',

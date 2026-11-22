@@ -13,7 +13,123 @@
 // le lisent.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const MODULES_REGLES = ['pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue'];
+// Lot 6b : trois modules de la branche Hôtel (étages, demandes, repas),
+// migration 20261122_lot6b_reglages_hotel.
+export const MODULES_REGLES = ['pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue', 'etages', 'demandes', 'repas'];
+
+// ── Branche Hôtel (lot 6b) ───────────────────────────────────────────────────
+// Identifiants recopiés de hebergement/hotelData.js (ce fichier reste pur, sans
+// React) : mêmes listes que les contraintes de la base.
+export const POLES_IDS = ['reception', 'etages', 'technique', 'cuisine', 'restaurant', 'spa', 'direction'];
+export const PRIORITES_IDS = ['basse', 'normale', 'haute', 'urgente'];
+export const LINGE_IDS = ['draps', 'serviettes', 'peignoirs', 'tapis', 'autre'];
+export const REPAS_IDS = ['petit_dejeuner', 'dejeuner', 'diner'];
+
+// Temps de ménage d'avant le réglage : une demi-heure pour un départ, un quart
+// d'heure pour une recouche (chambre occupée qui reste).
+export const TEMPS_MENAGE_DEFAUT = { depart: 30, recouche: 15 };
+
+// Demandes courantes d'avant le réglage, proposées en tête du formulaire : un
+// toucher remplit la demande, son pôle, sa priorité et son échéance.
+export const CATEGORIES_DEMANDE_DEFAUT = [
+  { libelle: 'Oreillers en plus', pole: 'etages', priorite: 'normale', delai_minutes: 30 },
+  { libelle: 'Serviettes en plus', pole: 'etages', priorite: 'normale', delai_minutes: 30 },
+  { libelle: 'Lit bébé', pole: 'etages', priorite: 'haute', delai_minutes: 60 },
+  { libelle: 'Fuite d\'eau', pole: 'technique', priorite: 'urgente', delai_minutes: 30 },
+  { libelle: 'Chauffage ou climatisation', pole: 'technique', priorite: 'haute', delai_minutes: 60 },
+  { libelle: 'Télévision ou wifi', pole: 'technique', priorite: 'normale', delai_minutes: 120 },
+  { libelle: 'Taxi à commander', pole: 'reception', priorite: 'haute', delai_minutes: 30 },
+  { libelle: 'Départ tardif', pole: 'reception', priorite: 'normale', delai_minutes: 120 },
+  { libelle: 'Repas sans allergène', pole: 'cuisine', priorite: 'haute', delai_minutes: 180 },
+];
+
+const HEURE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const heure = (v) => (typeof v === 'string' && HEURE.test(v) ? v : null);
+const plage = (v) => {
+  if (!v || typeof v !== 'object') return null;
+  const debut = heure(v.debut);
+  const fin = heure(v.fin);
+  return debut && fin && debut < fin ? { debut, fin } : null;
+};
+const montant = (v, max) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max ? Math.round(v * 100) / 100 : null);
+
+function lireEtages(c) {
+  const defaut = c.temps_defaut && typeof c.temps_defaut === 'object' ? c.temps_defaut : {};
+  const temps = {
+    depart: entier(defaut.depart, 5, 240) ?? TEMPS_MENAGE_DEFAUT.depart,
+    recouche: entier(defaut.recouche, 5, 240) ?? TEMPS_MENAGE_DEFAUT.recouche,
+  };
+  const vus = new Set();
+  const types = Array.isArray(c.types)
+    ? c.types.map((t) => {
+      const categorie = texte(t?.categorie, 60);
+      if (!categorie || vus.has(categorie.toLowerCase())) return null;
+      vus.add(categorie.toLowerCase());
+      const linge = {};
+      if (t.linge && typeof t.linge === 'object') {
+        LINGE_IDS.forEach((id) => { const n = entier(t.linge[id], 0, 50); if (n) linge[id] = n; });
+      }
+      return {
+        categorie,
+        depart: entier(t.depart, 5, 240) ?? temps.depart,
+        recouche: entier(t.recouche, 5, 240) ?? temps.recouche,
+        linge,
+      };
+    }).filter(Boolean).slice(0, 20)
+    : [];
+  return { temps_defaut: temps, types };
+}
+
+function lireDemandes(c) {
+  if (!Array.isArray(c.categories)) return { categories: CATEGORIES_DEMANDE_DEFAUT, categoriesReglees: false };
+  const vus = new Set();
+  const categories = c.categories.map((x) => {
+    const libelle = texte(x?.libelle, 60);
+    if (!libelle || vus.has(libelle.toLowerCase()) || !POLES_IDS.includes(x?.pole)) return null;
+    vus.add(libelle.toLowerCase());
+    return {
+      libelle,
+      pole: x.pole,
+      priorite: PRIORITES_IDS.includes(x.priorite) ? x.priorite : 'normale',
+      delai_minutes: entier(x.delai_minutes, 5, 10080),
+    };
+  }).filter(Boolean).slice(0, 40);
+  return { categories, categoriesReglees: true };
+}
+
+function lireRepas(c) {
+  const horaires = {};
+  REPAS_IDS.forEach((id) => { horaires[id] = plage(c.horaires && typeof c.horaires === 'object' ? c.horaires[id] : null); });
+  const rs = c.room_service && typeof c.room_service === 'object' ? c.room_service : {};
+  const vus = new Set();
+  const carte = Array.isArray(c.carte)
+    ? c.carte.map((a) => {
+      const libelle = texte(a?.libelle, 80);
+      const prix = montant(a?.prix, 1000);
+      if (!libelle || prix == null || vus.has(libelle.toLowerCase())) return null;
+      vus.add(libelle.toLowerCase());
+      return { libelle, prix };
+    }).filter(Boolean).slice(0, 80)
+    : [];
+  return {
+    horaires,
+    room_service: { heures: plage(rs.heures), frais: montant(rs.frais, 100) ?? 0 },
+    carte,
+  };
+}
+
+// Temps de ménage d'une chambre selon sa catégorie et ce qui s'y passe.
+export function tempsMenage(reglagesEtages, categorie, nature) {
+  const t = (reglagesEtages?.types || []).find((x) => x.categorie.toLowerCase() === String(categorie || '').toLowerCase());
+  const base = t || reglagesEtages?.temps_defaut || TEMPS_MENAGE_DEFAUT;
+  return nature === 'recouche' ? base.recouche : base.depart;
+}
+
+// Linge d'un départ pour une catégorie de chambre : { draps: 2, ... } ou {}.
+export function lingeDepart(reglagesEtages, categorie) {
+  const t = (reglagesEtages?.types || []).find((x) => x.categorie.toLowerCase() === String(categorie || '').toLowerCase());
+  return t ? t.linge : {};
+}
 
 // Qui écrit ces réglages : même liste que les policies de reglages_modules,
 // mep_modeles, commande_cibles et que le déclencheur des colonnes de réglage
@@ -134,6 +250,12 @@ export function lireReglagesModule(module, config) {
         : [];
       return { categories: listeTextes(c.categories, 40, 60) || [], unites };
     }
+    case 'etages':
+      return lireEtages(c);
+    case 'demandes':
+      return lireDemandes(c);
+    case 'repas':
+      return lireRepas(c);
     default:
       return {};
   }
