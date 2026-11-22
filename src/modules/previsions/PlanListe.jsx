@@ -1,15 +1,24 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, GripVertical } from 'lucide-react';
+import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
+import { readText, writeText, UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { metaStatut } from './statutsReservation.js';
 import { enRetard, hhmm, minutesDe } from '../salle/planTemps.js';
 import { allergiesDe } from './PlanTable.jsx';
+import { grouperParQuart, estTerminee } from './listeParHeure.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // La colonne des réservations du service, à côté du plan de salle.
 //
-// Ce que l'hôte regarde, dans cet ordre : ce qui reste à confirmer, ce qui
-// reste à placer, qui est attendu (et qui est en retard), qui est à table,
-// qui est parti. Une carte blanche, des lignes séparées par un filet doux.
+// Deux ordres, au choix de l'hôte et gardés sur l'appareil (22.11.2026) :
+//   - par heure (d'origine) : un groupe par quart d'heure d'arrivée, avec ses
+//     couverts et une barre qui montre le rythme des arrivées ; le quart
+//     d'heure en cours est marqué. En tête, ce qui reste à confirmer et à
+//     placer, en compte ;
+//   - par état : ce qui reste à confirmer, ce qui reste à placer, qui est
+//     attendu (et qui est en retard), qui est à table.
+// Dans les deux, les partis et les no-shows sont repliés en bas. Une carte
+// blanche, des lignes séparées par un filet doux.
 //
 // Toucher une ligne la choisit : sa table s'allume sur le plan. Une
 // réservation sans table se place alors au toucher d'une table (les tables
@@ -153,13 +162,44 @@ function Section({ titre, n, detail, ton, children }) {
   );
 }
 
+// En-tête d'un quart d'heure : l'heure, la barre du rythme (part du quart
+// d'heure le plus chargé du service), les couverts. Le quart d'heure en cours
+// prend l'encre du repère du jour.
+function EnteteQuart({ groupe }) {
+  const { debut, couverts: n, part, encours } = groupe;
+  return (
+    <div
+      data-plan-quart={debut ?? 'sans'}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 0 4px', minHeight: 40 }}
+    >
+      <span style={{
+        fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t3)', flexShrink: 0,
+        color: encours ? 'var(--onglet)' : 'var(--text)',
+      }}>
+        {debut == null ? <span>Sans heure</span> : <span data-no-translate="">{hhmm(debut)}</span>}
+      </span>
+      <span aria-hidden="true" style={{ flex: 1, minWidth: 24, height: 4, borderRadius: 'var(--r-full)', background: 'var(--piste)', overflow: 'hidden' }}>
+        <span style={{ display: 'block', height: '100%', width: `${Math.max(4, Math.round(part * 100))}%`, borderRadius: 'var(--r-full)', background: encours ? 'var(--onglet)' : 'var(--text3)' }} />
+      </span>
+      <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)', flexShrink: 0 }}>
+        <span data-no-translate="">{n}</span> <span>{n > 1 ? 'couverts' : 'couvert'}</span>
+      </span>
+    </div>
+  );
+}
+
+const ORDRES = [{ id: 'heure', label: 'Par heure' }, { id: 'etat', label: 'Par état' }];
+const lireOrdre = () => (readText(UI_STORAGE_KEYS.resaListeOrdre, 'heure') === 'etat' ? 'etat' : 'heure');
+
 export default function PlanListe({
   resas, tablesParResa, minute, canEdit, glisser = true, choisieId = null, dragResaId = null, retraitPossible = false,
   propositions = new Map(), onChoisir, onPointerDownResa, onPlacer, onStatut, onTraiter,
 }) {
   const [voirTermines, setVoirTermines] = useState(false);
+  const [ordre, setOrdre] = useState(lireOrdre);
+  const changerOrdre = (id) => { setOrdre(id); writeText(UI_STORAGE_KEYS.resaListeOrdre, id); };
   const placee = (r) => (tablesParResa.get(r.id) || []).length > 0;
-  const termine = (r) => r.statut === 'parti' || r.statut === 'no_show';
+  const termine = estTerminee;
   const demandes = resas.filter((r) => r.statut === 'demande');
   const aPlacer = resas.filter((r) => !termine(r) && r.statut !== 'demande' && !placee(r));
   const attendus = resas.filter((r) => (r.statut || 'confirme') === 'confirme' && placee(r));
@@ -202,16 +242,39 @@ export default function PlanListe({
           Aucune réservation sur ce service.
         </div>
       )}
-      {demandes.length > 0 && (
+      {resas.length > 0 && (
+        <SegmentedTabs size="sm" tabs={ORDRES} active={ordre} onChange={changerOrdre} style={{ margin: '2px 0 4px' }} />
+      )}
+      {ordre === 'heure' && (demandes.length > 0 || aPlacer.length > 0) && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', padding: '6px 0 0', fontSize: 'var(--t1)' }}>
+          {demandes.length > 0 && (
+            <span style={{ color: 'var(--warning-text)', fontWeight: 'var(--g2)' }}>
+              <span>À confirmer</span> <span data-no-translate="">{demandes.length}</span>
+            </span>
+          )}
+          {aPlacer.length > 0 && (
+            <span style={{ color: 'var(--text2)', fontWeight: 'var(--g2)' }}>
+              <span>À placer</span> <span data-no-translate="">{aPlacer.length}</span>
+            </span>
+          )}
+        </div>
+      )}
+      {ordre === 'heure' && grouperParQuart(resas, minute).map((g) => (
+        <section key={g.debut ?? 'sans'} style={{ display: 'flex', flexDirection: 'column' }}>
+          <EnteteQuart groupe={g} />
+          {g.resas.map(ligne)}
+        </section>
+      ))}
+      {ordre === 'etat' && demandes.length > 0 && (
         <Section titre="À confirmer" n={demandes.length} detail={pluriel(couverts(demandes), 'couvert')} ton="alerte">{demandes.map(ligne)}</Section>
       )}
-      {aPlacer.length > 0 && (
+      {ordre === 'etat' && aPlacer.length > 0 && (
         <Section titre="À placer" n={aPlacer.length} detail={pluriel(couverts(aPlacer), 'couvert')}>{aPlacer.map(ligne)}</Section>
       )}
-      {attendus.length > 0 && (
+      {ordre === 'etat' && attendus.length > 0 && (
         <Section titre="Attendus" n={attendus.length} detail={pluriel(couverts(attendus), 'couvert')}>{attendus.map(ligne)}</Section>
       )}
-      {aTable.length > 0 && (
+      {ordre === 'etat' && aTable.length > 0 && (
         <Section titre="À table" n={aTable.length} detail={pluriel(couverts(aTable), 'couvert')}>{aTable.map(ligne)}</Section>
       )}
       {termines.length > 0 && (
