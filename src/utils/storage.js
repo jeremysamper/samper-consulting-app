@@ -26,7 +26,10 @@ export const UI_STORAGE_KEYS = {
   totpRappelJusqua: 'sc_totp_rappel_jusqua',
   // Version d'icônes pour laquelle l'appareil a lu le rappel « rafraîchir la
   // vignette de l'écran d'accueil » (iOS uniquement).
-  iconTipAck: 'sc_icon_tip_ack'
+  iconTipAck: 'sc_icon_tip_ack',
+  // Ordre de la liste des réservations à côté du plan de salle : 'heure'
+  // (d'origine) ou 'etat'. Préférence de l'appareil.
+  resaListeOrdre: 'sc_resa_liste_ordre'
 };
 
 export function readJson(key, fallback = null) {
