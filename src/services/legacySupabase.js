@@ -1801,7 +1801,9 @@ export function installLegacySupabase() {
       return (data || []).map(this.mapDocumentFromDB);
     },
 
-    async createFolder({ etablissementId, parentId, nom, userId }) {
+    // rolesVisibles (lot 5) : un dossier né réservé l'est dès l'insertion,
+    // jamais visible un instant (consultant et patron, déclencheur).
+    async createFolder({ etablissementId, parentId, nom, userId, rolesVisibles }) {
       const payload = {
         id: 'dir-' + Date.now() + Math.floor(Math.random() * 1000),
         etablissement_id: etablissementId,
@@ -1809,6 +1811,7 @@ export function installLegacySupabase() {
         type: 'folder',
         nom,
         uploaded_by: userId || null,
+        ...(Array.isArray(rolesVisibles) ? { roles_visibles: rolesVisibles } : {}),
       };
       const { data, error } = await client.from('documents').insert(payload).select().single();
       if (error) throw error;

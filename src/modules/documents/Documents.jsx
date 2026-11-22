@@ -215,8 +215,7 @@ const Documents = ({ user, etablissement }) => {
     if (dossier) { setSearch(''); setCurrentFolder(dossier.id); return; }
     if (!canWrite || !legacySB || !peutReglerVisibilite(user.role)) { notifyLegacy(`Aucun dossier « ${d.nom} » pour le moment.`, 'info'); return; }
     const reserve = DOSSIERS_RESERVES.includes(cleNom(d.nom));
-    legacySB.db.createFolder({ etablissementId: etabId, parentId: null, nom: d.nom, userId: user.id })
-      .then((dossierCree) => (reserve ? legacySB.db.setDocumentRolesVisibles(dossierCree.id, []) : dossierCree))
+    legacySB.db.createFolder({ etablissementId: etabId, parentId: null, nom: d.nom, userId: user.id, rolesVisibles: reserve ? [] : undefined })
       .then((cree) => {
         setAllDocs(prev => (prev.some(x => x.id === cree.id) ? prev : [...prev, cree]));
         setSearch('');
