@@ -5957,6 +5957,25 @@ export const UI_GLOSSARY = {
   "La case garde sa couleur et son picto, sans photo.": "The tile keeps its colour and icon, without a photo.",
   "Les articles en attente passent au mode suivant": "Pending items move to the next course",
   "Les articles déjà envoyés restent en cuisine": "Items already sent stay in the kitchen",
+  // KDS : récap de la passe, onglets et postes (lot L4, 22.11.2026)
+  "Terminés": "Done",
+  "Chaud": "Hot",
+  "Froid": "Cold",
+  "Pâtisserie": "Pastry",
+  "Postes": "Stations",
+  "Bons du passe": "Pass tickets",
+  "Rien à faire": "Nothing to do",
+  "Aucun bon terminé pour l’instant": "No finished tickets yet",
+  "Les derniers bons terminés restent ici, pour revue": "The latest finished tickets stay here for review",
+  "Rien pour ce poste": "Nothing for this station",
+  "Les autres postes ont encore des bons": "Other stations still have tickets",
+  "Tout est parti pour ce poste": "Everything has gone out for this station",
+  "Poste en cuisine": "Kitchen station",
+  "Au KDS, chaque poste ne voit que les plats de ses catégories.": "On the KDS, each station only sees the dishes of its categories.",
+  "poste chaud": "hot station",
+  "poste froid": "cold station",
+  "poste pâtisserie": "pastry station",
+  "poste bar": "bar station",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

@@ -9,7 +9,9 @@ import ListeTriable from './ListeTriable.jsx';
 import SectionTerminal from './tpe/SectionTerminal.jsx';
 import { pictoParId } from './boutons.js';
 import { ChoixCouleur, ChoixPicto } from './ChoixHabillage.jsx';
-import { CATEGORIES_DEFAUT, ID_A_TRIER, estCategorieDefaut, estCategorieVirtuelle, rangerArticles } from './categories.js';
+import {
+  CATEGORIES_DEFAUT, ID_A_TRIER, POSTES, estCategorieDefaut, estCategorieVirtuelle, rangerArticles,
+} from './categories.js';
 import {
   DELAIS_NO_SHOW, FAMILLES_PAIEMENT, FORMAT_NUMERO_TVA, HEURES_BASCULE, HEURES_FIN_JOURNEE, LIBELLES_FAMILLES,
   MODES_SUIVRE_MAX, REGLAGES_DEFAUT, fusionnerReglages, libelleModeDefaut,
@@ -305,6 +307,7 @@ function SectionCategories({ rangement, aucuneMaison, ecrire, idReel, categories
                 <span style={st.compte}>
                   <span style={st.num}>{c.articles.length}</span> <span>{c.articles.length > 1 ? 'produits' : 'produit'}</span>
                   {c.actif === false && <>{', '}<span>masquée</span></>}
+                  {c.poste && POSTES.some((p) => p.id === c.poste) && <>{', '}<span>{POSTES.find((p) => p.id === c.poste).phrase}</span></>}
                 </span>
               </span>
               <Btn variant="ghost" onClick={() => setEditee(c.id)} style={st.btn44}>Modifier</Btn>
@@ -335,6 +338,7 @@ function EditeurCategorie({ categorie, vide, onEnregistrer, onSupprimer, onFerme
   const [nom, setNom] = React.useState(categorie.nom);
   const [couleur, setCouleur] = React.useState(categorie.couleur || null);
   const [picto, setPicto] = React.useState(categorie.picto || null);
+  const [poste, setPoste] = React.useState(categorie.poste || null);
   return (
     <div style={st.editeur}>
       <Input value={nom} onChange={(e) => setNom(e.target.value.slice(0, 40))} placeholder="Nom de la catégorie" style={st.champ} />
@@ -342,6 +346,22 @@ function EditeurCategorie({ categorie, vide, onEnregistrer, onSupprimer, onFerme
       <ChoixCouleur valeur={couleur} onChange={setCouleur} />
       <div style={st.sousTitre}>Pictogramme</div>
       <ChoixPicto valeur={picto} onChange={setPicto} />
+      {/* Poste en cuisine (lot L4) : le KDS montre les plats de la catégorie
+          dans l'onglet de ce poste. Sans poste, ils restent dans « Tous ». */}
+      <div style={st.sousTitre}>Poste en cuisine</div>
+      <div style={st.rang} role="group" aria-label="Poste en cuisine" data-poste-categorie="">
+        {[{ id: null, label: 'Aucun' }, ...POSTES].map((p) => (
+          <Btn
+            key={p.id || 'aucun'}
+            variant={poste === p.id ? 'primary' : 'ghost'}
+            onClick={() => setPoste(p.id)}
+            style={st.btn44}
+          >
+            {p.label}
+          </Btn>
+        ))}
+      </div>
+      <p style={st.aide}>Au KDS, chaque poste ne voit que les plats de ses catégories.</p>
       <div style={{ ...st.rang, justifyContent: 'space-between', marginTop: 6 }}>
         {vide
           ? <Btn variant="danger" onClick={onSupprimer} style={st.btn44}>Supprimer</Btn>
@@ -350,7 +370,7 @@ function EditeurCategorie({ categorie, vide, onEnregistrer, onSupprimer, onFerme
           <Btn variant="ghost" onClick={onFermer} style={st.btn44}>Annuler</Btn>
           <Btn
             variant="primary"
-            onClick={() => { const n = nom.trim(); if (n) onEnregistrer({ nom: n, couleur, picto }); }}
+            onClick={() => { const n = nom.trim(); if (n) onEnregistrer({ nom: n, couleur, picto, poste }); }}
             style={st.btn44}
           >
             Enregistrer

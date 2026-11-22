@@ -8,7 +8,10 @@
 // un bon neuf par envoi ou réclamation, les plats tenus suivent le dernier bon.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { construireBons, rangerBons, lignesALire, cleDuBon, RANG_TENU } from './bons.js';
+import {
+  construireBons, rangerBons, lignesALire, cleDuBon, RANG_TENU,
+  POSTE_TOUS, postesEnService, posteParPlat, filtrerParPoste, recapitulatif,
+} from './bons.js';
 
 const T1 = '11111111-1111-4111-8111-111111111111';
 const L = (n) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(n).padStart(12, '0')}`;
@@ -146,4 +149,107 @@ test('terminées : fenêtre de temps et plus récentes d\'abord', () => {
   const bons = construireBons([mk('a', '2026-11-11T08:00:00Z'), mk('b', '2026-11-11T10:00:00Z'), mk('c', '2026-11-09T10:00:00Z')], lignes);
   const { terminees } = rangerBons(bons, { maintenant: Date.parse('2026-11-11T12:00:00Z') });
   assert.deepEqual(terminees.map((b) => b.tableNo), ['b', 'a']);
+});
+
+// ── Lot L4 (22.11.2026) : récap de la passe et onglets de poste ──
+// Une table au froid et au chaud, une autre au chaud seulement, et un bon
+// Lightspeed dont les plats n'ont pas de poste.
+const T2 = '22222222-2222-4222-8222-222222222222';
+const lignesPostes = new Map([
+  [L(1), { suite: 1, ordre: '2026-11-11T10:59:01Z', platId: 'p-tartare' }],
+  [L(2), { suite: 1, ordre: '2026-11-11T10:59:02Z', platId: 'p-salade' }],
+  [L(3), { suite: 2, ordre: '2026-11-11T10:59:03Z', platId: 'p-entrecote' }],
+  [L(4), { suite: 3, ordre: '2026-11-11T10:59:04Z', platId: 'p-moelleux' }],
+  [L(5), { suite: 1, ordre: '2026-11-11T11:01:00Z', platId: 'p-entrecote' }],
+  [L(6), { suite: 1, ordre: '2026-11-11T11:01:01Z', platId: null }],
+]);
+const postesTest = new Map([
+  ['p-tartare', 'froid'], ['p-salade', 'froid'], ['p-entrecote', 'chaud'], ['p-moelleux', 'patisserie'],
+]);
+const passe = () => [
+  ...envoi(),
+  { ...bonCaisse('B', 1, '2026-11-11T11:01:00Z', [
+    plat(5, 'Entrecôte', { qty: 2, modifiers: [{ name: 'saignant', quantity: 1 }] }),
+    plat(6, 'Pain maison'),
+  ]), lsCheckUuid: `caisse:${T2}:1:abcdef`, tableNo: 'T4' },
+  { id: 'LS', lsCheckUuid: 'ls-check-1', tableNo: '21', couverts: 2, openedAt: '2026-11-11T11:02:00Z', status: 'open', completedAt: null,
+    items: [{ id: 'ls1', lineKey: 'ls:1', nom: 'Fondue', qty: 2, modifiers: [], firedAt: null, active: true, aSuivre: false, bumpStatus: 'pending' }] },
+];
+
+test('récap : chaque plat compté sur tous les bons, à faire et tenu à part', () => {
+  const { direct, aSuivre } = recapitulatif(construireBons(passe(), lignesPostes, postesTest));
+  // Entrecôte : 2 à faire à la table T4, 1 tenue à la table T12. Les
+  // précisions de cuisson ne séparent pas les plats.
+  assert.deepEqual(direct.map((x) => [x.nom, x.qte]), [
+    ['Entrecôte', 2], ['Fondue', 2], ['Pain maison', 1], ['Salade', 1], ['Tartare', 1],
+  ]);
+  assert.deepEqual(aSuivre.map((x) => [x.nom, x.qte]), [['Entrecôte', 1], ['Moelleux', 1]]);
+});
+
+test('récap : un plat fait ou annulé ne compte plus, une quantité absente vaut 1', () => {
+  const orders = envoi();
+  orders[0].items[0] = { ...orders[0].items[0], bumpStatus: 'bumped' };
+  orders[0].items[1] = { ...orders[0].items[1], qty: null };
+  orders[0].items[3] = { ...orders[0].items[3], active: false, aSuivre: false };
+  const { direct, aSuivre } = recapitulatif(construireBons(orders, lignes));
+  assert.deepEqual(direct.map((x) => [x.nom, x.qte]), [['Salade', 1]]);
+  assert.deepEqual(aSuivre.map((x) => [x.nom, x.qte]), [['Entrecôte', 1]]);
+  assert.deepEqual(recapitulatif([]), { direct: [], aSuivre: [] });
+});
+
+test('postes en service : ceux d\'au moins une catégorie, dans l\'ordre des onglets', () => {
+  assert.deepEqual(postesEnService([{ poste: 'bar' }, { poste: null }, { poste: 'chaud' }, { poste: 'chaud' }]).map((p) => p.id), ['chaud', 'bar']);
+  assert.deepEqual(postesEnService([]), []);
+  assert.deepEqual(postesEnService(null), []);
+});
+
+test('poste d\'un plat : la catégorie choisie, puis le nom de la catégorie de la carte', () => {
+  const categories = [
+    { id: 'c-ent', nom: 'Entrées', ordre: 0, poste: 'froid' },
+    { id: 'c-pla', nom: 'Plats', ordre: 1, poste: 'chaud' },
+    { id: 'c-des', nom: 'Desserts', ordre: 2, poste: null },
+    { id: 'c-bar', nom: 'Apéritifs', ordre: 3, poste: 'bar' },
+  ];
+  const boutons = { 'p-spritz': { plat_id: 'p-spritz', categorie_id: 'c-bar' } };
+  const plats = new Map([['p-tartare', 'Entrées'], ['p-filet', 'Plats'], ['p-tarte', 'Desserts'], ['p-spritz', 'Boissons'], ['p-pain', null]]);
+  const postes = posteParPlat({ categories, boutons, plats });
+  assert.equal(postes.get('p-tartare'), 'froid');
+  assert.equal(postes.get('p-filet'), 'chaud');
+  // Le bouton range le spritz aux Apéritifs, malgré sa catégorie Boissons.
+  assert.equal(postes.get('p-spritz'), 'bar');
+  // Catégorie sans poste, et plat sans catégorie (rangé dans Plats par défaut).
+  assert.equal(postes.has('p-tarte'), false);
+  assert.equal(postes.get('p-pain'), 'chaud');
+  // Sans catégorie de la maison, celles du code servent : aucun poste.
+  assert.equal(posteParPlat({ categories: [], boutons: {}, plats }).size, 0);
+});
+
+test('onglet de poste : seulement ses plats, et l\'état du bon recalculé sur eux', () => {
+  const orders = passe();
+  // Le froid de la table T12 est parti ; le chaud de T4 reste à faire.
+  orders[0].items[0] = { ...orders[0].items[0], bumpStatus: 'bumped', bumpedAt: '2026-11-11T11:05:00Z' };
+  orders[0].items[1] = { ...orders[0].items[1], bumpStatus: 'bumped', bumpedAt: '2026-11-11T11:06:00Z' };
+  const bons = construireBons(orders, lignesPostes, postesTest);
+  assert.equal(filtrerParPoste(bons, POSTE_TOUS), bons);
+  assert.equal(filtrerParPoste(bons, null), bons);
+
+  const froid = filtrerParPoste(bons, 'froid');
+  assert.deepEqual(froid.map((b) => [b.tableNo, b.etat]), [['T12', 'pret']]);
+  assert.equal(froid[0].complet.etat, 'attente');
+  assert.deepEqual(froid[0].sections.flatMap((x) => x.plats).map((p) => p.nom), ['Tartare', 'Salade']);
+
+  const chaud = filtrerParPoste(bons, 'chaud');
+  assert.deepEqual(chaud.map((b) => [b.tableNo, b.etat]), [['T12', 'attente'], ['T4', 'faire']]);
+  // Le pain (libellé sans plat) et la fondue Lightspeed n'ont pas de poste :
+  // ils ne paraissent que dans « Tous ».
+  assert.deepEqual(chaud[1].sections.flatMap((x) => x.plats).map((p) => p.nom), ['Entrecôte']);
+  assert.equal(filtrerParPoste(bons, 'bar').length, 0);
+  const tous = bons.flatMap((b) => b.sections.flatMap((x) => x.plats));
+  assert.deepEqual(tous.filter((p) => p.poste === null).map((p) => p.nom).sort(), ['Fondue', 'Pain maison']);
+
+  // Rangés, puis récap du poste : le chaud à faire est l'entrecôte de T4.
+  const { file, fin } = rangerBons(chaud, { maintenant: Date.parse('2026-11-11T11:10:00Z') });
+  assert.deepEqual(file.map((b) => b.tableNo), ['T4']);
+  assert.deepEqual(fin.map((b) => b.tableNo), ['T12']);
+  assert.deepEqual(recapitulatif(chaud).direct.map((x) => [x.nom, x.qte]), [['Entrecôte', 2]]);
 });

@@ -28,6 +28,15 @@ export const CATEGORIES_DEFAUT = [
   { nom: 'Autres', picto: null },
 ];
 
+// Postes de cuisine d'une catégorie (caisse_categories.poste, lot L4) : le
+// KDS en tire ses onglets de poste. Une catégorie sans poste vaut null.
+export const POSTES = [
+  { id: 'chaud', label: 'Chaud', phrase: 'poste chaud' },
+  { id: 'froid', label: 'Froid', phrase: 'poste froid' },
+  { id: 'patisserie', label: 'Pâtisserie', phrase: 'poste pâtisserie' },
+  { id: 'bar', label: 'Bar', phrase: 'poste bar' },
+];
+
 export const ID_TOUT = '_tout';
 export const ID_A_TRIER = '_boissons';
 export const ID_AUTRES = '_autres';

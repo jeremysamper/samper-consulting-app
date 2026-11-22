@@ -109,11 +109,63 @@ export const s = {
   terminerBtn: { width: '100%', minHeight: 56, borderRadius: 'var(--r)', border: '1px solid var(--accent-bd)', background: 'var(--accent-light)', color: 'var(--accent)', cursor: 'pointer', font: 'inherit', fontSize: 18, fontWeight: 700 },
   terminerDiscret: { ...boutonNu, alignSelf: 'center', minHeight: 44, padding: '0 14px', color: 'var(--text2)', fontSize: 15, fontWeight: 600, textDecoration: 'underline' },
 
-  // ── Terminées ──
-  doneWrap: { marginTop: 10, flexShrink: 0 },
-  doneHead: { display: 'flex', alignItems: 'baseline', gap: 8, fontSize: 17, fontWeight: 700, color: 'var(--text2)', marginBottom: 10 },
-  doneHeadSub: { fontWeight: 400, color: 'var(--text3)', fontSize: 14 },
-  doneGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10 },
+  // ── Rangée des vues : onglets « En cours » et « Terminés », puis les
+  // postes. Elle passe sur deux lignes quand la place manque ; au téléphone,
+  // elle reste sur une ligne qui défile ──
+  vues: (telephone) => ({
+    display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, maxWidth: '100%', flexShrink: 0,
+    flexWrap: telephone ? 'nowrap' : 'wrap', overflowX: telephone ? 'auto' : 'visible',
+    overscrollBehaviorX: 'contain', WebkitOverflowScrolling: 'touch',
+  }),
+  onglets: { display: 'inline-flex', alignItems: 'center', gap: 4, padding: 4, borderRadius: 999, background: 'var(--piste)', flexShrink: 0 },
+  onglet: (actif) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 16px',
+    border: 'none', borderRadius: 999, cursor: 'pointer', font: 'inherit', fontSize: 17, fontWeight: 600, whiteSpace: 'nowrap',
+    background: actif ? 'var(--accent)' : 'transparent', color: actif ? 'var(--on-accent)' : 'var(--text)',
+  }),
+  ongletNum: { fontFamily: 'var(--font-num)', fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums' },
+  // Les postes : une rangée de pilules qui défile seule quand elle déborde.
+  postes: (telephone) => ({
+    display: 'flex', alignItems: 'center', gap: 8, minWidth: 0,
+    flex: telephone ? '0 0 auto' : '1 1 auto', maxWidth: telephone ? 'none' : '100%',
+    overflowX: telephone ? 'visible' : 'auto', overscrollBehaviorX: 'contain', WebkitOverflowScrolling: 'touch',
+  }),
+  poste: (actif) => ({
+    flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 52, padding: '0 18px',
+    borderWidth: 1, borderStyle: 'solid', borderColor: actif ? 'var(--accent)' : 'var(--border2)', borderRadius: 999,
+    background: actif ? 'var(--accent)' : 'var(--surface)', color: actif ? 'var(--on-accent)' : 'var(--text)',
+    cursor: 'pointer', font: 'inherit', fontSize: 17, fontWeight: 600, whiteSpace: 'nowrap',
+  }),
+  posteNum: { fontFamily: 'var(--font-num)', fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums' },
+
+  // ── Récap de la passe : deux colonnes côte à côte, l'une sous l'autre
+  // quand la place manque. Dans chaque colonne, le titre et le total à
+  // gauche, les plats à droite sur deux lignes qui défilent en largeur ──
+  recap: { display: 'flex', flexWrap: 'wrap', gap: 10, minWidth: 0, flexShrink: 0 },
+  recapCol: {
+    flex: '1 1 340px', minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px 8px 14px', boxSizing: 'border-box',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', boxShadow: 'var(--sh-sm)',
+  },
+  recapTete: { flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 84 },
+  recapTitre: (genre) => ({ fontSize: 17, fontWeight: 700, whiteSpace: 'nowrap', color: genre === 'direct' ? 'var(--text)' : 'var(--info-text)' }),
+  recapTotal: (genre) => ({ fontFamily: 'var(--font-num)', fontSize: 26, fontWeight: 700, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', color: genre === 'direct' ? 'var(--text)' : 'var(--info-text)' }),
+  recapVide: { flex: 1, fontSize: 16, color: 'var(--text3)', minHeight: 40, display: 'flex', alignItems: 'center' },
+  // Les plats se rangent de haut en bas puis vers la droite : le plus
+  // nombreux en haut à gauche. Au téléphone, une seule ligne.
+  recapListe: (telephone) => ({
+    flex: 1, minWidth: 0, display: 'grid', gridAutoFlow: 'column', gridAutoColumns: 'max-content',
+    gridTemplateRows: telephone ? 'auto' : 'repeat(2, auto)', gap: 6, alignContent: 'center',
+    overflowX: 'auto', overscrollBehaviorX: 'contain', WebkitOverflowScrolling: 'touch', paddingBottom: 2,
+  }),
+  recapPlat: {
+    display: 'inline-flex', alignItems: 'baseline', gap: 8, minHeight: 40, boxSizing: 'border-box', whiteSpace: 'nowrap',
+    padding: '7px 12px', borderRadius: 'var(--r-sm)', background: 'var(--piste)',
+  },
+  recapQte: { fontFamily: 'var(--font-num)', fontSize: T.qte, fontWeight: 700, fontVariantNumeric: 'tabular-nums', color: 'var(--text)', lineHeight: 1 },
+  recapNom: { fontSize: T.nomTenu, fontWeight: 600, color: 'var(--text)', lineHeight: 1.2 },
+
+  // ── Terminés ──
+  doneGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 10, flexShrink: 0 },
   doneCard: { border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface2)', padding: '10px 12px', minWidth: 0 },
   doneCardHead: { display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 6 },
   doneTable: { fontWeight: 700, fontSize: 18, color: 'var(--text2)', minWidth: 0, overflowWrap: 'anywhere' },
