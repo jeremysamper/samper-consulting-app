@@ -12,13 +12,15 @@ drop function if exists public.reglages_modules_hotel_garde();
 
 delete from public.reglages_modules where module in ('etages', 'demandes', 'repas');
 
-alter table public.reglages_modules drop constraint if exists reglages_modules_config_check;
-alter table public.reglages_modules add constraint reglages_modules_config_check
-  check (public.reglages_modules_config_valide(module, config));
-
-alter table public.reglages_modules drop constraint if exists reglages_modules_module_check;
-alter table public.reglages_modules add constraint reglages_modules_module_check
-  check (module in ('pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue'));
+-- Retrait et pose dans une seule instruction : pas de fenêtre sans contrainte,
+-- même joué hors transaction (où « set local » ne vaut rien).
+alter table public.reglages_modules
+  drop constraint if exists reglages_modules_config_check,
+  add constraint reglages_modules_config_check
+    check (public.reglages_modules_config_valide(module, config)),
+  drop constraint if exists reglages_modules_module_check,
+  add constraint reglages_modules_module_check
+    check (module in ('pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue'));
 
 drop function if exists public.reglages_modules_hotel_valide(text, jsonb);
 drop function if exists public.reglages_plage_valide(jsonb);

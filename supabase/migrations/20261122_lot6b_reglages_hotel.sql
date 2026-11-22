@@ -24,6 +24,18 @@
 -- pour un module qu'elle ne connaît pas, et la contrainte accepte un bloc que
 -- l'une ou l'autre des deux fonctions accepte.
 --
+-- Clés inconnues : comme au lot 2a, une clé inconnue au premier niveau d'un
+-- bloc est acceptée pour la suite. Les sous-blocs fermés, eux, la refusent :
+-- temps_defaut (depart, recouche), linge (types de linge), horaires (trois
+-- repas), room_service (heures, frais) et chaque plage (debut, fin). Un lot qui
+-- y ajoute une clé rejoue reglages_modules_hotel_valide (create or replace).
+--
+-- Transaction : apply_migration joue le fichier dans une transaction, où
+-- « set local » vaut pour tout le fichier. Joué hors transaction, le délai de
+-- 3 s ne s'applique pas ; les contraintes, elles, se reposent dans une seule
+-- instruction (pas de fenêtre sans contrainte). Le fichier ne contient ni
+-- begin ni commit : l'essai à blanc le joue par execute, dans un bloc DO.
+--
 -- Idempotente. Aucun remplissage de données. Retour arrière :
 -- 20261122_lot6b_reglages_hotel.rollback.sql.
 -- -----------------------------------------------------------------------------
@@ -187,13 +199,15 @@ grant execute on function public.reglages_plage_valide(jsonb) to authenticated, 
 -- Les deux contraintes se reposent à l'identique de celles du lot 2a, élargies
 -- aux trois modules de l'hôtel. Une ligne existante (modules du lot 2) reste
 -- valide : la vérification du lot 2a garde le même résultat pour elle.
-alter table public.reglages_modules drop constraint if exists reglages_modules_module_check;
-alter table public.reglages_modules add constraint reglages_modules_module_check
-  check (module in ('pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue', 'etages', 'demandes', 'repas'));
-
-alter table public.reglages_modules drop constraint if exists reglages_modules_config_check;
-alter table public.reglages_modules add constraint reglages_modules_config_check
-  check (public.reglages_modules_config_valide(module, config) or public.reglages_modules_hotel_valide(module, config));
+-- Retrait et pose dans une seule instruction : la table n'est jamais sans
+-- contrainte, même si le fichier est joué hors transaction.
+alter table public.reglages_modules
+  drop constraint if exists reglages_modules_module_check,
+  add constraint reglages_modules_module_check
+    check (module in ('pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue', 'etages', 'demandes', 'repas')),
+  drop constraint if exists reglages_modules_config_check,
+  add constraint reglages_modules_config_check
+    check (public.reglages_modules_config_valide(module, config) or public.reglages_modules_hotel_valide(module, config));
 
 comment on function public.reglages_modules_hotel_valide(text, jsonb) is
   'Forme des blocs de reglages_modules pour les modules etages, demandes et repas (lot 6b). Faux pour tout autre module.';
@@ -216,8 +230,14 @@ begin
   if (select auth.uid()) is null then
     return coalesce(new, old);
   end if;
-  v_hotel := (tg_op <> 'INSERT' and old.module in ('etages', 'demandes', 'repas'))
-          or (tg_op <> 'DELETE' and new.module in ('etages', 'demandes', 'repas'));
+  -- Chaque opération ne lit que la ligne qu'elle a : new à l'insertion, old à
+  -- la suppression, les deux à la modification (un changement de module compte).
+  v_hotel := case tg_op
+    when 'INSERT' then new.module in ('etages', 'demandes', 'repas')
+    when 'DELETE' then old.module in ('etages', 'demandes', 'repas')
+    else old.module in ('etages', 'demandes', 'repas')
+         or new.module in ('etages', 'demandes', 'repas')
+  end;
   if v_hotel and coalesce((select public.current_user_role()), '') not in ('consultant', 'patron') then
     raise exception 'Ce réglage est réservé à la direction de l''hôtel.' using errcode = '42501';
   end if;
