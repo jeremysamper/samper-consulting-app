@@ -6161,6 +6161,24 @@ export const UI_GLOSSARY = {
   "Seule la direction révoque une borne.": "Only the management can revoke a kiosk.",
   "Réservé à la direction.": "Reserved for the management.",
   "Seule la direction réinitialise un code.": "Only the management can reset a code.",
+  // Caisse, addition partagée (lot L1)
+  "Tout payer": "Pay everything",
+  "Par plat": "By dish",
+  "En parts égales": "In equal shares",
+  "Cochez ce que ce client paie.": "Tick what this guest is paying for.",
+  "Réglé": "Paid",
+  "déjà réglé": "already paid",
+  "Une de moins": "One less",
+  "Une de plus": "One more",
+  "Nombre de parts": "Number of shares",
+  "Une part de moins": "One share less",
+  "Une part de plus": "One share more",
+  "Réglée": "Paid",
+  "Celle qu'on encaisse": "The one being paid now",
+  "La dernière part prend l'arrondi au centime.": "The last share takes the rounding to the centime.",
+  "Payer": "Pay",
+  "pourboire en plus :": "tip on top:",
+  "Cochez au moins un plat.": "Tick at least one dish.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

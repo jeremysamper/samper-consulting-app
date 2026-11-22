@@ -55,3 +55,19 @@
    barre d'avant, pour que deux modes tiennent à côté de la loupe et du menu
    au téléphone ; la bande défile au-delà. */
 .caisse-plein .caisse-modes .segmented-tab { min-height: 44px; padding: 8px 14px; }
+
+/* ─── Addition partagée (lot L1, 22.11.2026) ─────────────────────────────────
+   La feuille d'encaissement en deux cartes (Encaissement.jsx) : le partage à
+   gauche, le récap et les moyens à droite, côte à côte dès 660 px de contenu
+   (tablette), l'une sous l'autre au téléphone. La grille est sur un enfant du
+   conteneur de requêtes. Le pourboire tient sur une ligne de cinq pilules. */
+.caisse-addition { container-type: inline-size; }
+.caisse-addition-grille { display: grid; gap: 16px; }
+@container (min-width: 660px) {
+  .caisse-addition-grille { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); align-items: start; }
+}
+.caisse-pourboires { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.caisse-addition-modes .segmented-tab { flex: 1 1 0; justify-content: center; min-height: 44px; }
+[data-caisse-coche]:focus-visible,
+[data-caisse-partage] button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+[data-caisse-partage] button:disabled { opacity: 0.65; cursor: default; }

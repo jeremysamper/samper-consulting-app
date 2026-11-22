@@ -1197,6 +1197,9 @@ export default function TicketEcran({
           reload={reload}
           terminaux={terminaux}
           role={role}
+          boutons={boutons}
+          categories={categories}
+          articles={articles}
         />
       )}
       {libreOuvert && (

@@ -17,7 +17,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  arrondiCinqCentimes, detailTva, preparerPaiements, totalLignes, totalTva,
+  arrondiCinqCentimes, detailTva, detailTvaPrevu, preparerPaiements, tauxPrevu, totalLignes, totalTva,
 } from './tva.js';
 
 const ligne = (quantite, prix_unitaire, taux_tva, extra = {}) => ({ quantite, prix_unitaire, taux_tva, ...extra });
@@ -170,4 +170,58 @@ test('clôture du jour : les quatre tickets, puis A annulé', () => {
   // Net après l'annulation de A : 8,1 % = 211,46, TVA 15,85.
   assert.equal(Math.round((374.96 - 163.5) * 100) / 100, 211.46);
   assert.equal(Math.round((28.1 - 12.25) * 100) / 100, 15.85);
+});
+
+// ── Taux prévus avant l'encaissement (lot L1), miroir de caisse_taux_ligne ──
+const CATS = [
+  { id: 'c-plats', nom: 'Plats', taux_tva: 8.1, emporter_reduit: true },
+  { id: 'c-vins', nom: 'Vins', taux_tva: 8.1, emporter_reduit: false },
+  { id: 'c-heb', nom: 'Nuitées', taux_tva: 3.8, emporter_reduit: false },
+];
+const ARTICLES = [
+  { id: 'p-tartare', categorie: 'Plats' },
+  { id: 'p-dessert', categorie: '' },
+  { id: 'p-vin', categorie: ' vins ' },
+  { id: 'p-chambre', categorie: 'Nuitées' },
+];
+const CTX = { categories: CATS, articles: ARTICLES };
+
+test('taux prévu : un taux déjà figé sur la ligne fait foi', () => {
+  assert.equal(tauxPrevu({ plat_id: 'p-tartare', taux_tva: 2.6 }, CTX), 2.6);
+});
+
+test('taux prévu : article libre au taux normal, à emporter compris', () => {
+  assert.equal(tauxPrevu({ plat_id: null }, { ...CTX, aEmporter: true }), 8.1);
+});
+
+test('taux prévu : la surcharge du produit passe avant tout', () => {
+  const boutons = { 'p-tartare': { taux_tva: 0, categorie_id: 'c-plats' } };
+  assert.equal(tauxPrevu({ plat_id: 'p-tartare' }, { ...CTX, boutons, aEmporter: true }), 0);
+});
+
+test('taux prévu : catégorie par nom, « Plats » à défaut, sans casse ni espaces', () => {
+  assert.equal(tauxPrevu({ plat_id: 'p-chambre' }, CTX), 3.8);
+  assert.equal(tauxPrevu({ plat_id: 'p-vin' }, { ...CTX, aEmporter: true }), 8.1);
+  assert.equal(tauxPrevu({ plat_id: 'p-dessert' }, { ...CTX, aEmporter: true }), 2.6);
+  assert.equal(tauxPrevu({ plat_id: 'p-inconnu' }, CTX), 8.1);
+});
+
+test('taux prévu : la catégorie donnée au produit passe avant le nom', () => {
+  const boutons = { 'p-tartare': { taux_tva: null, categorie_id: 'c-vins' } };
+  assert.equal(tauxPrevu({ plat_id: 'p-tartare' }, { ...CTX, boutons, aEmporter: true }), 8.1);
+  // Catégorie disparue : on retombe sur le nom.
+  const perdue = { 'p-tartare': { taux_tva: null, categorie_id: 'c-effacee' } };
+  assert.equal(tauxPrevu({ plat_id: 'p-tartare' }, { ...CTX, boutons: perdue, aEmporter: true }), 2.6);
+});
+
+test('détail prévu : à emporter, la nourriture passe à 2,6 %, le vin reste à 8,1 %', () => {
+  const lignes = [
+    { plat_id: 'p-tartare', quantite: 1, prix_unitaire: 34 },
+    { plat_id: 'p-vin', quantite: 2, prix_unitaire: 9.5 },
+  ];
+  assert.deepEqual(detailTvaPrevu(lignes, CTX), [{ taux: 8.1, ttc: 53, tva: 3.97, ht: 49.03 }]);
+  assert.deepEqual(detailTvaPrevu(lignes, { ...CTX, aEmporter: true }), [
+    { taux: 8.1, ttc: 19, tva: 1.42, ht: 17.58 },
+    { taux: 2.6, ttc: 34, tva: 0.86, ht: 33.14 },
+  ]);
 });

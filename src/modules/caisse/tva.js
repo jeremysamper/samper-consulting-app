@@ -59,6 +59,44 @@ export function detailTva(lignes) {
     });
 }
 
+// Le taux qu'aura une ligne à l'encaissement, avant que la base le fige
+// (lot L1 : la TVA par taux s'affiche avant d'encaisser). Miroir de
+// caisse_taux_ligne (migration 20261110_caisse_v7) :
+//   1. un taux déjà figé sur la ligne ;
+//   2. la surcharge du produit (caisse_boutons.taux_tva), toujours ;
+//   3. à emporter, 2.6 si la catégorie de caisse du produit l'autorise ;
+//   4. le taux de la catégorie : celle donnée au produit
+//      (caisse_boutons.categorie_id), sinon celle qui porte le nom de
+//      plats.categorie (« Plats » à défaut) ;
+//   5. 8.1. Un article libre reste au taux normal, à emporter compris.
+// La base refait le calcul et fait foi : c'est une prévision d'écran.
+//   boutons    : plat_id -> ligne de caisse_boutons
+//   categories : lignes de caisse_categories
+//   articles   : plats vendables ({ id, categorie })
+export function tauxPrevu(ligne, { boutons = {}, categories = [], articles = [], aEmporter = false } = {}) {
+  if (ligne?.taux_tva != null) return Number(ligne.taux_tva);
+  const platId = ligne?.plat_id;
+  if (!platId) return TAUX_NORMAL;
+  const bouton = boutons?.[platId];
+  if (bouton?.taux_tva != null) return Number(bouton.taux_tva);
+  const cle = (s) => String(s ?? '').trim().toLowerCase();
+  let categorie = bouton?.categorie_id ? (categories || []).find((c) => c.id === bouton.categorie_id) : null;
+  if (!categorie || categorie.taux_tva == null) {
+    const article = (articles || []).find((a) => a.id === platId);
+    const nom = cle(article?.categorie) || 'plats';
+    categorie = [...(categories || [])]
+      .filter((c) => cle(c.nom) === nom)
+      .sort((a, b) => (String(a.nom) < String(b.nom) ? -1 : String(a.nom) > String(b.nom) ? 1 : 0))[0] || null;
+  }
+  if (aEmporter && categorie?.emporter_reduit) return TAUX_REDUIT;
+  return categorie?.taux_tva != null ? Number(categorie.taux_tva) : TAUX_NORMAL;
+}
+
+// Détail par taux d'un ticket encore ouvert, aux taux prévus.
+export function detailTvaPrevu(lignes, contexte) {
+  return detailTva((lignes || []).map((l) => ({ ...l, taux_tva: tauxPrevu(l, contexte) })));
+}
+
 export function totalTva(lignes) {
   return francs(detailTva(lignes).reduce((s, t) => s + centimes(t.tva), 0));
 }
