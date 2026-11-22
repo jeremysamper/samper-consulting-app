@@ -95,7 +95,7 @@ const DUREE_SORTIE_FEUILLE = 180;
 export default function TicketEcran({
   ticket, articles, allergenesFiches = null, boutons = {}, categories = [], reglages = REGLAGES_DEFAUT,
   peutHabiller = false, onBoutonsChange,
-  ticketsMemeTable, onDeplacer, onFusionne, onClos, reload,
+  ticketsMemeTable, onDeplacer, onFusionne, onClos, onEncaissementEnvoye, reload,
   cartes = [], reservation = null, reservations = [], onReservationsChange,
   modeTest = false, onQuittance,
   terminaux = [], role = null,
@@ -1202,6 +1202,7 @@ export default function TicketEcran({
           modeTest={modeTest}
           onQuittance={onQuittance}
           onEncaisse={() => { setPaiementOuvert(false); onClos(); }}
+          onEnvoi={onEncaissementEnvoye}
           onClose={() => setPaiementOuvert(false)}
           reload={reload}
           terminaux={terminaux}

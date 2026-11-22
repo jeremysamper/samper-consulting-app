@@ -367,7 +367,12 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   });
   const nomsTables = nomsParTable(reservations, { jour, tickets });
 
-  const ticket = tickets.find((t) => t.id === ticketId) || null;
+  // Ticket envoyé à l'encaissement depuis ce poste : la liste rechargée ne le
+  // contient plus (il n'est plus ouvert), mais l'écran de fin (numéro, rendu,
+  // quittance) reste sur sa dernière image jusqu'à « Terminer ».
+  const [ticketEncaisse, setTicketEncaisse] = React.useState(null);
+  const ticket = tickets.find((t) => t.id === ticketId)
+    || (ticketEncaisse && ticketEncaisse.id === ticketId ? ticketEncaisse : null);
   // Le ticket courant a été encaissé ou annulé ailleurs : l'écran ne reste
   // pas ouvert sur un ticket disparu.
   React.useEffect(() => {
@@ -949,7 +954,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         ticketsMemeTable={autresMemeTable}
         onDeplacer={() => { setModeTables('deplacer'); setEcran('tables'); }}
         onFusionne={rechargerTickets}
-        onClos={() => { rechargerTickets(); rechargerReservations(); rechargerJournee(); retourAccueil(); }}
+        onClos={() => { setTicketEncaisse(null); rechargerTickets(); rechargerReservations(); rechargerJournee(); retourAccueil(); }}
+        onEncaissementEnvoye={setTicketEncaisse}
         reload={rechargerTickets}
         modeTest={modeTest}
         onQuittance={quittance}

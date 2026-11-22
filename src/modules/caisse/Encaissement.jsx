@@ -86,7 +86,7 @@ function useEnLigne() {
 }
 
 export default function Encaissement({
-  ticket, reglages, peutRemiser = false, modeTest = false, onEncaisse, onQuittance, onClose, reload,
+  ticket, reglages, peutRemiser = false, modeTest = false, onEncaisse, onEnvoi, onQuittance, onClose, reload,
   terminaux = [], role = null, boutons = {}, categories = [], articles = [],
 }) {
   const lignes = React.useMemo(() => ticket?.lignes || [], [ticket]);
@@ -200,9 +200,12 @@ export default function Encaissement({
     if (verrou.current) return;
     verrou.current = true;
     setEnCours(true);
+    // Avant l'appel : le temps réel peut retirer le ticket de la liste des
+    // tickets ouverts avant la réponse, la caisse garde donc son image.
+    onEnvoi?.(ticket);
     try {
       const { data, error } = await caisse.encaisserTicket(ticket.id, paiements, aEmporter);
-      if (error) { notify(error, 'error'); reload?.(); return; }
+      if (error) { onEnvoi?.(null); notify(error, 'error'); reload?.(); return; }
       setFait(data);
       notify(modeTest ? 'Ticket de test encaissé' : 'Ticket encaissé', 'success');
     } finally {
