@@ -7,6 +7,8 @@ import {
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { notify } from '../../components/toast/index.js';
 import { navigateToPage } from '../../services/navigationService.js';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { useOrdreLectures } from '../../hooks/useOrdreLectures.js';
 import { useIsMobile } from '../../hooks/useIsMobile.js';
@@ -64,6 +66,8 @@ const POLL_MS = 15000;
 // Filet de relecture : le temps réel peut se taire (veille, réseau du passe).
 const RELECTURE_MS = 30000;
 const RELECTURE_ECHEC_MS = 5000;
+// Âge d'un bon : alerte et retard, en minutes. Réglables par la maison
+// (Réglages > KDS, reglages_modules 'kds') ; sans réglage, 7 et 12.
 const AGE_WARN_MIN = 7;
 const AGE_LATE_MIN = 12;
 // Un bon validé garde sa place ce temps-là : le bon suivant ne glisse pas sous
@@ -89,11 +93,35 @@ function timeLabel(quand) {
   try { return new Date(quand).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' }); }
   catch { return ''; }
 }
-function niveauAge(depuis) {
+function niveauAge(depuis, seuils = null) {
   const min = depuis ? (Date.now() - depuis) / 60000 : 0;
-  if (min >= AGE_LATE_MIN) return 'retard';
-  if (min >= AGE_WARN_MIN) return 'alerte';
+  if (min >= (seuils?.retard ?? AGE_LATE_MIN)) return 'retard';
+  if (min >= (seuils?.attention ?? AGE_WARN_MIN)) return 'alerte';
   return 'calme';
+}
+
+// Son d'un bon nouveau (réglage « son » de la maison) : un bip court, tiré
+// par le navigateur. Le premier peut se taire tant que personne n'a touché
+// l'écran (règle des navigateurs). Jamais bloquant.
+let contexteSon = null;
+function bip() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    contexteSon = contexteSon || new Ctx();
+    if (contexteSon.state === 'suspended') contexteSon.resume().catch(() => {});
+    const t = contexteSon.currentTime;
+    const osc = contexteSon.createOscillator();
+    const gain = contexteSon.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.3, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.35);
+    osc.connect(gain).connect(contexteSon.destination);
+    osc.start(t);
+    osc.stop(t + 0.4);
+  } catch { /* son impossible : rien */ }
 }
 
 // Plein écran du navigateur, quand il existe et qu'il sert : une app installée
@@ -121,6 +149,8 @@ function sortirPleinNatif() {
 
 const Kds = ({ user, etablissement, isActive = true }) => {
   const etabId = etablissement?.id || null;
+  const { reglages: reglagesKds } = useReglagesModule(etabId, 'kds');
+  const seuilsAge = { attention: reglagesKds.attention_minutes, retard: reglagesKds.retard_minutes };
   const legacySB = dbService.getBridge();
   const canConnect = CONNECT_ROLES.includes(user?.role);
 
@@ -393,6 +423,15 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   const bonsVus = filtrerParPoste(bons, posteVu);
   const { file, fin, terminees } = rangerBons(bonsVus, { figes, maintenant });
   const nbAFaire = file.filter((b) => !b.sortant).length;
+  // Un bon nouveau dans la file : un bip, si la maison l'a allumé. Les bons
+  // de la première lecture ne sonnent pas.
+  const bonsConnus = React.useRef(null);
+  const clesFile = file.filter((b) => !b.sortant).map((b) => b.cle).join('|');
+  React.useEffect(() => {
+    const cles = clesFile ? clesFile.split('|') : [];
+    if (bonsConnus.current && reglagesKds.son && isActive && cles.some((c) => !bonsConnus.current.has(c))) bip();
+    bonsConnus.current = new Set([...(bonsConnus.current || []), ...cles]);
+  }, [clesFile, reglagesKds.son, isActive]);
   const recap = recapitulatif(bonsVus);
   const aFaireAuPoste = (id) => rangerBons(filtrerParPoste(bons, id), { figes, maintenant })
     .file.filter((b) => !b.sortant).length;
@@ -739,7 +778,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   };
 
   const renderBon = (bon, enFile) => {
-    const niveau = enFile && !bon.sortant ? niveauAge(bon.depuis) : 'calme';
+    const niveau = enFile && !bon.sortant ? niveauAge(bon.depuis, seuilsAge) : 'calme';
     const aFaire = bon.sections.filter((x) => x.etat === 'faire');
     const cible = aFaire.length === 1 ? nomSection(aFaire[0]) : '';
     return (
@@ -894,6 +933,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
             </div>
           )}
           <span style={s.horloge} data-no-translate>{timeLabel(Date.now())}</span>
+          <BoutonRegler section="kds" user={user} etablissement={etablissement} />
           <button style={s.pleinBtn} onClick={() => basculerPlein(!plein)}>
             {plein ? 'Quitter le plein écran' : 'Plein écran'}
           </button>

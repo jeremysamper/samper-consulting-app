@@ -522,7 +522,9 @@ function OngletEquipe({ etabId, user, donnees, charger, exclus }) {
 
 // ─── Réglages ───────────────────────────────────────────────────────────────
 
-function OngletReglages({ etabId, user, etat, etablissement }) {
+// Monté par la page des réglages (Réglages > Points, plan 15, lot 2) : il a
+// quitté les onglets du module.
+export function OngletReglages({ etabId, user, etat, etablissement }) {
   const [actif, setActif] = React.useState(etat.actif);
   const [roles, setRoles] = React.useState(etat.rolesParticipants || ROLES_PARTICIPANTS);
   const [bareme, setBareme] = React.useState(() => baremeEffectif(etat.bareme));
@@ -580,7 +582,7 @@ function OngletReglages({ etabId, user, etat, etablissement }) {
       <Panneau>
         <h2 className="points-section-titre">Allumer les points</h2>
         <label style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 44, cursor: 'pointer' }}>
-          <input type="checkbox" role="switch" aria-checked={actif} checked={actif} disabled={envoi} onChange={basculer} style={{ width: 22, height: 22, accentColor: 'var(--accent)' }} />
+          <input type="checkbox" role="switch" aria-checked={actif} checked={actif} disabled={envoi} onChange={basculer} style={{ width: 24, height: 24, margin: 0, flexShrink: 0, accentColor: 'var(--accent)' }} />
           <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>{actif ? 'Les points sont allumés' : 'Les points sont éteints'}</span>
         </label>
         <p className="points-aide">Éteints, l'équipe ne voit pas le module et rien ne se gagne ; les soldes et les commandes restent.</p>
@@ -596,7 +598,7 @@ function OngletReglages({ etabId, user, etat, etablissement }) {
                 type="checkbox"
                 checked={roles.includes(r)}
                 onChange={(e) => setRoles((liste) => (e.target.checked ? [...liste, r] : liste.filter((x) => x !== r)))}
-                style={{ width: 20, height: 20, accentColor: 'var(--accent)' }}
+                style={{ width: 24, height: 24, margin: 0, flexShrink: 0, accentColor: 'var(--accent)' }}
               />
               <span>{libelleRole(r)}</span>
             </label>
@@ -648,7 +650,6 @@ export default function GestionPoints({ onglet, user, etablissement, etat, onOng
   const etabId = etablissement?.id;
   const { donnees, echec, charger } = useDonneesGestion(etabId);
 
-  if (onglet === 'reglages') return <OngletReglages etabId={etabId} user={user} etat={etat} etablissement={etablissement} />;
   if (!donnees) {
     return (
       <div>

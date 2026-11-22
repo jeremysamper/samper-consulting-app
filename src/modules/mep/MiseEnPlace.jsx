@@ -13,6 +13,7 @@ import MepDetail from './MepDetail.jsx';
 import MepEditor from './MepEditor.jsx';
 import { s, formatDateService } from './MiseEnPlace.styles.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 
 // Lance `fn` une fois arrivé le retour d'historique d'une fenêtre refermée
 // (l'entrée en tête est encore la sienne), sinon tout de suite ; filet de
@@ -174,6 +175,8 @@ const MiseEnPlace = ({ user, etablissement }) => {
           <div style={s.sub}>Grosse production congelable et préparations urgentes non congelables</div>
           <div style={s.moduleActions} className="module-actions">
             <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une liste…" />
+            {/* Postes et modèles de liste : Réglages > Mise en place. */}
+            <BoutonRegler section="mep" user={user} etablissement={etablissement} />
           </div>
         </div>
 

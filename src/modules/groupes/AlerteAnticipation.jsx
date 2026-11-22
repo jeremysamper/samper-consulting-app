@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatDateCourte, formatJourSemaine } from '../../utils/dateHelpers.js';
 import {
-  JOURS_ANTICIPATION, joursAvant, libelleEcheance, libelleGroupe, metaStatut,
+  joursAnticipation, joursAvant, libelleEcheance, libelleGroupe, metaStatut,
 } from './typesGroupe.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -57,7 +57,7 @@ export default function AlerteAnticipation({ groupes, aujourdhui, compact = fals
       >
         <span style={{ flex: '1 1 auto', minWidth: 0 }}>
           <span style={{ fontWeight: 700, fontFamily: 'var(--font-serif)' }}>
-            À anticiper : {n} groupe{n > 1 ? 's' : ''} dans les {JOURS_ANTICIPATION} prochains jours.
+            À anticiper : {n} groupe{n > 1 ? 's' : ''} dans les {joursAnticipation()} prochains jours.
           </span>{' '}
           {toutPret
             ? 'Tout est lu et préparé.'

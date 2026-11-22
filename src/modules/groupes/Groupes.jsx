@@ -21,8 +21,10 @@ import { reperesGroupes } from './accueilGroupes.js';
 import MenusGroupe from './MenusGroupe.jsx';
 import { dateComplete } from './pdfGroupe.js';
 import {
-  NUMERO_COMPLEMENTS, STATUTS, groupesAAnticiper, libelleGroupe, metaStatut,
+  NUMERO_COMPLEMENTS, groupesAAnticiper, libelleGroupe, metaStatut, statutsActifs,
 } from './typesGroupe.js';
+import { useReglagesGroupes } from './useReglagesGroupes.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import { chiffresGroupes } from './serieGroupes.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -138,6 +140,8 @@ function useLargeur() {
 
 export default function Groupes({ user, etablissement }) {
   const etabId = etablissement?.id || null;
+  // Délai d'alerte, libellés des états et types proposés de la maison.
+  const { reglages: reglagesGroupes } = useReglagesGroupes(etabId);
   const canEdit = canManageModule(user?.role, 'groupes');
   const canEditMenus = canEdit && ROLES_MENUS.includes(user?.role);
   const canSupprimer = canEdit && ROLES_SUPPRESSION.includes(user?.role);
@@ -174,7 +178,7 @@ export default function Groupes({ user, etablissement }) {
   }, [vue.annee, vue.mois, assurerDepuis]);
 
   const actifs = useMemo(() => groupes.filter((g) => !g.annule), [groupes]);
-  const aAnticiper = useMemo(() => groupesAAnticiper(groupes, aujourdhui), [groupes, aujourdhui]);
+  const aAnticiper = useMemo(() => groupesAAnticiper(groupes, aujourdhui), [groupes, aujourdhui, reglagesGroupes.delai_alerte_jours]);
   // Repères de l'accueil (direction Galet, ReperesGroupes.jsx).
   const reperes = useMemo(() => reperesGroupes(groupes, aujourdhui), [groupes, aujourdhui]);
 
@@ -322,6 +326,7 @@ export default function Groupes({ user, etablissement }) {
               Nouveau groupe
             </button>
           )}
+          <BoutonRegler section="groupes" user={user} etablissement={etablissement} />
         </div>
       </div>
 
@@ -374,7 +379,7 @@ export default function Groupes({ user, etablissement }) {
 
           {/* ── Légende : les trois états, rien d'autre ── */}
           <div style={st.legende}>
-            {STATUTS.map((sid) => {
+            {statutsActifs().map((sid) => {
               const m = metaStatut(sid);
               return (
                 <span key={sid} style={st.legendeItem}>

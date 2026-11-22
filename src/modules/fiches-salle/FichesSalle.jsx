@@ -17,6 +17,9 @@ import {
 import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
+import { peutValider } from '../../utils/reglagesModules.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
@@ -210,6 +213,13 @@ const FichesSalle = ({ user, etablissement }) => {
   const [activeCarteTab, setActiveCarteTab] = React.useState(ALL_TAB);
 
   const canEdit = canManageModule(user.role, 'fiches_salle');
+  // Réglages de la maison (Réglages > Fiches salle) : qui publie une fiche,
+  // brouillons montrés ou non à la salle, champs montrés à la salle. Sans
+  // réglage : le droit « Modifier » publie, la salle ne voit ni brouillon ni
+  // champ caché.
+  const { reglages: reglagesFS } = useReglagesModule(etabId, 'fiches_salle');
+  const peutPublier = canEdit && peutValider(reglagesFS.valideurs, user.role, canEdit);
+  const champs = canEdit ? { temps: true, accords: true, allergenes: true } : reglagesFS.champs;
   const canManageCartes = canManageModule(user.role, 'recettes');
   // Fenêtres de gestion des cartes (créer, modifier, archives) : la barre
   // d'onglets les garde, « Gérer » les ouvre (lot 3, en-tête ramené aux
@@ -327,7 +337,7 @@ const FichesSalle = ({ user, etablissement }) => {
   // retombe sur « Tous » plutôt que d'afficher une grille vide.
   // Les brouillons (fiches rédigées pas encore relues) ne sont montrés qu'à qui
   // gère les fiches : la salle ne lit que des fiches publiées.
-  const fichesVues = canEdit ? fiches : fiches.filter(f => f.statut !== 'brouillon');
+  const fichesVues = canEdit || reglagesFS.brouillons_visibles_salle ? fiches : fiches.filter(f => f.statut !== 'brouillon');
   const fichesCarte = fichesVues.filter(f => activeCarteTab === ALL_TAB || (f.carteIds || []).includes(activeCarteTab));
   const catsPresentes = categoriesPresentes(fichesCarte);
   const cats = ['Tous', ...catsPresentes];
@@ -351,8 +361,13 @@ const FichesSalle = ({ user, etablissement }) => {
   };
 
   const saveFiche = async (f) => {
+    // Sans le droit de publier : une fiche neuve ou en brouillon reste en
+    // brouillon ; une fiche déjà publiée le reste.
+    const avant = fiches.find(x => x.id && x.id === f.id);
+    const statut = peutPublier ? f.statut : (avant?.statut === 'active' ? 'active' : 'brouillon');
     const payload = {
       ...f,
+      statut,
       etablissementId: etabId,
       modifiePar: user.id,
       accordsGeneraux: (f.accordsGeneraux || []).map(s => String(s || '').trim()).filter(Boolean),
@@ -580,7 +595,7 @@ const FichesSalle = ({ user, etablissement }) => {
   };
 
   // ── Détail fiche ──
-  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} photo={photoDeFicheSalle(selected, plats, recettes)} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} plats={plats} cartes={cartes}/>;
+  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} photo={photoDeFicheSalle(selected, plats, recettes)} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} plats={plats} cartes={cartes} champs={champs} peutPublier={peutPublier}/>;
 
   return (
     <div style={fss.root}>
@@ -612,11 +627,12 @@ const FichesSalle = ({ user, etablissement }) => {
             />
           )}
         </div>
-        {(canEdit || canManageCartes) && !sel.active && (
+        {!sel.active && (
           /* Un seul menu : les fiches (nouvelle, générer, sélectionner) et
              les cartes (ajouter, modifier, archives), chacune à sa garde. */
           <div className="module-actions">
-            <BoutonActions
+            <BoutonRegler section="fiches_salle" user={user} etablissement={etablissement} />
+            {(canEdit || canManageCartes) && <BoutonActions
               id="fiches-gerer"
               label="Gérer"
               style={fss.selectBtn}
@@ -641,7 +657,7 @@ const FichesSalle = ({ user, etablissement }) => {
                   },
                 ] },
               ].filter(Boolean)}
-            />
+            />}
           </div>
         )}
       </div>
@@ -728,10 +744,10 @@ const FichesSalle = ({ user, etablissement }) => {
                         photo={photoDeFicheSalle(f, plats, recettes)}
                         categorie={categorieDuPlat(f)}
                         texte={f.descriptionService}
-                        allergenes={allergenesDeFicheSalle(f, plats, recettes)}
+                        allergenes={champs.allergenes ? allergenesDeFicheSalle(f, plats, recettes) : []}
                         meta={[
-                          f.tempsPreparation && { cle: 'temps', Icone: Clock, contenu: f.tempsPreparation },
-                          nbAccords > 0 && { cle: 'accords', Icone: Wine, contenu: <><span data-no-translate="">{nbAccords}</span> {nbAccords > 1 ? 'accords' : 'accord'}</> },
+                          champs.temps && f.tempsPreparation && { cle: 'temps', Icone: Clock, contenu: f.tempsPreparation },
+                          champs.accords && nbAccords > 0 && { cle: 'accords', Icone: Wine, contenu: <><span data-no-translate="">{nbAccords}</span> {nbAccords > 1 ? 'accords' : 'accord'}</> },
                         ]}
                         pastille={f.statut === 'brouillon' ? 'Brouillon' : null}
                         onOuvrir={() => ouvrirFiche(f)}
@@ -746,7 +762,7 @@ const FichesSalle = ({ user, etablissement }) => {
         </>
       )}
 
-      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes}/>}
+      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes} peutPublier={peutPublier}/>}
       {showBulkCartes && (
         <BulkCartesModal
           cartes={cartes}
@@ -761,7 +777,7 @@ const FichesSalle = ({ user, etablissement }) => {
 };
 
 // ── Détail d'une fiche ──
-const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], plats = [], cartes = [] }) => {
+const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], plats = [], cartes = [], champs = { temps: true, accords: true, allergenes: true }, peutPublier = true }) => {
   // Un onglet par famille réellement présente sur la fiche. Un type inconnu
   // (import ancien, famille ajoutée plus tard) garde son propre onglet plutôt
   // que d'être avalé : sans ça l'accord n'a pas d'onglet, donc il est invisible
@@ -799,7 +815,7 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
   // les 2 minutes »), trop longues pour une ligne posée sur la photo.
   const auService = [
     fiche.temperatureService && ['Température de service', fiche.temperatureService],
-    fiche.tempsPreparation && ['Temps de préparation', fiche.tempsPreparation],
+    champs.temps && fiche.tempsPreparation && ['Temps de préparation', fiche.tempsPreparation],
     fiche.dressageNotes && ['Notes de dressage / service', fiche.dressageNotes],
   ].filter(Boolean);
 
@@ -853,7 +869,7 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
             )}
           </div>
           <div className="fv-col fv-col-b">
-            <AllergenesFiche ids={allergenesDeFicheSalle(fiche, plats, recettes)} variante="bandeau" />
+            {champs.allergenes && <AllergenesFiche ids={allergenesDeFicheSalle(fiche, plats, recettes)} variante="bandeau" />}
             {fiche.infosService && (
               <div style={{...encadreStyle('alerte'),fontSize: 'var(--t2)',lineHeight:1.5}}>
                 <strong style={encadreTitreStyle('alerte')}>Info service :</strong> {fiche.infosService}
@@ -864,7 +880,7 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
 
         {/* Accords : un onglet par famille présente, le nombre dans son
             propre nœud ; liste à filets, en deux colonnes dès 600 px. */}
-        <section className="fv-bloc">
+        {champs.accords && <section className="fv-bloc">
           <h3 className="fv-titre-section">Accords mets & boissons</h3>
           {familles.length > 0 && (
             <p className="fv-familles">
@@ -897,20 +913,20 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
               </ul>
             </>
           ) : <p className="fv-vide">Aucun accord renseigné.</p>}
-        </section>
+        </section>}
 
         {fiche.modifie && (
           <p className="fv-pied">Modifiée le <span data-no-translate="">{dateSuisse(fiche.modifie)}</span></p>
         )}
       </div>
 
-      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes}/>}
+      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes} peutPublier={peutPublier}/>}
     </div>
   );
 };
 
 // ── Formulaire création/édition ──
-const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], cartes = [] }) => {
+const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], cartes = [], peutPublier = true }) => {
   const allAllergs = ALLERGENE_IDS;
   const toggleAllerg = (a) => setFiche(f=>({...f,allergenes:(f.allergenes || []).includes(a)?f.allergenes.filter(x=>x!==a):[...f.allergenes,a]}));
   // Valeurs hors référentiel (texte libre d'un ancien import) : sans puce
@@ -965,9 +981,10 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                 </select>
               </div>
               <div style={fss.field}><label style={fss.fLabel}>Statut</label>
-                <select style={fss.fInput} value={fiche?.statut||'active'} onChange={e=>setFiche(f=>({...f,statut:e.target.value}))}>
+                <select style={fss.fInput} value={peutPublier ? (fiche?.statut||'active') : (fiche?.statut === 'active' ? 'active' : 'brouillon')} disabled={!peutPublier} onChange={e=>setFiche(f=>({...f,statut:e.target.value}))}>
                   <option value="active">Active</option><option value="brouillon">Brouillon</option>
                 </select>
+                {!peutPublier && <span style={{fontSize:'var(--t1)',color:'var(--text2)',lineHeight:1.4}}>Une personne qui valide les fiches la publie ensuite.</span>}
               </div>
             </div>
             {/* Attribution : cartes (menus) où figure cette fiche. Placé haut

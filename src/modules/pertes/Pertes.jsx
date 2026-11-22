@@ -20,6 +20,9 @@ import { normalizeSearch } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { datePerte, periodePertes, totauxPertes, unitePerte } from './calculPertes.js';
 import { Printer, Trash2 } from 'lucide-react';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
+import { peutValider } from '../../utils/reglagesModules.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 
 // Choix exclusif en tuiles (motif, unité) : un toucher au lieu des deux d'une
 // liste déroulante, même valeur écrite. data-cadre : chaque tuile garde son
@@ -72,7 +75,11 @@ const Pertes = ({ user, etablissement }) => {
   const [fenetreExport, setFenetreExport] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [motifFilter, setMotifFilter] = React.useState('Tous');
-  const [form, setForm] = React.useState({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif:'DLC dépassée', categorie:'Légumes', commentaire:'' });
+  // Motifs et valideurs de la maison (Réglages > Pertes) ; sans réglage, ceux
+  // d'avant : la liste d'origine et le droit « Modifier » des Pertes.
+  const { reglages: reglagesPertes } = useReglagesModule(etablissement?.id || null, 'pertes');
+  const motifDefaut = reglagesPertes.motifs[0] || 'Autre';
+  const [form, setForm] = React.useState({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif: motifDefaut, categorie:'Légumes', commentaire:'' });
   // Lot B (moitié des gestes) : un produit pris dans le catalogue apporte son
   // prix et son unité ; la valeur unitaire, la date, la catégorie et le
   // commentaire se replient alors sous « Plus de détails ».
@@ -119,7 +126,13 @@ const Pertes = ({ user, etablissement }) => {
 
   React.useEffect(() => { demoData.pertes = pertes; if (!legacySB) writeLegacyStorage('sc_pertes', pertes); }, [pertes]);
 
+  // Un motif retiré par la maison ne reste pas choisi dans le formulaire.
+  React.useEffect(() => {
+    setForm(f => (reglagesPertes.motifs.includes(f.motif) ? f : { ...f, motif: reglagesPertes.motifs[0] || 'Autre' }));
+  }, [reglagesPertes.motifs]);
   const canManage = canManageModule(user.role, 'pertes');
+  const peutValiderPertes = peutValider(reglagesPertes.valideurs, user.role, canManage);
+  const colonnesAction = canManage || peutValiderPertes;
 
   const supprimer = async (id) => {
     if (!canManage || !confirmLegacy('Supprimer cette perte ?')) return;
@@ -167,7 +180,9 @@ const Pertes = ({ user, etablissement }) => {
     setBulkBusy(false);
   };
 
-  const MOTIFS = ['Tous','DLC dépassée','Surproduction','Erreur de préparation','Erreur de commande','Retour client','Casse','Autre'];
+  // Filtre : les motifs de la maison, plus ceux des pertes déjà déclarées
+  // sous un motif retiré depuis (elles restent trouvables).
+  const MOTIFS = ['Tous', ...reglagesPertes.motifs, ...[...new Set(pertes.map(p => p.motif).filter(Boolean))].filter(m => !reglagesPertes.motifs.includes(m))];
   const CATS = ['Viandes','Poissons','Légumes','Fruits','Épicerie sèche','Produits laitiers','Préparations','Fonds & sauces','Vins & alcools','Autres'];
   const UNITES = ['kg','g','L','ml','portions','pièces','bottes','unités'];
 
@@ -213,14 +228,14 @@ const Pertes = ({ user, etablissement }) => {
     }
     setPertes([newPerte, ...pertes]);
     setShowForm(false);
-    setForm({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif:'DLC dépassée', categorie:'Légumes', commentaire:'' });
+    setForm({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif: motifDefaut, categorie:'Légumes', commentaire:'' });
     setPrixDuCatalogue(false);
     setDetails(false);
   };
 
   const valider = async (id) => {
     const p = pertes.find(x => x.id === id);
-    if (!p) return;
+    if (!p || !peutValiderPertes) return;
     const updated = { ...p, valide: true, validePar: user.id };
     if (legacySB) {
       try { await legacySB.db.upsertPerte(updated); }
@@ -281,9 +296,10 @@ const Pertes = ({ user, etablissement }) => {
             options={MOTIFS.map(m => ({ id: m, label: m === 'Tous' ? 'Tous les motifs' : m }))}
           />
         </div>
-        {canManage && !sel.active && (
+        {!sel.active && (
           <div className="module-actions">
-            <Btn variant="ghost" onClick={sel.enter}>Sélectionner</Btn>
+            {canManage && <Btn variant="ghost" onClick={sel.enter}>Sélectionner</Btn>}
+            <BoutonRegler section="pertes" user={user} etablissement={etablissement} />
           </div>
         )}
       </div>
@@ -317,7 +333,7 @@ const Pertes = ({ user, etablissement }) => {
       <div style={pts.tableWrap} id="pertes-print" className="grid-table-scroll">
         {/* Colonnes dynamiques : les 2 colonnes d'action n'existent que pour les
             rôles gestionnaires, sinon les cellules débordent sur une ligne implicite. */}
-        <div className="grid-table-row" style={{ ...pts.tableHead, gridTemplateColumns: (sel.active ? '44px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (canManage ? ' 80px 80px' : '') }}>
+        <div className="grid-table-row" style={{ ...pts.tableHead, gridTemplateColumns: (sel.active ? '44px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (colonnesAction ? ' 80px 80px' : '') }}>
           {sel.active && <span className="no-print" />}
           <span>Date</span>
           <span>Produit</span>
@@ -327,19 +343,19 @@ const Pertes = ({ user, etablissement }) => {
           <span style={{textAlign:'right'}}>Valeur</span>
           <span>Déclaré par</span>
           <span>Statut</span>
-          {canManage && <span/>}
-          {canManage && <span/>}
+          {colonnesAction && <span/>}
+          {colonnesAction && <span/>}
         </div>
         {filtered.length === 0 && <div style={{padding:'20px 18px', color:'var(--text2)', fontSize: 'var(--t2)'}}>Aucune perte pour ces critères.</div>}
         {(filtered || []).map(p => {
           const emp = userDisplay(p.declarePar);
           const role = emp.role ? demoData.roles[emp.role] : null;
           const valeur = (p.quantite * p.valeurUnit).toFixed(2);
-          const canVal = canManage && !p.valide;
+          const canVal = peutValiderPertes && !p.valide;
           return (
             <div key={p.id} className="grid-table-row" style={{
               ...pts.tableRow,
-              gridTemplateColumns: (sel.active ? '44px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (canManage ? ' 80px 80px' : ''),
+              gridTemplateColumns: (sel.active ? '44px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (colonnesAction ? ' 80px 80px' : ''),
               ...(sel.active && sel.isSelected(p.id) ? { background: 'var(--bg)' } : {}),
             }}>
               {sel.active && (
@@ -373,11 +389,12 @@ const Pertes = ({ user, etablissement }) => {
                   {p.valide ? 'Validé' : 'À valider'}
                 </span>
               </span>
-              {canManage && (
+              {colonnesAction && (
                 <span>
                   {canVal && <button style={pts.valBtn} onClick={()=>valider(p.id)}>Valider</button>}
                 </span>
               )}
+              {colonnesAction && !canManage && <span/>}
               {canManage && (
                 <span>
                   <BoutonActions
@@ -547,7 +564,7 @@ const Pertes = ({ user, etablissement }) => {
                 </div>
                 )}
                 <ChoixTuiles nom="unite" libelle="Unité" valeur={form.unite} options={UNITES} onChange={u => setForm({ ...form, unite: u })} />
-                <ChoixTuiles nom="motif" libelle="Motif *" valeur={form.motif} options={MOTIFS.slice(1)} onChange={m => setForm({ ...form, motif: m })} />
+                <ChoixTuiles nom="motif" libelle="Motif *" valeur={form.motif} options={reglagesPertes.motifs} onChange={m => setForm({ ...form, motif: m })} />
                 {!details && (
                   <button type="button" style={pts.plusDetails} onClick={() => setDetails(true)} data-pertes-details="">
                     Plus de détails : date, catégorie, commentaire

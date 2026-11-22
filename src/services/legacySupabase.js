@@ -1371,6 +1371,13 @@ export function installLegacySupabase() {
         ordre: row.ordre || 0,
         actif: row.actif !== false,
         updatedAt: row.updated_at,
+        // Réglages de la procédure (lot 2 du plan 15), écrits par la direction
+        // dans Réglages > SOP ; upsertSop ne les envoie jamais.
+        rolesDesignes: Array.isArray(row.roles_designes) ? row.roles_designes : [],
+        rappelActif: !!row.rappel_actif,
+        rappelMoment: row.rappel_moment || null,
+        rappelHeure: row.rappel_heure ? String(row.rappel_heure).slice(0, 5) : null,
+        rappelJours: Array.isArray(row.rappel_jours) && row.rappel_jours.length ? row.rappel_jours.map(Number) : null,
       };
     },
 
@@ -2130,6 +2137,8 @@ export function installLegacySupabase() {
         label: creneau.label,
         heure: creneau.heure,
         actif: creneau.actif !== false,
+        // Jours de la semaine (1 = lundi) ; null = tous les jours.
+        jours: Array.isArray(creneau.jours) && creneau.jours.length ? creneau.jours : null,
       };
       const { data, error } = await client.from('haccp_creneaux').upsert(payload).select().single();
       if (error) throw error;
@@ -2149,6 +2158,7 @@ export function installLegacySupabase() {
         // format manipulé par les <input type="time"> et par les relevés.
         heure: row.heure ? String(row.heure).slice(0, 5) : '',
         actif: !!row.actif,
+        jours: Array.isArray(row.jours) && row.jours.length ? row.jours.map(Number) : null,
       };
     },
 

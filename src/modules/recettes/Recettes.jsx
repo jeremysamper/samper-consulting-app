@@ -20,6 +20,7 @@ import EtiquetteRapideModal from '../haccp/EtiquetteRapideModal.jsx';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { Btn, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
@@ -1478,7 +1479,9 @@ const Recettes = ({ user, etablissement }) => {
   // seul état, partagé avec la section « Carte d'accueil » de la page des
   // réglages (carteAccueil.js) jusqu'au 18.11.2026 ; depuis, le bouton de la
   // carte est le seul endroit (la recherche des réglages y renvoie).
-  const { carteId: defaultCarteId, choisir: choisirCarteAccueil } = useCarteAccueil(etabId);
+  // Carte d'accueil : choisie dans Réglages > Cartes & Recettes ; l'écran la
+  // montre seulement (« Carte par défaut »).
+  const { carteId: defaultCarteId } = useCarteAccueil(etabId);
 
   // Écran du module : l'écran d'arrivée (la carte du moment, la recherche, les
   // actions et la gestion, sur place), et l'écran « Une étiquette », qui garde
@@ -1564,13 +1567,6 @@ const Recettes = ({ user, etablissement }) => {
     setTimeout(() => quandRetoursArrives(() => setSelectedRecette(null)), 0);
   }, []);
 
-  const toggleDefaultCarte = async (carteId) => {
-    const next = defaultCarteId === carteId ? null : carteId;
-    try {
-      await choisirCarteAccueil(next);
-      notifyLegacy(next ? 'Carte d\'accueil enregistrée' : 'Carte d\'accueil retirée', 'success');
-    } catch (e) { notifyLegacy('Enregistrement impossible. ' + messageErreur(e, 'recettes'), 'error'); }
-  };
 
   React.useEffect(() => {
     if (!legacySB) {
@@ -2077,7 +2073,6 @@ const Recettes = ({ user, etablissement }) => {
       ? [...selection.ids].filter(id => !montrees.has(id))
       : [...selection.ids, ...montrees]);
   };
-  const nbArchives = archivedCartes.length;
   const biblioVide = recettesEtab.length === 0 && recettesArchivees.length === 0 && (plats.length === 0 || dataStatus !== 'ready');
 
   return (
@@ -2115,12 +2110,6 @@ const Recettes = ({ user, etablissement }) => {
                         detail: <><span data-no-translate="">{String(activeCarte.nom ?? '').trim() || '?'}</span><span>{isConsultant ? ' : nom, dates, archiver, cacher, supprimer' : ' : nom, dates, archiver, supprimer'}</span></>,
                         onClick: () => barreCartesRef.current?.modifier(activeCarte),
                       },
-                      cartes.length > 1 && { titre: 'Ordre des cartes', detail: "Changer l'ordre des onglets, de gauche à droite", onClick: () => barreCartesRef.current?.ordre() },
-                      nbArchives > 0 && {
-                        titre: 'Archives',
-                        detail: <><span data-no-translate="">{nbArchives}</span> <span>{nbArchives > 1 ? 'cartes archivées, à restaurer' : 'carte archivée, à restaurer'}</span></>,
-                        onClick: () => barreCartesRef.current?.archives(),
-                      },
                     ] },
                     canManageCartes && { titre: 'Fiches', items: [
                       canFiches && { titre: 'Importer des fiches', detail: peutLireFichesParIA(user) ? 'Depuis une photo, un PDF ou le modèle Excel, rangées dans une carte' : 'Depuis le modèle Excel, une ou plusieurs à la fois, rangées dans une carte', onClick: () => setShowImport(true) },
@@ -2129,6 +2118,9 @@ const Recettes = ({ user, etablissement }) => {
                     ] },
                   ].filter(Boolean)}
                 />
+              {/* Ordre des onglets, carte d'accueil, cartes cachées et
+                  archives : Réglages > Cartes & Recettes. */}
+              <BoutonRegler section="cartes" user={user} etablissement={etablissement} />
             </div>
           )}
         </div>
@@ -2219,16 +2211,8 @@ const Recettes = ({ user, etablissement }) => {
                 {canFiches && (
                   <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
                 )}
-                {canManageCartes && (
-                  <button
-                    style={{...rs.homeBtn, ...(defaultCarteId === activeCarte.id ? rs.homeBtnActive : {})}}
-                    onClick={() => toggleDefaultCarte(activeCarte.id)}
-                    title={defaultCarteId === activeCarte.id ? 'Carte par défaut : cliquer pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
-                  >
-                    {defaultCarteId === activeCarte.id
-                      ? 'Carte par défaut'
-                      : (isMobile ? 'Par défaut' : 'Définir par défaut')}
-                  </button>
+                {defaultCarteId === activeCarte.id && (
+                  <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text2)' }}>Carte par défaut</span>
                 )}
                 {/* Une carte cachée n'est servie qu'au consultant : le badge dit
                     explicitement que la brigade ne la voit pas, sinon rien ne

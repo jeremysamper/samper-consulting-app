@@ -10,6 +10,8 @@ import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import PhoneLink from '../../components/PhoneLink.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import { peutOuvrirSection } from '../../components/ui/BoutonRegler.jsx';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useAbsences } from '../../hooks/useAbsences.js';
@@ -1463,6 +1465,11 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const aTraiterVisible = canWrite && (absencesEtab.demandes.length > 0 || echangesRepris.length > 0);
   const choixAbsences = absencesEtab.status !== 'absent' && { titre: 'Absences', detail: 'Congés, formations et absences de l\'équipe.', onClick: () => setShowAbsences(true) };
 
+  // Modèles d'horaires, groupes, contrats et pointage : Réglages > Planning
+  // (plan 15, lot 2). « Gérer » y renvoie, pour qui ouvre ces sections.
+  const choixReglages = peutOuvrirSection('planning_modeles', { user, etablissement, shellMode: 'ordinateur' })
+    && { titre: 'Régler le planning', detail: "Modèles d'horaires, groupes, contrats et pointage, dans Réglages.", onClick: () => ouvrirCompte('planning_modeles') };
+
   // Solde du mois de la personne connectée (Mes horaires) : du 1er à hier,
   // le 1er le mois précédent. Rien tant que contrats et absences ne sont pas lus.
   const periodeSolde = periodeEnCours(zurichToday());
@@ -1507,6 +1514,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             choixAbsences,
             { titre: 'Dupliquer la semaine', onClick: () => setShowDupliquer(true) },
             canExport && { titre: 'Exporter', onClick: () => setExportOuvert(true) },
+            choixReglages,
           ]}
           onPointer={pointerDepuisAccueil}
           onHoraires={() => setEcran('horaires')}
@@ -1581,6 +1589,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             canWrite && activeTab === 'planning' && { titre: 'Sélectionner plusieurs horaires', detail: 'Pour les supprimer ou les recopier ailleurs.', onClick: () => { setRemplissage(null); if (!selectionMode) toggleSelectionMode(); } },
             activeTab === 'planning' && choixAbsences,
             activeTab === 'planning' && estDirectionPlanning(user?.role) && masquesEtab.status !== 'absent' && { titre: 'Personnes masquées', detail: "Retirer quelqu'un de l'affichage du planning.", onClick: () => setShowMasques(true) },
+            choixReglages,
           ] }]}
         />
       </div>

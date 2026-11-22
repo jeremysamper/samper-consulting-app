@@ -10,6 +10,7 @@ import {
   construirePrevision, JOURS_MIN_PAR_CLASSE, JOURS_PREVUS, SEMAINES, SEMAINES_EFFET, SEMAINES_MIN,
 } from './previsionCouverts.js';
 import { chargerMeteo, npaDepuisAdresse } from './meteo.js';
+import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Prévision des couverts des 7 prochains jours, sous le planning des
@@ -73,6 +74,8 @@ function usePrevisionCouverts(etablissement, refreshKey) {
   const [donnees, setDonnees] = useState({ etat: 'chargement' });
   const [meteo, setMeteo] = useState({ etat: 'chargement', valeur: null });
   const [relecture, setRelecture] = useState(0);
+  // Fermetures de la maison : un service fermé n'a pas de prévision.
+  const maison = useReglagesMaison(etabId);
 
   useEffect(() => {
     if (!etabId) return undefined;
@@ -115,9 +118,9 @@ function usePrevisionCouverts(etablissement, refreshKey) {
   const prevision = useMemo(() => (donnees.etat === 'pret'
     ? construirePrevision({
       aujourdhui, premiereDate: donnees.premiereDate, resas: donnees.resas,
-      meteo: meteo.valeur, etatMeteo: meteo.etat,
+      meteo: meteo.valeur, etatMeteo: meteo.etat, fermetures: maison.fermetures,
     })
-    : null), [donnees, meteo, aujourdhui]);
+    : null), [donnees, meteo, aujourdhui, maison.fermetures]);
 
   return { donnees, prevision, relire: () => setRelecture((k) => k + 1) };
 }
@@ -154,7 +157,7 @@ function CelluleService({ cellule, svc }) {
         }}>
           {prevue ? cellule.valeur : '-'}
         </span>
-        <span style={texteDoux}>{prevue ? 'prévus' : 'pas de prévision'}</span>
+        <span style={texteDoux}>{prevue ? 'prévus' : cellule.etat === 'ferme' ? 'Fermé' : 'pas de prévision'}</span>
       </div>
       <div style={{ ...texteDoux, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
         <span>Réservés</span>
@@ -187,6 +190,8 @@ function Composition({ jour, cellule, svc }) {
             <div style={{ ...texteDoux, marginTop: 2 }}>Les réservations déjà prises dépassent le calcul : elles font la prévision.</div>
           )}
         </>
+      ) : cellule.etat === 'ferme' ? (
+        <div style={{ ...texteDoux, marginBottom: 2 }}>Fermé ce jour-là (Horaires et fermetures).</div>
       ) : (
         <>
           <div style={{ ...texteDoux, marginBottom: 2 }}>{`Pas de prévision : moins de ${SEMAINES_MIN} semaines comparables.`}</div>

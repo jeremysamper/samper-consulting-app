@@ -13,6 +13,7 @@ import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { ArrowLeft, Check, ChevronDown, ChevronRight, FilePlus2, History, Library, MoreHorizontal, Trash2 } from 'lucide-react';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
@@ -167,6 +168,10 @@ const SOP = ({ user, etablissement }) => {
             {sops.filter(s => s.actif).length} procédure{sops.filter(s => s.actif).length > 1 ? 's' : ''}
             {', '}{terminees} exécution{terminees > 1 ? 's' : ''} terminée{terminees > 1 ? 's' : ''}
           </div>
+        </div>
+        {/* Fréquence, rôles et rappel de chaque procédure : Réglages > SOP. */}
+        <div className="module-actions">
+          <BoutonRegler section="sop" user={user} etablissement={etablissement} />
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import { addDays, isoDate, parseLocalDate } from '../../utils/dateHelpers.js';
 import { absenceDe, absencesDuJour, couvre } from '../../utils/absences.js';
 import { libelleMenuGroupe } from '../groupes/typesGroupe.js';
 import { dureeMinutes } from '../planning/dureeHoraire.js';
+import { creneauDuJour } from '../haccp/HACCP.utils.js';
 
 const JOURS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
@@ -304,7 +305,8 @@ export function reperesDuJour({
 // tournée la plus proche de son heure.
 export function relevesParCreneau(haccp, aujourdhui) {
   const zones = ((haccp && haccp.zones) || []).filter((z) => z.actif);
-  const creneaux = ((haccp && haccp.creneaux) || []).filter((c) => c.actif)
+  // Tournées attendues aujourd'hui : jours du créneau (null = tous les jours).
+  const creneaux = ((haccp && haccp.creneaux) || []).filter((c) => c.actif && creneauDuJour(c, aujourdhui))
     .sort((a, b) => (enMinutes(a.heure) ?? 0) - (enMinutes(b.heure) ?? 0));
   const parCreneau = new Map(creneaux.map((c) => [c.id, new Set()]));
   if (zones.length && creneaux.length) {

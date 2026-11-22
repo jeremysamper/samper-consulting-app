@@ -5,6 +5,7 @@ import { usePointsEtat } from './pointsEtat.js';
 import MesPoints from './MesPoints.jsx';
 import GestionPoints from './GestionPoints.jsx';
 import { pointsService } from './pointsService.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import './points.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,8 +26,9 @@ const ONGLETS_GESTION = [
   { id: 'commandes', label: 'À traiter' },
   { id: 'boutique', label: 'Boutique' },
   { id: 'equipe', label: 'Équipe' },
-  { id: 'reglages', label: 'Réglages' },
 ];
+// Les réglages des points (allumer, barème, plafonds, participants) vivent
+// dans Réglages > Points depuis le plan 15 (lot 2) : « Régler » y mène.
 
 export default function Points({ user, etablissement, permissions = null }) {
   const etabId = etablissement?.id;
@@ -72,10 +74,13 @@ export default function Points({ user, etablissement, permissions = null }) {
     <div className="points-page" data-points-ecran="gestion">
       <div className="points-grille">
         <h1 className="points-titre">{courant === 'moi' ? 'Mes points' : 'Points de l\'équipe'}</h1>
-        {!etat.actif && courant !== 'reglages' && (
+        {!etat.actif && (
           <p className="points-aide" role="status">Les points sont éteints pour cet établissement : l'équipe ne voit rien et ne gagne rien. Ils s'allument dans Réglages.</p>
         )}
-        <SegmentedTabs tabs={onglets} active={courant} onChange={setOnglet} />
+        <div className="points-onglets" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <SegmentedTabs tabs={onglets} active={courant} onChange={setOnglet} />
+          <BoutonRegler section="points" user={user} etablissement={etablissement} style={{ marginLeft: 'auto' }} />
+        </div>
         {courant === 'moi'
           ? <MesPoints user={user} etablissement={etablissement} permissions={permissions} bareme={etat.bareme} plafonds={{ jour: etat.plafondJour, mois: etat.plafondMois }} sansTitre />
           : <GestionPoints key={`${etabId}-${courant}`} onglet={courant} user={user} etablissement={etablissement} etat={etat} onOnglet={setOnglet} />}
