@@ -105,11 +105,16 @@ export function suiteDuRejeu(r) {
   return 'retirer';
 }
 
-// Lecture prudente d'une file gardée (valeur illisible : vide), ordre du geste.
-export function normaliserFile(brut) {
+// Ce que la base accepte d'un rejeu : un geste de moins de 24 heures.
+export const FILE_DUREE_MS = 24 * 60 * 60 * 1000;
+
+// Lecture prudente d'une file gardée (valeur illisible : vide), ordre du
+// geste ; un geste de plus de 24 heures est oublié (la base le refuserait).
+export function normaliserFile(brut, maintenant = Date.now()) {
   const liste = Array.isArray(brut) ? brut : [];
   return liste
     .filter((e) => e && typeof e.clientUuid === 'string' && codeComplet(e.code) && !Number.isNaN(Date.parse(e.eventAt)))
+    .filter((e) => maintenant - Date.parse(e.eventAt) < FILE_DUREE_MS)
     .sort((a, b) => Date.parse(a.eventAt) - Date.parse(b.eventAt));
 }
 

@@ -49,6 +49,9 @@ async function appelBorne(jeton, code, clientUuid, eventAt = null) {
 }
 
 // File hors ligne : codes tapés sans réseau, rejoués dans l'ordre du geste.
+// Elle garde les codes en clair sur la borne le temps du rejeu (la base n'a
+// que leurs empreintes et doit les vérifier), 24 heures au plus : au-delà, la
+// base refuserait le rejeu.
 export const fileDeLaBorne = () => normaliserFile(lire(window.localStorage, CLE_FILE));
 const ecrireFile = (file) => window.localStorage.setItem(CLE_FILE, JSON.stringify(file));
 
@@ -60,9 +63,10 @@ export async function pointerALaBorne(jeton, code) {
   const horsLigne = typeof navigator !== 'undefined' && navigator.onLine === false;
   if (!horsLigne) {
     try {
-      const r = await appelBorne(jeton, code, clientUuid);
-      if (fileDeLaBorne().length) rejouerFile(jeton);
-      return r;
+      // La file part d'abord : la base refuse un geste plus ancien que le
+      // dernier pointage de la personne.
+      if (fileDeLaBorne().length) await rejouerFile(jeton);
+      return await appelBorne(jeton, code, clientUuid);
     } catch (err) {
       if (!isNetworkError(err)) return { ok: false, raison: 'erreur', message: err?.message || '' };
     }
@@ -110,13 +114,25 @@ export async function revoquerBorne(id) {
   if (error) throw error;
 }
 
+// Les bornes, avec leurs codes faux des dernières 24 heures (journal lu par
+// la direction seule) : un nombre qui monte dit qu'on essaie des codes.
 export async function listerBornes(etablissementId) {
-  const { data, error } = await supabase.from('bornes_pointage')
-    .select('id, nom, creee_le, revoquee_le, dernier_usage_le')
-    .eq('etablissement_id', etablissementId)
-    .order('creee_le', { ascending: true });
-  if (error) throw error;
-  return data || [];
+  const depuis = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const [bornes, faux] = await Promise.all([
+    supabase.from('bornes_pointage')
+      .select('id, nom, creee_le, revoquee_le, dernier_usage_le')
+      .eq('etablissement_id', etablissementId)
+      .order('creee_le', { ascending: true }),
+    supabase.from('bornes_pointage_essais')
+      .select('borne_id')
+      .eq('etablissement_id', etablissementId)
+      .eq('resultat', 'code_faux')
+      .gte('created_at', depuis),
+  ]);
+  if (bornes.error) throw bornes.error;
+  const parBorne = new Map();
+  (faux.data || []).forEach((e) => parBorne.set(e.borne_id, (parBorne.get(e.borne_id) || 0) + 1));
+  return (bornes.data || []).map((b) => ({ ...b, codesFaux24h: parBorne.get(b.id) || 0 }));
 }
 
 export async function codesDeLEquipe(etablissementId) {

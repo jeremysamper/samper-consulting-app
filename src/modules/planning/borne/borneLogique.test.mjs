@@ -63,14 +63,19 @@ test('file hors ligne : suite du rejeu selon la réponse', () => {
   assert.equal(suiteDuRejeu(undefined), 'attendre');
 });
 
-test('file hors ligne : lecture prudente, ordre du geste', () => {
+test('file hors ligne : lecture prudente, ordre du geste, 24 heures au plus', () => {
+  const maintenant = Date.parse('2026-11-22T12:00:00Z');
+  assert.deepEqual(normaliserFile([
+    { clientUuid: 'vieux', code: '4826', eventAt: '2026-11-21T11:59:00Z' },
+    { clientUuid: 'recent', code: '4826', eventAt: '2026-11-21T12:01:00Z' },
+  ], maintenant).map((e) => e.clientUuid), ['recent']);
   const f = normaliserFile([
     { clientUuid: 'b', code: '4826', eventAt: '2026-11-22T10:05:00Z' },
     { clientUuid: 'a', code: '5937', eventAt: '2026-11-22T10:00:00Z' },
     { clientUuid: 'c', code: '12', eventAt: '2026-11-22T10:01:00Z' },
     { code: '4826', eventAt: '2026-11-22T10:02:00Z' },
     null,
-  ]);
+  ], Date.parse('2026-11-22T11:00:00Z'));
   assert.deepEqual(f.map((e) => e.clientUuid), ['a', 'b']);
   assert.deepEqual(normaliserFile('illisible'), []);
 });

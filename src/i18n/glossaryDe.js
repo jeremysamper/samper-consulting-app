@@ -6006,6 +6006,7 @@ export const UI_GLOSSARY_DE = {
   "poste pâtisserie": "Patisserieposten",
   "poste bar": "Barposten",
   // Borne de pointage (lot L6, 22.11.2026)
+  "Codes faux sur 24 h :": "Falsche Codes in 24 Std.:",
   "Borne de pointage": "Stempelterminal",
   "Bornes de pointage": "Stempelterminals",
   "Tapez votre code pour pointer votre arrivée ou votre départ.": "Geben Sie Ihren Code ein, um Ihr Kommen oder Gehen zu stempeln.",

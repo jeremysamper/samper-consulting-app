@@ -145,6 +145,12 @@ export default function ReglagesBornes({ etablissement, pointage, enregistrer })
                       <>
                         <Repere libelle="Déclarée le" valeur={jour(b.creee_le)} />
                         <Repere libelle="Dernier pointage" valeur={jourHeure(b.dernier_usage_le)} />
+                        {b.codesFaux24h ? (
+                          <span style={st.alerte}>
+                            <span>Codes faux sur 24 h :</span>
+                            <span data-no-translate> {b.codesFaux24h}</span>
+                          </span>
+                        ) : null}
                       </>
                     )}
                 </div>
@@ -215,4 +221,5 @@ const st = {
   champ: { flex: '1 1 260px', minWidth: 0 },
   note: { margin: 0, flex: '1 1 260px', fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.45 },
   vide: { margin: '4px 0', fontSize: 'var(--t2)', color: 'var(--text2)' },
+  alerte: { whiteSpace: 'nowrap', color: 'var(--danger-text)', fontWeight: 'var(--g2)' },
 };

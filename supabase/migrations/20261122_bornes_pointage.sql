@@ -35,13 +35,16 @@
 --                             jeton (secret de 256 bits), jamais d'un nom ni
 --                             d'un identifiant lisible. Vérifie la borne non
 --                             révoquée, l'attente (5 codes faux en 5 minutes
---                             bloquent jusqu'à 5 minutes après le dernier),
+--                             bloquent 5 minutes après le dernier, puis 15 et
+--                             60 minutes quand les codes faux s'accumulent sur
+--                             24 heures),
 --                             le code dans l'établissement de
 --                             la borne et un membre actif, puis choisit
 --                             arrivée ou départ selon l'état du jour, à
 --                             l'heure du serveur (Zurich). event_at n'est lu
---                             que pour un rejeu hors ligne, dans les fenêtres
---                             de pointer_offline et pointer_hors_planning.
+--                             que pour un rejeu hors ligne (avec client_uuid),
+--                             sur 24 heures, et jamais avant le dernier
+--                             pointage de la personne.
 --                             Rend une réponse jsonb, jamais une exception
 --                             pour un refus : le journal doit survivre.
 --   borne_etat(jeton)         la borne relit son état à l'ouverture.
@@ -563,6 +566,8 @@ declare
   v_borne         bornes_pointage;
   v_prec          bornes_pointage_essais;
   v_echecs        integer;
+  v_echecs_jour   integer;
+  v_pause         interval;
   v_derniers      timestamptz[];
   v_at            timestamptz;
   v_z             timestamp;
@@ -616,11 +621,18 @@ begin
     return jsonb_build_object('ok', false, 'raison', 'revoquee');
   end if;
 
-  -- Attente : 5 codes faux en 5 minutes bloquent la borne jusqu'à 5 minutes
-  -- après le dernier. Compté à l'heure du serveur, rejeu hors ligne compris :
-  -- une file remplie de codes au hasard n'ouvre pas plus d'essais. L'attente
-  -- ne retient pas client_uuid : l'appel rejoué plus tard sera vraiment
-  -- examiné.
+  -- Attente : 5 codes faux en 5 minutes bloquent la borne, 5 minutes après
+  -- le dernier, puis 15 minutes dès 10 codes faux sur 24 heures, puis une
+  -- heure dès 15. Compté à l'heure du serveur, rejeu hors ligne compris : une
+  -- file remplie de codes au hasard n'ouvre pas plus d'essais. L'attente ne
+  -- retient pas client_uuid : l'appel rejoué plus tard sera vraiment examiné.
+  select count(*) into v_echecs_jour
+    from bornes_pointage_essais
+   where borne_id = v_borne.id and resultat = 'code_faux'
+     and created_at > now() - interval '24 hours';
+  v_pause := case when v_echecs_jour >= 15 then interval '60 minutes'
+                  when v_echecs_jour >= 10 then interval '15 minutes'
+                  else interval '5 minutes' end;
   select array_agg(x.created_at order by x.created_at desc) into v_derniers
     from (select e.created_at from bornes_pointage_essais e
            where e.borne_id = v_borne.id and e.resultat = 'code_faux'
@@ -628,7 +640,7 @@ begin
            limit 5) x;
   if coalesce(array_length(v_derniers, 1), 0) = 5
      and v_derniers[1] - v_derniers[5] <= interval '5 minutes'
-     and now() < v_derniers[1] + interval '5 minutes' then
+     and now() < v_derniers[1] + v_pause then
     if not exists (select 1 from bornes_pointage_essais
                     where borne_id = v_borne.id and resultat = 'attente'
                       and created_at > now() - interval '1 minute') then
@@ -636,7 +648,7 @@ begin
       values (v_borne.id, v_borne.etablissement_id, 'attente', coalesce(p_event_at, now()));
     end if;
     return jsonb_build_object('ok', false, 'raison', 'attente',
-      'secondes', greatest(1, ceil(extract(epoch from (v_derniers[1] + interval '5 minutes' - now())))::int));
+      'secondes', greatest(1, ceil(extract(epoch from (v_derniers[1] + v_pause - now())))::int));
   end if;
   -- Essais restants avant l'attente : les codes faux des 5 dernières minutes.
   select count(*) into v_echecs
@@ -644,11 +656,13 @@ begin
    where borne_id = v_borne.id and resultat = 'code_faux'
      and created_at > now() - interval '5 minutes';
 
-  -- Heure du pointage : celle du serveur. Un rejeu hors ligne porte l'heure
-  -- du geste, retenue dans les fenêtres des RPC existantes (48 h en arrière,
-  -- 15 minutes d'avance d'horloge au plus).
+  -- Heure du pointage : celle du serveur. Seul un rejeu de la file hors
+  -- ligne (client_uuid fourni) porte l'heure du geste : 24 heures en arrière
+  -- et 15 minutes d'avance d'horloge au plus. Le journal garde les deux
+  -- heures (event_at, created_at).
   if p_event_at is not null
-     and (p_event_at > now() + interval '15 minutes' or p_event_at < now() - interval '48 hours') then
+     and (p_client_uuid is null
+          or p_event_at > now() + interval '15 minutes' or p_event_at < now() - interval '24 hours') then
     insert into bornes_pointage_essais (borne_id, etablissement_id, resultat, client_uuid, event_at)
     values (v_borne.id, v_borne.etablissement_id, 'hors_fenetre', p_client_uuid, p_event_at);
     return jsonb_build_object('ok', false, 'raison', 'hors_fenetre');
@@ -673,6 +687,19 @@ begin
     insert into bornes_pointage_essais (borne_id, etablissement_id, resultat, client_uuid, event_at)
     values (v_borne.id, v_borne.etablissement_id, 'code_faux', p_client_uuid, v_at);
     return jsonb_build_object('ok', false, 'raison', 'code_faux', 'restants', greatest(0, 4 - v_echecs));
+  end if;
+
+  -- Un rejeu ne remonte jamais avant le dernier pointage de la personne à
+  -- une borne de l'établissement : la file rejoue dans l'ordre du geste, un
+  -- geste plus ancien est un pointage antidaté.
+  if p_event_at is not null and exists (
+    select 1 from bornes_pointage_essais e
+     where e.user_id = v_user and e.etablissement_id = v_borne.etablissement_id
+       and e.resultat in ('arrivee', 'depart') and e.event_at > p_event_at
+  ) then
+    insert into bornes_pointage_essais (borne_id, etablissement_id, user_id, resultat, client_uuid, event_at)
+    values (v_borne.id, v_borne.etablissement_id, v_user, 'hors_fenetre', p_client_uuid, p_event_at);
+    return jsonb_build_object('ok', false, 'raison', 'hors_fenetre');
   end if;
 
   begin
