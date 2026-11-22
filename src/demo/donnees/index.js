@@ -15,6 +15,7 @@ import {
   genererAchats, genererVentesJour, SALAIRES_ESTIMES, genererJournal,
 } from './operations.js';
 import { genererCaisse } from './caisse.js';
+import { REGLAGES_MODULES, MEP_MODELES, COMMANDE_CIBLES } from './reglages.js';
 import { genererPos } from './pos.js';
 import { empreinteDemo } from '../rpc.js';
 
@@ -92,8 +93,10 @@ export function creerBase() {
     inventaires: genererInventaires(),
     pertes: PERTES,
     commande_items: COMMANDE_ITEMS,
+    commande_cibles: COMMANDE_CIBLES,
     mep_listes: MEP_LISTES,
     mep_items: MEP_ITEMS,
+    mep_modeles: MEP_MODELES,
     sops: SOPS,
     sop_executions: [],
     sop_step_states: [],
@@ -123,6 +126,7 @@ export function creerBase() {
     traductions: [],
     temps_gagne: [],
     reglages_maison: [],
+    reglages_modules: REGLAGES_MODULES,
     bornes_pointage: [],
     bornes_pointage_essais: [],
     pointage_codes: CODES_POINTAGE,

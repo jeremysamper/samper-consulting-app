@@ -111,8 +111,8 @@ export const HACCP_ZONES = [
 ].map((z) => ({ ...z, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-01T08:00:00Z' }));
 
 export const HACCP_CRENEAUX = [
-  { id: 'hc-matin', etablissement_id: ETAB, label: 'Ouverture', heure: '08:30:00', actif: true },
-  { id: 'hc-midi', etablissement_id: ETAB, label: 'Avant le service du soir', heure: '17:00:00', actif: true },
+  { id: 'hc-matin', etablissement_id: ETAB, label: 'Ouverture', heure: '08:30:00', actif: true, jours: [2, 3, 4, 5, 6, 7] },
+  { id: 'hc-midi', etablissement_id: ETAB, label: 'Avant le service du soir', heure: '17:00:00', actif: true, jours: [2, 3, 4, 5, 6, 7] },
 ].map((c) => ({ ...c, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-01T08:00:00Z' }));
 
 export const HACCP_CTRL_TEMPLATES = [
@@ -329,6 +329,12 @@ export const SOPS = SOP_TEMPLATES.slice(0, 5).map((t, i) => ({
   source_template: null,
   ordre: i,
   actif: true,
+  // Lot 2 : la première procédure revient à l'ouverture, pour la cuisine.
+  roles_designes: i === 0 ? ['resp_cuisine', 'cuisinier'] : [],
+  rappel_actif: i === 0,
+  rappel_moment: i === 0 ? 'ouverture' : null,
+  rappel_heure: null,
+  rappel_jours: null,
   created_at: '2026-03-01T08:00:00Z',
   updated_at: '2026-03-01T08:00:00Z',
 }));
@@ -443,7 +449,7 @@ export function genererPointsMouvements() {
 
 // ── Comptabilité ────────────────────────────────────────────────────────────
 
-export const COMPTA_REGLAGES = [{ etablissement_id: ETAB, methode_tva: 'effective', taux_tdfn: null, charges_sociales_pct: 16, cout_horaire_moyen: 32, updated_by: 'demo-patron', updated_at: '2026-03-01T08:00:00Z', seuil_hausse_prix_pct: 5 }];
+export const COMPTA_REGLAGES = [{ etablissement_id: ETAB, methode_tva: 'effective', taux_tdfn: null, charges_sociales_pct: 16, cout_horaire_moyen: 32, updated_by: 'demo-patron', updated_at: '2026-03-01T08:00:00Z', seuil_hausse_prix_pct: 5, delai_paiement_jours: 30, categories_charges: [] }];
 
 export const CHARGES_FIXES = [
   ['Loyer', 'loyer', 6500, 0, 'Gérance des Mélèzes'],

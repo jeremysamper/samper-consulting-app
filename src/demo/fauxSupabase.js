@@ -24,8 +24,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // v2 (lot L3) : la commande par QR entre dans les jeux ; une base du jour en
 // cache dans l'onglet serait relue sans elle. v3 (Carte des boissons, lot A) :
 // plat_formats et cartes.genre. v4 (lot 1, chiffres justes) : type de groupe
-// valide, temps de service des fiches salle non inventé.
-const VERSION_BASE = 'v4-' + aujourdhui();
+// valide, temps de service des fiches salle non inventé. v5 (lot 2a) : réglages
+// des modules, modèles de mise en place, stocks cibles, livraisons des fournisseurs.
+const VERSION_BASE = 'v5-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -121,7 +122,7 @@ export function oublierBase() {
 
 // Valeurs par défaut de la base, pour les insertions de l'app.
 const DEFAUTS = {
-  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres'],
+  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres', 'reglages_modules'],
   reservations: { statut: 'confirme', origine: 'equipe', est_groupe: false, passeport_gourmand: false, created_by: () => sessionUid },
   shifts: { pause: 0, type_shift: 'simple', statut: 'confirmé', pointage_debut: null, pointage_fin: null, pointage_fin_auto: false },
   recettes: { statut: 'brouillon', version: 1, portions: 4, prix_vente: 0, allergenes_ids: [], ingredients: [], etapes: [], masquee: false, created_by: () => sessionUid },
@@ -141,6 +142,13 @@ const DEFAUTS = {
   journal_activite: {},
   temps_gagne: { quantite: 1, fait_par: () => sessionUid },
   points_mouvements: { sens: 'credit' },
+  // Lot 2 (migration 20261122_lot2a_reglages_modules) : défauts de la base.
+  fournisseurs: { actif: true, delai_commande_jours: 1 },
+  sops: { roles_designes: [], rappel_actif: false },
+  compta_reglages: { delai_paiement_jours: 30, categories_charges: [] },
+  reglages_modules: { config: {}, updated_by: () => sessionUid },
+  mep_modeles: { lignes: [], ordre: 0, actif: true, created_by: () => sessionUid },
+  commande_cibles: { updated_by: () => sessionUid },
 };
 
 const CLES_PRIMAIRES = {
@@ -166,6 +174,7 @@ const CLES_PRIMAIRES = {
   factures_compteurs: ['etablissement_id', 'date'],
   caisse_compteurs: ['etablissement_id', 'cle'],
   caisse_commande_qr_parametres: ['etablissement_id'],
+  reglages_modules: ['etablissement_id', 'module'],
 };
 
 let sessionUid = null;
