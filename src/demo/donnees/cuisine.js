@@ -271,9 +271,9 @@ export const PLAT_RECETTES = PLATS_BRUTS.flatMap((p) => p.__fiches.map((f, i) =>
 })));
 
 export const CARTES = [
-  { id: 'carte-automne', etablissement_id: ETAB, nom: 'Carte d\'automne', date_debut: jour(-50), date_fin: jour(40), plats: [], archive: false, ordre: 1, masquee: false, created_at: '2026-09-20T08:00:00Z', updated_at: jour(-6) + 'T15:20:00Z' },
-  { id: 'carte-midi', etablissement_id: ETAB, nom: 'Menu de midi', date_debut: null, date_fin: null, plats: [], archive: false, ordre: 2, masquee: false, created_at: '2026-09-20T08:00:00Z', updated_at: jour(-6) + 'T15:20:00Z' },
-  { id: 'carte-ete', etablissement_id: ETAB, nom: 'Carte d\'été', date_debut: '2026-06-01', date_fin: '2026-09-15', plats: [], archive: true, ordre: 3, masquee: false, created_at: '2026-05-15T08:00:00Z', updated_at: '2026-09-16T08:00:00Z' },
+  { id: 'carte-automne', etablissement_id: ETAB, nom: 'Carte d\'automne', genre: 'mets', date_debut: jour(-50), date_fin: jour(40), plats: [], archive: false, ordre: 1, masquee: false, created_at: '2026-09-20T08:00:00Z', updated_at: jour(-6) + 'T15:20:00Z' },
+  { id: 'carte-midi', etablissement_id: ETAB, nom: 'Menu de midi', genre: 'mets', date_debut: null, date_fin: null, plats: [], archive: false, ordre: 2, masquee: false, created_at: '2026-09-20T08:00:00Z', updated_at: jour(-6) + 'T15:20:00Z' },
+  { id: 'carte-ete', etablissement_id: ETAB, nom: 'Carte d\'été', genre: 'mets', date_debut: '2026-06-01', date_fin: '2026-09-15', plats: [], archive: true, ordre: 3, masquee: false, created_at: '2026-05-15T08:00:00Z', updated_at: '2026-09-16T08:00:00Z' },
 ];
 
 const SUR_MIDI = ['croute', 'rosti', 'burger', 'risotto', 'veloute', 'mousse'];

@@ -24,6 +24,21 @@ export const BOISSONS = [
   updated_at: '2026-09-02T08:00:00Z',
 }));
 
+// Formats de vente (Carte des boissons, lot A) : le Cornalin se vend en
+// bouteille de 75 cl, comme les vins de Woodland ; son prix de vente reste
+// celui du format. Un seul format tant que la page QR ne sait pas en faire
+// choisir un (lot B) : un format unique se commande sans question.
+export const PLAT_FORMATS = [['75 cl', 58, 4]].map(([libelle, prix, ordre], i) => ({
+  id: uid('8006', i + 1),
+  plat_id: 'pl-b-cornalin-btl',
+  etablissement_id: ETAB,
+  libelle,
+  prix,
+  ordre,
+  created_at: '2026-11-22T08:00:00Z',
+  updated_at: '2026-11-22T08:00:00Z',
+}));
+
 const CATEGORIES = [['Entrées', 8.1], ['Plats', 8.1], ['Desserts', 8.1], ['Boissons', 8.1]];
 export const CAISSE_CATEGORIES = CATEGORIES.map(([nom, tva], i) => ({
   id: uid('8001', i + 1),
@@ -167,6 +182,7 @@ export function genererCaisse() {
 
   return {
     plats_boissons: BOISSONS,
+    plat_formats: PLAT_FORMATS,
     caisse_categories: CAISSE_CATEGORIES,
     caisse_boutons: boutons,
     caisse_reglages: [{ etablissement_id: ETAB, config: {}, updated_at: '2026-10-01T08:00:00Z' }],
@@ -193,6 +209,11 @@ function commandesQr() {
   const boissons = CAISSE_CATEGORIES.find((c) => c.nom === 'Boissons');
   const b = (id) => BOISSONS.find((x) => x.id === 'pl-b-' + id);
   const ligne = (id, quantite) => ({ plat_id: b(id).id, libelle: b(id).nom, quantite, prix_unitaire: b(id).prix_vente });
+  // Une ligne vendue dans un format : la forme rangée par commande_qr_envoyer.
+  const ligneFormat = (id, libelle, quantite) => {
+    const f = PLAT_FORMATS.find((x) => x.plat_id === b(id).id && x.libelle === libelle);
+    return { plat_id: b(id).id, libelle: `${b(id).nom}, ${f.libelle}`, quantite, prix_unitaire: f.prix, format_id: f.id, format: f.libelle };
+  };
   const ilYA = (min) => new Date(Date.now() - min * 60000).toISOString();
   const commande = (n, champs, lignes, min) => ({
     id: uid('8005', n), etablissement_id: ETAB, table_id: null, table_nom: null, au_bar: false,
@@ -207,7 +228,7 @@ function commandesQr() {
     }],
     caisse_commandes_qr: [
       commande(1, { table_id: 'tb-4', table_nom: '4', prenom: 'Léa' }, [ligne('biere', 2), ligne('fendant-verre', 1)], 6),
-      commande(2, { au_bar: true, prenom: 'Marc' }, [ligne('pinot-verre', 2)], 2),
+      commande(2, { au_bar: true, prenom: 'Marc' }, [ligne('pinot-verre', 2), ligneFormat('cornalin-btl', '75 cl', 1)], 2),
     ],
   };
 }

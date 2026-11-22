@@ -22,8 +22,9 @@ const DEMO_HOTE = new URL(DEMO_URL).hostname;
 const CLE_BASE = PREFIXE + 'base';
 const CLE_ROLE = PREFIXE + 'role';
 // v2 (lot L3) : la commande par QR entre dans les jeux ; une base du jour en
-// cache dans l'onglet serait relue sans elle.
-const VERSION_BASE = 'v2-' + aujourdhui();
+// cache dans l'onglet serait relue sans elle. v3 (Carte des boissons, lot A) :
+// plat_formats et cartes.genre.
+const VERSION_BASE = 'v3-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -125,7 +126,8 @@ const DEFAUTS = {
   recettes: { statut: 'brouillon', version: 1, portions: 4, prix_vente: 0, allergenes_ids: [], ingredients: [], etapes: [], masquee: false, created_by: () => sessionUid },
   plats: { categorie: 'Plats', ordre: 0, actif: true },
   salles: { ordre: 0, actif: true, echelle_tables: 1 },
-  cartes: { plats: [], archive: false, masquee: false, ordre: 0 },
+  cartes: { plats: [], archive: false, masquee: false, ordre: 0, genre: 'mets' },
+  plat_formats: { ordre: 0 },
   produits: { categorie: 'Autres', unite_ref: 'g', actif: true, allergenes: [], strategie_prix: 'max', prix_verrouille: false },
   pertes: { quantite: 0, unite: 'pcs', valeur_unit: 0, valide: false },
   haccp_releves: {},
