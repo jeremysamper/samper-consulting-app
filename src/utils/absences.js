@@ -23,6 +23,15 @@ export const MOTIFS_ABSENCE = [
 const PAR_ID = MOTIFS_ABSENCE.reduce((acc, m) => { acc[m.id] = m; return acc; }, {});
 export const metaMotif = (id) => PAR_ID[id] || PAR_ID.absence;
 
+// Statut d'une ligne (migration 20261122) : 'demande' (posée par l'employé,
+// en attente), 'acceptee' (une absence), 'refusee'. Une ligne sans statut,
+// lue avant la migration, est une absence acceptée. Seules les absences
+// acceptées comptent partout (grille, tableau de bord, soldes, exports,
+// statistiques) : les lecteurs filtrent par estAcceptee.
+export const STATUTS_ABSENCE = ['demande', 'acceptee', 'refusee'];
+export const estAcceptee = (a) => Boolean(a) && (a.statut || 'acceptee') === 'acceptee';
+export const estDemande = (a) => Boolean(a) && a.statut === 'demande';
+
 export function mapAbsenceFromDB(row) {
   if (!row) return null;
   return {
@@ -32,18 +41,22 @@ export function mapAbsenceFromDB(row) {
     motif: row.motif || 'absence',
     dateDebut: row.date_debut,
     dateFin: row.date_fin,
+    statut: STATUTS_ABSENCE.includes(row.statut) ? row.statut : 'acceptee',
     createdBy: row.created_by || null,
     createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null,
   };
 }
 
 // L'absence couvre-t-elle ce jour ? (dates ISO, bornes incluses)
 export const couvre = (a, dateISO) => Boolean(a && dateISO && a.dateDebut <= dateISO && a.dateFin >= dateISO);
 
-export const absencesDuJour = (absences, dateISO) => (absences || []).filter((a) => couvre(a, dateISO));
+// Ces deux lectures ne voient que les absences acceptées : une demande en
+// attente ou refusée n'est pas une absence.
+export const absencesDuJour = (absences, dateISO) => (absences || []).filter((a) => estAcceptee(a) && couvre(a, dateISO));
 
 export const absenceDe = (absences, userId, dateISO) =>
-  (absences || []).find((a) => a.userId === userId && couvre(a, dateISO)) || null;
+  (absences || []).find((a) => a.userId === userId && estAcceptee(a) && couvre(a, dateISO)) || null;
 
 const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 

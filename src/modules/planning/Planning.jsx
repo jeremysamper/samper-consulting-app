@@ -17,6 +17,8 @@ import { absenceDe, absencesDuJour, metaMotif, resteAbsence } from '../../utils/
 import { zurichClock, zurichLundi, zurichNowMinutes, zurichToday } from '../../utils/zurichTime.js';
 import { useEchanges } from './echanges.js';
 import AbsencesModal from './AbsencesModal.jsx';
+import ATraiter from './ATraiter.jsx';
+import { heuresDues, heuresParJour, nombreAPourvoir, servicesAPourvoir, teinteHeures } from './grillePlanning.js';
 import SaisieRapide from './SaisieRapide.jsx';
 import DupliquerModal from './DupliquerModal.jsx';
 import DupliquerVersModal from './DupliquerVersModal.jsx';
@@ -76,6 +78,33 @@ const timeToMin = (t) => {
   const [h, m] = (t || '').split(':').map(Number);
   return (h || 0) * 60 + (m || 0);
 };
+// Pied de grille (lot L5) : coût du jour arrondi au franc et part des
+// ventes, écrits comme la carte du coût (chfEntier et pctTexte de comptaUi).
+const chfEntier = (v) => Math.round(Number(v) || 0).toLocaleString('fr-CH', { maximumFractionDigits: 0 });
+const pctJour = (p) => `${(Math.round(p * 1000) / 10).toLocaleString('fr-CH', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+
+// Un service « à pourvoir » (lot L5) : type, heures, et pourquoi il l'est.
+// Bouton quand qui gère le planning peut l'ouvrir pour le donner à
+// quelqu'un d'autre ; simple tuile sinon. Grille et vue du jour au téléphone.
+function ServiceAPourvoir({ shift, raison, qui, onOuvrir = null, style = null }) {
+  const contenu = (
+    <>
+      <span style={pls.aPourvoirType}>{typeHoraire(shift.typeShift).label}</span>
+      <span style={pls.aPourvoirHeures} data-no-translate>{shift.debut}-{shift.fin}</span>
+      <span style={pls.aPourvoirRaison}>
+        <span>{raison === 'absence' ? 'Absence de' : 'Proposé par'}</span> <span data-no-translate>{qui}</span>
+      </span>
+    </>
+  );
+  return onOuvrir ? (
+    <button type="button" style={{ ...pls.aPourvoirItem, cursor: 'pointer', ...style }} onClick={() => onOuvrir(shift)} data-service-a-pourvoir={raison}>
+      {contenu}
+    </button>
+  ) : (
+    <div style={{ ...pls.aPourvoirItem, ...style }} data-service-a-pourvoir={raison}>{contenu}</div>
+  );
+}
+
 const shiftsOverlap = (aDebut, aFin, bDebut, bFin) => {
   const aS = timeToMin(aDebut), aE = timeToMin(aFin);
   const bS = timeToMin(bDebut), bE = timeToMin(bFin);
@@ -160,6 +189,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
   }, [demoData.utilisateurs]);
   const groupeDeId = (userId) => groupesEtab.groupeDe(userById.get(userId) || { id: userId });
   const nomDe = (userId) => userDisplay(userId).name;
+  const prenomDe = (userId) => userById.get(userId)?.prenom || nomDe(userId);
 
   // canPoint(shift) : le propriétaire du shift, un manager (pour corriger), ou
   // un compte de pointage partagé rattaché au groupe de la personne. Même règle
@@ -253,7 +283,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
       ]
     : null;
 
-  // Absences de l'équipe (congé, formation, absence), posées par la direction.
+  // Absences de l'équipe (congé, formation, absence), posées par la direction
+  // ou demandées par l'employé puis acceptées (lot L5). absencesEtab.absences
+  // ne porte que les acceptées ; demandes, les demandes en attente.
   const absencesEtab = useAbsences(etabId);
   const [showAbsences, setShowAbsences] = React.useState(false);
   // Personnes masquées (18.11.2026) : petit réglage rendu au module, dans le
@@ -454,6 +486,42 @@ const Planning = ({ user, etablissement, initialTab }) => {
     });
     return out;
   }, [employees, planningEtab, selectedDate]);
+
+  // ─── Grille, lot L5 (composition de l'écran 11) ───
+  // Lignes affichées (masques et filtre de groupe), leurs horaires, la ligne
+  // « À pourvoir », les heures dues sous chaque nom et le total du jour en
+  // pied. Le coût par jour vient de la carte du coût du personnel (direction
+  // seule, onParJour) : la grille ne lit rien de la Comptabilité.
+  const joursGrille = DAYS.map(d => d.date);
+  const debutGrille = joursGrille[0];
+  const finGrille = joursGrille[joursGrille.length - 1];
+  const lignesGrille = employees.filter(e => passeFiltre(e.id));
+  const cleLignesGrille = lignesGrille.map(e => e.id).join(',');
+  const shiftsGrille = React.useMemo(() => {
+    const ids = new Set(cleLignesGrille ? cleLignesGrille.split(',') : []);
+    return planningEtab.filter(s => ids.has(s.userId));
+  }, [planningEtab, cleLignesGrille]);
+  const aPourvoir = servicesAPourvoir({
+    shifts: shiftsGrille,
+    absences: absencesVisibles,
+    echanges: echanges.statut === 'pret' ? echanges.echanges : [],
+    dates: joursGrille,
+  });
+  const nbAPourvoir = nombreAPourvoir(aPourvoir);
+  const heuresGrilleJour = heuresParJour({ shifts: shiftsGrille, dates: joursGrille });
+  const duesDe = (userId) => heuresDues({
+    userId, debut: debutGrille, fin: finGrille, contrats: contratsEtab.contrats, absences: absencesVisibles, heuresSemaineEtab: heuresContractuelles(etablissement),
+  });
+  const [coutJours, setCoutJours] = React.useState(null);
+  // Ce que la carte du coût ne compte pas : un groupe filtré, des personnes
+  // masquées qui ont des horaires sur la période.
+  const masquesAvecHoraires = planningEtab.some(s => estMasque(s.userId) && s.date >= debutGrille && s.date <= finGrille);
+  const porteeCout = [
+    groupesActifs && filtreEffectif !== 'tous' && (filtreEffectif === 'sans'
+      ? <span key="g">Personnes sans groupe seulement.</span>
+      : <React.Fragment key="g"><span>Groupe affiché seulement :</span> <span data-no-translate>{groupesEtab.groupes.find(g => g.id === filtreEffectif)?.nom || ''}</span>.</React.Fragment>),
+    masquesAvecHoraires && <span key="m">Sans les personnes masquées du planning.</span>,
+  ].filter(Boolean);
 
   // Constats de conformité CCNT de la période affichée, pour qui écrit le
   // planning : la grille (semaines affichées) ou, au téléphone, la semaine du
@@ -1195,6 +1263,32 @@ const Planning = ({ user, etablissement, initialTab }) => {
             );
           })}
 
+          {/* À pourvoir du jour (lot L5) : même règle que la ligne de la grille. */}
+          {(() => {
+            const liste = servicesAPourvoir({
+              shifts: planningVisible.filter(s => passeFiltre(s.userId)),
+              absences: absencesVisibles,
+              echanges: echanges.statut === 'pret' ? echanges.echanges : [],
+              dates: [mobileDate],
+            })[mobileDate];
+            if (!liste.length) return null;
+            return (
+              <div style={pls.aPourvoirMobile} data-a-pourvoir-mobile="">
+                <div style={pls.piedTitre}>À pourvoir</div>
+                {liste.map(({ shift, raison }) => (
+                  <ServiceAPourvoir
+                    key={shift.id}
+                    shift={shift}
+                    raison={raison}
+                    qui={prenomDe(shift.userId)}
+                    onOuvrir={canWrite && !selectionMode ? openEditShift : null}
+                    style={pls.aPourvoirItemMobile}
+                  />
+                ))}
+              </div>
+            );
+          })()}
+
           {dayShifts.length === 0 ? (
             <div style={pls.mobileEmptyDay}>
               <span style={{ color: 'var(--text2)', fontSize: 'var(--t2)' }}>Repos, aucun horaire planifié.</span>
@@ -1341,6 +1435,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
 
   // Choix de « Gérer », partagés par la barre de la grille et la tuile Gérer
   // de l'accueil, avec les gardes d'aujourd'hui.
+  // « À traiter » (lot L5) : demandes de congé et échanges repris, pour qui
+  // gère le planning.
+  const echangesRepris = echanges.statut === 'pret' ? echanges.echanges.filter(e => e.statut === 'repris') : [];
+  const aTraiterVisible = canWrite && (absencesEtab.demandes.length > 0 || echangesRepris.length > 0);
   const choixAbsences = absencesEtab.status !== 'absent' && { titre: 'Absences', detail: 'Congés, formations et absences de l\'équipe.', onClick: () => setShowAbsences(true) };
 
   // Solde du mois de la personne connectée (Mes horaires) : du 1er à hier,
@@ -1374,7 +1472,10 @@ const Planning = ({ user, etablissement, initialTab }) => {
           absents={absentsDuJour}
           canWrite={canWrite}
           sansEquipe={canWrite && !employees.some(u => !['consultant', 'patron'].includes(u.role))}
-          aValider={canWrite && echanges.statut === 'pret' ? echanges.echanges.filter(e => e.statut === 'repris') : []}
+          aValider={canWrite ? echangesRepris : []}
+          demandes={canWrite ? absencesEtab.demandes : []}
+          absences={absencesVisibles}
+          onDeciderDemande={absencesEtab.decider}
           shifts={planningEtab}
           nomDe={nomDe}
           onDecider={echanges.decider}
@@ -1503,9 +1604,15 @@ const Planning = ({ user, etablissement, initialTab }) => {
           onExporter={() => setExportOuvert(true)}
           echanges={echanges}
           nomDe={nomDe}
+          conges={pointePourMoi && absencesEtab.status !== 'absent' ? { lignes: absencesEtab.lignes, demander: absencesEtab.demander, retirer: absencesEtab.supprimer } : null}
         />
       ) : activeTab === 'planning' ? (
-        <>
+        // Écran de la grille (lot L5) : la grille, le coût et la conformité,
+        // et « À traiter » à droite dès que la place le permet, en tête sinon
+        // (planning.css, requête de conteneur).
+        <div className="pl-planning">
+        <div className={aTraiterVisible ? 'pl-planning-grille pl-avec-traiter' : 'pl-planning-grille'}>
+        <div className="pl-planning-principal">
         {isMobile ? renderMobilePlanning() : (
           <Panneau style={pls.panneau}>
             <div style={pls.enteteGrille}>
@@ -1535,40 +1642,64 @@ const Planning = ({ user, etablissement, initialTab }) => {
                     </div>
                   );
                 })}
-                {enSections(employees.filter(e => passeFiltre(e.id)), e => e.id).map(sec => (
+                {/* À pourvoir : services d'une personne absente ce jour-là, ou
+                    proposés à l'échange et pas encore repris. Toucher un
+                    service ouvre sa fiche pour le donner à quelqu'un d'autre. */}
+                {(canWrite || nbAPourvoir > 0) && (
+                  <>
+                    <div style={pls.empCol} data-a-pourvoir="">
+                      <div style={pls.aPourvoirPicto} aria-hidden="true">+</div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={pls.empName}>À pourvoir</div>
+                        <div style={pls.ligneSous}>
+                          {nbAPourvoir
+                            ? <><span data-no-translate>{nbAPourvoir}</span> <span>{nbAPourvoir > 1 ? 'horaires' : 'horaire'}</span></>
+                            : <span>Aucun horaire</span>}
+                        </div>
+                      </div>
+                    </div>
+                    {DAYS.map(d => (
+                      <div key={d.date} style={pls.aPourvoirCase} data-a-pourvoir-jour={d.date}>
+                        {(aPourvoir[d.date] || []).map(({ shift, raison }) => (
+                          <ServiceAPourvoir
+                            key={shift.id}
+                            shift={shift}
+                            raison={raison}
+                            qui={prenomDe(shift.userId)}
+                            onOuvrir={canWrite && !selectionMode && !remplissage ? openEditShift : null}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </>
+                )}
+                {enSections(lignesGrille, e => e.id).map(sec => (
                   <React.Fragment key={sec.id || 'tous'}>
                   {sec.nom && <div style={pls.groupeTitreGrille}>{sec.nom} <span style={pls.groupeCompte}>{sec.items.length}</span></div>}
                   {sec.items.map(emp => {
                   const role = demoData.roles[emp.role];
                   const totalHours = weeklyHoursByUser[emp.id] || 0;
                   const monthHours = monthlyHoursByUser[emp.id] || 0;
-                  const heuresContractSem = getHeuresContractuelles();
-                  // Couleur du total semaine selon le contractuel CCNT
-                  // < 80% = sous-emploi (gris), 80-100% = OK (bleu accent), >100% = heures supp (orange)
-                  const weekRatio = heuresContractSem > 0 ? totalHours / heuresContractSem : 0;
-                  const weekColor = weekRatio === 0 ? 'var(--text2)'
-                                  : weekRatio < 0.8 ? 'var(--text2)'
-                                  : weekRatio <= 1.0 ? 'var(--lien)'
-                                  : 'var(--warning-text)';
+                  // Heures prévues sur les jours affichés, rapportées aux heures
+                  // du contrat (sinon à la durée CCNT de l'établissement, dite
+                  // comme telle) : gris sous 80 %, lien jusqu'à 100 %, alerte
+                  // au-delà (heures supplémentaires).
+                  const dues = duesDe(emp.id);
                   return (
                     <React.Fragment key={emp.id}>
                       <div style={pls.empCol}>
                         <div style={{ ...pls.empAvatar, background: 'var(--surface2)', color: 'var(--text2)' }}>{emp.avatar}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={pls.empName} data-no-translate>{emp.prenom} {emp.nom}</div>
-                          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', marginTop: 2 }}>
-                            <span
-                              style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: weekColor }}
-                              title={`Semaine : ${totalHours.toFixed(1)}h / contractuel ${heuresContractSem}h`}
-                            >
-                              {dureeLisible(totalHours)} <span style={{ fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text2)' }}>sem</span>
-                            </span>
-                            <span
-                              style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}
-                              title={`Total ${currentMonthLabel}`}
-                            >
-                              {dureeLisible(monthHours)} <span style={{ fontSize: 'var(--t1)' }}>ce mois</span>
-                            </span>
+                          {role?.label && <div style={pls.ligneSous}>{role.label}</div>}
+                          <div style={pls.ligneHeures} data-heures-contrat={dues?.base || ''}>
+                            <span style={{ ...pls.heuresPrevues, color: teinteHeures(totalHours, dues?.heures) }} data-no-translate>{dureeLisible(totalHours)}</span>
+                            {dues && (
+                              <> <span>sur</span> <span data-no-translate>{dureeLisible(dues.heures)}</span>{dues.base === 'ccnt' && <> <span data-no-translate>CCNT</span></>}</>
+                            )}
+                          </div>
+                          <div style={pls.ligneSous} title={`Total ${currentMonthLabel}`}>
+                            <span data-no-translate>{dureeLisible(monthHours)}</span> <span>ce mois</span>
                           </div>
                           <PhoneLink tel={phones[emp.id]} style={pls.phoneLink} />
                         </div>
@@ -1588,6 +1719,33 @@ const Planning = ({ user, etablissement, initialTab }) => {
                 })}
                   </React.Fragment>
                 ))}
+                {/* Pied : total du jour. Les heures pour tous ; le coût et sa
+                    part des ventes pour qui voit le coût du personnel, jamais
+                    imprimés. */}
+                <div style={pls.piedCol} data-pied-grille="">
+                  <div style={pls.piedTitre}>Total du jour</div>
+                </div>
+                {DAYS.map(d => {
+                  const c = voitCoutPersonnel && coutJours ? coutJours[d.date] : null;
+                  return (
+                    <div key={d.date} style={pls.piedCase} data-pied-jour={d.date}>
+                      {c && c.minutes > 0 && (
+                        <div style={pls.piedCout} className="no-print" data-pied-cout="" data-no-translate>CHF {chfEntier(c.cout)}</div>
+                      )}
+                      <div style={pls.piedLigne}>
+                        <span data-no-translate>{dureeLisible(heuresGrilleJour[d.date] || 0)}</span>
+                        {c && c.part != null && (
+                          <span className="no-print">, <span data-no-translate>{pctJour(c.part)}</span> <span>des ventes</span></span>
+                        )}
+                      </div>
+                      {c && c.minutesSansTaux > 0 && (
+                        <div style={{ ...pls.piedLigne, color: 'var(--warning-text)' }} className="no-print">
+                          <span data-no-translate>{dureeLisible(c.minutesSansTaux / 60)}</span> <span>sans taux</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </Panneau>
@@ -1596,21 +1754,39 @@ const Planning = ({ user, etablissement, initialTab }) => {
           <React.Suspense fallback={null}>
             <CarteCoutPersonnel
               etablissement={etablissement}
-              debut={lundiCcnt(isMobile ? mobileDate : selectedDate)}
-              fin={decalerCcnt(lundiCcnt(isMobile ? mobileDate : selectedDate), 6)}
-              shifts={planningEtab}
+              debut={isMobile ? lundiCcnt(mobileDate) : debutGrille}
+              fin={isMobile ? decalerCcnt(lundiCcnt(mobileDate), 6) : finGrille}
+              shifts={shiftsGrille}
               aujourdhui={zurichToday()}
               nomDe={nomDe}
               heuresEtab={heuresContractuelles(etablissement)}
+              onParJour={isMobile ? null : setCoutJours}
+              sansJours={!isMobile}
+              portee={porteeCout}
             />
           </React.Suspense>
         )}
         {canWrite && (
           <div className="no-print">
-            <PanneauCcnt constats={constatsCcnt} personnes={employees.filter(e => passeFiltre(e.id))} nomDe={nomDe} />
+            <PanneauCcnt constats={constatsCcnt} personnes={lignesGrille} nomDe={nomDe} />
           </div>
         )}
-        </>
+        </div>
+        {aTraiterVisible && (
+          <aside className="pl-planning-traiter">
+            <ATraiter
+              demandes={absencesEtab.demandes}
+              echanges={echanges.statut === 'pret' ? echanges.echanges : []}
+              absences={absencesVisibles}
+              shifts={planningEtab}
+              nomDe={nomDe}
+              onDeciderDemande={absencesEtab.decider}
+              onDeciderEchange={echanges.decider}
+            />
+          </aside>
+        )}
+        </div>
+        </div>
       ) : activeTab === 'pointage' ? (
         isMobile ? renderMobilePointage() : (
           <Panneau style={pls.panneau}>

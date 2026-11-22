@@ -73,9 +73,11 @@ export function genererShifts() {
 }
 
 export const ABSENCES = [
-  { id: 'abs-1', etablissement_id: ETAB, user_id: 'demo-serv-2', motif: 'conge', date_debut: jour(4), date_fin: jour(8), created_by: 'demo-patron', created_at: instant(jour(-10), '10:00'), updated_at: instant(jour(-10), '10:00') },
-  { id: 'abs-2', etablissement_id: ETAB, user_id: 'demo-cuis-2', motif: 'maladie', date_debut: jour(-9), date_fin: jour(-8), created_by: 'demo-chef', created_at: instant(jour(-9), '07:40'), updated_at: instant(jour(-9), '07:40') },
-  { id: 'abs-3', etablissement_id: ETAB, user_id: 'demo-cuis-3', motif: 'formation', date_debut: jour(11), date_fin: jour(11), created_by: 'demo-chef', created_at: instant(jour(-3), '10:00'), updated_at: instant(jour(-3), '10:00') },
+  { id: 'abs-1', etablissement_id: ETAB, user_id: 'demo-serv-2', motif: 'conge', date_debut: jour(4), date_fin: jour(8), statut: 'acceptee', created_by: 'demo-patron', created_at: instant(jour(-10), '10:00'), updated_at: instant(jour(-10), '10:00') },
+  { id: 'abs-2', etablissement_id: ETAB, user_id: 'demo-cuis-2', motif: 'maladie', date_debut: jour(-9), date_fin: jour(-8), statut: 'acceptee', created_by: 'demo-chef', created_at: instant(jour(-9), '07:40'), updated_at: instant(jour(-9), '07:40') },
+  { id: 'abs-3', etablissement_id: ETAB, user_id: 'demo-cuis-3', motif: 'formation', date_debut: jour(11), date_fin: jour(11), statut: 'acceptee', created_by: 'demo-chef', created_at: instant(jour(-3), '10:00'), updated_at: instant(jour(-3), '10:00') },
+  // Demande de congé en attente : la colonne « À traiter » du planning (lot L5).
+  { id: 'abs-4', etablissement_id: ETAB, user_id: 'demo-serveur', motif: 'vacances', date_debut: jour(9), date_fin: jour(10), statut: 'demande', created_by: 'demo-serveur', created_at: instant(jour(-1), '16:20'), updated_at: instant(jour(-1), '16:20') },
 ];
 
 export const CONTRATS_TRAVAIL = EQUIPE.filter((u) => u.role !== 'patron').map((u, i) => ({

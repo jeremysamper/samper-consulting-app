@@ -96,3 +96,42 @@
   .pl-carte-nuit { order: 20; }
   .pl-grille > .accueil-grille { order: 30; }
 }
+
+/* ── Écran de la grille (lot L5) ──────────────────────────────────────────────
+   La grille, le coût et la conformité dans une colonne ; « À traiter »
+   (demandes de congé, échanges repris) à droite dès 1180 px de contenu, en
+   tête sinon, ses cartes côte à côte quand la place le permet. Le conteneur
+   (.pl-planning) ne porte aucune fenêtre du module (portails). */
+.pl-planning {
+  container-type: inline-size;
+  container-name: plg;
+  min-width: 0;
+}
+.pl-planning-grille {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+.pl-planning-principal { min-width: 0; }
+.pl-planning-traiter { order: -1; min-width: 0; }
+.pl-traiter-liste {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  min-width: 0;
+}
+@container plg (min-width: 1180px) {
+  .pl-planning-grille.pl-avec-traiter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    align-items: start;
+  }
+  .pl-planning-traiter { order: 0; }
+}
+@media (max-width: 599.98px) {
+  .pl-planning-grille { gap: 16px; }
+}
+
+/* Mes congés : la dernière ligne de la liste perd son filet. */
+.pl-liste-conges > :last-child { border-bottom-color: transparent !important; }

@@ -27,7 +27,7 @@ export async function preparerBriefing({ etabId, jour, service, avecReservations
         .eq('etablissement_id', etabId).eq('date_service', jour).eq('service', service).limit(400))
       : vide,
     avecPlanning ? lire(supabase.from('shifts').select('user_id, debut, fin').eq('etablissement_id', etabId).eq('date', jour).limit(400)) : vide,
-    avecPlanning ? lire(supabase.from('absences').select('user_id, motif').eq('etablissement_id', etabId).lte('date_debut', jour).gte('date_fin', jour).limit(200)) : vide,
+    avecPlanning ? lire(supabase.from('absences').select('user_id, motif, statut').eq('etablissement_id', etabId).lte('date_debut', jour).gte('date_fin', jour).limit(200)) : vide,
     avecHaccp ? lire(supabase.from('haccp_releves').select('zone_id, valeur, heure').eq('etablissement_id', etabId).eq('date', jour).eq('conforme', false).limit(20)) : vide,
     avecHaccp ? lire(supabase.from('haccp_zones').select('id, nom, unite').eq('etablissement_id', etabId)) : vide,
     avecPassations ? lire(supabase.from('passations').select('contenu').eq('etablissement_id', etabId).eq('jour', jour).eq('important', true).limit(10)) : vide,
@@ -35,12 +35,14 @@ export async function preparerBriefing({ etabId, jour, service, avecReservations
   const users = getDemoData()?.utilisateurs || [];
   const nom = (id) => userDisplayName(id, { users, fallback: 'Une personne' });
   const zoneParId = new Map(zones.map((z) => [z.id, z]));
-  const absentsIds = new Set(absences.map((a) => a.user_id));
+  // Une demande de congé en attente ou refusée n'est pas une absence.
+  const absents = absences.filter((a) => (a.statut || 'acceptee') === 'acceptee');
+  const absentsIds = new Set(absents.map((a) => a.user_id));
   return briefingService({
     service,
     reservations,
     equipe: shifts.filter((s) => !absentsIds.has(s.user_id)).map((s) => ({ nom: nom(s.user_id), debut: s.debut, fin: s.fin })),
-    absents: absences.map((a) => ({ nom: nom(a.user_id), motif: a.motif })),
+    absents: absents.map((a) => ({ nom: nom(a.user_id), motif: a.motif })),
     relevesHors: releves.map((r) => ({ zoneNom: zoneParId.get(r.zone_id)?.nom, unite: zoneParId.get(r.zone_id)?.unite, valeur: r.valeur, heure: r.heure })),
     importantes: passations.map((p) => p.contenu),
   });

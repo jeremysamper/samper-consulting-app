@@ -18,6 +18,12 @@ import { SEMAINES_MOYENNE, caPrevu, coutPrevu, joursDe, partDuCa } from './coutP
 // les 4 semaines avant aujourd'hui. Les horaires sont ceux du Planning, passés
 // par la page : un horaire modifié change le chiffre tout de suite.
 // Hors impression (no-print).
+//
+// Grille de l'ordinateur (lot L5) : la carte couvre les jours affichés par la
+// grille et rend son coût jour par jour à la page (onParJour), qui l'écrit en
+// pied de grille ; les tuiles des jours ne sont alors pas répétées ici
+// (sansJours). Les horaires reçus sont ceux des lignes affichées : portee dit
+// ce qui en est retiré (groupe filtré, personnes masquées).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SANS_INVENTAIRES = { data: [], status: 'ready' };
@@ -57,7 +63,7 @@ const TEXTE_RAISON = {
   ca_nul: 'CA nul',
 };
 
-function CarteCoutPersonnel({ etablissement, debut, fin, shifts, aujourdhui, nomDe, heuresEtab }) {
+function CarteCoutPersonnel({ etablissement, debut, fin, shifts, aujourdhui, nomDe, heuresEtab, onParJour = null, sansJours = false, portee = [] }) {
   const jours = React.useMemo(() => joursDe(debut, fin), [debut, fin]);
   // Fenêtre de lecture : la semaine, plus les 4 semaines avant aujourd'hui
   // quand la semaine porte aujourd'hui ou des jours à venir (moyenne).
@@ -87,13 +93,25 @@ function CarteCoutPersonnel({ etablissement, debut, fin, shifts, aujourdhui, nom
   const part = React.useMemo(() => (cout ? partDuCa({ jours, cout, ca }) : null), [jours, cout, ca]);
   const nonActualise = [compta.ventesJour, compta.caisse, salaires, reglagesLus].some(l => l?.enEchec);
 
+  // Coût par jour rendu à la grille. La clé sérialisée garde l'effet muet tant
+  // que les chiffres ne changent pas (aucune boucle de rendus avec la page).
+  const cleJours = part ? JSON.stringify(part.parJour) : '';
+  React.useEffect(() => {
+    if (onParJour) onParJour(cleJours ? JSON.parse(cleJours) : null);
+  }, [cleJours, onParJour]);
+  React.useEffect(() => () => { if (onParJour) onParJour(null); }, [onParJour]);
+
   // Comptabilité pas encore activée sur la base : rien à chiffrer.
   if (salaires.status === 'absente') return null;
 
   const titre = (
     <div style={st.entete}>
       <div style={st.titre}>Coût du personnel</div>
-      <div style={st.semaine}><span>Semaine du</span> <Jour iso={debut} /></div>
+      <div style={st.semaine}>
+        {jours.length > 7
+          ? <><span>Du</span> <Jour iso={debut} /> <span>au</span> <Jour iso={fin} /></>
+          : <><span>Semaine du</span> <Jour iso={debut} /></>}
+      </div>
     </div>
   );
 
@@ -129,6 +147,7 @@ function CarteCoutPersonnel({ etablissement, debut, fin, shifts, aujourdhui, nom
           <Chiffre valeur={valeurCa} libelle="CA hors TVA" />
         </div>
 
+        {!sansJours && (
         <div style={st.jours} data-cout-jours="">
           {jours.map((j) => {
             const l = part.parJour[j];
@@ -149,8 +168,10 @@ function CarteCoutPersonnel({ etablissement, debut, fin, shifts, aujourdhui, nom
             );
           })}
         </div>
+        )}
 
         <div style={st.notes}>
+          {portee.length > 0 && <p style={st.note} data-cout-portee="">{portee.map((p, i) => <React.Fragment key={i}>{i > 0 && ' '}{p}</React.Fragment>)}</p>}
           <p style={st.note}>
             {cout.chargesPct != null
               ? <><span>Charges sociales comprises, au taux de la Comptabilité :</span> <span data-no-translate>{String(cout.chargesPct).replace('.', ',')} %</span>.</>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { supabase } from '../../services/supabase.js';
 import { dbService } from '../../services/dbService.js';
-import { mapAbsenceFromDB } from '../../utils/absences.js';
+import { estAcceptee, mapAbsenceFromDB } from '../../utils/absences.js';
 import { toutesLesPages } from '../../utils/lirePages.js';
 import { readJson } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
@@ -82,7 +82,8 @@ export async function lireAbsences(etablissementId, debut, fin) {
     if (RELATION_ABSENTE.has(error.code)) return [];
     throw error;
   }
-  return (data || []).map(mapAbsenceFromDB);
+  // Demandes en attente et refus : pas des absences (soldes, statistiques).
+  return (data || []).map(mapAbsenceFromDB).filter(estAcceptee);
 }
 
 // Contrats d'un établissement (ceux que la RLS laisse voir), lus une fois :

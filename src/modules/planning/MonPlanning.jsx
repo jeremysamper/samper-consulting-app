@@ -4,11 +4,15 @@ import { jourLong, libellePeriode } from './planningExport.js';
 import { formatSolde } from './soldesHeures.js';
 import { Btn, Panneau } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
+import MesConges from './MesConges.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mon planning : ce qu'un employé veut savoir en ouvrant le module. Quand est
 // mon prochain service, quels jours je travaille cette semaine, combien
 // d'heures. Une semaine à la fois, un jour par ligne, sans grille.
+//
+// conges (lot L5) : { lignes, demander, retirer } pour demander un congé et
+// suivre ses demandes (MesConges.jsx) ; null sans la table des absences.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const parHeure = (a, b) => (a.debut || '').localeCompare(b.debut || '');
@@ -19,7 +23,7 @@ const quand = (date, aujourdhui) => {
   return jourLong(date).toLowerCase();
 };
 
-export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale, aujourdhui, maintenant, solde, onExporter, echanges = null, nomDe = () => '' }) {
+export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale, aujourdhui, maintenant, solde, onExporter, echanges = null, nomDe = () => '', conges = null }) {
   // Échanges de services (lot C2) : sans la migration, echanges.statut vaut
   // 'absent' et rien ne change à l'écran.
   const avecEchanges = echanges?.statut === 'pret';
@@ -81,6 +85,10 @@ export default function MonPlanning({ userId, shifts, absenceDe, semaineInitiale
             </div>
           ))}
         </Panneau>
+      )}
+
+      {conges && (
+        <MesConges userId={userId} aujourdhui={aujourdhui} lignes={conges.lignes} onDemander={conges.demander} onRetirer={conges.retirer} />
       )}
 
       <div style={s.navigation}>

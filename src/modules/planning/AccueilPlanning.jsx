@@ -5,8 +5,8 @@ import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
 import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
 import ReperesPlanning, { CartePlanningEquipe } from './ReperesPlanning.jsx';
-import { Btn, Panneau } from '../../components/ui/index.jsx';
-import { notify } from '../../components/toast/index.js';
+import { Panneau } from '../../components/ui/index.jsx';
+import ATraiter from './ATraiter.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Accueil du module Planning : une tuile par tâche, sur la grille partagée
@@ -22,6 +22,9 @@ import { notify } from '../../components/toast/index.js';
 // Direction Galet : repères et carte de l'équipe du jour autour des tuiles
 // (ReperesPlanning.jsx, planning.css). etats, heures et absents viennent des
 // horaires et des absences que Planning.jsx a déjà chargés.
+//
+// « À traiter » (lot L5, ATraiter.jsx) : demandes de congé et échanges repris,
+// pour qui gère le planning, au-dessus des tuiles.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const jourCH = (iso) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
@@ -34,15 +37,7 @@ function etatDuJour(jour) {
   return <>hors planning, ajouté au planning à votre nom</>;
 }
 
-export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats, heures, absents, canWrite, gerer, onPointer, onHoraires, onEquipe, onPlanning, sansEquipe = false, aValider = [], shifts = [], nomDe = () => '', onDecider = null }) {
-  const [decision, setDecision] = React.useState(null);
-  const shiftParId = new Map(shifts.map(x => [x.id, x]));
-  const decider = async (id, accepter) => {
-    setDecision(id);
-    const err = await onDecider(id, accepter);
-    setDecision(null);
-    notify(err || (accepter ? 'Échange validé : le planning est à jour.' : 'Échange refusé.'), err ? 'error' : 'success');
-  };
+export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats, heures, absents, canWrite, gerer, onPointer, onHoraires, onEquipe, onPlanning, sansEquipe = false, aValider = [], shifts = [], nomDe = () => '', onDecider = null, demandes = [], absences = [], onDeciderDemande = null }) {
   const [gererOuvert, setGererOuvert] = React.useState(false);
   const fermer = React.useCallback(() => setGererOuvert(false), []);
   const choix = gerer.filter(Boolean);
@@ -82,24 +77,18 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats
             <p style={st.vide} data-planning-sans-equipe="">Votre équipe n'est pas encore dans l'app. Votre consultant crée le compte de chaque personne : envoyez-lui la liste, avec le rôle de chacun. Le planning se remplit ensuite ici.</p>
           </Panneau>
         )}
-        {aValider.length > 0 && onDecider && (
-          // Échanges repris par un collègue, à valider (lot C2).
-          <Panneau style={{ marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 10 }} data-echanges-a-valider="">
-            <div style={st.titreBloc}>Échanges à valider</div>
-            {aValider.map(e => {
-              const x = shiftParId.get(e.shift_id);
-              return (
-                <div key={e.id} style={st.ligneEchange}>
-                  <span style={{ minWidth: 0, flex: '1 1 260px' }}>
-                    <span data-no-translate>{nomDe(e.repreneur)}</span> reprend le service de <span data-no-translate>{nomDe(e.demandeur)}</span>
-                    {x ? <> du <span data-no-translate>{x.date.split('-').reverse().join('.')}</span>, de <span data-no-translate>{x.debut} à {x.fin}</span></> : null}.
-                  </span>
-                  <Btn small disabled={decision === e.id} onClick={() => decider(e.id, true)}>Valider</Btn>
-                  <Btn small disabled={decision === e.id} onClick={() => decider(e.id, false)}>Refuser</Btn>
-                </div>
-              );
-            })}
-          </Panneau>
+        {canWrite && (
+          // Demandes de congé et échanges repris par un collègue (lots L5 et C2).
+          <ATraiter
+            demandes={demandes}
+            echanges={aValider}
+            absences={absences}
+            shifts={shifts}
+            nomDe={nomDe}
+            onDeciderDemande={onDeciderDemande}
+            onDeciderEchange={onDecider}
+            style={{ marginBottom: 24 }}
+          />
         )}
         <div className="pl-grille">
           <ReperesPlanning equipe={equipe} heures={heures} absents={absents} />
@@ -121,6 +110,4 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats
 const st = {
   choix: { display: 'flex', flexDirection: 'column', gap: 6 },
   vide: { margin: 0, fontSize: 'var(--t2)', lineHeight: 1.5, color: 'var(--text)' },
-  titreBloc: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)' },
-  ligneEchange: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', fontSize: 'var(--t2)', lineHeight: 1.45, color: 'var(--text)' },
 };

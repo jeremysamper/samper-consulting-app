@@ -131,7 +131,7 @@ const DEFAUTS = {
   caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid },
   caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false },
   inventaires: { statut: 'en cours', valeur_totale: 0, lignes: [], nom: 'Général' },
-  absences: { motif: 'conge', created_by: () => sessionUid },
+  absences: { motif: 'conge', statut: 'acceptee', created_by: () => sessionUid },
   journal_activite: {},
   temps_gagne: { quantite: 1, fait_par: () => sessionUid },
   points_mouvements: { sens: 'credit' },
