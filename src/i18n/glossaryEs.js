@@ -3585,6 +3585,7 @@ export const UI_GLOSSARY_ES = {
   'Détail': 'Detalle',
   'Voir la photo': 'Ver la foto',
   'Réception': 'Recepción',
+  'Praticienne spa': 'Terapeuta de spa',
   'Technique': 'Mantenimiento',
   'Pôle': 'Equipo',
   "Rien pour l'instant.": 'Nada por ahora.',

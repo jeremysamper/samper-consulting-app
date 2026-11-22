@@ -27,7 +27,8 @@ const CLE_ROLE = PREFIXE + 'role';
 // valide, temps de service des fiches salle non inventé. v5 (lot 2a) : réglages
 // des modules, modèles de mise en place, stocks cibles, livraisons des fournisseurs.
 // v6 (lot 2a, D5) : messages des fils d'équipe (canaux_messages).
-const VERSION_BASE = 'v6-' + aujourdhui();
+// v7 (lot 6a, D4) : branche Hôtel et Spa, praticienne spa dans l'équipe.
+const VERSION_BASE = 'v7-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -150,6 +151,38 @@ const DEFAUTS = {
   reglages_modules: { config: {}, updated_by: () => sessionUid },
   mep_modeles: { lignes: [], ordre: 0, actif: true, created_by: () => sessionUid },
   commande_cibles: { updated_by: () => sessionUid },
+  // Lot 6a (D4) : branche Hôtel et Spa. Défauts des migrations hotel_h0 à h8 et
+  // spa_module ; l'auteur est posé par les déclencheurs de la base.
+  chambres: { statut_menage: 'a_faire', ordre: 0, actif: true },
+  sejours: { statut: 'prevu', pension: 'aucune', nb_adultes: 1, nb_enfants: 0, created_by: () => sessionUid },
+  chambres_minibar: { quantite: 1, par: () => sessionUid },
+  objets_trouves: { statut: 'trouve', par: () => sessionUid },
+  linge_mouvements: { sens: 'sale', quantite: 1, par: () => sessionUid },
+  chambres_turndown: { fait_par: () => sessionUid, at: () => new Date().toISOString() },
+  demandes: { origine: 'hote', priorite: 'normale', statut: 'ouverte', escaladee: false, cree_par: () => sessionUid },
+  hotes: { langue: 'fr', vip: false, consentement_marketing: false, archive: false, created_by: () => sessionUid },
+  tarifs: { pension: 'petit_dejeuner', personnes_incluses: 2, prix_personne_sup: 0, prix_enfant: 0, actif: true, ordre: 0 },
+  sejour_occupants: { exonere_taxe: false, created_by: () => sessionUid },
+  // montant : colonne calculée en base (quantité x prix unitaire).
+  sejour_lignes: { quantite: 1, prix_unitaire: 0, montant: (l) => Math.round((Number(l.quantite ?? 1) * Number(l.prix_unitaire ?? 0)) * 100) / 100, created_by: () => sessionUid },
+  forfaits: { prix_par_nuit: 0, actif: true, ordre: 0 },
+  forfait_droits: { categorie: 'autre', ordre: 0 },
+  activites: { prix: 0, inclus_forfait: true, annulee: false, created_by: () => sessionUid },
+  activite_inscriptions: { nb_personnes: 1, statut: 'inscrit', created_by: () => sessionUid },
+  consommations: { quantite: 1, at: () => new Date().toISOString(), par: () => sessionUid },
+  passations: { service: 'matin', important: false, created_by: () => sessionUid },
+  passation_lectures: { user_id: () => sessionUid, at: () => new Date().toISOString() },
+  taches_recurrentes: { recurrence: 'quotidien', actif: true, ordre: 0 },
+  taches_faites: { fait_par: () => sessionUid, at: () => new Date().toISOString() },
+  room_service_commandes: { articles: [], total: 0, statut: 'recue', portee_sur_note: false, created_by: () => sessionUid },
+  sejour_liens: { created_by: () => sessionUid },
+  equipements: { categorie: 'autre', actif: true },
+  maintenance_plans: { categorie: 'autre', actif: true },
+  ordres_travail: { categorie: 'autre', priorite: 'normale', statut: 'ouvert', created_by: () => sessionUid },
+  spa_soins: { duree_min: 60, actif: true, en_ligne: true },
+  spa_clients: { consentement_marketing: false, archive: false },
+  spa_reservations: { duree_min: 60, statut: 'prevue', origine: 'equipe' },
+  spa_bons: { motif: 'cadeau' },
 };
 
 const CLES_PRIMAIRES = {
@@ -176,6 +209,7 @@ const CLES_PRIMAIRES = {
   caisse_compteurs: ['etablissement_id', 'cle'],
   caisse_commande_qr_parametres: ['etablissement_id'],
   reglages_modules: ['etablissement_id', 'module'],
+  hotel_reglages: ['etablissement_id'],
 };
 
 let sessionUid = null;
@@ -216,6 +250,39 @@ function diffuser(evt) {
   setTimeout(() => {
     for (const s of sockets) s.pousser(charge);
   }, 30);
+}
+
+// Déclencheurs de la base que les écrans de l'hôtel attendent (lot 6a) :
+// chambres_journal_statut, demandes_avant_ecriture et demandes_journal_ecrire.
+function journaliser(evt) {
+  const { type, table, record: r, old_record: o } = evt;
+  if (type === 'DELETE' || !r) return;
+  const maintenant = new Date().toISOString();
+  const ajouter = (t, ligne) => {
+    const l = { id: uuid(), etablissement_id: r.etablissement_id, par: sessionUid, at: maintenant, ...ligne };
+    (db[t] ||= []).push(l);
+    diffuser({ type: 'INSERT', table: t, record: { ...l } });
+  };
+  if (table === 'chambres' && (type === 'INSERT' || r.statut_menage !== o?.statut_menage)) {
+    ajouter('chambres_statut_journal', { chambre_id: r.id, ancien: type === 'UPDATE' ? o.statut_menage : null, nouveau: r.statut_menage });
+  }
+  if (table !== 'demandes') return;
+  const ligne = db.demandes?.find((x) => x.id === r.id);
+  if (ligne && r.statut === 'faite' && (type === 'INSERT' || o?.statut !== 'faite')) Object.assign(ligne, { faite_par: sessionUid, faite_at: ligne.faite_at || maintenant });
+  if (ligne && r.statut !== 'faite') Object.assign(ligne, { faite_par: null, faite_at: null });
+  if (ligne && r.escaladee && (type === 'INSERT' || !o?.escaladee)) ligne.escaladee_at = ligne.escaladee_at || maintenant;
+  const trace = (action, detail) => ajouter('demandes_journal', { demande_id: r.id, action, detail });
+  if (type === 'INSERT') { trace('creee', r.pole); return; }
+  if (r.statut !== o?.statut) trace('statut', r.statut);
+  if (r.assignee_a !== o?.assignee_a) trace('assignation', r.assignee_a);
+  if (r.escaladee !== o?.escaladee) trace('escalade', r.escaladee ? 'oui' : 'non');
+  if (r.echeance !== o?.echeance) trace('echeance', r.echeance);
+  if (r.pole !== o?.pole) trace('pole', r.pole);
+}
+
+function apresEcriture(evt) {
+  journaliser(evt);
+  diffuser(evt);
 }
 
 class SocketDemo {
@@ -476,7 +543,7 @@ async function servir(url, input, init) {
   }
   if (chemin.startsWith('/rest/v1/')) {
     const table = decodeURIComponent(chemin.slice('/rest/v1/'.length));
-    const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, apresEcriture: diffuser });
+    const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, apresEcriture });
     return reponse(r.status, r.corps, r.entetes);
   }
   const e = erreurPg(404, 'Chemin inconnu de la démo : ' + chemin);

@@ -3609,6 +3609,7 @@ export const UI_GLOSSARY = {
   'Détail': 'Detail',
   'Voir la photo': 'See the photo',
   'Réception': 'Front desk',
+  'Praticienne spa': 'Spa therapist',
   'Technique': 'Maintenance',
   'Pôle': 'Team',
   "Rien pour l'instant.": 'Nothing yet.',
