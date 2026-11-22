@@ -32,7 +32,8 @@ import MessagerieBarre from '../components/nav/MessagerieBarre.jsx';
 import CarteAlertes from '../components/CarteAlertes.jsx';
 import { ShellProvider } from './ShellContext.js';
 import { applyNavOrder } from '../hooks/useNavOrder.js';
-import { navigateToPage, ouvrirCompte as ouvrirSection } from '../services/navigationService.js';
+import { navigateToPage, ouvrirCompte as ouvrirSection, ouvrirFilEquipe } from '../services/navigationService.js';
+import { Btn } from '../components/ui/index.jsx';
 import { confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../legacy/legacyApi.js';
 import { readJson, readText, removeStorageKeys, writeText } from '../utils/storage.js';
 import { getModuleIcon } from '../modules/moduleIcons.js';
@@ -654,6 +655,15 @@ export default function AppLayout({
     setNotifOpen(false);
     if (alert.link_module) navigateToPage(alert.link_module);
   };
+  // Plan 15, lot 5 : une alerte de la cuisine (relevé HACCP manquant, pertes
+  // élevées) se transmet à la brigade en une touche : le fil Cuisine de
+  // Messages s'ouvre avec le texte de l'alerte en brouillon, à relire avant
+  // l'envoi. Seulement pour qui voit les Messages.
+  const alertePourCuisine = (alert) => messagerieVisible && ['haccp', 'pertes'].includes(alert.link_module);
+  const prevenirEquipe = (alert) => {
+    setNotifOpen(false);
+    ouvrirFilEquipe({ canal: 'cuisine', texte: [alert.title, alert.message].filter(Boolean).join(' : ') });
+  };
 
   const renderAlertPanel = (panelStyle, headerStyle, itemStyle) => {
     const severityColor = (sev) => {
@@ -701,6 +711,13 @@ export default function AppLayout({
               <div style={{ fontWeight: 'var(--g3)', fontSize: 13, color: 'var(--text)' }}>{alert.title}</div>
               <div style={{ fontSize: 12, color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 }}>{alert.message}</div>
               <div style={{ fontSize: 'var(--t1)', color: 'var(--text3)', marginTop: 4 }}>{formatRelativeTime(alert.created_at)}</div>
+              {alertePourCuisine(alert) && (
+                <div style={{ marginTop: 8 }} data-prevenir-equipe="">
+                  <Btn variant="ghost" style={{ minHeight: 'var(--controle)' }} onClick={(e) => { e.stopPropagation(); prevenirEquipe(alert); }}>
+                    Prévenir l&apos;équipe
+                  </Btn>
+                </div>
+              )}
             </div>
             <button
               style={{ background: 'none', border: 'none', fontSize: 18, color: 'var(--text2)', cursor: 'pointer', padding: '0 2px', lineHeight: 1, flexShrink: 0 }}

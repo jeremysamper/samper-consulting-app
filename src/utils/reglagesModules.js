@@ -15,7 +15,23 @@
 
 // Lot 6b : trois modules de la branche Hôtel (étages, demandes, repas),
 // migration 20261122_lot6b_reglages_hotel.
-export const MODULES_REGLES = ['pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue', 'etages', 'demandes', 'repas'];
+// Lot 5 : Journal et Statistiques, migration 20261122_lot5_bureau.
+export const MODULES_REGLES = ['pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue', 'etages', 'demandes', 'repas', 'journal', 'statistiques'];
+
+// ── Journal et Statistiques (lot 5) ──────────────────────────────────────────
+// Journal : vue regroupée (les lignes identiques qui se suivent en une seule)
+// ou ligne par ligne, et format de l'export. Statistiques : la réponse toute
+// faite qui s'ouvre d'office pour qui n'a pas de vue à lui (id d'une question
+// de statistiques/questionsStatistiques.js ; inconnue = la vue de l'app).
+export const VUES_JOURNAL = [
+  { id: 'regroupee', label: 'Regroupée' },
+  { id: 'detail', label: 'Ligne par ligne' },
+];
+export const FORMATS_EXPORT_JOURNAL = [
+  { id: 'csv', label: 'CSV' },
+  { id: 'xlsx', label: 'Excel' },
+];
+const IDENTIFIANT = /^[a-z][a-z0-9_]{0,39}$/;
 
 // ── Branche Hôtel (lot 6b) ───────────────────────────────────────────────────
 // Identifiants recopiés de hebergement/hotelData.js (ce fichier reste pur, sans
@@ -256,6 +272,13 @@ export function lireReglagesModule(module, config) {
       return lireDemandes(c);
     case 'repas':
       return lireRepas(c);
+    case 'journal':
+      return {
+        vue: VUES_JOURNAL.some((v) => v.id === c.vue) ? c.vue : 'regroupee',
+        export: FORMATS_EXPORT_JOURNAL.some((f) => f.id === c.export) ? c.export : 'csv',
+      };
+    case 'statistiques':
+      return { vue_defaut: typeof c.vue_defaut === 'string' && IDENTIFIANT.test(c.vue_defaut) ? c.vue_defaut : null };
     default:
       return {};
   }

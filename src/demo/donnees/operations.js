@@ -527,18 +527,28 @@ export const SALAIRES_ESTIMES = EQUIPE.filter((u) => u.role !== 'patron').map((u
 }));
 
 // Fiches dont la démo garde la trace dans le journal d'activité.
+// Lot 5 (plan 15) : sept modifications de suite du même inventaire, pour la
+// ligne regroupée « 7 modifications », et des champs changés sur les
+// recettes et produits. La vue journal_activite_semaine du front (semaine en
+// cours) lit les mêmes lignes (donnees/index.js).
 export function genererJournal() {
+  const inventaire = ['08:12', '08:15', '08:20', '08:24', '08:31', '08:36', '08:40']
+    .map((h) => ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'inventaires', 'UPDATE', 'Général', 0, h, ['lignes', 'updated_at']]);
   const lignes = [
-    ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'recettes', 'UPDATE', 'Sauce au poivre', -1, '15:20'],
-    ['demo-cuisinier', 'Inès Garnier', 'cuisinier', 'haccp', 'INSERT', 'Relevé Chambre froide positive', 0, '08:31'],
-    ['demo-patron', 'Claire Morel', 'patron', 'planning', 'UPDATE', 'Horaire de Lucas Meier', -1, '11:02'],
-    ['demo-hote', 'Nina Rossi', 'hote', 'reservations', 'INSERT', 'Réservation Bernard Élise', 0, '10:12'],
-    ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'pertes', 'UPDATE', 'Perte validée : Crème entière 35 %', 0, '09:15'],
+    ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'recettes', 'UPDATE', 'Sauce au poivre', -1, '15:20', ['etapes', 'ingredients', 'updated_at']],
+    ['demo-cuisinier', 'Inès Garnier', 'cuisinier', 'haccp', 'INSERT', 'Relevé Chambre froide positive', 0, '08:31', null],
+    ['demo-patron', 'Claire Morel', 'patron', 'planning', 'UPDATE', 'Horaire de Lucas Meier', -1, '11:02', null],
+    ['demo-hote', 'Nina Rossi', 'hote', 'reservations', 'INSERT', 'Réservation Bernard Élise', 0, '10:12', null],
+    ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'pertes', 'UPDATE', 'Perte validée : Crème entière 35 %', 0, '09:15', ['valide', 'valide_par']],
+    ...inventaire,
+    ['demo-patron', 'Claire Morel', 'patron', 'produits', 'UPDATE', 'Beurre de cuisine 82 %', 0, '11:40', ['prix_unitaire', 'fournisseur_id']],
+    ['demo-patron', 'Claire Morel', 'patron', 'recettes', 'INSERT', 'Tarte fine aux pommes', 0, '14:05', null],
+    ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'produits', 'DELETE', 'Crème fraîche 25 % (ancien format)', 0, '16:22', null],
   ];
-  return lignes.map(([id, nom, role, module, op, libelle, d, h], i) => ({
+  return lignes.map(([id, nom, role, module, op, libelle, d, h, colonnes], i) => ({
     id: `00000000-0000-4000-8000-0000000004${String(i).padStart(2, '0')}`,
     created_at: instant(jour(d), h), etablissement_id: ETAB, acteur_id: id, acteur_nom: nom, acteur_role: role,
-    module, operation: op, ligne_id: null, libelle, colonnes_modifiees: null, avant: null, apres: null,
+    module, operation: op, ligne_id: null, libelle, colonnes_modifiees: colonnes, avant: null, apres: null,
   }));
 }
 

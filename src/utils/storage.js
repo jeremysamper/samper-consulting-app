@@ -18,6 +18,16 @@ export const UI_STORAGE_KEYS = {
   // Vue à ouvrir dans Statistiques ({ famille, mesures, periode }, clé
   // ponctuelle posée par ouvrirStatistiques, lue puis effacée à l'arrivée).
   statistiquesOuvrir: 'sc_statistiques_ouvrir',
+  // Plan 15, lot 5 : clés ponctuelles, lues puis effacées à l'arrivée.
+  // Fil d'équipe à ouvrir dans Messages ({ canal, texte, soir }), posé par
+  // une alerte ou par « Écrire à l'équipe du soir ».
+  messagesOuvrir: 'sc_messages_ouvrir',
+  // Procédure à lancer ou à reprendre dans SOP ({ sopId, execId }), posée
+  // par « À faire maintenant ».
+  sopOuvrir: 'sc_sop_ouvrir',
+  // Dossier à ouvrir dans Documents ({ nom }), posé par un module (HACCP,
+  // contrats, fournisseurs).
+  documentsOuvrir: 'sc_documents_ouvrir',
   theme: 'sc_theme',
   lang: 'sc_lang',
   // Rappel d'activation du code à usage unique (consultants sans facteur

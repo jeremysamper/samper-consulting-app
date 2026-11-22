@@ -95,6 +95,8 @@ const AVANT = {
   points: DIRECTION,
   achats_paiement: DIRECTION,
   achats_categories: DIRECTION,
+  // Plan 15, lot 5 : le journal, réglé par qui le lit (consultant, patron).
+  journal: DIRECTION,
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {

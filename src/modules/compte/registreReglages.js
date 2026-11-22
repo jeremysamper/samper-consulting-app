@@ -90,6 +90,7 @@ export const MODULES = {
   sop: 'SOP',
   catalogue: 'Catalogue',
   points: 'Points',
+  journal: "Journal d'activité",
   spa: 'Spa',
   hebergement: 'Hébergement',
   etages: 'Étages',
@@ -359,6 +360,15 @@ export const SECTIONS = [
     motsCles: "points boutique cadeaux barème", groupe: 'modules', portee: 'maison', module: 'points',
     garde: (ctx) => ouvreLeModule('points')(ctx) && peutGererPoints(ctx.user?.role, canManageModule(ctx.user?.role, 'points')),
     charger: () => import('../points/SectionReglagesPoints.jsx'),
+  },
+  {
+    // Lot 5 : le journal se lit par le consultant et le patron (garde dure de
+    // la page) ; eux seuls règlent sa vue et son export.
+    id: 'journal', libelle: "Journal d'activité", detail: "Vue d'office et format de l'export",
+    motsCles: "journal activité export csv excel regrouper", groupe: 'modules', portee: 'maison', module: 'journal',
+    garde: ouvreLeModule('journal'),
+    charger: () => import('../journal/SectionReglagesJournal.jsx'),
+    signaux: ['reglages_modules:journal'],
   },
   {
     id: 'spa_en_ligne', libelle: 'Spa : réservation en ligne', onglet: 'Réservation en ligne', detail: 'Ouverture, horaires, délais, praticiens, lien à partager',
