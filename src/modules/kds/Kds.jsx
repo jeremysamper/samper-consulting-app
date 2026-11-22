@@ -933,7 +933,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
             </div>
           )}
           <span style={s.horloge} data-no-translate>{timeLabel(Date.now())}</span>
-          {!immersif && <BoutonRegler section="kds" user={user} etablissement={etablissement} />}
+          <BoutonRegler section="kds" user={user} etablissement={etablissement} />
           <button style={s.pleinBtn} onClick={() => basculerPlein(!plein)}>
             {plein ? 'Quitter le plein écran' : 'Plein écran'}
           </button>

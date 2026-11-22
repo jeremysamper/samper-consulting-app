@@ -49,6 +49,7 @@ import { Btn } from '../../components/ui/index.jsx';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import GererInventaire from './GererInventaire.jsx';
 import { peutGererInventaire } from './gardesInventaire.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 
 // La consommation et les documents de « Écarts et documents » embarquent le
 // rapprochement et la visionneuse : chargés seulement quand on y va, le
@@ -1742,6 +1743,13 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire', ecranReglage = nu
         </div>
       )}
 
+      {/* Factures & achats : hausses de prix, conditions de paiement et
+          catégories de charges dans Réglages (plan 15, lot 2). */}
+      {ecran === ECRAN_ACCUEIL && achatsVue && (
+        <div className="module-actions no-print" style={{ justifyContent: 'flex-end' }}>
+          <BoutonRegler section="achats_paiement" user={user} etablissement={etablissement} />
+        </div>
+      )}
       {ecran === ECRAN_ACCUEIL && (
         <AccueilInventaire
           vue={vue}
