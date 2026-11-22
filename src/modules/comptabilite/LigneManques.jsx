@@ -28,7 +28,9 @@ export function TexteManque({ m }) {
   return <><span>{m.n}</span> <span>{m.n > 1 ? t[1] : t[0]}</span></>;
 }
 
-export default function LigneManques({ manques, onOuvrir }) {
+// onManque (lot 5) : le manque entier est passé, l'écran qui l'accueille
+// ouvre sa saisie ; sans lui, l'écran du manque (onOuvrir).
+export default function LigneManques({ manques, onOuvrir, onManque }) {
   if (!manques?.length) return null;
   return (
     <div style={st.bloc} data-manques="">
@@ -36,7 +38,7 @@ export default function LigneManques({ manques, onOuvrir }) {
       <ul style={st.liste}>
         {manques.map((m) => (
           <li key={m.id}>
-            <button type="button" className="touch-target" style={{ ...ui.lien, ...st.entree }} onClick={() => onOuvrir(m.ecran)} data-manque={m.id}>
+            <button type="button" className="touch-target" style={{ ...ui.lien, ...st.entree }} onClick={() => (onManque ? onManque(m) : onOuvrir(m.ecran))} data-manque={m.id}>
               <span><TexteManque m={m} /></span>
             </button>
           </li>

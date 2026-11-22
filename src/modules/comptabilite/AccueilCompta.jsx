@@ -1,5 +1,5 @@
 import React from 'react';
-import { Building2, CalendarRange, Coins, Landmark, Percent, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
+import { Building2, CalendarRange, Coins, FileSpreadsheet, Landmark, Percent, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
 import { echeancier } from '../factures-achats/analysesAchats.js';
 import { estFacture } from '../inventaire/facturesLogic.js';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
@@ -9,7 +9,7 @@ import LigneManques from './LigneManques.jsx';
 import EtatAbsent from './EtatAbsent.jsx';
 import { Chf, pctTexte, pluriel } from './comptaUi.jsx';
 import { ecart, ventesComparables } from './syntheseCompta.js';
-import { libelleComparaison } from './periodesCompta.js';
+import { libelleComparaison, libellePeriode } from './periodesCompta.js';
 import { moyenneMensuelle } from './chargesFixes.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,9 +33,14 @@ function Comparaison({ a, b, precedente, comparable = true }) {
   return <><span>{e}</span> <span>sur</span> <span>{libelleComparaison(precedente)}</span></>;
 }
 
+// Lot 5 : `cartes` = cartes choisies par la maison (null = les quatre) ;
+// `fiduciaire` = { pret, onExporter } pour la tuile « Pour la fiduciaire »
+// (classeur de la période affichée en une touche) ; `onManque` ouvre la
+// saisie d'un manque.
 export default function AccueilCompta({
-  barre, periode, precedente, aujourdhui, data, direction, peutEcrire, onOuvrir,
+  barre, periode, precedente, aujourdhui, data, direction, peutEcrire, onOuvrir, onManque, cartes = null, fiduciaire = null,
 }) {
+  const voit = (id) => !cartes || !cartes.length || cartes.includes(id);
   const [detail, setDetail] = React.useState(false);
   const avecDetail = (essentiel, plus) => (detail ? [...essentiel, ...plus] : essentiel);
   const s = data.synthese;
@@ -98,6 +103,10 @@ export default function AccueilCompta({
   const moyenne = moyenneMensuelle(data.charges.lignes, aujourdhui);
   const nCharges = data.charges.lignes.length;
   const tuiles = [
+    fiduciaire && periode && {
+      id: 'fiduciaire', libelle: 'Pour la fiduciaire', Icone: FileSpreadsheet, onClick: fiduciaire.pret ? fiduciaire.onExporter : undefined,
+      etat: fiduciaire.pret ? <><span>Excel de</span> <span>{libellePeriode(periode)}</span></> : <>Chargement…</>,
+    },
     {
       id: 'jour', libelle: 'Chiffre du jour', Icone: Coins, onClick: () => onOuvrir('jour'),
       etat: absenteVentes ? <>Pas encore activé</>
@@ -171,15 +180,15 @@ export default function AccueilCompta({
       {periode ? (
         <>
           <div className="compta-cartes" data-cartes="">
-            <CarteChiffre
+            {voit('ca') && <CarteChiffre
               id="ca" titre="Chiffre d'affaires" Icone={TrendingUp} etat={etats.ventes}
               valeur={<Chf v={s.ca} entier />} lignes={caLignes} onClick={() => onOuvrir('ventes')}
-            />
-            <CarteChiffre
+            />}
+            {voit('matiere') && <CarteChiffre
               id="matiere" titre="Coût matière" Icone={Receipt} etat={etats.matiere}
               valeur={<Chf v={s.matiere.ht} entier />} lignes={matiereLignes} onClick={() => onOuvrir('achats')}
-            />
-            {direction && etatPersonnel !== 'absente' ? (
+            />}
+            {!voit('personnel') ? null : direction && etatPersonnel !== 'absente' ? (
               <CarteChiffre
                 id="personnel" titre="Coût du personnel" Icone={Users} etat={etatPersonnel}
                 valeur={<Chf v={s.personnel} entier />} lignes={personnelLignes} onClick={() => onOuvrir('personnel')}
@@ -191,18 +200,18 @@ export default function AccueilCompta({
                 lignes={direction ? personnelLignes : []}
               />
             )}
-            <CarteChiffre
+            {voit('resultat') && <CarteChiffre
               id="resultat" titre="Résultat estimé" Icone={Scale} etat={etats.resultat}
               valeur={<Chf v={s.resultat} entier />} lignes={resultatLignes} onClick={periode?.type === 'inventaire' ? () => onOuvrir('ensemble') : undefined}
               ton={s.resultat != null && s.resultat < 0 ? 'danger' : undefined}
-            />
+            />}
           </div>
           {detailPossible && (
             <button type="button" className="touch-target" style={st.bascule} aria-expanded={detail} onClick={() => setDetail((v) => !v)} data-compta-detail="">
               {detail ? 'Replier le détail' : 'Voir le détail'}
             </button>
           )}
-          <LigneManques manques={data.manquesVisibles} onOuvrir={onOuvrir} />
+          <LigneManques manques={data.manquesVisibles} onOuvrir={onOuvrir} onManque={onManque} />
         </>
       ) : (
         <p style={st.phrase}>Aucun inventaire validé : la période d'inventaire commence au premier inventaire validé.</p>

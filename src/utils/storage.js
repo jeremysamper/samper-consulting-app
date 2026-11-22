@@ -28,6 +28,9 @@ export const UI_STORAGE_KEYS = {
   // Dossier à ouvrir dans Documents ({ nom }), posé par un module (HACCP,
   // contrats, fournisseurs).
   documentsOuvrir: 'sc_documents_ouvrir',
+  // Factures à ouvrir à la vérification dans Factures & achats ({ ids }),
+  // posées par un manque de la Comptabilité.
+  achatsVerifier: 'sc_achats_verifier',
   theme: 'sc_theme',
   lang: 'sc_lang',
   // Rappel d'activation du code à usage unique (consultants sans facteur

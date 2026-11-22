@@ -4,7 +4,8 @@ import { pdfUtils } from '../../services/pdf.js';
 import { alertLegacy, confirmLegacy, notifyLegacy, readLegacyStorage, writeLegacyStorage } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
-import { removeStorageKeys } from '../../utils/storage.js';
+import { UI_STORAGE_KEYS, removeStorageKeys } from '../../utils/storage.js';
+import { useDemandeOuverture } from '../../hooks/useDemandeOuverture.js';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { PERIMETRE_DEFAUT, PERIMETRES_SUGGERES, perimetreOf, listePerimetres, valeurStockConsolidee } from '../../utils/inventairePerimetres.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
@@ -228,6 +229,15 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire', ecranReglage = nu
   // Écran demandé depuis une autre page (widget « Hausses de prix » du tableau
   // de bord), servi même quand le module était resté monté derrière.
   useDemandeEcran('achats', setEcran, achatsVue && canRegler && !enReglage);
+  // Plan 15, lot 5 : les factures signalées par la Comptabilité (sans montant
+  // hors TVA, sans taux) s'ouvrent à la vérification, l'une après l'autre.
+  // Seule la vue Factures & achats écoute (l'Inventaire monté ne prend rien).
+  useDemandeOuverture(achatsVue && !enReglage ? UI_STORAGE_KEYS.achatsVerifier : null, 'sc:achats-verifier', (d) => {
+    if (!Array.isArray(d.ids) || !d.ids.length) return;
+    setAVerifier(d.ids.filter((id) => typeof id === 'string'));
+    setSuiteVerification(ECRAN_ACCUEIL);
+    setEcran('verification');
+  });
   // Les onglets de vues n'existent plus : la clé est effacée, sa valeur
   // n'est pas reprise, tout le monde découvre l'accueil du module.
   // Provisoire : à retirer quelques semaines après la mise en prod du lot 1

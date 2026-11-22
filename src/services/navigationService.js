@@ -90,6 +90,13 @@ export function ouvrirSop({ sopId = null, execId = null } = {}) {
   ouvrirAvec(UI_STORAGE_KEYS.sopOuvrir, 'sc:sop-ouvrir', 'sop', { sopId, execId });
 }
 
+// Factures & achats sur « Vérifier la lecture » de ces factures (ids), dans
+// l'ordre : la Comptabilité y envoie une facture sans montant hors TVA ou
+// sans taux.
+export function ouvrirVerificationAchats(ids) {
+  ouvrirAvec(UI_STORAGE_KEYS.achatsVerifier, 'sc:achats-verifier', 'achats', { ids: (ids || []).slice(0, 200) });
+}
+
 // Un dossier de Documents, trouvé par son nom (casse et accents ignorés).
 export function ouvrirDossier(nom) {
   ouvrirAvec(UI_STORAGE_KEYS.documentsOuvrir, 'sc:documents-ouvrir', 'documents', { nom: String(nom || '') });
