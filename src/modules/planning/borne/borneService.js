@@ -63,10 +63,15 @@ export async function pointerALaBorne(jeton, code) {
   const horsLigne = typeof navigator !== 'undefined' && navigator.onLine === false;
   if (!horsLigne) {
     try {
-      // La file part d'abord : la base refuse un geste plus ancien que le
-      // dernier pointage de la personne.
-      if (fileDeLaBorne().length) await rejouerFile(jeton);
-      return await appelBorne(jeton, code, clientUuid);
+      // La file part d'abord, et le pointage ne part en ligne qu'une file
+      // vide : la base refuse un rejeu plus ancien qu'un pointage en ligne.
+      // Réseau tombé pendant le rejeu : ce geste rejoint la file, derrière.
+      if (fileDeLaBorne().length) {
+        const suite = await rejouerFile(jeton);
+        if (suite === 'attendre') return { ok: false, raison: 'attente' };
+        if (suite === 'oublier') return { ok: false, raison: 'revoquee' };
+      }
+      if (!fileDeLaBorne().length) return await appelBorne(jeton, code, clientUuid);
     } catch (err) {
       if (!isNetworkError(err)) return { ok: false, raison: 'erreur', message: err?.message || '' };
     }

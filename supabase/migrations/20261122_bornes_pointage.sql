@@ -107,6 +107,9 @@ create table if not exists public.bornes_pointage_essais (
   user_id           text,
   resultat          text not null check (resultat in ('arrivee', 'depart', 'deja', 'code_faux', 'attente', 'revoquee', 'hors_fenetre')),
   client_uuid       uuid unique,
+  -- Pointage réussi fait en ligne (sans heure de geste) : seule preuve que la
+  -- file de la borne était déjà partie.
+  en_ligne          boolean not null default false,
   event_at          timestamptz not null default now(),
   created_at        timestamptz not null default now()
 );
@@ -672,13 +675,14 @@ begin
     return jsonb_build_object('ok', false, 'raison', 'hors_fenetre');
   end if;
   -- Un rejeu n'est cru que pour une coupure que la base a pu voir : si la
-  -- borne a parlé en ligne (event_at = created_at) plus d'une minute après
-  -- l'heure annoncée, sa file était déjà partie (elle part avant tout
-  -- nouveau pointage) ; ce geste est antidaté.
+  -- borne a réussi un pointage en ligne plus d'une minute après l'heure
+  -- annoncée, sa file était déjà partie (la borne ne pointe en ligne qu'une
+  -- file vide) ; ce geste est antidaté. Un code faux, une attente ou une
+  -- borne révoquée ne comptent pas.
   if p_event_at is not null and exists (
     select 1 from bornes_pointage_essais e
      where e.borne_id = v_borne.id
-       and e.event_at = e.created_at
+       and e.en_ligne
        and e.created_at > p_event_at + interval '1 minute'
   ) then
     insert into bornes_pointage_essais (borne_id, etablissement_id, resultat, client_uuid, event_at)
@@ -797,8 +801,8 @@ begin
       end if;
     end if;
 
-    insert into bornes_pointage_essais (borne_id, etablissement_id, user_id, resultat, client_uuid, event_at)
-    values (v_borne.id, v_borne.etablissement_id, v_user, v_resultat, p_client_uuid, v_at);
+    insert into bornes_pointage_essais (borne_id, etablissement_id, user_id, resultat, client_uuid, event_at, en_ligne)
+    values (v_borne.id, v_borne.etablissement_id, v_user, v_resultat, p_client_uuid, v_at, p_event_at is null);
   exception when unique_violation then
     -- Le même client_uuid passé en même temps par un autre appel : ses
     -- écritures font foi, celles-ci sont annulées avec ce sous-bloc.
