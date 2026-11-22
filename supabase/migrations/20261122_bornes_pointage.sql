@@ -573,6 +573,7 @@ declare
   v_nom           text;
   v_shift_id      text;
   v_arrivee       timestamp;
+  v_debut_pointe  time;
   v_type          text;
   v_resultat      text;
   v_heure_rendue  time;
@@ -693,7 +694,7 @@ begin
       -- arrivée plus ancienne restée ouverte est un départ oublié : on pointe
       -- alors une arrivée. Arrivée en heure de Zurich, comme la clôture
       -- d'office (franchissement de minuit compris).
-      select s.id, a.arrivee into v_shift_id, v_arrivee
+      select s.id, a.arrivee, s.pointage_debut into v_shift_id, v_arrivee, v_debut_pointe
         from shifts s
         cross join lateral (
           select s.date + s.pointage_debut
@@ -711,7 +712,13 @@ begin
        limit 1
        for update of s;
 
-      if v_shift_id is not null then
+      if v_shift_id is not null and v_z - v_arrivee < interval '2 minutes' then
+        -- Arrivée pointée il y a moins de 2 minutes, à la borne ou depuis un
+        -- compte : ce n'est pas un départ.
+        v_type := 'arrivee';
+        v_resultat := 'deja';
+        v_heure_rendue := v_debut_pointe;
+      elsif v_shift_id is not null then
         update shifts
            set pointage_fin = v_heure, pointage_fin_auto = false
          where id = v_shift_id;
@@ -739,8 +746,10 @@ begin
         end if;
         v_type := 'arrivee';
       end if;
-      v_resultat := v_type;
-      v_heure_rendue := v_heure;
+      if v_resultat is null then
+        v_resultat := v_type;
+        v_heure_rendue := v_heure;
+      end if;
     end if;
 
     insert into bornes_pointage_essais (borne_id, etablissement_id, user_id, resultat, client_uuid, event_at)
