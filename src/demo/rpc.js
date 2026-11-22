@@ -3,6 +3,7 @@
 // hors production rend une erreur claire au lieu d'un faux succès.
 import { uuid } from './postgrest.js';
 import { planEnLigne } from '../reservation/choixTable.js';
+import { quantiteArrondie } from './donnees/commande.js';
 
 const heureZurich = () => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
 const jourZurich = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -82,7 +83,143 @@ const heureDe = (iso) => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zu
 
 // ── Table des fonctions ─────────────────────────────────────────────────────
 
+// ── Commande et marchandise (lot 4a) ─────────────────────────────────────────
+// Même contrat que commande_receptionner, pertes_frequentes et
+// recettes_relier_ingredients (migration 20261122b_lot4a_commande_base).
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const arrondiA = (n, d) => Math.round(n * 10 ** d) / 10 ** d;
+
+function jourMoins(jours) {
+  const d = new Date(jourZurich() + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - jours);
+  return d.toISOString().slice(0, 10);
+}
+
+function receptionner(ctx, a) {
+  const lignes = a.p_lignes == null ? [] : a.p_lignes;
+  if (!Array.isArray(lignes) || lignes.length > 500) throw new ErreurRpc('Lignes de réception invalides.', '22023');
+  if (lignes.some((e) => !e || typeof e !== 'object' || !['recu', 'ecart', 'manquant'].includes(e.statut) || !UUID.test(String(e.id || '').toLowerCase()))) {
+    throw new ErreurRpc('Chaque ligne reçue donne son id et son statut : recu, ecart ou manquant.', '22023');
+  }
+  const c = (ctx.db.commandes || []).find((x) => x.id === a.p_commande_id);
+  if (!c) throw new ErreurRpc('Commande introuvable.', 'P0002');
+  if (c.statut === 'recue') throw new ErreurRpc('Cette commande est déjà reçue.', '22023');
+  const siennes = (ctx.db.commande_lignes || []).filter((l) => l.commande_id === c.id);
+  const parId = new Map();
+  lignes.forEach((e) => { if (!parId.has(String(e.id).toLowerCase())) parId.set(String(e.id).toLowerCase(), e); });
+  if ([...parId.keys()].some((id) => !siennes.some((l) => l.id.toLowerCase() === id))) {
+    throw new ErreurRpc("Une ligne de réception n'appartient pas à cette commande.", '22023');
+  }
+  const quand = maintenant();
+  const commandee = (l) => l.quantite ?? l.quantite_calculee;
+  for (const l of siennes) {
+    const e = parId.get(l.id.toLowerCase());
+    if (e) {
+      ctx.maj('commande_lignes', l, {
+        statut_reception: e.statut,
+        quantite_recue: e.statut === 'manquant' ? 0 : ('quantite_recue' in e ? (e.quantite_recue ?? commandee(l)) : (l.quantite_recue ?? commandee(l))),
+        ...('montant_recu' in e ? { montant_recu: e.montant_recu } : {}),
+        ...('lot' in e ? { lot: String(e.lot ?? '').trim() || null } : {}),
+        ...('dlc' in e ? { dlc: String(e.dlc ?? '').trim() || null } : {}),
+        ...('note' in e ? { note_reception: String(e.note ?? '').trim() || null } : {}),
+        recu_par: ctx.uid, recu_at: quand, updated_at: quand,
+      });
+    } else if (l.statut_reception == null && Number(commandee(l) || 0) > 0) {
+      ctx.maj('commande_lignes', l, { statut_reception: 'recu', quantite_recue: commandee(l), recu_par: ctx.uid, recu_at: quand, updated_at: quand });
+    }
+  }
+  let docId = null;
+  if (a.p_achat !== false) {
+    const recues = siennes.filter((l) => ['recu', 'ecart'].includes(l.statut_reception) && Number(l.quantite_recue) > 0)
+      .sort((x, y) => (x.ordre - y.ordre) || String(x.created_at).localeCompare(String(y.created_at)));
+    if (recues.length) {
+      const montant = (l) => l.montant_recu ?? (l.prix_unitaire != null ? arrondiA(l.prix_unitaire * l.quantite_recue, 2) : null);
+      const total = recues.reduce((s, l) => (montant(l) == null ? s : (s ?? 0) + montant(l)), null);
+      const doc = ctx.inserer('achats_documents', {
+        etablissement_id: c.etablissement_id, perimetre: c.perimetre || 'Général', type_document: 'bon_livraison',
+        fournisseur_nom: c.fournisseur_nom, fournisseur_id: c.fournisseur_id,
+        numero: String(a.p_numero || '').trim() || 'Commande du ' + c.date_livraison.split('-').reverse().join('.'),
+        date_document: jourZurich(), total_ht: total == null ? null : arrondiA(total, 2), exclu: false, source: 'commande', created_by: ctx.uid,
+        lignes: recues.map((l) => {
+          const pr = l.produit_id ? ctx.db.produits.find((p) => p.id === l.produit_id) : null;
+          return {
+            libelle: l.nom, produitId: l.produit_id, produitNom: pr?.nom ?? null, lien: pr ? 'manuel' : null,
+            quantite: l.conditionnement > 0 ? arrondiA(l.quantite_recue / l.conditionnement, 3) : l.quantite_recue,
+            quantiteTotale: l.quantite_recue, uniteTotale: l.unite, montantLigne: montant(l),
+            referenceFourn: l.reference_fourn || '', conditionnement: l.conditionnement_libelle || '',
+            issues: l.statut_reception === 'ecart' ? ['écart à la réception'] : [],
+          };
+        }),
+      });
+      docId = doc.id;
+    }
+  }
+  ctx.maj('commandes', c, { statut: 'recue', recue_at: quand, recue_par: ctx.uid, achat_document_id: docId, updated_at: quand });
+  const compte = (s) => siennes.filter((l) => l.statut_reception === s).length;
+  return { commande_id: c.id, achat_document_id: docId, recues: compte('recu'), ecarts: compte('ecart'), manquantes: compte('manquant') };
+}
+
+function pertesFrequentes(ctx, a) {
+  const jours = Math.min(Math.max(Number(a.p_jours ?? 60) || 60, 1), 365);
+  const limite = Math.min(Math.max(Number(a.p_limite ?? 12) || 12, 1), 50);
+  const depuis = jourMoins(jours);
+  const groupes = new Map();
+  (ctx.db.pertes || [])
+    .filter((p) => p.etablissement_id === a.p_etablissement_id && p.date >= depuis && String(p.produit || '').trim())
+    .forEach((p) => {
+      const cle = p.produit_id ? 'p:' + p.produit_id : p.recette_id ? 'r:' + p.recette_id : 'n:' + String(p.produit).trim().toLowerCase();
+      const g = groupes.get(cle);
+      const plusRecente = !g || p.date > g.derniere.date || (p.date === g.derniere.date && String(p.created_at || '') > String(g.derniere.created_at || ''));
+      groupes.set(cle, { nb: (g?.nb || 0) + 1, derniere: plusRecente ? p : g.derniere });
+    });
+  return [...groupes.entries()]
+    .sort(([, x], [, y]) => (y.nb - x.nb) || (y.derniere.date > x.derniere.date ? 1 : y.derniere.date < x.derniere.date ? -1 : 0)
+      || String(x.derniere.produit).localeCompare(String(y.derniere.produit)))
+    .slice(0, limite)
+    .map(([cle, { nb, derniere: d }]) => ({
+      cle, produit_id: d.produit_id ?? null, recette_id: d.recette_id ?? null, produit: d.produit, categorie: d.categorie ?? null,
+      unite: d.unite ?? null, quantite: d.quantite ?? null, valeur_unit: d.valeur_unit ?? null, motif: d.motif ?? null, nb, derniere: d.date,
+    }));
+}
+
+function relierIngredients(ctx, a) {
+  const liens = a.p_liens;
+  if (!Array.isArray(liens) || liens.length > 5000) throw new ErreurRpc('Liens invalides.', '22023');
+  if (liens.some((e) => !e || typeof e !== 'object' || !e.recette_id || !e.ingredient_id
+    || (e.prix_unit != null && typeof e.prix_unit !== 'number') || (e.unite != null && typeof e.unite !== 'string'))) {
+    throw new ErreurRpc('Chaque lien donne recette_id et ingredient_id ; prix_unit est un nombre, unite un texte.', '22023');
+  }
+  const produit = (ctx.db.produits || []).find((p) => p.id === a.p_produit_id);
+  if (!produit) throw new ErreurRpc('Produit introuvable.', 'P0002');
+  const attendus = new Set(liens.map((e) => `${e.recette_id}|${e.ingredient_id}`)).size;
+  const parRecette = new Map();
+  liens.forEach((e) => {
+    if (!parRecette.has(e.recette_id)) parRecette.set(e.recette_id, new Map());
+    parRecette.get(e.recette_id).set(String(e.ingredient_id), e);
+  });
+  let relies = 0;
+  for (const r of ctx.db.recettes || []) {
+    const m = parRecette.get(r.id);
+    if (!m || r.etablissement_id !== produit.etablissement_id || !Array.isArray(r.ingredients)) continue;
+    let n = 0;
+    const ingredients = r.ingredients.map((x) => {
+      if (!x || typeof x !== 'object' || !m.has(String(x.id))) return x;
+      n += 1;
+      const l = m.get(String(x.id));
+      const { needsReview: _revoir, matchSuggestions: _suggestions, ...reste } = x;
+      return { ...reste, produitId: produit.id, ...(typeof l.prix_unit === 'number' ? { prixUnit: l.prix_unit } : {}), ...(typeof l.unite === 'string' ? { unite: l.unite } : {}) };
+    });
+    if (n) { ctx.maj('recettes', r, { ingredients, updated_at: maintenant() }); relies += n; }
+  }
+  return { relies, attendus };
+}
+
 const RPC = {
+  commande_quantite_arrondie: (ctx, a) => quantiteArrondie(a.p_stock_cible, a.p_reste, a.p_besoin_groupes, a.p_conditionnement),
+  commande_receptionner: receptionner,
+  pertes_frequentes: pertesFrequentes,
+  recettes_relier_ingredients: relierIngredients,
   // Pointage : l'heure est celle de Zurich, comme la vraie fonction.
   pointer_arrivee(ctx, a) {
     const s = ctx.db.shifts.find((x) => x.id === (a.shift_id || a.p_shift_id));
