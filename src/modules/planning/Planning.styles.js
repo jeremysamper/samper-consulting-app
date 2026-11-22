@@ -125,7 +125,10 @@ const pls = {
   aPourvoirCase: { minHeight: 52, padding: 6, borderLeft: '1px solid var(--rule-soft)', borderBottom: '1px solid var(--rule-soft)', display: 'flex', flexDirection: 'column', gap: 4 },
   aPourvoirItem: {
     display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1, width: '100%', textAlign: 'left', padding: '4px 6px 4px 8px',
-    background: 'var(--warning-bg)', boxShadow: 'inset 2px 0 0 var(--warning-text)', borderRadius: 'var(--r-sm)',
+    // Le statut se dit par ses jetons de fond et d'encre, sans filet : un
+    // filet en ombre intérieure sous le rayon forcé des boutons (béquille)
+    // dessinait un anneau autour de la tuile.
+    background: 'var(--warning-bg)', borderRadius: 'var(--r)',
     borderWidth: 0, borderStyle: 'solid', borderColor: 'transparent', fontFamily: 'var(--font)', color: 'var(--text)', minWidth: 0,
   },
   aPourvoirType: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--warning-text)' },
