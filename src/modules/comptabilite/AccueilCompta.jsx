@@ -19,6 +19,9 @@ import { moyenneMensuelle } from './chargesFixes.js';
 // la phrase qui dit ce que le module n'est pas. Une tuile hors droit n'est pas
 // rendue (Personnel : consultant et patron ; TVA, Banque et Trésorerie :
 // « Régler les factures »). Nombres et dates dans leurs propres nœuds.
+// Lot 3 (tablette) : chaque carte garde son chiffre et ce qui le qualifie
+// (ratio, chiffre incomplet, réserves) ; la comparaison, le prorata et la
+// méthode se déplient ensemble par « Voir le détail ».
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PIED = 'La comptabilité de l\'app prépare vos chiffres et vos pièces pour la fiduciaire. Elle ne tient pas les comptes et n\'établit ni le décompte TVA officiel ni les salaires.';
@@ -33,6 +36,8 @@ function Comparaison({ a, b, precedente, comparable = true }) {
 export default function AccueilCompta({
   barre, periode, precedente, aujourdhui, data, direction, peutEcrire, onOuvrir,
 }) {
+  const [detail, setDetail] = React.useState(false);
+  const avecDetail = (essentiel, plus) => (detail ? [...essentiel, ...plus] : essentiel);
   const s = data.synthese;
   const p = data.precedente;
   const { etats } = data;
@@ -40,19 +45,21 @@ export default function AccueilCompta({
   // dont les ventes sont connues (ventesComparables).
   const comparable = etats.couverture === 'ready' && ventesComparables(p?.ventes);
 
-  const caLignes = [
+  const caLignes = avecDetail([
     s.ca != null && (etats.couverture === 'ready' && s.ventes?.attendus
       ? <>hors TVA, <span>{s.ventes.avec}</span> <span>{pluriel(s.ventes.avec, 'jour sur', 'jours sur')}</span> <span>{s.ventes.attendus}</span></>
       : <>hors TVA</>),
-    s.ca != null && <Comparaison a={s.ca} b={p?.ca} precedente={precedente} comparable={comparable} />,
-  ];
-  const matiereLignes = [
+  ], [
+    s.ca != null && <Comparaison key="comparaison" a={s.ca} b={p?.ca} precedente={precedente} comparable={comparable} />,
+  ]);
+  const matiereLignes = avecDetail([
     s.ratios.matierePct != null && <><span>{pctTexte(s.ratios.matierePct)}</span> <span>du chiffre d'affaires</span></>,
     periode?.type === 'inventaire'
       ? (s.matiere.variationStock != null ? <>variation de stock comprise</> : <>pas d'inventaire au début ou à la fin</>)
       : <>sans variation de stock, chiffre incomplet</>,
-    s.matiere.ht != null && <Comparaison a={s.matiere.ht} b={p?.matiere.ht} precedente={precedente} />,
-  ];
+  ], [
+    s.matiere.ht != null && <Comparaison key="comparaison" a={s.matiere.ht} b={p?.matiere.ht} precedente={precedente} />,
+  ]);
   // Coût du personnel : direction seulement ; « Pas encore activé » sans la
   // migration (salaires_estimes absente).
   const etatPersonnel = etats.personnel;
@@ -63,22 +70,26 @@ export default function AccueilCompta({
   const personnelLignes = !direction ? [<>réservé à la direction</>]
     : etatPersonnel === 'absente' ? [<>Pas encore activé</>]
       : personnelVide ? [personnelVide]
-        : [
+        : avecDetail([
           s.ratios.personnelPct != null && <><span>{pctTexte(s.ratios.personnelPct)}</span> <span>du chiffre d'affaires</span></>,
+        ], [
           <>estimé, charges sociales comprises</>,
           s.prorata && <><span>au prorata des jours écoulés,</span> <span>{s.prorata.ecoules}</span> <span>sur</span> <span>{s.prorata.total}</span></>,
           <Comparaison key="comparaison" a={s.personnel} b={p?.personnel} precedente={precedente} />,
-        ];
+        ]);
 
-  const resultatLignes = [
+  const resultatLignes = avecDetail([
     s.avantCharges
       ? <>avant charges fixes</>
       : <><span>après</span> <Chf v={s.charges} entier /> <span>de charges fixes</span></>,
     s.avantPersonnel && <span style={st.reserve}>avant personnel</span>,
     s.personnelPartiel && <span style={st.reserve}>personnel partiel</span>,
+  ], [
     s.prorata && <><span>au prorata des jours écoulés,</span> <span>{s.prorata.ecoules}</span> <span>sur</span> <span>{s.prorata.total}</span></>,
-    s.resultat != null && <Comparaison a={s.resultat} b={p?.resultat} precedente={precedente} comparable={comparable} />,
-  ];
+    s.resultat != null && <Comparaison key="comparaison" a={s.resultat} b={p?.resultat} precedente={precedente} comparable={comparable} />,
+  ]);
+  // Rien à déplier sans période précédente ni prorata (ni méthode du personnel).
+  const detailPossible = Boolean(precedente || s.prorata || (direction && etatPersonnel === 'ready' && !personnelVide));
 
   // ── Tuiles ──
   const absenteVentes = data.ventesJour.status === 'absente';
@@ -186,6 +197,11 @@ export default function AccueilCompta({
               ton={s.resultat != null && s.resultat < 0 ? 'danger' : undefined}
             />
           </div>
+          {detailPossible && (
+            <button type="button" className="touch-target" style={st.bascule} aria-expanded={detail} onClick={() => setDetail((v) => !v)} data-compta-detail="">
+              {detail ? 'Replier le détail' : 'Voir le détail'}
+            </button>
+          )}
           <LigneManques manques={data.manquesVisibles} onOuvrir={onOuvrir} />
         </>
       ) : (
@@ -201,6 +217,11 @@ export default function AccueilCompta({
 
 const st = {
   reserve: { color: 'var(--warning-text)' },
+  bascule: {
+    alignSelf: 'flex-start', minHeight: 'var(--controle)', padding: '0 16px', borderRadius: 'var(--r-full)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
+  },
   phrase: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.5 },
   pied: { margin: '4px 0 0', fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5, maxWidth: 640 },
 };

@@ -46,10 +46,11 @@ export default function AlerteAnticipation({ groupes, aujourdhui, compact = fals
     >
       <button
         type="button"
+        className="touch-target"
         onClick={() => setChoix(!ouvert)}
         aria-expanded={ouvert}
         style={{
-          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 24,
           padding: 0, margin: 0, background: 'none', border: 'none', cursor: 'pointer',
           textAlign: 'left', fontFamily: 'var(--font)', fontSize: 13, color: ton.texte, lineHeight: 1.4,
         }}

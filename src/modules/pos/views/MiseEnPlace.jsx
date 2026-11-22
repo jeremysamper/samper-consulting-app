@@ -12,6 +12,7 @@ import { useMiseEnPlace } from '../hooks/useMiseEnPlace.js';
 import { PosEmptyState }  from '../components/PosEmptyState.jsx';
 import { PosExportButton } from '../components/PosExportButton.jsx';
 import { ArrowRight } from 'lucide-react';
+import { nomLisible } from '../lib/nomLisible.js';
 
 const PRINT_ID = 'pos-print-mise-en-place';
 
@@ -75,7 +76,7 @@ function ItemRow({ item, sansBadge = false }) {
         textOverflow: 'ellipsis',
         whiteSpace:   'nowrap',
       }}>
-        {item.name}
+        {nomLisible(item.name)}
       </div>
 
       {/* Flèche : dessin seul, sans caractère dans le texte. */}
@@ -205,8 +206,11 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
             {onNavigateToMapping && (
               <button
                 onClick={onNavigateToMapping}
-                className="no-print"
+                className="no-print touch-target"
                 style={{
+                  display:      'inline-flex',
+                  alignItems:   'center',
+                  minHeight:    24,
                   marginLeft:   6,
                   background:   'none',
                   border:       'none',

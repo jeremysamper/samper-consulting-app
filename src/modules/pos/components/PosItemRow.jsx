@@ -15,6 +15,7 @@ import { Btn } from '../../../components/ui/index.jsx';
 import { MatchBadge } from './MatchBadge.jsx';
 import { RecipeSelector } from './RecipeSelector.jsx';
 import { getMatchStatus } from '../lib/dice-coefficient.js';
+import { nomLisible } from '../lib/nomLisible.js';
 
 /**
  * @param {{
@@ -118,7 +119,7 @@ export function PosItemRow({
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
           }}>
-            {item.name}
+            {nomLisible(item.name)}
           </div>
         </div>
 

@@ -6295,4 +6295,15 @@ export const UI_GLOSSARY_ES = {
   'sur la semaine': 'en la semana',
   'vide': 'vacío',
   'à déclarer': 'por declarar',
+  // Lot 3 « la tablette » (22.11.2026)
+  'Tous les motifs': 'Todos los motivos',
+  'Toutes les catégories': 'Todas las categorías',
+  'Actions sur les fiches': 'Acciones de las fichas',
+  'sur les sept prochains jours': 'en los próximos siete días',
+  'Gérer les fiches salle': 'Gestionar las fichas de sala',
+  'La première se crée avec « Gérer », puis « Nouvelle fiche ».': 'La primera se crea con «Gestionar» y luego «Nueva ficha».',
+  'Plus de choix': 'Más opciones',
+  'Moins de choix': 'Menos opciones',
+  'Voir le détail': 'Ver el detalle',
+  'Replier le détail': 'Ocultar el detalle',
 };

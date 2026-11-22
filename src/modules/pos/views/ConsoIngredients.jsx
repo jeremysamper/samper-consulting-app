@@ -240,8 +240,6 @@ export default function ConsoIngredients({ etablissement, onNavigateToMapping })
               padding: '6px 14px',
               fontSize: 11, fontWeight: 700,
               color: 'var(--text3)',
-              textTransform: 'uppercase',
-              letterSpacing: 0.4,
             }}>
               <div>Ingrédient</div>
               <div style={{ textAlign: 'right' }}>Quantité</div>

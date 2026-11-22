@@ -318,7 +318,7 @@ export default function Groupes({ user, etablissement }) {
             onChange={setOnglet}
           />
           {canEdit && status !== 'absent' && (
-            <button type="button" onClick={() => setFormulaire({})} style={st.nouveau}>
+            <button type="button" className="touch-target" onClick={() => setFormulaire({})} style={st.nouveau}>
               Nouveau groupe
             </button>
           )}

@@ -211,6 +211,11 @@ const FichesSalle = ({ user, etablissement }) => {
 
   const canEdit = canManageModule(user.role, 'fiches_salle');
   const canManageCartes = canManageModule(user.role, 'recettes');
+  // Fenêtres de gestion des cartes (créer, modifier, archives) : la barre
+  // d'onglets les garde, « Gérer » les ouvre (lot 3, en-tête ramené aux
+  // cartes, aux catégories et à « Gérer »).
+  const barreCartesRef = React.useRef(null);
+  const carteActive = cartes.find(c => c.id === activeCarteTab) || null;
   const isConsultant = user.role === 'consultant';
   // Catégories que le formulaire et la génération produisent.
   const FICHE_CATS = ['Entrées','Plats','Desserts','Fromages','Boissons'];
@@ -591,6 +596,7 @@ const FichesSalle = ({ user, etablissement }) => {
         onDeleteCarte={deleteCarte}
         archivedCartes={archivedCartes}
         onArchiveCarte={archiveCarte}
+        commandesRef={barreCartesRef}
       />
       <div style={fss.toolbar}>
         <div style={fss.left}>
@@ -606,20 +612,35 @@ const FichesSalle = ({ user, etablissement }) => {
             />
           )}
         </div>
-        {canEdit && !sel.active && (
-          /* L'action principale d'abord ; générer (consultant) et sélectionner
-             rangés dans « Gérer ». */
+        {(canEdit || canManageCartes) && !sel.active && (
+          /* Un seul menu : les fiches (nouvelle, générer, sélectionner) et
+             les cartes (ajouter, modifier, archives), chacune à sa garde. */
           <div className="module-actions">
-            <button style={fss.addBtn} onClick={()=>openEdit(null)}>Nouvelle fiche</button>
             <BoutonActions
               id="fiches-gerer"
               label="Gérer"
               style={fss.selectBtn}
               titre="Gérer les fiches salle"
-              sections={[{ items: [
-                isConsultant && !bulkProgress && { titre: 'Générer les fiches', detail: 'Une fiche par plat de la carte, à relire ensuite.', onClick: genererFichesSalleIA },
-                fiches.length > 0 && { titre: 'Sélectionner plusieurs fiches', detail: 'Pour les supprimer ou les exporter ensemble.', onClick: sel.enter },
-              ] }]}
+              sections={[
+                canEdit && { titre: 'Fiches', items: [
+                  { titre: 'Nouvelle fiche', onClick: () => openEdit(null) },
+                  isConsultant && !bulkProgress && { titre: 'Générer les fiches', detail: 'Une fiche par plat de la carte, à relire ensuite.', onClick: genererFichesSalleIA },
+                  fiches.length > 0 && { titre: 'Sélectionner plusieurs fiches', detail: 'Pour les supprimer ou les exporter ensemble.', onClick: sel.enter },
+                ] },
+                canManageCartes && { titre: 'Cartes', items: [
+                  { titre: 'Ajouter une carte', detail: 'Un onglet de plus, à remplir de plats', onClick: () => barreCartesRef.current?.creer() },
+                  carteActive && {
+                    titre: 'Modifier la carte',
+                    detail: <><span data-no-translate="">{String(carteActive.nom ?? '').trim() || '?'}</span><span> : nom, dates, archiver, supprimer</span></>,
+                    onClick: () => barreCartesRef.current?.modifier(carteActive),
+                  },
+                  archivedCartes.length > 0 && {
+                    titre: 'Archives',
+                    detail: <><span data-no-translate="">{archivedCartes.length}</span> <span>{archivedCartes.length > 1 ? 'cartes archivées, à restaurer' : 'carte archivée, à restaurer'}</span></>,
+                    onClick: () => barreCartesRef.current?.archives(),
+                  },
+                ] },
+              ].filter(Boolean)}
             />
           </div>
         )}
@@ -685,7 +706,7 @@ const FichesSalle = ({ user, etablissement }) => {
           {fichesVues.length === 0 ? (
             <div className="fv-etat">
               <p className="fv-etat-titre">Aucune fiche salle pour le moment.</p>
-              {canEdit && <p className="fv-etat-texte">La première se crée avec « Nouvelle fiche ».</p>}
+              {canEdit && <p className="fv-etat-texte">La première se crée avec « Gérer », puis « Nouvelle fiche ».</p>}
             </div>
           ) : filtered.length === 0 ? (
             <div className="fv-etat">

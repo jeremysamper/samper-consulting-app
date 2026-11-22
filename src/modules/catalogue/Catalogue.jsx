@@ -14,6 +14,8 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { prixAffiche } from './prixAffiche.js';
+import { ChoixFiltre, Panneau } from '../../components/ui/index.jsx';
+import { useShellMode, estTactile } from '../../hooks/useShellMode.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
@@ -38,6 +40,11 @@ const Catalogue = ({ user, etablissement }) => {
   const [activeTab, setActiveTab] = React.useState('produits'); // 'produits' | 'fournisseurs'
   const [search, setSearch] = React.useState('');
   const [catFilter, setCatFilter] = React.useState('Tous');
+  // Tablette et téléphone (lot 3) : les produits en liste, une ligne par
+  // produit, sans liste déroulante ni bouton dessus ; « Sélectionner » ouvre
+  // la sélection (attribuer un fournisseur, supprimer).
+  const tactile = estTactile(useShellMode());
+  const [selectionTactile, setSelectionTactile] = React.useState(false);
   // Filtre « sans fournisseur » : dit une fois en tête, au lieu de « Aucun »
   // écrit dans le sélecteur de chaque ligne.
   const [sansFournisseur, setSansFournisseur] = React.useState(false);
@@ -483,21 +490,29 @@ const Catalogue = ({ user, etablissement }) => {
           {/* Filtres */}
           <div style={cat.filters}>
             <SearchToggle value={search} onChange={setSearch} placeholder="Je cherche un produit ou un fournisseur…" />
-            <SegmentedTabs
-              size="sm"
-              active={catFilter}
+            {/* Dix-huit catégories : une liste plutôt qu'une rangée de pilules. */}
+            <ChoixFiltre
+              libelle="Catégorie"
+              valeur={catFilter}
+              defaut="Tous"
               onChange={setCatFilter}
-              tabs={cats.map(c => ({ id: c, label: c === 'Tous' ? `Tous (${produits.length})` : c }))}
+              options={cats.map(c => ({ id: c, label: c === 'Tous' ? 'Toutes les catégories' : c }))}
             />
             {(nbSansFournisseur > 0 || sansFournisseur) && (
               <button
                 type="button"
+                className="touch-target"
                 aria-pressed={sansFournisseur}
                 onClick={() => setSansFournisseur(v => !v)}
                 style={{ ...cat.filtreFournisseur, ...(sansFournisseur ? cat.filtreFournisseurActif : null) }}
                 data-filtre-sans-fournisseur=""
               >
                 <span>Sans fournisseur</span> <span data-no-translate>({nbSansFournisseur})</span>
+              </button>
+            )}
+            {tactile && canWrite && !selectionTactile && filtered.length > 0 && (
+              <button type="button" className="touch-target" style={{ ...cat.filtreFournisseur, marginLeft: 'auto' }} onClick={() => setSelectionTactile(true)}>
+                Sélectionner
               </button>
             )}
           </div>
@@ -514,10 +529,10 @@ const Catalogue = ({ user, etablissement }) => {
             </div>
           ) : (
             <>
-              {/* Barre sélection de masse */}
-              {canWrite && (
+              {/* Barre sélection de masse (au doigt : après « Sélectionner ») */}
+              {canWrite && (!tactile || selectionTactile) && (
                 <div style={cat.selectBar}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 44, cursor: 'pointer', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>
                     <input
                       type="checkbox"
                       checked={selected.size === filtered.length && filtered.length > 0}
@@ -561,7 +576,8 @@ const Catalogue = ({ user, etablissement }) => {
                         {(fournisseurs || []).map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                       </select>
                       <button
-                        style={{ ...cat.miniBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }}
+                        className="touch-target"
+                        style={{ ...cat.miniBtn, ...cat.miniTexte, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }}
                         onClick={async () => {
                           if (!confirmLegacy(
                             `Supprimer définitivement ${selected.size} produit${selected.size > 1 ? 's' : ''} sélectionné${selected.size > 1 ? 's' : ''} ?\n\n` +
@@ -590,21 +606,37 @@ const Catalogue = ({ user, etablissement }) => {
                         Supprimer
                       </button>
                       <button
-                        style={{ ...cat.miniBtn, color: 'var(--text2)' }}
+                        className="touch-target"
+                        style={{ ...cat.miniBtn, ...cat.miniTexte, color: 'var(--text2)' }}
                         onClick={() => setSelected(new Set())}
                       >
                         Désélectionner
                       </button>
                     </div>
                   )}
+                  {tactile && (
+                    <button type="button" className="touch-target" style={{ ...cat.filtreFournisseur, marginLeft: 'auto' }} onClick={() => { setSelected(new Set()); setSelectionTactile(false); }}>
+                      Terminer
+                    </button>
+                  )}
                 </div>
               )}
 
+              {tactile ? (
+                <ListeProduitsTactile
+                  produits={filtered}
+                  canWrite={canWrite}
+                  selection={canWrite && selectionTactile}
+                  selected={selected}
+                  onBasculer={(id) => { const next = new Set(selected); next.has(id) ? next.delete(id) : next.add(id); setSelected(next); }}
+                  onOuvrir={(p) => { setEditProd(p); setShowProdForm(true); }}
+                />
+              ) : (
               <div style={cat.tableWrap}>
                 <table style={cat.table}>
                   <thead>
                     <tr>
-                      {canWrite && <th style={{ ...cat.th, width: 36 }}></th>}
+                      {canWrite && <th style={{ ...cat.th, width: 44 }}></th>}
                       {['Produit', 'Référence', 'Catégorie', 'Fournisseur', 'Prix', ''].map(h => (
                         <th key={h} style={{ ...cat.th, ...(h === 'Prix' ? { textAlign: 'right' } : null) }}>{h}</th>
                       ))}
@@ -614,17 +646,21 @@ const Catalogue = ({ user, etablissement }) => {
                     {(filtered || []).map(p => (
                       <tr key={p.id} style={{ ...cat.tr, background: selected.has(p.id) ? 'var(--accent-light)' : 'transparent' }}>
                         {canWrite && (
-                          <td style={{ ...cat.td, width: 36 }}>
-                            <input
-                              type="checkbox"
-                              checked={selected.has(p.id)}
-                              onChange={e => {
-                                const next = new Set(selected);
-                                e.target.checked ? next.add(p.id) : next.delete(p.id);
-                                setSelected(next);
-                              }}
-                              style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--accent)' }}
-                            />
+                          <td style={{ ...cat.td, width: 44, padding: 0 }}>
+                            {/* Le label est la cible : 44 x 44 (WCAG 2.5.8, règle de l'iPad). */}
+                            <label style={cat.caseCible}>
+                              <input
+                                type="checkbox"
+                                aria-label={p.nom}
+                                checked={selected.has(p.id)}
+                                onChange={e => {
+                                  const next = new Set(selected);
+                                  e.target.checked ? next.add(p.id) : next.delete(p.id);
+                                  setSelected(next);
+                                }}
+                                style={{ width: 16, height: 16, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }}
+                              />
+                            </label>
                           </td>
                         )}
                         <td style={{ ...cat.td, fontWeight: 'var(--g2)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.nom}>{p.nom}</td>
@@ -656,8 +692,8 @@ const Catalogue = ({ user, etablissement }) => {
                         <td style={cat.tdAction}>
                           {canWrite && (
                             <>
-                              <button style={cat.miniBtn} onClick={() => { setEditProd(p); setShowProdForm(true); }} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
-                              <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteProd(p.id)} title="Supprimer" aria-label="Supprimer"><Trash2 size={14} aria-hidden="true" /></button>
+                              <button className="touch-target" style={cat.miniBtn} onClick={() => { setEditProd(p); setShowProdForm(true); }} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
+                              <button className="touch-target" style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteProd(p.id)} title="Supprimer" aria-label="Supprimer"><Trash2 size={14} aria-hidden="true" /></button>
                             </>
                           )}
                         </td>
@@ -666,6 +702,7 @@ const Catalogue = ({ user, etablissement }) => {
                   </tbody>
                 </table>
               </div>
+              )}
             </>
           )}
         </>
@@ -699,8 +736,8 @@ const Catalogue = ({ user, etablissement }) => {
                       <td style={cat.tdAction}>
                         {canWrite && (
                           <>
-                            <button style={cat.miniBtn} onClick={() => { setEditFourn(f); setShowFournForm(true); }} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
-                            <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteFourn(f.id)} title="Supprimer" aria-label="Supprimer"><Trash2 size={14} aria-hidden="true" /></button>
+                            <button className="touch-target" style={cat.miniBtn} onClick={() => { setEditFourn(f); setShowFournForm(true); }} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
+                            <button className="touch-target" style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteFourn(f.id)} title="Supprimer" aria-label="Supprimer"><Trash2 size={14} aria-hidden="true" /></button>
                           </>
                         )}
                       </td>
@@ -775,6 +812,52 @@ const Catalogue = ({ user, etablissement }) => {
     </div>
   );
 };
+
+// Liste des produits au doigt (tablette, téléphone ; lot 3) : une ligne par
+// produit, nom, catégorie, fournisseur et prix, sans liste déroulante ni
+// bouton dessus. Toucher la ligne ouvre la fiche du produit (qui peut
+// écrire) ; en sélection, la ligne entière coche le produit.
+function ListeProduitsTactile({ produits, canWrite, selection, selected, onBasculer, onOuvrir }) {
+  return (
+    <Panneau style={{ padding: 0, overflow: 'hidden' }}>
+      {produits.map((p, i) => {
+        const coche = selected.has(p.id);
+        const ligne = { ...cat.ligne, ...(i === produits.length - 1 ? { borderBottomWidth: 0 } : null), ...(coche ? { background: 'var(--selection)' } : null) };
+        const contenu = (
+          <>
+            <span style={cat.ligneTexte}>
+              <span style={cat.ligneNom}>{p.nom}</span>
+              <span style={cat.ligneDetail}>
+                <span>{categorieAffichee(p)}</span>
+                <span>, </span>
+                {p.fournisseurNom ? <span data-no-translate="">{p.fournisseurNom}</span> : <span>Sans fournisseur</span>}
+                {p.referenceFourn ? <><span>, </span><span data-no-translate="">{p.referenceFourn}</span></> : null}
+              </span>
+            </span>
+            <span style={cat.lignePrix}>{p.prixUnitaire > 0 ? prixAffiche(p.prixUnitaire, p.uniteRef) : '-'}</span>
+          </>
+        );
+        if (selection) {
+          return (
+            <label key={p.id} style={{ ...ligne, cursor: 'pointer' }}>
+              <span style={cat.caseLigne}>
+                <input type="checkbox" aria-label={p.nom} checked={coche} onChange={() => onBasculer(p.id)} style={{ width: 18, height: 18, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }} />
+              </span>
+              <span style={{ ...cat.ligneBouton, paddingLeft: 4 }}>{contenu}</span>
+            </label>
+          );
+        }
+        return (
+          <div key={p.id} style={ligne}>
+            {canWrite
+              ? <button type="button" style={cat.ligneBouton} onClick={() => onOuvrir(p)}>{contenu}</button>
+              : <div style={cat.ligneBouton}>{contenu}</div>}
+          </div>
+        );
+      })}
+    </Panneau>
+  );
+}
 
 // Liste et libellés viennent du référentiel partagé ; seul le pictogramme
 // est propre au catalogue.
@@ -1244,6 +1327,17 @@ const cat = {
   tdAction: { padding: '6px 10px', textAlign: 'right', whiteSpace: 'nowrap' },
   catBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 'var(--r)', background: 'var(--selection)', color: 'var(--text)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)' },
   miniBtn: { width: 26, height: 26, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', cursor: 'pointer', fontSize: 'var(--t1)' },
+  // Bouton à texte de la barre de sélection : la largeur suit le libellé.
+  miniTexte: { width: 'auto', padding: '0 12px' },
+  caseCible: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, cursor: 'pointer' },
+  // Liste au doigt (lot 3) : lignes de la carte blanche, filet doux.
+  ligne: { display: 'flex', alignItems: 'stretch', minWidth: 0, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)' },
+  ligneBouton: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, minHeight: 'var(--ligne-aeree)', padding: '8px 16px', background: 'transparent', borderWidth: 0, borderStyle: 'none', borderRadius: 0, color: 'var(--text)', textAlign: 'left', fontFamily: 'var(--font)', cursor: 'pointer' },
+  ligneTexte: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
+  ligneNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', overflowWrap: 'anywhere' },
+  ligneDetail: { fontSize: 'var(--t1)', color: 'var(--text2)' },
+  lignePrix: { flexShrink: 0, fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t2)', color: 'var(--text)', whiteSpace: 'nowrap' },
+  caseLigne: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, flexShrink: 0, paddingLeft: 8 },
   miniLink: { background: 'none', border: 'none', color: 'var(--lien)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)' },
   empty: { padding: 60, textAlign: 'center', color: 'var(--text2)' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },

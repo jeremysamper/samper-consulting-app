@@ -53,7 +53,9 @@ export default function VentesPos({ user, etablissement }) {
       {/* Libellés seuls : pas de glyphe devant un onglet. */}
       {/* « Meilleures et moins bonnes ventes » s'ouvre dans Statistiques
           (analyse « Ventes POS ») : l'onglet a quitté ce module. */}
-      <SegmentedTabs tabs={TABS.map(({ id, label }) => ({ id, label }))} active={effectiveTab} onChange={setTab} />
+      {/* Les onglets passent à la ligne au lieu de défiler : aucun n'est coupé
+          au bord de l'écran (lot 3). */}
+      <SegmentedTabs tabs={TABS.map(({ id, label }) => ({ id, label }))} active={effectiveTab} onChange={setTab} style={{ flexWrap: 'wrap', overflowX: 'visible' }} />
 
       {/* ── Mise en place J+1 ── */}
       {effectiveTab === 'mise_en_place' && (

@@ -7,9 +7,8 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
-import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
-import { Btn, Panneau } from '../../components/ui/index.jsx';
+import { Btn, ChoixFiltre, Panneau } from '../../components/ui/index.jsx';
 import { CarteRepartition, CarteSeptJours, ReperesPertes } from './CartesPertes.jsx';
 import { zurichToday } from '../../utils/zurichTime.js';
 import './pertes.css';
@@ -269,15 +268,17 @@ const Pertes = ({ user, etablissement }) => {
       />
       </div>
 
-      {/* Filtres du registre : la loupe et les motifs en pilules. */}
+      {/* Filtres du registre : la loupe et le motif dans une liste (huit
+          pilules ne tenaient pas sur une ligne de tablette). */}
       <div style={pts.header}>
         <div style={pts.headerLeft}>
           <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
-          <SegmentedTabs
-            size="sm"
-            active={motifFilter}
+          <ChoixFiltre
+            libelle="Motif"
+            valeur={motifFilter}
+            defaut="Tous"
             onChange={setMotifFilter}
-            tabs={MOTIFS.map(m => ({ id: m, label: m }))}
+            options={MOTIFS.map(m => ({ id: m, label: m === 'Tous' ? 'Tous les motifs' : m }))}
           />
         </div>
         {canManage && !sel.active && (
@@ -316,7 +317,7 @@ const Pertes = ({ user, etablissement }) => {
       <div style={pts.tableWrap} id="pertes-print" className="grid-table-scroll">
         {/* Colonnes dynamiques : les 2 colonnes d'action n'existent que pour les
             rôles gestionnaires, sinon les cellules débordent sur une ligne implicite. */}
-        <div className="grid-table-row" style={{ ...pts.tableHead, gridTemplateColumns: (sel.active ? '34px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (canManage ? ' 80px 80px' : '') }}>
+        <div className="grid-table-row" style={{ ...pts.tableHead, gridTemplateColumns: (sel.active ? '44px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (canManage ? ' 80px 80px' : '') }}>
           {sel.active && <span className="no-print" />}
           <span>Date</span>
           <span>Produit</span>
@@ -338,18 +339,19 @@ const Pertes = ({ user, etablissement }) => {
           return (
             <div key={p.id} className="grid-table-row" style={{
               ...pts.tableRow,
-              gridTemplateColumns: (sel.active ? '34px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (canManage ? ' 80px 80px' : ''),
+              gridTemplateColumns: (sel.active ? '44px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (canManage ? ' 80px 80px' : ''),
               ...(sel.active && sel.isSelected(p.id) ? { background: 'var(--bg)' } : {}),
             }}>
               {sel.active && (
-                <span className="no-print" style={{ display: 'flex', alignItems: 'center' }}>
+                <label className="no-print" style={pts.caseCible}>
                   <input
                     type="checkbox"
+                    aria-label={p.produit}
                     checked={sel.isSelected(p.id)}
                     onChange={() => sel.toggle(p.id)}
-                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                    style={{ width: 18, height: 18, margin: 0, cursor: 'pointer' }}
                   />
-                </span>
+                </label>
               )}
               <span style={pts.cell} data-no-translate>{datePerte(p.date, todayStr)}</span>
               <span style={{...pts.cellBold, flex:2}}>
@@ -586,6 +588,8 @@ const Pertes = ({ user, etablissement }) => {
 };
 
 const pts = {
+  // Case de sélection : le label est la cible, 44 x 44 (règle de l'iPad).
+  caseCible:{display:'flex',alignItems:'center',justifyContent:'center',width:44,height:44,cursor:'pointer'},
   plusDetails:{gridColumn:'1/-1',justifySelf:'start',minHeight:44,padding:'0 4px',background:'transparent',borderWidth:0,borderStyle:'none',color:'var(--lien)',fontSize:'var(--t2)',fontFamily:'var(--font)',cursor:'pointer',textDecoration:'underline',textUnderlineOffset:3},
   root:{display:'flex',flexDirection:'column',gap:16},
   // Carte du registre (Panneau) : sans retrait, le tableau défile dedans.

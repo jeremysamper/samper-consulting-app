@@ -6245,4 +6245,15 @@ export const UI_GLOSSARY_DE = {
   'sur la semaine': 'in der Woche',
   'vide': 'leer',
   'à déclarer': 'zu deklarieren',
+  // Lot 3 « la tablette » (22.11.2026)
+  'Tous les motifs': 'Alle Gründe',
+  'Toutes les catégories': 'Alle Kategorien',
+  'Actions sur les fiches': 'Aktionen für die Blätter',
+  'sur les sept prochains jours': 'in den nächsten sieben Tagen',
+  'Gérer les fiches salle': 'Serviceblätter verwalten',
+  'La première se crée avec « Gérer », puis « Nouvelle fiche ».': 'Das erste wird mit «Verwalten» und dann «Neues Blatt» erstellt.',
+  'Plus de choix': 'Mehr Optionen',
+  'Moins de choix': 'Weniger Optionen',
+  'Voir le détail': 'Details anzeigen',
+  'Replier le détail': 'Details ausblenden',
 };
