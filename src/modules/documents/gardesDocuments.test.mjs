@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cleNom, documentVisible, peutReglerVisibilite, trouverDossier } from './gardesDocuments.js';
+import { DOSSIERS_RESERVES, cleNom, documentVisible, peutReglerVisibilite, trouverDossier } from './gardesDocuments.js';
 
 const docs = [
   { id: 'c', type: 'folder', nom: 'Contrats', parentId: null, rolesVisibles: ['resp_cuisine'] },
@@ -16,6 +16,13 @@ test('un dossier réservé cache son contenu aux autres rôles', () => {
   assert.equal(documentVisible(parId.get('c1'), 'resp_cuisine', parId), true);
   assert.equal(documentVisible(parId.get('h3'), 'serveur', parId), false);
   assert.equal(documentVisible(parId.get('h3'), 'cuisinier', parId), true);
+});
+
+test('un dossier réservé sans rôle coché est à la direction seule', () => {
+  const d = new Map([['x', { id: 'x', type: 'folder', nom: 'Contrats', parentId: null, rolesVisibles: [] }]]);
+  assert.equal(documentVisible(d.get('x'), 'resp_cuisine', d), false);
+  assert.equal(documentVisible(d.get('x'), 'consultant', d), true);
+  assert.equal(DOSSIERS_RESERVES.includes(cleNom('contrats')), true);
 });
 
 test('consultant et patron voient tout, et seuls règlent la visibilité', () => {

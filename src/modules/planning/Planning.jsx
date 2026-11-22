@@ -11,7 +11,7 @@ import PhoneLink from '../../components/PhoneLink.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { ouvrirCompte, ouvrirDossier } from '../../services/navigationService.js';
-import { DOSSIERS_MODULES, peutOuvrirDocuments } from '../documents/gardesDocuments.js';
+import { DOSSIERS_MODULES, peutOuvrirDocuments, peutReglerVisibilite } from '../documents/gardesDocuments.js';
 import { peutOuvrirSection } from '../../components/ui/BoutonRegler.jsx';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
@@ -1472,8 +1472,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
     && { titre: 'Régler le planning', detail: "Modèles d'horaires, groupes, contrats et pointage, dans Réglages.", onClick: () => ouvrirCompte('planning_modeles') };
 
   // Plan 15, lot 5 : les contrats de l'équipe, dans Documents (dossier
-  // Contrats), pour qui gère le planning et ouvre Documents.
-  const choixContrats = canWrite && peutOuvrirDocuments(user, etablissement, getPermissionsForRole(user?.role))
+  // Contrats, réservé à la direction) : consultant et patron qui ouvrent
+  // Documents.
+  const choixContrats = peutReglerVisibilite(user?.role) && peutOuvrirDocuments(user, etablissement, getPermissionsForRole(user?.role))
     && { titre: 'Dossier des contrats', detail: "Les contrats et avenants de l'équipe, dans Documents.", onClick: () => ouvrirDossier(DOSSIERS_MODULES.contrats) };
 
   // Solde du mois de la personne connectée (Mes horaires) : du 1er à hier,

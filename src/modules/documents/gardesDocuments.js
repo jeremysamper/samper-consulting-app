@@ -25,12 +25,13 @@ export function peutOuvrirDocuments(user, etablissement, permissions) {
 
 // Un document est-il visible pour ce rôle ? `parId` : Map id -> document
 // ({ parentId, rolesVisibles }). Chaque dossier au-dessus (et le document
-// lui-même s'il est un dossier) doit laisser passer le rôle.
+// lui-même s'il est un dossier) doit laisser passer le rôle. rolesVisibles :
+// null = toute l'équipe ; [] = la direction seule ; sinon ces rôles en plus.
 export function documentVisible(doc, role, parId) {
   if (ROLES_TOUT_VOIR.includes(role)) return true;
   let cur = doc;
   for (let i = 0; cur && i < 30; i += 1) {
-    if (Array.isArray(cur.rolesVisibles) && cur.rolesVisibles.length && !cur.rolesVisibles.includes(role)) return false;
+    if (Array.isArray(cur.rolesVisibles) && !cur.rolesVisibles.includes(role)) return false;
     cur = cur.parentId ? parId.get(cur.parentId) : null;
   }
   return true;
@@ -38,6 +39,9 @@ export function documentVisible(doc, role, parId) {
 
 // Nom de dossier comparé sans casse ni accents.
 export const cleNom = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+
+// Dossiers d'un module créés réservés à la direction (contrats de l'équipe).
+export const DOSSIERS_RESERVES = [cleNom(DOSSIERS_MODULES.contrats)];
 
 // Le dossier demandé par un module : à la racine d'abord, sinon le premier
 // trouvé dans l'arborescence.

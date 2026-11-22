@@ -17,7 +17,7 @@ import './documents.css';
 import { roles as ROLES } from '../moduleConfig.js';
 import { UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { useDemandeOuverture } from '../../hooks/useDemandeOuverture.js';
-import { ROLES_TOUT_VOIR, documentVisible, peutReglerVisibilite, trouverDossier } from './gardesDocuments.js';
+import { DOSSIERS_RESERVES, ROLES_TOUT_VOIR, cleNom, documentVisible, peutReglerVisibilite, trouverDossier } from './gardesDocuments.js';
 
 // ═════════════════════════════════════════════════════════════════════════════
 // MODULE DOCUMENTS - dossiers et fichiers de l'établissement
@@ -198,7 +198,9 @@ const Documents = ({ user, etablissement }) => {
   }, [status, parId]);
 
   // Plan 15, lot 5 : un module ouvre son dossier par son nom (ouvrirDossier).
-  // Absent, il est créé à la racine pour qui écrit dans Documents.
+  // Absent, il est créé à la racine, par le consultant ou le patron seulement :
+  // eux seuls voient tous les dossiers, un autre rôle créerait un double d'un
+  // dossier qui lui est caché. Les contrats naissent réservés à la direction.
   const demandeDossier = React.useRef(null);
   const [tourDossier, setTourDossier] = React.useState(0);
   useDemandeOuverture(UI_STORAGE_KEYS.documentsOuvrir, 'sc:documents-ouvrir', (d) => {
@@ -211,8 +213,10 @@ const Documents = ({ user, etablissement }) => {
     demandeDossier.current = null;
     const dossier = trouverDossier(allDocs, d.nom);
     if (dossier) { setSearch(''); setCurrentFolder(dossier.id); return; }
-    if (!canWrite || !legacySB) { notifyLegacy(`Aucun dossier « ${d.nom} » pour le moment.`, 'info'); return; }
+    if (!canWrite || !legacySB || !peutReglerVisibilite(user.role)) { notifyLegacy(`Aucun dossier « ${d.nom} » pour le moment.`, 'info'); return; }
+    const reserve = DOSSIERS_RESERVES.includes(cleNom(d.nom));
     legacySB.db.createFolder({ etablissementId: etabId, parentId: null, nom: d.nom, userId: user.id })
+      .then((dossierCree) => (reserve ? legacySB.db.setDocumentRolesVisibles(dossierCree.id, []) : dossierCree))
       .then((cree) => {
         setAllDocs(prev => (prev.some(x => x.id === cree.id) ? prev : [...prev, cree]));
         setSearch('');
@@ -358,7 +362,7 @@ const Documents = ({ user, etablissement }) => {
     try {
       const maj = await legacySB.db.setDocumentRolesVisibles(visibilite.doc.id, visibilite.roles);
       setAllDocs(prev => prev.map(d => (d.id === maj.id ? { ...d, rolesVisibles: maj.rolesVisibles } : d)));
-      notifyLegacy(maj.rolesVisibles ? 'Dossier réservé aux rôles choisis.' : "Dossier visible par toute l'équipe.", 'success');
+      notifyLegacy(!maj.rolesVisibles ? "Dossier visible par toute l'équipe." : maj.rolesVisibles.length ? 'Dossier réservé aux rôles choisis.' : 'Dossier réservé à la direction.', 'success');
       setVisibilite(null);
     } catch (err) {
       notifyLegacy('Réglage non enregistré. ' + messageErreur(err, 'documents'), 'error');
@@ -476,7 +480,10 @@ const Documents = ({ user, etablissement }) => {
       const n = (enfants.get(doc.id) || []).length;
       const contenu = n ? pluriel(n, 'élément') : 'Vide';
       // Dossier réservé : les rôles qui le voient, consultant et patron en plus.
-      return doc.rolesVisibles ? `${contenu}, réservé : ${doc.rolesVisibles.map(r => ROLES[r]?.label || r).join(', ')}` : contenu;
+      if (!doc.rolesVisibles) return contenu;
+      return doc.rolesVisibles.length
+        ? `${contenu}, réservé : direction, ${doc.rolesVisibles.map(r => ROLES[r]?.label || r).join(', ')}`
+        : `${contenu}, réservé à la direction`;
     }
     return [formatTaille(doc.taille), formatDate(doc.createdAt)].filter(Boolean).join(', ');
   };
@@ -740,8 +747,8 @@ const Documents = ({ user, etablissement }) => {
               <button type="button" style={ds.btnGhost} onClick={() => setVisibilite(null)}>Annuler</button>
               <button
                 type="button"
-                style={{ ...ds.btnPrimaire, opacity: busy || (visibilite.roles && !visibilite.roles.length) ? 0.5 : 1 }}
-                disabled={busy || Boolean(visibilite.roles && !visibilite.roles.length)}
+                style={{ ...ds.btnPrimaire, opacity: busy ? 0.5 : 1 }}
+                disabled={busy}
                 onClick={enregistrerVisibilite}
               >Enregistrer</button>
             </>
@@ -754,7 +761,7 @@ const Documents = ({ user, etablissement }) => {
             </label>
             <label style={ds.choixLigne}>
               <input type="radio" name="documents-visibilite" checked={Boolean(visibilite.roles)} onChange={() => setVisibilite(v => ({ ...v, roles: v.roles || [] }))} />
-              <span>Seulement ces rôles</span>
+              <span>La direction, et seulement ces rôles</span>
             </label>
             {visibilite.roles && (
               <div style={ds.rolesGrille}>
@@ -770,7 +777,7 @@ const Documents = ({ user, etablissement }) => {
                 ))}
               </div>
             )}
-            <div style={ds.aide}>Le consultant et le patron voient toujours tous les dossiers. Les sous-dossiers suivent la même règle.</div>
+            <div style={ds.aide}>Le consultant et le patron voient toujours tous les dossiers. Sans rôle coché, le dossier est réservé à la direction. Les sous-dossiers suivent la même règle.</div>
           </div>
         </Fenetre>
       )}
