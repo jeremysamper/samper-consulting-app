@@ -17,6 +17,8 @@ import { ETAB, EQUIPE, ROLES_DEMO, aujourdhui, jour, instant } from './donnees/b
 import { STOCKAGE, PREFIXE } from './isolation.js';
 import { defaultPermissions } from '../modules/moduleConfig.js';
 import { quantiteArrondie, envoyerAvant, jourIso } from './donnees/commande.js';
+import { TOUR_ACTIF } from './nouveautes/actif.js';
+import { ajusterBasePourLeTour } from './nouveautes/jeuTour.js';
 
 export const DEMO_URL = 'https://demo.invalid';
 const DEMO_HOTE = new URL(DEMO_URL).hostname;
@@ -34,7 +36,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // pertes reliées, liste J+1, règles de Ventes POS, ingrédients à relier.
 // v10 (lot 5) : cadeaux demandés, procédures rappelée et commencée, fiches en
 // brouillon, alertes de cuisine, dossiers de Documents aux types de la base.
-const VERSION_BASE = 'v10-lot5-' + aujourdhui();
+// Tour des nouveautés (?nouveautes=1) : jeu retouché, gardé sous sa propre clé.
+const VERSION_BASE = 'v10-lot5-' + aujourdhui() + (TOUR_ACTIF ? '-tour2' : '');
+const baseDeDepart = () => (TOUR_ACTIF ? ajusterBasePourLeTour(creerBase()) : creerBase());
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -110,7 +114,7 @@ function chargerBase() {
       if (lu?.version === VERSION_BASE && lu.tables) return lu.tables;
     }
   } catch { /* base illisible : on repart du jeu de départ */ }
-  return creerBase();
+  return baseDeDepart();
 }
 
 function sauverPlusTard() {

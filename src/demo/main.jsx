@@ -4,6 +4,8 @@
 // 3. seulement ensuite, charger la vraie application.
 // Les imports statiques ci-dessous ne tirent aucun module de l'app qui créerait
 // le client Supabase : il est créé au chargement de lancement.jsx.
+// 0. Tour des nouveautés (?nouveautes=1) : son horloge, avant tout le reste.
+import './nouveautes/horloge.js';
 import { installerIsolation } from './isolation.js';
 import { installerFauxSupabase, sessionDemo, choisirRole, DEMO_URL } from './fauxSupabase.js';
 import { ROLES_DEMO } from './donnees/base.js';
