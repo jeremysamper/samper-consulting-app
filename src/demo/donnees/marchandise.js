@@ -1,16 +1,13 @@
-// Marchandise de la démo (lot 4a, migration 20261122b_lot4a_commande_base,
-// version réduite du 23.11.2026) : des pertes reliées au catalogue et à la
-// mise en place, une liste J+1 et quelques lignes d'ingrédient à relier.
-// La Commande V1 et les règles de Ventes POS sont retirées : le module
-// Commande reste celui de la production.
-// Le front déjà en ligne ne lit aucune colonne neuve ; celles ajoutées aux
-// tables qu'il lit (pertes, mise en place, fiches) ne changent rien à ce qu'il
-// affiche.
+// Marchandise de la démo (lots 4a et 4b, migration 20261122b_lot4a_commande_base) :
+// pertes reliées au catalogue et à la mise en place, liste « Mise en place de
+// demain » et lignes d'ingrédient à relier. La commande par fournisseur et les
+// règles de Ventes POS ne partent pas (retrait du 23.11.2026) : leurs jeux sont
+// retirés de la démo.
 import { ETAB, aujourdhui, jour, jourSemaine, instant } from './base.js';
 import { PRODUITS, PRODUIT } from './catalogue.js';
 
 // 1 = lundi à 7 = dimanche, comme isodow.
-export const jourIso = (isoJour) => jourSemaine(isoJour) || 7;
+const jourIso = (isoJour) => jourSemaine(isoJour) || 7;
 
 // ── Pertes ───────────────────────────────────────────────────────────────────
 

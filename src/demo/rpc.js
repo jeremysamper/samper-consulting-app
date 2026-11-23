@@ -82,9 +82,12 @@ const heureDe = (iso) => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zu
 
 // ── Table des fonctions ─────────────────────────────────────────────────────
 
-// ── Commande et marchandise (lot 4a) ─────────────────────────────────────────
-// Même contrat que pertes_frequentes et recettes_relier_ingredients
-// (migration 20261122b_lot4a_commande_base).
+// ── Marchandise (lot 4a) ─────────────────────────────────────────────────────
+// Même contrat que pertes_frequentes et recettes_relier_ingredients (migration
+// 20261122b_lot4a_commande_base).
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const arrondiA = (n, d) => Math.round(n * 10 ** d) / 10 ** d;
 
 function jourMoins(jours) {
   const d = new Date(jourZurich() + 'T12:00:00Z');

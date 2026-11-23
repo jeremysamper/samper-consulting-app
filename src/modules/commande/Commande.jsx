@@ -16,7 +16,6 @@ import {
   besoinsDeCarte, besoinsFondsDeCuisine, contexteCommande, filtrerGroupes, nomCle, platsParProduit,
 } from './besoinsParCarte.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { LigneRegler } from '../../components/ui/BoutonRegler.jsx';
 
 // Rayon affiché d'une ligne : sa catégorie enregistrée, ou, si elle vaut
 // « Autres » (ajouts sans catégorie), le rayon déduit de son nom.
@@ -418,9 +417,6 @@ const Commande = ({ user, etablissement }) => {
             onImprimer={printList}
             onVider={viderCommande}
           />
-          {/* Jours de livraison, heure limite et stock cible de chaque
-              fournisseur : Réglages > Commande (plan 15, lot 2). */}
-          <LigneRegler section="commande" user={user} etablissement={etablissement} style={{ justifyContent: 'flex-start' }} />
           <div className="commande-reperes no-print" data-commande-reperes="">
             {ongletCommande ? (
               <>

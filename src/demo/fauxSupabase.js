@@ -33,9 +33,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // pertes reliées, liste J+1, règles de Ventes POS, ingrédients à relier.
 // v10 (lot 5) : cadeaux demandés, procédures rappelée et commencée, fiches en
 // brouillon, alertes de cuisine, dossiers de Documents aux types de la base.
-// v11 (lot 4a, retrait) : sans la Commande V1 ni les règles de Ventes POS ;
-// fournisseurs sans jours de livraison ni heure limite, plus de stocks cibles.
-const VERSION_BASE = 'v11-lot4a-' + aujourdhui();
+// v11 (lot 4b, retrait du 23.11) : commandes par fournisseur, stocks cibles,
+// produits habituels et règles de Ventes POS retirés des jeux.
+const VERSION_BASE = 'v11-lot4b-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -157,7 +157,8 @@ const DEFAUTS = {
   compta_reglages: { delai_paiement_jours: 30, categories_charges: [], exercice_debut_mois: 1, cartes_accueil: null },
   reglages_modules: { config: {}, updated_by: () => sessionUid },
   mep_modeles: { lignes: [], ordre: 0, actif: true, created_by: () => sessionUid },
-  // Lot 4a (migration 20261122b_lot4a_commande_base) : défauts de la base.
+  // Lot 4a (migration 20261122b_lot4a_commande_base) : colonnes gardées de la
+  // mise en place (la commande par fournisseur ne part pas).
   mep_listes: { poste: null, modele_id: null, origine: 'manuel', base_calcul: null },
   mep_items: { quantite_suggeree: null, origine: null },
   // Lot 6a (D4) : branche Hôtel et Spa. Défauts des migrations hotel_h0 à h8 et

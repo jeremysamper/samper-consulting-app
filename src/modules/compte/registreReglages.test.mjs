@@ -84,13 +84,11 @@ const AVANT = {
   // paiement et catégories de charges : comme les hausses de prix.
   cartes: ['consultant', 'patron', 'resp_cuisine'],
   pertes: ['consultant', 'patron', 'resp_cuisine'],
-  commande: ['consultant', 'patron', 'resp_cuisine'],
   mep: ['consultant', 'patron', 'resp_cuisine'],
   groupes: ['consultant', 'patron', 'resp_cuisine'],
   sop: ['consultant', 'patron', 'resp_cuisine'],
   fiches_salle: ['consultant', 'patron', 'resp_cuisine'],
   catalogue: ['consultant', 'patron', 'resp_cuisine'],
-  ventes_pos: ['consultant', 'patron', 'resp_cuisine'],
   kds: ['consultant', 'resp_cuisine'],
   points: DIRECTION,
   achats_paiement: DIRECTION,

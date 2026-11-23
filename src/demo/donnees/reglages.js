@@ -123,6 +123,8 @@ export const MEP_MODELES = [
   },
 ].map((m) => ({ etablissement_id: ETAB, actif: true, created_by: 'demo-chef', created_at: LE, updated_at: LE, ...m }));
 
+
+
 // Fils d'équipe de Messages (décision D5) : canaux_messages, canal 'cuisine',
 // 'restaurant' (affiché « Salle ») et 'tous' (Toute l'équipe). Le front déjà
 // en ligne ne les lit que dans Passations (Hôtel).

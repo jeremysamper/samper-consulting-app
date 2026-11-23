@@ -19,7 +19,7 @@ import { REGLAGES_MODULES, MEP_MODELES, CANAUX_MESSAGES } from './reglages.js';
 import { genererPos } from './pos.js';
 import {
   pertesLot4a, mepLot4a, ingredientsARelier,
-} from './commande.js';
+} from './marchandise.js';
 import { genererHotel } from './hotel.js';
 import { genererSpa } from './spa.js';
 import { empreinteDemo } from '../rpc.js';
@@ -55,7 +55,7 @@ export function creerBase() {
   const { reservations, tags, liens } = genererReservations();
   const { releves, controles } = genererHaccp();
   const { plats_boissons: boissons, ...caisse } = genererCaisse();
-  // Lot 4a : pertes reliées et liste J+1.
+  // Lots 4a et 4b : pertes reliées, liste J+1 (la commande par fournisseur ne part pas).
   const mep = mepLot4a(MEP_LISTES, MEP_ITEMS);
   const pos = genererPos();
   return {
