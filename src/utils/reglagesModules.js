@@ -147,9 +147,9 @@ export function lingeDepart(reglagesEtages, categorie) {
   return t ? t.linge : {};
 }
 
-// Qui écrit ces réglages : même liste que les policies de reglages_modules,
-// mep_modeles, commande_cibles et que le déclencheur des colonnes de réglage
-// de sops et fournisseurs.
+// Qui écrit ces réglages : même liste que les policies de reglages_modules et
+// mep_modeles, et que le déclencheur des colonnes de réglage de sops et
+// fournisseurs.
 export const ROLES_DIRECTION_MODULES = ['consultant', 'patron', 'resp_cuisine'];
 export const estDirectionModules = (role) => ROLES_DIRECTION_MODULES.includes(role);
 

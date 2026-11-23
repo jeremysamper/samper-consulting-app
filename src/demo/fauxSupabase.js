@@ -35,7 +35,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // brouillon, alertes de cuisine, dossiers de Documents aux types de la base.
 // v11 (lot 4b, retrait du 23.11) : commandes par fournisseur, stocks cibles,
 // produits habituels et règles de Ventes POS retirés des jeux.
-const VERSION_BASE = 'v11-lot4b-' + aujourdhui();
+// v12 (lot 4a, retrait du 23.11) : fournisseurs sans jours de livraison, heure
+// limite ni délai de commande ; correspondances de Ventes POS sans regle_id.
+const VERSION_BASE = 'v12-lot4a-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
