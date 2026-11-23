@@ -10,6 +10,7 @@ import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { envoyerDocument, lireEtatEnvoi } from '../../services/envoiDocumentsService.js';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { pictoCercleStyle } from '../../components/ui/index.jsx';
@@ -119,6 +120,18 @@ const Documents = ({ user, etablissement }) => {
     return () => document.removeEventListener('keydown', echap);
   }, [apercu, fermerApercu]);
   const [busy, setBusy] = React.useState(false);
+  // Envoi par Brevo (Edge Function envoi-documents), réservé au consultant et
+  // proposé seulement quand la clé Brevo est posée côté serveur.
+  const estConsultant = user.role === 'consultant';
+  const [envoiPret, setEnvoiPret] = React.useState(false);
+  const [envoi, setEnvoi] = React.useState(null); // { doc, a, cc, objet, message } | null
+  const [envoiEnCours, setEnvoiEnCours] = React.useState(false);
+  React.useEffect(() => {
+    if (!estConsultant || !legacySB) return undefined;
+    let actif = true;
+    lireEtatEnvoi().then((etat) => { if (actif) setEnvoiPret(etat.configure); });
+    return () => { actif = false; };
+  }, [estConsultant, legacySB]);
   const sel = useSelection();
   const fileInputRef = React.useRef(null);
 
@@ -328,6 +341,36 @@ const Documents = ({ user, etablissement }) => {
     } catch (err) {
       notifyLegacy('Ouverture impossible. ' + messageErreur(err, 'documents'), 'error');
     }
+  };
+
+  // ═══ Envoyer par e-mail (Brevo) ═══
+  // L'adresse de l'établissement est proposée ; la fonction relit le fichier
+  // par son identifiant et le joint (ou met un lien s'il est trop lourd).
+  const ouvrirEnvoi = async (doc) => {
+    setEnvoi({
+      doc,
+      a: etablissement?.email || '',
+      cc: '',
+      objet: `Document : ${doc.nom}`,
+      message: `Bonjour,\n\nVeuillez trouver ci-joint le document « ${doc.nom} ».\n\nMeilleures salutations`,
+    });
+    if (etablissement?.email || !legacySB?.db?.listEtablissements) return;
+    try {
+      const rows = await legacySB.db.listEtablissements();
+      const email = (rows || []).find(r => r.id === etabId)?.email || '';
+      if (email) setEnvoi(prev => (prev && prev.doc.id === doc.id && !prev.a ? { ...prev, a: email } : prev));
+    } catch { /* l'adresse se saisit à la main */ }
+  };
+  const envoyerParMail = async () => {
+    if (!envoi || envoiEnCours) return;
+    setEnvoiEnCours(true);
+    const { error } = await envoyerDocument({
+      documentId: envoi.doc.id, a: envoi.a, cc: envoi.cc, objet: envoi.objet, message: envoi.message,
+    });
+    setEnvoiEnCours(false);
+    if (error) { notifyLegacy(error, 'error'); return; }
+    notifyLegacy(`« ${envoi.doc.nom} » envoyé à ${envoi.a}.`, 'success');
+    setEnvoi(null);
   };
 
   // URL signée « pièce jointe » : le fichier s'enregistre, y compris sur iPad,
@@ -719,6 +762,9 @@ const Documents = ({ user, etablissement }) => {
               {actions.type === 'file' && (
                 <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); telecharger(d); }}>Télécharger</button>
               )}
+              {actions.type === 'file' && estConsultant && envoiPret && (
+                <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); ouvrirEnvoi(d); }}>Envoyer par e-mail</button>
+              )}
               {canWrite && (
                 <>
                   <button type="button" style={ds.menuItem} onClick={() => { const d = actions; setActions(null); setRenommage({ doc: d, nom: d.nom }); }}>Renommer</button>
@@ -778,6 +824,52 @@ const Documents = ({ user, etablissement }) => {
             )}
             <div style={ds.aide}>Le consultant et le patron voient toujours tous les dossiers. Sans rôle coché, le dossier est réservé à la direction. Les sous-dossiers suivent la même règle.</div>
           </div>
+        </Fenetre>
+      )}
+
+      {/* ── Envoyer par e-mail ── */}
+      {/* La fenêtre reste fermable pendant l'envoi. */}
+      {envoi && (
+        <Fenetre
+          id="documents-envoyer"
+          titre="Envoyer par e-mail"
+          onClose={() => setEnvoi(null)}
+          largeur={520}
+          pied={(
+            <>
+              <button type="button" style={ds.btnGhost} onClick={() => setEnvoi(null)}>Annuler</button>
+              <button
+                type="button"
+                style={{ ...ds.btnPrimaire, opacity: envoi.a.trim() && envoi.objet.trim() && !envoiEnCours ? 1 : 0.65 }}
+                disabled={!envoi.a.trim() || !envoi.objet.trim() || envoiEnCours}
+                aria-busy={envoiEnCours}
+                onClick={envoyerParMail}
+              >
+                {envoiEnCours ? 'Envoi en cours…' : 'Envoyer'}
+              </button>
+            </>
+          )}
+        >
+            <div style={ds.fenetreCorps}>
+              <div>
+                <label style={ds.champLabel} htmlFor="documents-envoi-a">Destinataire</label>
+                <input id="documents-envoi-a" type="email" style={ds.champ} value={envoi.a} placeholder="email@etablissement.ch" onChange={e => setEnvoi({ ...envoi, a: e.target.value })} />
+                {!envoi.a && <div style={ds.aide}>Aucune adresse enregistrée pour cet établissement : saisissez-la ici.</div>}
+              </div>
+              <div>
+                <label style={ds.champLabel} htmlFor="documents-envoi-cc">Copie (Cc)</label>
+                <input id="documents-envoi-cc" type="text" style={ds.champ} value={envoi.cc} placeholder="facultatif" onChange={e => setEnvoi({ ...envoi, cc: e.target.value })} />
+              </div>
+              <div>
+                <label style={ds.champLabel} htmlFor="documents-envoi-objet">Objet</label>
+                <input id="documents-envoi-objet" type="text" style={ds.champ} value={envoi.objet} onChange={e => setEnvoi({ ...envoi, objet: e.target.value })} />
+              </div>
+              <div>
+                <label style={ds.champLabel} htmlFor="documents-envoi-message">Message</label>
+                <textarea id="documents-envoi-message" rows={7} style={{ ...ds.champ, resize: 'vertical', lineHeight: 1.5 }} value={envoi.message} onChange={e => setEnvoi({ ...envoi, message: e.target.value })} />
+              </div>
+              <div style={ds.aide}>Le fichier « {envoi.doc.nom} » part joint au message, ou en lien de téléchargement s'il est trop lourd.</div>
+            </div>
         </Fenetre>
       )}
 
