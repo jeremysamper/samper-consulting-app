@@ -216,6 +216,10 @@ declare
 begin
   if tg_op = 'INSERT' then
     new.numero := null;
+    -- L'auteur est l'appelant, jamais une valeur envoyée par le client
+    -- (sans session : service role, la valeur fournie reste).
+    new.created_by := coalesce((select auth.uid())::text, new.created_by);
+    new.created_at := now();
     new.accepte_le := case when new.statut = 'accepte' then now() else null end;
     new.accepte_par := case when new.statut = 'accepte' then (select auth.uid())::text else null end;
     new.envoye_le := case when new.statut in ('envoye', 'accepte') then now() else null end;
@@ -295,6 +299,8 @@ declare
 begin
   if tg_op = 'INSERT' then
     new.numero := null;
+    new.created_by := coalesce((select auth.uid())::text, new.created_by);
+    new.created_at := now();
     if new.statut not in ('prevue', 'emise') then
       raise exception 'Une facture naît prévue ou émise' using errcode = '42501';
     end if;
@@ -410,7 +416,10 @@ declare
   v_etab   text;
   v_statut text;
 begin
-  if tg_op = 'UPDATE' then
+  if tg_op = 'INSERT' then
+    new.created_by := coalesce((select auth.uid())::text, new.created_by);
+    new.created_at := now();
+  else
     if new.facture_id is distinct from old.facture_id
        or new.etablissement_id is distinct from old.etablissement_id
        or new.created_by is distinct from old.created_by
