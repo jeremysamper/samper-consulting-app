@@ -6807,4 +6807,5 @@ export const UI_GLOSSARY_DE = {
   "lignes reliées": "Zeilen verknüpft",
   "ligne reliée": "Zeile verknüpft",
   "Relier": "Verknüpfen",
+  "Le client n'a pas encore choisi son menu. Les besoins viendront avec son choix.": "Der Kunde hat sein Menü noch nicht gewählt. Der Bedarf kommt mit seiner Wahl.",
 };

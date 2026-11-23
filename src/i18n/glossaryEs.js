@@ -6857,4 +6857,5 @@ export const UI_GLOSSARY_ES = {
   "lignes reliées": "líneas vinculadas",
   "ligne reliée": "línea vinculada",
   "Relier": "Vincular",
+  "Le client n'a pas encore choisi son menu. Les besoins viendront avec son choix.": "El cliente aún no ha elegido su menú. Las necesidades llegarán con su elección.",
 };

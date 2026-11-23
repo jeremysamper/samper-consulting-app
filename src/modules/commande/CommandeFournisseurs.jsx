@@ -48,6 +48,14 @@ const Jour = ({ date }) => {
   const [, m, d] = String(date).split("-");
   return <><span>{NOMS_JOURS[jourIso(date)]}</span> <N>{d}.{m}</N></>;
 };
+// Repère sans chiffre : une phrase et son détail (CarteRepere ne rend pas
+// detail quand il reçoit un texte).
+const TexteRepere = ({ titre, detail }) => (
+  <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <span>{titre}</span>
+    {detail ? <span style={{ fontSize: 'var(--t1)', color: 'var(--text3)' }}>{detail}</span> : null}
+  </span>
+);
 const Limite = ({ iso }) => {
   if (!iso) return null;
   const z = zurichDateHeure(iso);
@@ -233,7 +241,12 @@ export default function CommandeFournisseurs({ user, etablissement, onParCarte }
       });
       const besoins = besoinsGroupePourFournisseur(liste, produitsFournisseur);
       const ids = Object.keys(besoins);
-      if (!ids.length) { notify("Les menus de ce groupe n'utilisent aucun produit de ce fournisseur.", 'info'); return; }
+      if (!ids.length) {
+        notify(production.aChoisir?.length && !production.postes.length
+          ? "Le client n'a pas encore choisi son menu. Les besoins viendront avec son choix."
+          : "Les menus de ce groupe n'utilisent aucun produit de ce fournisseur.", 'info');
+        return;
+      }
       const r = await supabase.from('commande_groupes').insert({ commande_id: commande.id, groupe_evenement_id: groupe.id, nb_pax: groupe.nbPax });
       if (r.error) throw r.error;
       for (const pid of ids) {
@@ -358,13 +371,13 @@ export default function CommandeFournisseurs({ user, etablissement, onParCarte }
           </div>
           {commande && (
             <div className="commande-reperes no-print" data-commande-reperes="">
-              <CarteRepere Icone={Truck} texte={<>Livraison <Jour date={commande.date_livraison} /></>} detail={<span data-no-translate="">{commande.fournisseur_nom || fournisseur?.nom}</span>} />
+              <CarteRepere Icone={Truck} texte={<TexteRepere titre={<>Livraison <Jour date={commande.date_livraison} /></>} detail={<span data-no-translate="">{commande.fournisseur_nom || fournisseur?.nom}</span>} />} />
               {recue ? (
-                <CarteRepere Icone={ClipboardCheck} texte="Commande reçue" detail={commande.recue_at ? <Jour date={zurichDateHeure(commande.recue_at).jour} /> : null} />
+                <CarteRepere Icone={ClipboardCheck} texte={<TexteRepere titre="Commande reçue" detail={commande.recue_at ? <Jour date={zurichDateHeure(commande.recue_at).jour} /> : null} />} />
               ) : envoyee ? (
-                <CarteRepere Icone={Send} texte="Commande envoyée" detail={commande.envoyee_at ? <><Jour date={zurichDateHeure(commande.envoyee_at).jour} />, <N>{zurichDateHeure(commande.envoyee_at).heure}</N></> : null} />
+                <CarteRepere Icone={Send} texte={<TexteRepere titre="Commande envoyée" detail={commande.envoyee_at ? <><Jour date={zurichDateHeure(commande.envoyee_at).jour} />, <N>{zurichDateHeure(commande.envoyee_at).heure}</N></> : null} />} />
               ) : (
-                <CarteRepere Icone={CalendarClock} texte={commande.envoyer_avant ? <>À envoyer avant <Limite iso={commande.envoyer_avant} /></> : 'Heure limite à régler'} detail={limitePassee(commande.envoyer_avant) ? "L'heure limite est passée." : null} />
+                <CarteRepere Icone={CalendarClock} texte={<TexteRepere titre={commande.envoyer_avant ? <>À envoyer avant <Limite iso={commande.envoyer_avant} /></> : 'Heure limite à régler'} detail={limitePassee(commande.envoyer_avant) ? "L'heure limite est passée." : null} />} />
               )}
               <CarteRepere Icone={ShoppingBasket} valeur={aCommander.length} libelle={aCommander.length > 1 ? 'produits à commander' : 'produit à commander'} detail={enAttente.length ? <><N>{enAttente.length}</N> {enAttente.length > 1 ? 'restes à taper' : 'reste à taper'}</> : null} />
             </div>

@@ -6876,6 +6876,7 @@ export const UI_GLOSSARY = {
   "lignes reliées": "lines linked",
   "ligne reliée": "line linked",
   "Relier": "Link",
+  "Le client n'a pas encore choisi son menu. Les besoins viendront avec son choix.": "The client has not chosen the menu yet. The needs will come with the choice.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
