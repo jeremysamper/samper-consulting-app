@@ -82,6 +82,41 @@ export const HEURES_BASCULE = ['14:00', '15:00', '16:00', '17:00'];
 // Numéro de TVA suisse : CHE-123.456.789 TVA (ou MWST, IVA).
 export const FORMAT_NUMERO_TVA = /^CHE-\d{3}\.\d{3}\.\d{3} (TVA|MWST|IVA)$/;
 
+// Le numéro tel que la personne le tape (casse, espaces, points ou tirets
+// absents), remis à la forme officielle ; null s'il ne se lit pas.
+export function normaliserNumeroTva(texte) {
+  const m = String(texte ?? '').toUpperCase().trim()
+    .match(/^CHE[\s.-]*(\d{3})[\s.]*(\d{3})[\s.]*(\d{3})\s*(TVA|MWST|IVA)$/);
+  return m ? `CHE-${m[1]}.${m[2]}.${m[3]} ${m[4]}` : null;
+}
+
+// Le neuvième chiffre du numéro IDE est une clé modulo 11 sur les huit
+// premiers (poids 5 4 3 2 7 6 5 4) ; une clé de 10 n'est jamais attribuée.
+const POIDS_IDE = [5, 4, 3, 2, 7, 6, 5, 4];
+export function numeroTvaValable(texte) {
+  const n = normaliserNumeroTva(texte);
+  if (!n) return false;
+  const chiffres = n.replace(/\D/g, '');
+  const somme = POIDS_IDE.reduce((s, p, i) => s + p * Number(chiffres[i]), 0);
+  const cle = 11 - (somme % 11);
+  if (cle === 10) return false;
+  return (cle === 11 ? 0 : cle) === Number(chiffres[8]);
+}
+
+// Ce qui manque pour encaisser un vrai ticket. La quittance d'un assujetti
+// porte son nom, sa localité et son numéro de TVA (LTVA art. 26, OTVA
+// art. 57) ; le nom de l'établissement n'en tient pas lieu. Un ticket de test
+// ne demande rien.
+export function manquesLegaux(legal) {
+  const l = legal || {};
+  const manques = [];
+  if (!String(l.raison_sociale ?? '').trim()) manques.push('raison sociale');
+  if (!String(l.localite ?? '').trim()) manques.push('localité');
+  if (!String(l.numero_tva ?? '').trim()) manques.push('numéro de TVA');
+  else if (!numeroTvaValable(l.numero_tva)) manques.push('numéro de TVA valable');
+  return manques;
+}
+
 // Une heure 'HH:MM' entre deux bornes, sinon le défaut (même règle que la base).
 function heureBornee(v, min, max, defaut) {
   const t = String(v ?? '');

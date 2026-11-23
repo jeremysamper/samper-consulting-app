@@ -39,7 +39,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // v12 (lot 4a, retrait du 23.11) : fournisseurs sans jours de livraison, heure
 // limite ni délai de commande ; correspondances de Ventes POS sans regle_id.
 // v13 (23.11.2026) : devis, factures et paiements des groupes.
-const VERSION_BASE = 'v13-' + aujourdhui();
+// v14 (23.11.2026) : coordonnées légales de la caisse ; sans elles, un vrai
+// ticket ne s'encaisse pas.
+const VERSION_BASE = 'v14-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 

@@ -14,9 +14,11 @@ import {
   CATEGORIES_DEFAUT, ID_A_TRIER, POSTES, estCategorieDefaut, estCategorieVirtuelle, rangerArticles,
 } from './categories.js';
 import {
-  DELAIS_NO_SHOW, FAMILLES_PAIEMENT, FORMAT_NUMERO_TVA, HEURES_BASCULE, HEURES_FIN_JOURNEE, LIBELLES_FAMILLES,
+  DELAIS_NO_SHOW, FAMILLES_PAIEMENT, HEURES_BASCULE, HEURES_FIN_JOURNEE, LIBELLES_FAMILLES,
   MODES_SUIVRE_MAX, REGLAGES_DEFAUT, fusionnerReglages, libelleModeDefaut,
+  manquesLegaux, normaliserNumeroTva, numeroTvaValable,
 } from './reglages.js';
+import ListeManques from './ListeManques.jsx';
 
 // Taux proposés pour une catégorie de caisse : normal, réduit, hors TVA (bons
 // cadeaux). Le taux d'hébergement (3,8 %) ne concerne pas la restauration.
@@ -787,7 +789,8 @@ function SectionTva({ rangement, reglages, regler, ecrire, idReel }) {
   const [legal, setLegal] = React.useState(reglages.legal);
   React.useEffect(() => { setLegal(reglages.legal); }, [reglages.legal]);
   const modifie = JSON.stringify(legal) !== JSON.stringify(reglages.legal);
-  const numeroDouteux = legal.numero_tva.trim() !== '' && !FORMAT_NUMERO_TVA.test(legal.numero_tva.trim());
+  const numeroDouteux = legal.numero_tva.trim() !== '' && !numeroTvaValable(legal.numero_tva);
+  const manquesEnregistres = manquesLegaux(reglages.legal);
 
   const majCategorie = (c, partiel) => ecrire(async () => {
     const id = await idReel(c);
@@ -862,13 +865,22 @@ function SectionTva({ rangement, reglages, regler, ecrire, idReel }) {
       <Input value={legal.adresse} onChange={(e) => setLegal({ ...legal, adresse: e.target.value })} placeholder="Rue et numéro" style={st.champ} />
       <Input value={legal.localite} onChange={(e) => setLegal({ ...legal, localite: e.target.value })} placeholder="Code postal et localité" style={st.champ} />
       <Input value={legal.numero_tva} onChange={(e) => setLegal({ ...legal, numero_tva: e.target.value })} placeholder="CHE-123.456.789 TVA" style={st.champ} />
-      {numeroDouteux && <p style={st.aide}>Le numéro de TVA s'écrit CHE-123.456.789 TVA. Recopiez-le depuis le registre des assujettis ou une facture de la maison.</p>}
-      {!reglages.legal.numero_tva && <p style={st.aide}>Sans numéro de TVA, la quittance ne porte pas la mention exigée d'un assujetti. La caisse ne l'invente jamais.</p>}
+      {numeroDouteux && <p style={st.aide}>Ce numéro de TVA n'est pas valable. Il s'écrit CHE-123.456.789 TVA, et son dernier chiffre contrôle les autres. Recopiez-le depuis le registre des assujettis ou une facture de la maison.</p>}
+      {manquesEnregistres.length > 0 && (
+        <p style={st.aide} data-legal-manquant="">
+          <span>La caisse n'encaisse que des tickets de test tant que la quittance n'a pas ces coordonnées. Il manque :</span>
+          {' '}<ListeManques manques={manquesEnregistres} />.
+        </p>
+      )}
       <div>
         <Btn
           variant="primary"
           disabled={!modifie}
-          onClick={() => regler({ legal: Object.values(legal).some((v) => String(v).trim()) ? Object.fromEntries(Object.entries(legal).map(([k, v]) => [k, String(v).trim()])) : null })}
+          onClick={() => regler({
+            legal: Object.values(legal).some((v) => String(v).trim())
+              ? Object.fromEntries(Object.entries(legal).map(([k, v]) => [k, k === 'numero_tva' ? (normaliserNumeroTva(v) || String(v).trim()) : String(v).trim()]))
+              : null,
+          })}
           style={st.btn44}
         >
           Enregistrer les coordonnées

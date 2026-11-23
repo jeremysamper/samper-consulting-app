@@ -24,7 +24,8 @@ import { bonEnAttente, oublierBonEnAttente } from './bonsCadeaux/bonEnAttente.js
 import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
 import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
-import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
+import { cartesEtArticlesEnVente, fusionnerReglages, manquesLegaux } from './reglages.js';
+import ListeManques from './ListeManques.jsx';
 import { useMaintenant } from './mesures.js';
 import { useCommandesQr } from './commandeQr/useCommandesQr.js';
 import BandeauCommandesQr from './commandeQr/BandeauCommandesQr.jsx';
@@ -137,7 +138,11 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // repart des défauts, jamais des réglages de la maison d'avant.
   const [categories, setCategories] = React.useState([]);
   const [config, setConfig] = React.useState({});
-  const reglages = React.useMemo(() => fusionnerReglages(config), [config]);
+  // Réglages lus en base : tant qu'ils ne le sont pas, les coordonnées
+  // légales sont inconnues, ni le bandeau ni l'encaissement ne les réclament.
+  const [configLue, setConfigLue] = React.useState(false);
+  const reglages = React.useMemo(() => ({ ...fusionnerReglages(config), reglagesLus: configLue }), [config, configLue]);
+  const manquesLegal = React.useMemo(() => (configLue ? manquesLegaux(reglages.legal) : []), [configLue, reglages.legal]);
   // Mode test (v6) : la clé du poste gardée sur l'appareil, ou null. Un
   // responsable seul l'active ; la proposition de vider suit la sortie.
   const poste = React.useMemo(() => idPoste(), []);
@@ -174,7 +179,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   }, [etabId]);
   React.useEffect(() => { rechargerTerminaux(); }, [rechargerTerminaux, legacyVersion]);
   React.useEffect(() => {
-    setCategories([]); setConfig({});
+    setCategories([]); setConfig({}); setConfigLue(false);
     setReservations([]); setQuiTable(null); setPlats([]); setCartesLues([]);
     setTickets([]); setCleTest(lireModeTest(etabId)); setProposerVider(false);
     setTerminaux([]);
@@ -189,7 +194,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     if (!etabId) return;
     const [c, r] = await Promise.all([caisse.listCategories(etabId), caisse.getReglages(etabId)]);
     if (!c.error) setCategories(c.data);
-    if (!r.error) setConfig(r.data);
+    if (!r.error) { setConfig(r.data); setConfigLue(true); }
   }, [etabId]);
   const maintenant = useMaintenant();
   const telephone = useIsMobile();
@@ -717,6 +722,19 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             <p style={st.propositionTexte}>
               <span>La caisse du</span> <span style={st.num}>{dateCH(enRetard[0].jour)}</span> <span>n'est pas clôturée.</span>
               {enRetard.length > 1 && <>{' '}<span style={st.num}>{enRetard.length}</span> <span>jours attendent leur clôture.</span></>}
+            </p>
+          </div>
+        )}
+        {/* Coordonnées légales : à compléter avant le premier vrai ticket,
+            l'encaissement les réclame (Encaissement.jsx). */}
+        {!modeTest && manquesLegal.length > 0 && (
+          <div style={st.propositionVider} data-cadre="" data-caisse-legal-manquant="">
+            <p style={st.propositionTexte}>
+              <span>Avant le premier vrai ticket, complétez les coordonnées de la maison imprimées sur la quittance.</span>
+              {' '}<span>Il manque :</span> <ListeManques manques={manquesLegal} />.{' '}
+              {peutHabiller
+                ? <span>Elles se saisissent dans les réglages de la caisse, rubrique TVA et clôture.</span>
+                : <span>Prévenez la direction.</span>}
             </p>
           </div>
         )}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Minus, Plus, ShoppingBag, WifiOff } from 'lucide-react';
+import { Check, FileWarning, Minus, Plus, ShoppingBag, WifiOff } from 'lucide-react';
 import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
@@ -11,6 +11,8 @@ import { ROLES_TERMINAL, ROLES_TRANCHER, choisirTerminal, enRoute, paiementDe, r
 import { SEUIL_NOM_CLIENT, arrondiCinqCentimes, centimes, detailTvaPrevu, numeroTicket, preparerPaiements, totalLigne, totalLignes } from './tva.js';
 import { PARTS_MAX, PARTS_MIN, POURBOIRES_POURCENT, partParPlat, partsEgales, pourboireDe } from './partage.js';
 import FeuilleBonCadeau from './bonsCadeaux/FeuilleBonCadeau.jsx';
+import { manquesLegaux } from './reglages.js';
+import ListeManques from './ListeManques.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Encaissement (v7) : une feuille, le total en grand, les moyens en gros
@@ -92,6 +94,11 @@ export default function Encaissement({
   const lignes = React.useMemo(() => ticket?.lignes || [], [ticket]);
   const total = totalLignes(lignes);
   const enLigne = useEnLigne();
+  // Un vrai ticket ne s'encaisse pas sans les coordonnées légales de la
+  // maison : sa quittance doit les porter (LTVA art. 26). Le ticket de test
+  // passe, et des réglages pas encore lus ne bloquent rien.
+  const manquesLegal = ticket?.test || reglages.reglagesLus === false ? [] : manquesLegaux(reglages.legal);
+  const peutPayer = enLigne && manquesLegal.length === 0;
 
   const [aEmporter, setAEmporter] = React.useState(Boolean(ticket?.a_emporter));
   const [poses, setPoses] = React.useState([]); // paiements déjà posés (paiement en plusieurs moyens)
@@ -198,6 +205,7 @@ export default function Encaissement({
 
   async function envoyer(paiements) {
     if (verrou.current) return;
+    if (manquesLegal.length) { notify('Coordonnées légales de la maison incomplètes : le ticket reste ouvert.', 'error'); return; }
     verrou.current = true;
     setEnCours(true);
     // Avant l'appel : le temps réel peut retirer le ticket de la liste des
@@ -217,7 +225,7 @@ export default function Encaissement({
   // Un tap sur un moyen : il prend la part affichée. S'il règle tout le reste,
   // le ticket s'encaisse ; sinon le paiement se pose et le reste diminue.
   function toucherMoyen(m, { aLaMain = false } = {}) {
-    if (!enLigne || enCours || !tpePret || (part <= 0 && total > 0)) return;
+    if (!peutPayer || enCours || !tpePret || (part <= 0 && total > 0)) return;
     if (m.cle === 'especes') { setEspeces(m); setRecu(''); return; }
     const libelle = reglages.perso?.moyens_paiement ? m.libelle : null;
     // v9 : la carte part sur le terminal relié, s'il y en a un pour ce ticket.
@@ -374,6 +382,16 @@ export default function Encaissement({
           <div style={st.horsLigne} data-cadre="" role="alert">
             <WifiOff size={20} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
             <span>Pas de réseau : la caisse n'encaisse pas hors ligne. Le ticket reste ouvert, encaissez dès que le réseau revient.</span>
+          </div>
+        )}
+        {manquesLegal.length > 0 && (
+          <div style={st.horsLigne} data-cadre="" role="alert" data-caisse-legal-manquant="">
+            <FileWarning size={20} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span>
+              <span>Encaissement impossible : la quittance doit porter les coordonnées de la maison.</span>
+              {' '}<span>Il manque :</span> <ListeManques manques={manquesLegal} />.
+              {' '}<span>Un responsable les saisit dans les réglages de la caisse, rubrique TVA et clôture. Le ticket reste ouvert.</span>
+            </span>
           </div>
         )}
 
@@ -570,7 +588,7 @@ export default function Encaissement({
                 </div>
               )}
               {poses.length > 0 && reste === 0 && tpePret && !paiementEnRoute && (
-                <Btn variant="primary" disabled={enCours || !enLigne} onClick={() => envoyer(poses)} style={st.btnMoyen}>Encaisser le ticket</Btn>
+                <Btn variant="primary" disabled={enCours || !peutPayer} onClick={() => envoyer(poses)} style={st.btnMoyen}>Encaisser le ticket</Btn>
               )}
               {enAttente > 0 && (
                 <p style={st.aide}><span style={st.num}>{enAttente}</span> <span>lignes pas encore envoyées en cuisine.</span></p>
@@ -601,14 +619,14 @@ export default function Encaissement({
                     <div style={st.sousTitre}>Reçu du client</div>
                     <div style={st.rang}>
                       {billets.map((b) => (
-                        <Btn key={b} variant="primary" disabled={enCours || !enLigne} onClick={() => validerEspeces(b)} style={st.btnMoyen}>
+                        <Btn key={b} variant="primary" disabled={enCours || !peutPayer} onClick={() => validerEspeces(b)} style={st.btnMoyen}>
                           <span style={st.num}>{chf(b)}</span>
                         </Btn>
                       ))}
                     </div>
                     <div style={st.rang}>
                       <Input value={recu} onChange={(e) => setRecu(e.target.value)} placeholder="Autre montant reçu" type="text" inputMode="decimal" style={st.champ} />
-                      <Btn variant="primary" disabled={enCours || !enLigne || recuN == null || recu === '' || rendu < 0} onClick={() => validerEspeces(recuN)} style={st.btn44}>Valider</Btn>
+                      <Btn variant="primary" disabled={enCours || !peutPayer || recuN == null || recu === '' || rendu < 0} onClick={() => validerEspeces(recuN)} style={st.btn44}>Valider</Btn>
                     </div>
                     {rendu != null && rendu >= 0 && (
                       <p style={st.ligneInfo}><span>À rendre :</span> <span style={st.num}>{chf(rendu)}</span> <span>CHF</span></p>
@@ -627,11 +645,11 @@ export default function Encaissement({
                   {mode === 'plat' && rienAPayer && <p style={st.aide}>Cochez au moins un plat.</p>}
                   <div style={st.moyens} data-caisse-moyens="">
                     {reglages.moyens_paiement.map((m, i) => (
-                      <Btn key={m.cle + i} variant="primary" disabled={enCours || !enLigne || !tpePret || rienAPayer || (m.cle === 'carte' && Boolean(terminal) && Boolean(paiementEnRoute))} onClick={() => toucherMoyen(m)} style={st.btnMoyen}>
+                      <Btn key={m.cle + i} variant="primary" disabled={enCours || !peutPayer || !tpePret || rienAPayer || (m.cle === 'carte' && Boolean(terminal) && Boolean(paiementEnRoute))} onClick={() => toucherMoyen(m)} style={st.btnMoyen}>
                         {reglages.perso?.moyens_paiement ? <span data-no-translate>{m.libelle}</span> : m.libelle}
                       </Btn>
                     ))}
-                    <Btn variant="ghost" disabled={enCours || !enLigne || !tpePret || rienAPayer} onClick={() => setFeuilleBon(true)} style={st.btnMoyen}>
+                    <Btn variant="ghost" disabled={enCours || !peutPayer || !tpePret || rienAPayer} onClick={() => setFeuilleBon(true)} style={st.btnMoyen}>
                       Bon cadeau
                     </Btn>
                   </div>
@@ -648,7 +666,7 @@ export default function Encaissement({
                             <span data-no-translate>{t.nom}</span>
                           </Btn>
                         ))}
-                        <Btn variant="ghost" disabled={enCours || !enLigne || !tpePret || rienAPayer} onClick={() => toucherMoyen({ cle: 'carte', libelle: libelleCarte }, { aLaMain: true })} style={st.btn44}>Carte, terminal non relié</Btn>
+                        <Btn variant="ghost" disabled={enCours || !peutPayer || !tpePret || rienAPayer} onClick={() => toucherMoyen({ cle: 'carte', libelle: libelleCarte }, { aLaMain: true })} style={st.btn44}>Carte, terminal non relié</Btn>
                       </div>
                     </div>
                   )}
