@@ -25,7 +25,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { centimes, detailTva } from '../tva.js';
-import { formatDuLibelle } from '../../../utils/formatsBoisson.js';
+import { formatDeLigne, formatDuLibelle } from '../../../utils/formatsBoisson.js';
 
 const fr = (c) => c / 100;
 const nombre = (v) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -263,18 +263,29 @@ export function bonsCadeaux(liste, periode, jourCourant = null) {
 // par catégorie de caisse, avec les offerts et les remises. La somme des
 // lignes fait le chiffre d'affaires net de la période.
 // Une boisson vendue dans plusieurs formats (Carte des boissons) donne une
-// ligne par format : 1 dl et 50 cl du même vin se lisent à part. Le format se
-// lit à la fin du libellé (« Fendant, 1 dl »), la lecture du rapport ne
-// rendant pas les options des lignes.
+// ligne par format : 1 dl, 50 cl et « Verre » du même vin se lisent à part.
+// Le format vient de options, que la lecture du rapport rend réduit à
+// l'élément format (migration 20261123_carte_boissons_droits) ; une lecture
+// plus ancienne, sans la clé options, le lit à la fin du libellé (« Fendant,
+// 1 dl »), où un format sans volume ne se voit pas.
+function cleFormat(l) {
+  if (Array.isArray(l.options)) {
+    const f = formatDeLigne(l);
+    if (!f) return '';
+    return f.id ? `|f:${f.id}` : `|fl:${f.libelle.trim().toLocaleLowerCase('fr')}`;
+  }
+  const f = formatDuLibelle(l.libelle);
+  return f ? `|fl:${f.toLocaleLowerCase('fr')}` : '';
+}
+
 function plats(mvts) {
   const par = new Map();
   const vide = () => ({ qte: 0, ttc: 0 });
   mvts.forEach((m) => {
     const service = m.ticket.service === 'midi' ? 'midi' : 'soir';
     m.lignes.forEach((l) => {
-      const format = l.plat_id ? formatDuLibelle(l.libelle) : null;
       const cle = l.plat_id
-        ? `p:${l.plat_id}${format ? `|f:${format.toLocaleLowerCase('fr')}` : ''}`
+        ? `p:${l.plat_id}${cleFormat(l)}`
         : `l:${String(l.libelle || '').trim().toLocaleLowerCase('fr')}`;
       if (!par.has(cle)) {
         par.set(cle, {

@@ -24,7 +24,8 @@ const ticket = (id, numero, extra) => ({
 let nLigne = 0;
 const ligne = (ticket_id, plat_id, libelle, categorie, quantite, prix_unitaire, taux_tva, extra = {}) => ({
   id: `l${++nLigne}`, ticket_id, plat_id, libelle, categorie, quantite, prix_unitaire, taux_tva,
-  prix_origine: null, remise_montant: 0, remise_motif: null, remise_par: null, remise_at: null, offert: false, ...extra,
+  prix_origine: null, remise_montant: 0, remise_motif: null, remise_par: null, remise_at: null, offert: false,
+  options: [], ...extra,
 });
 let nPaiement = 0;
 const paiement = (ticket_id, moyen, montant, encaisse_par, extra = {}) => ({

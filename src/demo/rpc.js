@@ -446,9 +446,12 @@ const RPC = {
   caisse_rapport_donnees(ctx, a) {
     const tickets = ctx.db.caisse_tickets.filter((t) => t.etablissement_id === a.p_etablissement_id && !t.test && t.jour_exploitation >= a.p_debut && t.jour_exploitation <= a.p_fin && t.statut !== 'ouvert');
     const ids = new Set(tickets.map((t) => t.id));
+    // Même forme que la fonction de la base : le jour d'exploitation sous la
+    // clé jour, et options réduit à l'élément format (lot C).
     return {
-      tickets,
-      lignes: ctx.db.caisse_lignes.filter((l) => ids.has(l.ticket_id)),
+      tickets: tickets.map((t) => ({ ...t, jour: t.jour_exploitation })),
+      lignes: ctx.db.caisse_lignes.filter((l) => ids.has(l.ticket_id))
+        .map((l) => ({ ...l, options: (Array.isArray(l.options) ? l.options : []).filter((o) => o?.type === 'format') })),
       paiements: ctx.db.caisse_paiements.filter((p) => ids.has(p.ticket_id)),
       clotures: ctx.db.caisse_clotures.filter((c) => c.etablissement_id === a.p_etablissement_id && c.jour_exploitation >= a.p_debut && c.jour_exploitation <= a.p_fin),
       bons: [],

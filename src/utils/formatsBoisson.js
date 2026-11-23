@@ -101,8 +101,10 @@ export function formatDeLigne(ligne) {
 
 // Format lu dans le libellé d'une ligne (« Fendant, Fils de Charles Favre
 // (Sion), 1 dl » -> « 1 dl ») : le dernier segment après « , » quand il dit un
-// volume. Sert aux rapports, dont la lecture (caisse_rapport_donnees) ne rend
-// pas les options des lignes. Un format sans volume (« Verre ») n'y est pas lu.
+// volume. Repli des rapports quand leur lecture (caisse_rapport_donnees) ne
+// rend pas la clé options, ce qu'elle fait depuis le lot C (migration
+// 20261123_carte_boissons_droits). Un format sans volume (« Verre ») n'y est
+// pas lu.
 export function formatDuLibelle(libelle) {
   const t = String(libelle || '');
   const i = t.lastIndexOf(', ');
