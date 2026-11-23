@@ -75,7 +75,7 @@ export function FenetreDeclaration({ etablissement, user, depart, onClose, onDec
       )}
     >
       <label style={fs.section}>
-        <span style={fs.label}>Quantité{depart.unite ? <>, en <span data-no-translate="">{depart.unite}</span></> : null}</span>
+        <span style={fs.label}>Quantité{depart.unite ? <> <span data-no-translate="">({depart.unite})</span></> : null}</span>
         <input type="text" inputMode="decimal" style={fs.champ} value={quantite} onChange={(e) => setQuantite(e.target.value)} data-no-translate="" />
       </label>
       <div style={fs.section}>

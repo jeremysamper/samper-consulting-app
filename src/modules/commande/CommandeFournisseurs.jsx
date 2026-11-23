@@ -360,9 +360,9 @@ export default function CommandeFournisseurs({ user, etablissement, onParCarte }
             <div className="commande-reperes no-print" data-commande-reperes="">
               <CarteRepere Icone={Truck} texte={<>Livraison <Jour date={commande.date_livraison} /></>} detail={<span data-no-translate="">{commande.fournisseur_nom || fournisseur?.nom}</span>} />
               {recue ? (
-                <CarteRepere Icone={ClipboardCheck} texte="Commande reçue" detail={commande.recue_at ? <>le <Jour date={zurichDateHeure(commande.recue_at).jour} /></> : null} />
+                <CarteRepere Icone={ClipboardCheck} texte="Commande reçue" detail={commande.recue_at ? <Jour date={zurichDateHeure(commande.recue_at).jour} /> : null} />
               ) : envoyee ? (
-                <CarteRepere Icone={Send} texte="Commande envoyée" detail={commande.envoyee_at ? <>le <Jour date={zurichDateHeure(commande.envoyee_at).jour} /> à <N>{zurichDateHeure(commande.envoyee_at).heure}</N></> : null} />
+                <CarteRepere Icone={Send} texte="Commande envoyée" detail={commande.envoyee_at ? <><Jour date={zurichDateHeure(commande.envoyee_at).jour} />, <N>{zurichDateHeure(commande.envoyee_at).heure}</N></> : null} />
               ) : (
                 <CarteRepere Icone={CalendarClock} texte={commande.envoyer_avant ? <>À envoyer avant <Limite iso={commande.envoyer_avant} /></> : 'Heure limite à régler'} detail={limitePassee(commande.envoyer_avant) ? "L'heure limite est passée." : null} />
               )}
@@ -707,7 +707,7 @@ function FenetreLigne({ ligne, modifiable, onClose, onQuantite, onRetirer }) {
         </div>
         {modifiable && (
           <label style={fs.section}>
-            <span style={fs.label}>Quantité à commander, en {u.libelle}</span>
+            <span style={fs.label}>Quantité à commander <span data-no-translate="">({u.libelle})</span></span>
             <input type="text" inputMode="decimal" style={fs.champ} value={texte} onChange={(e) => setTexte(e.target.value)} data-no-translate="" />
             <span style={fs.remarque}>Laissez vide pour garder le calcul.</span>
           </label>
