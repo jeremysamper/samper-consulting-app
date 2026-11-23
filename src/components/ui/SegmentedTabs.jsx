@@ -1,4 +1,5 @@
 import React from 'react';
+import useOngletEnVue from '../../hooks/useOngletEnVue.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SegmentedTabs - barre d'onglets compacte, une seule ligne, défilement
@@ -25,8 +26,12 @@ import React from 'react';
 
 export default function SegmentedTabs({ tabs, active, onChange, size, retourLigne = false, style = {}, className = '' }) {
   const list = Array.isArray(tabs) ? tabs : [];
+  // Quand la rangée défile, l'onglet choisi reste en vue.
+  const bandeRef = React.useRef(null);
+  useOngletEnVue(bandeRef, `${active}|${list.length}`);
   return (
     <div
+      ref={bandeRef}
       className={`segmented-tabs no-print${size === 'sm' ? ' segmented-tabs--sm' : ''}${retourLigne ? ' segmented-tabs--retour' : ''}${className ? ' ' + className : ''}`}
       role="tablist"
       style={style}

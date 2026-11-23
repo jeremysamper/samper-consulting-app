@@ -2,6 +2,7 @@ import React from 'react';
 import { confirmLegacy } from '../../legacy/legacyApi.js';
 import { Pencil } from 'lucide-react';
 import { Fenetre, Choix, st as stFenetre } from '../ui/Fenetres.jsx';
+import useOngletEnVue from '../../hooks/useOngletEnVue.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CarteTabBar - barre d'onglets « cartes » (menus) partagée par Cartes & Recettes
@@ -75,6 +76,9 @@ export default function CarteTabBar({
   // Brouillon d'ordre : liste d'ids en cours de réagencement (null = fermé).
   const [ordreDraft, setOrdreDraft] = React.useState(null);
   const [ordreBusy, setOrdreBusy] = React.useState(false);
+  // La bande défile quand les cartes débordent : la carte choisie y reste en vue.
+  const bandeRef = React.useRef(null);
+  useOngletEnVue(bandeRef, `${activeId}|${cartes.length}|${extraTabs.length}`);
 
   const openCreate = () => { setForm({ nom: '', dateDebut: '', dateFin: '' }); setModal({ mode: 'create' }); };
   const openEdit = (carte) => {
@@ -178,7 +182,7 @@ export default function CarteTabBar({
   };
 
   return (
-    <div className="segmented-tabs no-print">
+    <div ref={bandeRef} className="segmented-tabs no-print">
       {/* De vrais onglets (clavier, lecteur d'écran). Le crayon de la carte
           active est un bouton frère de son onglet, plus un bouton imbriqué. */}
       <div role="tablist" aria-label="Cartes" style={s.tablist}>

@@ -4,6 +4,7 @@ import App from './App.jsx';
 import { borneAuLancement } from './modules/planning/borne/borneAppareil.js';
 import { initPwa } from './pwa/registerPwa.js';
 import { installPreloadErrorRecovery } from './utils/preloadErrorRecovery.js';
+import { installDefilementSouris } from './utils/defilementSouris.js';
 import { installBrandPrintStyles } from './design/installPrintStyles.js';
 import { appliquerPreferences } from './services/preferencesAppareil.js';
 import { appliquerThemeInitial } from './hooks/useTheme.js';
@@ -23,6 +24,10 @@ installPreloadErrorRecovery();
 // src/design/brandTokens.js. Couvre le Ctrl+P sur l'app ; les boutons d'export
 // ont leur propre feuille, écrite par pdfUtils dans la fenêtre d'impression.
 installBrandPrintStyles();
+
+// Bandes d'onglets et de pilules qui débordent : elles défilent aussi à la
+// molette et au glisser de la souris, pas seulement au doigt.
+installDefilementSouris();
 
 class RootErrorBoundary extends React.Component {
   constructor(props) {

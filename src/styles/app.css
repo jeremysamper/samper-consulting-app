@@ -1099,6 +1099,14 @@ html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45;
   scroll-snap-type: x proximity;
 }
 .segmented-tabs::-webkit-scrollbar { display: none; }
+/* À la souris, la bande défile à la molette et au glisser
+   (utils/defilementSouris.js) : l'aimantation sur les onglets ramènerait la
+   bande en arrière à chaque petit cran. Elle reste au doigt. */
+@media (hover: hover) and (pointer: fine) {
+  .segmented-tabs { scroll-snap-type: none; }
+}
+/* Bande en cours de glisser à la souris : pas de sélection de texte. */
+.defile-glisse { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 /* Retour à la ligne au-delà de 768 px (prop retourLigne) : une longue série
    d'onglets (les rayons de la Commande) reste atteignable à la souris, la
    barre de défilement étant masquée. Sur téléphone, la piste défile. */
