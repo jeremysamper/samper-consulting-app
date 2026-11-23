@@ -24,6 +24,12 @@ import {
   NUMERO_COMPLEMENTS, STATUTS, groupesAAnticiper, libelleGroupe, metaStatut,
 } from './typesGroupe.js';
 import { chiffresGroupes } from './serieGroupes.js';
+import { BoutonActions, st as stFenetres } from '../../components/ui/Fenetres.jsx';
+import { useFacturationGroupes } from '../../hooks/useFacturationGroupes.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import FacturationGroupes, { telechargerCsv } from './facturation/FacturationGroupes.jsx';
+import FacturationDuGroupe from './facturation/FacturationDuGroupe.jsx';
+import FenetresFacturation, { useFenetresFacturation } from './facturation/FenetresFacturation.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GROUPES - calendrier des événements de groupe.
@@ -142,6 +148,9 @@ export default function Groupes({ user, etablissement }) {
   const canEditMenus = canEdit && ROLES_MENUS.includes(user?.role);
   const canSupprimer = canEdit && ROLES_SUPPRESSION.includes(user?.role);
   const voirPrix = canEdit && ROLES_PRIX.includes(user?.role);
+  // Devis, factures et paiements : droit d'action factures_groupes (Rôles &
+  // accès, consultant et patron par défaut), vérifié en base par la RLS.
+  const voirFacturation = canManageModule(user?.role, 'factures_groupes');
 
   const aujourdhui = zurichToday();
   const [onglet, setOnglet] = useState('calendrier');
@@ -163,6 +172,8 @@ export default function Groupes({ user, etablissement }) {
     enregistrer: enregistrerMenu, enregistrerPlusieurs: enregistrerMenus, supprimer: supprimerMenu,
   } = useGroupeMenus(etabId);
   const cuisine = useCuisine(etabId);
+  const facturation = useFacturationGroupes(etabId, { actif: voirFacturation });
+  const fenetresFacturation = useFenetresFacturation();
   const [refCalendrier, largeurCalendrier] = useLargeur();
   const compact = largeurCalendrier > 0 && largeurCalendrier < LARGEUR_COMPACTE;
   const densite = compact ? 'compacte'
@@ -247,6 +258,23 @@ export default function Groupes({ user, etablissement }) {
     demandeFiche.current = null;
   }, [status, groupes, tourDemande, ouvrirFiche, assurerDepuis]);
 
+  // Contexte partagé des écrans de devis et de factures (onglet et fiche).
+  const { fermer: fermerFenetreFacturation } = fenetresFacturation;
+  const ctxFacturation = useMemo(() => ({
+    facturation,
+    reglages: facturation.reglages,
+    etablissement,
+    user,
+    aujourdhui,
+    groupes,
+    menus,
+    menuDe,
+    menusDuType,
+    canEditGroupes: canEdit,
+    creerGroupe: creer,
+    ouvrirGroupe: (g) => { fermerFenetreFacturation(); ouvrirFiche(g); },
+  }), [facturation, etablissement, user, aujourdhui, groupes, menus, menuDe, menusDuType, canEdit, creer, fermerFenetreFacturation, ouvrirFiche]);
+
   function tapJour(iso, duJour) {
     if (duJour.length === 1) { setFicheId(duJour[0].id); return; }
     if (duJour.length > 1) { setJourOuvert(iso); return; }
@@ -313,11 +341,33 @@ export default function Groupes({ user, etablissement }) {
         />
         <div className="module-actions">
           <SegmentedTabs
-            tabs={[{ id: 'calendrier', label: 'Calendrier' }, { id: 'menus', label: 'Menus' }]}
+            tabs={[
+              { id: 'calendrier', label: 'Calendrier' },
+              { id: 'menus', label: 'Menus' },
+              ...(voirFacturation ? [{ id: 'facturation', label: 'Devis et factures' }] : []),
+            ]}
             active={onglet}
             onChange={setOnglet}
           />
-          {canEdit && status !== 'absent' && (
+          {onglet === 'facturation' && voirFacturation && facturation.status === 'ready' && (
+            <>
+              {/* L'action principale avant « Plus » : au téléphone la rangée
+                  défile, la pilule sombre reste la plus proche. */}
+              <button type="button" onClick={() => fenetresFacturation.ouvrirDevis({})} style={st.nouveau}>
+                Nouveau devis
+              </button>
+              <BoutonActions
+                id="groupes-facturation-plus" label="Plus" style={stFenetres.secondaire} titre="Devis et factures"
+                sections={[{ items: [
+                  { titre: 'Exporter pour la fiduciaire', detail: 'Factures, TVA par taux et paiements, en CSV', onClick: () => telechargerCsv(facturation, aujourdhui, etablissement?.nom) },
+                  ['consultant', 'patron'].includes(user?.role)
+                    ? { titre: 'Réglages de facturation', detail: 'Raison sociale, adresse, IBAN, TVA, délais, messages types', onClick: () => ouvrirCompte('groupes_facturation') }
+                    : null,
+                ] }]}
+              />
+            </>
+          )}
+          {onglet !== 'facturation' && canEdit && status !== 'absent' && (
             <button type="button" onClick={() => setFormulaire({})} style={st.nouveau}>
               Nouveau groupe
             </button>
@@ -439,6 +489,10 @@ export default function Groupes({ user, etablissement }) {
         />
       )}
 
+      {onglet === 'facturation' && voirFacturation && (
+        <FacturationGroupes ctx={ctxFacturation} fenetres={fenetresFacturation} />
+      )}
+
       {/* ── Jour portant plusieurs groupes : on choisit lequel ouvrir ── */}
       {jourOuvert && (
         <div
@@ -482,6 +536,11 @@ export default function Groupes({ user, etablissement }) {
           onSupprimer={canSupprimer ? supprimerDefinitivement : undefined}
           ongletInitial={ongletFiche}
           onClose={fermerFiche}
+          ongletSupplementaire={voirFacturation ? {
+            id: 'facturation',
+            label: 'Devis et factures',
+            rendu: () => <FacturationDuGroupe groupe={fiche} ctx={ctxFacturation} fenetres={fenetresFacturation} />,
+          } : null}
         />
       )}
 
@@ -497,6 +556,8 @@ export default function Groupes({ user, etablissement }) {
           onClose={() => setFormulaire(null)}
         />
       )}
+
+      {voirFacturation && <FenetresFacturation fenetres={fenetresFacturation} ctx={ctxFacturation} />}
     </section>
   );
 }

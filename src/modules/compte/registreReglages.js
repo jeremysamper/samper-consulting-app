@@ -14,6 +14,7 @@ import { peutGererTechnique } from '../technique/gardesTechnique.js';
 import { estDirectionPlanning, peutEcrirePlanning, peutOuvrirGroupes } from '../planning/gardesPlanning.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
 import { estDirectionMaison } from './gardesMaison.js';
+import { canManageModule } from '../../data/demoData.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -83,6 +84,7 @@ export const MODULES = {
   passations: 'Passations',
   technique: 'Technique',
   factures: 'Factures',
+  groupes: 'Groupes',
 };
 
 // Qui ouvre le module ouvre ses réglages, pas les autres : droit de la page et
@@ -307,6 +309,15 @@ export const SECTIONS = [
     garde: (ctx) => ouvreLeModule('technique')(ctx) && peutGererTechnique(ctx.user?.role),
     charger: () => import('../technique/SectionPlansPreventif.jsx'),
     signaux: ['table:maintenance_plans'],
+  },
+  // Devis et factures des groupes : qui a le droit factures_groupes ; la
+  // section ne laisse écrire l'identité (IBAN) qu'au consultant et au patron.
+  {
+    id: 'groupes_facturation', libelle: 'Groupes : devis et factures', onglet: 'Devis et factures',
+    detail: 'Raison sociale, adresse, IBAN, TVA, délais, conditions et messages types',
+    motsCles: 'facture devis acompte qr iban tva mariage séminaire', groupe: 'modules', portee: 'maison', module: 'groupes',
+    garde: (ctx) => ouvreLeModule('groupes')(ctx) && canManageModule(ctx.user?.role, 'factures_groupes'),
+    charger: () => import('../groupes/facturation/SectionFacturationGroupes.jsx'),
   },
   // Facturation client : l'écran Factures est réservé au consultant, ses deux
   // sections aussi (même garde que la page 'factures').

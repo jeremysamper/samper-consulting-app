@@ -71,6 +71,9 @@ const AVANT = {
   // 18.11.2026 : seuil des hausses de prix fournisseur, réglage neuf, pour qui
   // voit les hausses (Factures & achats et droit « Régler les factures »).
   achats_hausses: DIRECTION,
+  // 23.11.2026 : devis et factures des groupes, réglage neuf, pour qui a le
+  // droit « Devis et factures des groupes » (consultant et patron par défaut).
+  groupes_facturation: DIRECTION,
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {

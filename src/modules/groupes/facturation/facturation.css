@@ -1,0 +1,111 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Groupes, devis et factures (23.11.2026), direction Galet. Couleurs par les
+   jetons d'app.css. Requêtes de conteneur sur .fac-page (l'onglet) et
+   .fac-lignes (l'éditeur de lignes, dans une fenêtre) : la mise en page suit
+   la place réelle, pas la largeur de la fenêtre du navigateur.
+   ───────────────────────────────────────────────────────────────────────────── */
+.fac-page {
+  container-type: inline-size;
+  container-name: fac;
+  min-width: 0;
+}
+.fac-reperes {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+  margin-bottom: 16px;
+}
+.fac-page .ui-repere { padding: 12px; }
+.fac-page .ui-repere-icone { display: none !important; }
+.fac-barre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  min-width: 0;
+}
+.fac-filtres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+.fac-liste > :last-child { border-bottom-width: 0 !important; }
+.fac-ligne-meta { display: none; }
+
+@container fac (min-width: 560px) {
+  .fac-page .ui-repere { padding: 14px 16px; }
+  .fac-page .ui-repere-icone { display: inline-flex !important; }
+  .fac-reperes { gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 24px; }
+  .fac-ligne-meta { display: block; }
+}
+
+/* Éditeur de lignes : une ligne par rangée à l'ordinateur, une petite grille
+   par ligne au téléphone. */
+.fac-lignes {
+  container-type: inline-size;
+  container-name: faclignes;
+  min-width: 0;
+}
+.fac-ligne {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 40px;
+  grid-template-areas:
+    "lib lib suppr"
+    "det det det"
+    "qte prix prix"
+    "tva mont mont";
+  gap: 6px;
+  padding: 10px 0;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  border-bottom-color: var(--rule-soft);
+  min-width: 0;
+}
+.fac-ligne-entete { display: none; }
+.fac-ligne > [data-zone="lib"] { grid-area: lib; }
+.fac-ligne > [data-zone="det"] { grid-area: det; }
+.fac-ligne > [data-zone="qte"] { grid-area: qte; }
+.fac-ligne > [data-zone="prix"] { grid-area: prix; }
+.fac-ligne > [data-zone="tva"] { grid-area: tva; }
+.fac-ligne > [data-zone="mont"] { grid-area: mont; align-self: center; justify-self: end; }
+.fac-ligne > [data-zone="suppr"] { grid-area: suppr; }
+
+@container faclignes (min-width: 640px) {
+  .fac-ligne {
+    grid-template-columns: minmax(0, 1fr) 76px 100px 108px 96px 40px;
+    grid-template-areas:
+      "lib qte prix tva mont suppr"
+      "det det det det det det";
+    align-items: center;
+  }
+  .fac-ligne-entete {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 76px 100px 108px 96px 40px;
+    gap: 6px;
+    padding-bottom: 4px;
+    border-bottom-width: 1px;
+    border-bottom-style: solid;
+    border-bottom-color: var(--rule-soft);
+  }
+}
+
+.fac-grille-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  min-width: 0;
+}
+.fac-fenetre {
+  container-type: inline-size;
+  container-name: facfen;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+@container facfen (min-width: 560px) {
+  .fac-grille-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

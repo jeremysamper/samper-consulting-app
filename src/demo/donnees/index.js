@@ -16,6 +16,7 @@ import {
 } from './operations.js';
 import { genererCaisse } from './caisse.js';
 import { genererPos } from './pos.js';
+import { genererFacturation } from './facturation.js';
 import { empreinteDemo } from '../rpc.js';
 
 // Codes de pointage de la brigade de démo (borne, lot L6) : Inès 4826,
@@ -41,6 +42,7 @@ export function creerBase() {
   const { reservations, tags, liens } = genererReservations();
   const { releves, controles } = genererHaccp();
   const { plats_boissons: boissons, ...caisse } = genererCaisse();
+  const facturation = genererFacturation();
   return {
     etablissements: [ETABLISSEMENT],
     profiles: EQUIPE.map((u) => ({ ...u })),
@@ -72,6 +74,11 @@ export function creerBase() {
     reservation_en_ligne_parametres: RESERVATION_EN_LIGNE_PARAMETRES,
     groupe_menus: GROUPE_MENUS,
     groupe_evenements: genererGroupes(),
+    groupe_devis: facturation.devis,
+    groupe_factures: facturation.factures,
+    groupe_paiements: facturation.paiements,
+    facturation_reglages: facturation.reglages,
+    groupe_docs_compteurs: facturation.compteurs,
     previsions_jour: genererPrevisions(reservations),
     planning_groupes: PLANNING_GROUPES,
     planning_groupe_membres: PLANNING_GROUPE_MEMBRES,

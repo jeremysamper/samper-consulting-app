@@ -16,6 +16,7 @@ import { creerBase } from './donnees/index.js';
 import { ETAB, EQUIPE, ROLES_DEMO, aujourdhui, jour, instant } from './donnees/base.js';
 import { STOCKAGE, PREFIXE } from './isolation.js';
 import { defaultPermissions } from '../modules/moduleConfig.js';
+import { totaux } from '../modules/groupes/facturation/calculs.js';
 
 export const DEMO_URL = 'https://demo.invalid';
 const DEMO_HOTE = new URL(DEMO_URL).hostname;
@@ -24,7 +25,8 @@ const CLE_ROLE = PREFIXE + 'role';
 // v2 (lot L3) : la commande par QR entre dans les jeux ; une base du jour en
 // cache dans l'onglet serait relue sans elle. v3 (Carte des boissons, lot A) :
 // plat_formats et cartes.genre.
-const VERSION_BASE = 'v3-' + aujourdhui();
+// v4 (23.11.2026) : devis, factures et paiements des groupes.
+const VERSION_BASE = 'v4-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -120,7 +122,7 @@ export function oublierBase() {
 
 // Valeurs par défaut de la base, pour les insertions de l'app.
 const DEFAUTS = {
-  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres'],
+  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres', 'facturation_reglages', 'groupe_docs_compteurs'],
   reservations: { statut: 'confirme', origine: 'equipe', est_groupe: false, passeport_gourmand: false, created_by: () => sessionUid },
   shifts: { pause: 0, type_shift: 'simple', statut: 'confirmé', pointage_debut: null, pointage_fin: null, pointage_fin_auto: false },
   recettes: { statut: 'brouillon', version: 1, portions: 4, prix_vente: 0, allergenes_ids: [], ingredients: [], etapes: [], masquee: false, created_by: () => sessionUid },
@@ -140,6 +142,9 @@ const DEFAUTS = {
   journal_activite: {},
   temps_gagne: { quantite: 1, fait_par: () => sessionUid },
   points_mouvements: { sens: 'credit' },
+  groupe_devis: { statut: 'brouillon', lignes: [], total: 0, date_devis: () => aujourdhui() },
+  groupe_factures: { statut: 'prevue', type: 'totale', ordre: 1, lignes: [], relances: [], montant: 0, mode_prevu: 'virement' },
+  groupe_paiements: { mode: 'virement', date_paiement: () => aujourdhui(), updated_at: null },
 };
 
 const CLES_PRIMAIRES = {
@@ -165,9 +170,47 @@ const CLES_PRIMAIRES = {
   factures_compteurs: ['etablissement_id', 'date'],
   caisse_compteurs: ['etablissement_id', 'cle'],
   caisse_commande_qr_parametres: ['etablissement_id'],
+  facturation_reglages: ['etablissement_id'],
 };
 
 let sessionUid = null;
+
+// Ce que posent les déclencheurs des devis et factures des groupes (migration
+// 20261123) : numéro DEV / FAC à la création ou à l'émission, total et
+// montant depuis les lignes, horodatages des changements d'état, auteur.
+function numeroDemo(etab, prefixe, dateIso) {
+  const annee = Number(String(dateIso || aujourdhui()).slice(0, 4));
+  if (!db.groupe_docs_compteurs) db.groupe_docs_compteurs = [];
+  let c = db.groupe_docs_compteurs.find((x) => x.etablissement_id === etab && x.prefixe === prefixe && x.annee === annee);
+  if (!c) { c = { etablissement_id: etab, prefixe, annee, dernier: 0 }; db.groupe_docs_compteurs.push(c); }
+  c.dernier += 1;
+  return `${prefixe}-${annee}-${String(c.dernier).padStart(4, '0')}`;
+}
+
+function avantEcriture(type, table, ligne, avant) {
+  const maintenant = new Date().toISOString();
+  if (table === 'groupe_devis') {
+    if (type === 'INSERT') { ligne.numero = numeroDemo(ligne.etablissement_id, 'DEV', ligne.date_devis); ligne.created_by = sessionUid; }
+    if (ligne.statut !== avant?.statut) {
+      if (ligne.statut === 'accepte') { ligne.accepte_le = maintenant; ligne.accepte_par = sessionUid; } else { ligne.accepte_le = null; ligne.accepte_par = null; }
+      if (ligne.statut === 'envoye' && !ligne.envoye_le) ligne.envoye_le = maintenant;
+      ligne.refuse_le = ligne.statut === 'refuse' ? maintenant : null;
+    }
+    ligne.total = totaux(ligne.lignes).total;
+  }
+  if (table === 'groupe_factures') {
+    if (type === 'INSERT') ligne.created_by = sessionUid;
+    if (!avant || avant.statut === 'prevue') ligne.montant = totaux(ligne.lignes).total;
+    if (ligne.statut === 'emise' && (!avant || avant.statut === 'prevue')) {
+      if (!ligne.date_facture) ligne.date_facture = aujourdhui();
+      ligne.emise_le = maintenant;
+      ligne.emise_par = sessionUid;
+    }
+    if (ligne.statut === 'emise' && !ligne.numero) ligne.numero = numeroDemo(ligne.etablissement_id, 'FAC', ligne.date_facture);
+    if (ligne.statut === 'annulee' && avant?.statut !== 'annulee') ligne.annulee_le = maintenant;
+  }
+  if (table === 'groupe_paiements' && type === 'INSERT') ligne.created_by = sessionUid;
+}
 
 // Lecture filtrée comme la RLS : messages privés des seuls participants,
 // droits pour toute la maison.
@@ -467,7 +510,7 @@ async function servir(url, input, init) {
   }
   if (chemin.startsWith('/rest/v1/')) {
     const table = decodeURIComponent(chemin.slice('/rest/v1/'.length));
-    const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, apresEcriture: diffuser });
+    const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, avantEcriture, apresEcriture: diffuser });
     return reponse(r.status, r.corps, r.entetes);
   }
   const e = erreurPg(404, 'Chemin inconnu de la démo : ' + chemin);

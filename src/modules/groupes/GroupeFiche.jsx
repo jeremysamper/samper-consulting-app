@@ -37,6 +37,9 @@ export default function GroupeFiche({
   groupe, menu, complements = null, menus = [], menusStatus = 'ready', cuisine, etablissement,
   canEdit = false, voirPrix = false,
   onStatut, onEnregistrerChoix, onEdit, onAnnuler, onSupprimer, onClose, ongletInitial = 'fiche',
+  // Onglet ajouté par Groupes (« Devis et factures », droit factures_groupes) :
+  // { id, label, rendu() }.
+  ongletSupplementaire = null,
 }) {
   const [onglet, setOnglet] = useState(ongletInitial);
   const [statutEnCours, setStatutEnCours] = useState(false);
@@ -220,6 +223,7 @@ export default function GroupeFiche({
               { id: 'fiche', label: 'Fiche' },
               { id: 'choix', label: 'Choix du client' },
               { id: 'courses', label: 'Liste de courses' },
+              ...(ongletSupplementaire ? [{ id: ongletSupplementaire.id, label: ongletSupplementaire.label }] : []),
             ]}
             active={onglet}
             onChange={setOnglet}
@@ -370,6 +374,8 @@ export default function GroupeFiche({
               onSave={onEnregistrerChoix}
             />
           )}
+
+          {ongletSupplementaire && onglet === ongletSupplementaire.id && ongletSupplementaire.rendu()}
 
           {onglet === 'courses' && (
             <ListeCourses
