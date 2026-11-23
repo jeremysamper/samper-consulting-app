@@ -2356,6 +2356,13 @@ export const UI_GLOSSARY_DE = {
   "Modèles d'horaires": "Dienstvorlagen",
   "Télécharger mon planning": "Meinen Dienstplan herunterladen",
   "Revenir à cette semaine": "Zurück zu dieser Woche",
+  // « Voir en tant que » du consultant (bouton et bandeau de la vue d'un rôle).
+  "Voir l'app en tant que": "App ansehen als",
+  "Vous voyez l'app comme": "Sie sehen die App als",
+  "Revenir à ma vue": "Zurück zu meiner Ansicht",
+  "Aperçu : les données restent celles de votre compte, et vos actions sont faites à votre nom.": "Vorschau: Die Daten bleiben die Ihres Kontos, und Ihre Aktionen erfolgen in Ihrem Namen.",
+  "Vue d'un autre rôle": "Ansicht einer anderen Rolle",
+  "Praticien(ne) spa": "Spa-Therapeut(in)",
   "Pointages": "Stempelungen",
   "Relevé CCNT": "L-GAV-Auszug",
   "Période": "Zeitraum",

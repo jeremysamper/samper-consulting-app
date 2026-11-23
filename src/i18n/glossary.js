@@ -2403,6 +2403,13 @@ export const UI_GLOSSARY = {
   "Modèles d'horaires": 'Shift templates',
   'Télécharger mon planning': 'Download my schedule',
   'Revenir à cette semaine': 'Back to this week',
+  // « Voir en tant que » du consultant (bouton et bandeau de la vue d'un rôle).
+  "Voir l'app en tant que": "View the app as",
+  "Vous voyez l'app comme": "You are seeing the app as",
+  "Revenir à ma vue": "Back to my view",
+  "Aperçu : les données restent celles de votre compte, et vos actions sont faites à votre nom.": "Preview: the data remain those of your account, and your actions are made in your name.",
+  "Vue d'un autre rôle": "View of another role",
+  "Praticien(ne) spa": "Spa practitioner",
   "Toute l'équipe": 'Whole team',
   'Pointages': 'Clock-ins',
   'Relevé CCNT': 'CCNT statement',

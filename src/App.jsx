@@ -6,6 +6,9 @@ import Auth from './modules/auth/Auth.jsx';
 import ResetPassword from './modules/auth/ResetPassword.jsx';
 import LegacyModuleHost, { prefetchCommonModules } from './modules/LegacyModuleHost.jsx';
 import { useAuth } from './hooks/useAuth.js';
+import { useVueRole } from './hooks/useVueRole.js';
+import VueRole from './components/vueRole/VueRole.jsx';
+import { effacerChoix } from './services/vueRole.js';
 import { usePasswordRecovery } from './hooks/usePasswordRecovery.js';
 import { useCurrentEtablissement } from './hooks/useCurrentEtablissement.js';
 import { useIsMobile } from './hooks/useIsMobile.js';
@@ -117,6 +120,11 @@ export default function App() {
   const [legacyState, setLegacyState] = useState({ loading: true, error: null });
   const [legacyVersion, setLegacyVersion] = useState(0);
   const auth = useAuth();
+  // « Voir en tant que » du consultant : `profil` est le profil que voit
+  // l'interface (rôle choisi), auth.profile reste le vrai, pour l'auth,
+  // l'établissement, l'hydratation et tout ce qui part au serveur.
+  const vue = useVueRole(auth.profile, auth.loading);
+  const profil = vue.profilVu;
   const hasSession = Boolean(auth.session);
   // Arrivée depuis un lien « mot de passe oublié » : cet écran passe AVANT tout
   // le reste, y compris une session déjà ouverte - le lien crée une session
@@ -232,7 +240,7 @@ export default function App() {
   // Avec un tableau de bord, rien ne bouge : « accueil » sur ordinateur
   // affiche le tableau de bord sans redirection (LegacyModuleHost).
   const etabCourant = currentEtablissement.current;
-  const roleCourant = auth.profile?.role;
+  const roleCourant = profil?.role;
   useEffect(() => {
     if (!etabCourant || !roleCourant) return;
     if (page !== 'dashboard' && page !== 'accueil') return;
@@ -297,6 +305,7 @@ export default function App() {
     try {
       const pendingPunches = getPendingPunchCount();
       await auth.signOut();
+      effacerChoix();
       dbService.getDb()?.clearUserSettingsCache?.();
       // Purge des caches SW de données : un autre utilisateur de cet appareil
       // ne doit rien pouvoir relire hors-ligne. La file de punches (IndexedDB)
@@ -355,14 +364,14 @@ export default function App() {
   } else {
     content = (
       <AppLayout
-        user={auth.profile}
+        user={profil}
         currentPage={page}
         setPage={setPage}
         onLogout={handleLogout}
         etablissements={currentEtablissement.etablissements}
         etablissement={currentEtablissement.current}
         onSelectEtablissement={handleSelectEtablissement}
-        permissions={getPermissionsForRole(auth.profile.role)}
+        permissions={getPermissionsForRole(profil.role)}
         shellMode={shellMode}
         pageAffichee={visiblePage}
         donneesPretes={legacyVersion > 0}
@@ -376,10 +385,10 @@ export default function App() {
             sélection…). Sans ça, un module gardé monté rechargeait ses données
             mais conservait l'état de l'ancien établissement à l'écran. */}
         {pagesToRender.map((p) => (
-          <div key={`${p}::${currentEtablissement.currentId || 'boot'}`} data-module={p} style={{ display: p === visiblePage ? 'contents' : 'none' }}>
+          <div key={`${p}::${currentEtablissement.currentId || 'boot'}::${profil.role}`} data-module={p} style={{ display: p === visiblePage ? 'contents' : 'none' }}>
             <LegacyModuleHost
               page={p}
-              user={auth.profile}
+              user={profil}
               etablissement={currentEtablissement.current}
               isMobile={isMobile}
               shellMode={shellMode}
@@ -396,6 +405,17 @@ export default function App() {
     );
   }
 
+  // Changer de vue : la page d'accueil du rôle choisi, modules remontés à neuf
+  // (la clé de chaque module porte le rôle).
+  const changerDeVue = (role) => {
+    vue.choisir(role);
+    const voulu = role === 'consultant' ? auth.profile?.role : role;
+    setPage(pageAccueil(currentEtablissement.current, getPermissionsForRole(voulu), shellMode));
+  };
+  const boutonVue = vue.possible && content && !recovery.active && auth.profile?.actif !== false && !legacyState.loading && !legacyState.error
+    ? <VueRole roleVu={vue.roleVu} autreVue={vue.autreVue} onChoisir={changerDeVue} />
+    : null;
+
   // Démarrage en cours = les deux branches ci-dessus qui n'ont rien à afficher.
   const booting = !recovery.active && content === null;
   const showBootSplash = !recovery.active && (booting || !bootSplashDone);
@@ -404,6 +424,7 @@ export default function App() {
     <>
       {isModuleSwitching && <div className="route-progress" aria-hidden="true" />}
       {content}
+      {boutonVue}
       {showBootSplash && (
         <BootScreen
           loading={booting}

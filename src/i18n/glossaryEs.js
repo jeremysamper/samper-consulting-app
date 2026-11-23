@@ -2379,6 +2379,13 @@ export const UI_GLOSSARY_ES = {
   "Modèles d'horaires": 'Plantillas de turnos',
   'Télécharger mon planning': 'Descargar mi horario',
   'Revenir à cette semaine': 'Volver a esta semana',
+  // « Voir en tant que » du consultant (bouton et bandeau de la vue d'un rôle).
+  "Voir l'app en tant que": "Ver la app como",
+  "Vous voyez l'app comme": "Está viendo la app como",
+  "Revenir à ma vue": "Volver a mi vista",
+  "Aperçu : les données restent celles de votre compte, et vos actions sont faites à votre nom.": "Vista previa: los datos siguen siendo los de su cuenta, y sus acciones se hacen a su nombre.",
+  "Vue d'un autre rôle": "Vista de otro rol",
+  "Praticien(ne) spa": "Terapeuta de spa",
   "Toute l'équipe": 'Todo el equipo',
   'Pointages': 'Fichajes',
   'Relevé CCNT': 'Informe CCNT',
