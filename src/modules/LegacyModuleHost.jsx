@@ -10,7 +10,7 @@ import { Btn } from '../components/ui/index.jsx';
 // Loaders nommés : partagés entre lazy() et le préchargement idle ci-dessous.
 // Un même import() est dédupliqué par Vite → précharger ne coûte qu'un fetch.
 const loadCatalogue = () => import('./catalogue/Catalogue.jsx');
-const loadCommande = () => import('./commande/CommandeModule.jsx');
+const loadCommande = () => import('./commande/Commande.jsx');
 const loadCompte = () => import('./compte/Compte.jsx');
 const loadConsultantTools = () => import('./consultant-tools/ConsultantTools.jsx');
 // Mise en route d'un établissement neuf (page hors menu, lot LD).

@@ -16,7 +16,6 @@ import { creerBase } from './donnees/index.js';
 import { ETAB, EQUIPE, ROLES_DEMO, aujourdhui, jour, instant } from './donnees/base.js';
 import { STOCKAGE, PREFIXE } from './isolation.js';
 import { defaultPermissions } from '../modules/moduleConfig.js';
-import { quantiteArrondie, envoyerAvant, jourIso } from './donnees/commande.js';
 
 export const DEMO_URL = 'https://demo.invalid';
 const DEMO_HOTE = new URL(DEMO_URL).hostname;
@@ -34,7 +33,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // pertes reliées, liste J+1, règles de Ventes POS, ingrédients à relier.
 // v10 (lot 5) : cadeaux demandés, procédures rappelée et commencée, fiches en
 // brouillon, alertes de cuisine, dossiers de Documents aux types de la base.
-const VERSION_BASE = 'v10-lot5-' + aujourdhui();
+// v11 (lot 4b, retrait du 23.11) : commandes par fournisseur, stocks cibles,
+// produits habituels et règles de Ventes POS retirés des jeux.
+const VERSION_BASE = 'v11-lot4b-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -156,14 +157,8 @@ const DEFAUTS = {
   compta_reglages: { delai_paiement_jours: 30, categories_charges: [], exercice_debut_mois: 1, cartes_accueil: null },
   reglages_modules: { config: {}, updated_by: () => sessionUid },
   mep_modeles: { lignes: [], ordre: 0, actif: true, created_by: () => sessionUid },
-  commande_cibles: { updated_by: () => sessionUid },
-  // Lot 4a (migration 20261122b_lot4a_commande_base) : défauts de la base ;
-  // les valeurs calculées sont posées par declencheursCommande.
-  commande_habituels: { ordre: 0, quantite_defaut: null, updated_by: () => sessionUid },
-  commandes: { statut: 'brouillon', perimetre: 'Général', note: null, envoyer_avant: null, envoyee_at: null, envoyee_par: null, envoi_canal: null, recue_at: null, recue_par: null, achat_document_id: null },
-  commande_lignes: { unite: '', besoin_groupes: 0, source: 'manuel', ordre: 0, reste: null, quantite: null, statut_reception: null, quantite_recue: null, montant_recu: null, lot: null, dlc: null, note_reception: null },
-  commande_groupes: { nb_pax: null },
-  pos_regles_correspondance: { mode: 'contient', action: 'relier', recette_id: null, priorite: 0, actif: true, updated_by: () => sessionUid },
+  // Lot 4a (migration 20261122b_lot4a_commande_base) : colonnes gardées de la
+  // mise en place (la commande par fournisseur ne part pas).
   mep_listes: { poste: null, modele_id: null, origine: 'manuel', base_calcul: null },
   mep_items: { quantite_suggeree: null, origine: null },
   // Lot 6a (D4) : branche Hôtel et Spa. Défauts des migrations hotel_h0 à h8 et
@@ -295,71 +290,7 @@ function journaliser(evt) {
   if (r.pole !== o?.pole) trace('pole', r.pole);
 }
 
-// Déclencheurs de la commande (lot 4a) : commandes_avant_ecriture,
-// commande_lignes_avant_ecriture, commande_groupes_avant_ecriture et l'auteur
-// des tables de réglage. La démo pose les mêmes valeurs calculées que la base
-// (nom et heure limite du fournisseur, envoi, reprise du produit et du stock
-// cible, quantité calculée, auteur de la réception) ; elle ne refuse rien.
-function declencheursCommande(evt) {
-  const { type, table, record: r, old_record: o } = evt;
-  if (type === 'DELETE' || !r) return;
-  if (!['commandes', 'commande_lignes', 'commande_groupes', 'commande_habituels', 'pos_regles_correspondance'].includes(table)) return;
-  const ligne = (db[table] || []).find((x) => x.id === r.id);
-  if (!ligne) return;
-  const maintenant = new Date().toISOString();
-  const valeurs = {};
-  if (table === 'commandes') {
-    const f = db.fournisseurs.find((x) => x.id === ligne.fournisseur_id);
-    if (f && (type === 'INSERT' || ligne.fournisseur_id !== o?.fournisseur_id || ligne.date_livraison !== o?.date_livraison || !ligne.envoyer_avant)) {
-      if (type === 'INSERT' && !String(ligne.fournisseur_nom || '').trim()) valeurs.fournisseur_nom = f.nom;
-      if (type === 'UPDATE' && ligne.fournisseur_id !== o?.fournisseur_id) valeurs.fournisseur_nom = f.nom;
-      if (f.heure_limite && (!ligne.envoyer_avant || (type === 'UPDATE' && ligne.envoyer_avant === o?.envoyer_avant))) valeurs.envoyer_avant = envoyerAvant(ligne.date_livraison, f);
-    }
-    if (ligne.statut === 'envoyee' && (type === 'INSERT' || o?.statut === 'brouillon')) Object.assign(valeurs, { envoyee_at: ligne.envoyee_at || maintenant, envoyee_par: sessionUid });
-    if (ligne.statut === 'brouillon' && o?.statut === 'envoyee') Object.assign(valeurs, { envoyee_at: null, envoyee_par: null, envoi_canal: null });
-    if (type === 'INSERT') valeurs.created_by = sessionUid;
-    valeurs.updated_at = maintenant;
-  }
-  if (table === 'commande_lignes') {
-    const c = db.commandes?.find((x) => x.id === ligne.commande_id);
-    if (type === 'INSERT' && ligne.produit_id) {
-      const p = db.produits.find((x) => x.id === ligne.produit_id);
-      const pf = (db.produit_fournisseurs || []).find((x) => x.produit_id === ligne.produit_id && x.fournisseur_id === c?.fournisseur_id)
-        || (db.produit_fournisseurs || []).find((x) => x.produit_id === ligne.produit_id && x.est_principal);
-      const memeFournisseur = pf && pf.fournisseur_id === c?.fournisseur_id;
-      if (p) {
-        if (!String(ligne.nom || '').trim()) valeurs.nom = p.nom;
-        if (!ligne.unite) valeurs.unite = p.unite_ref || '';
-        const condPf = memeFournisseur && Number(pf.quantite_cond) > 0 && pf.unite_cond === p.unite_ref ? Number(pf.quantite_cond) : null;
-        if (ligne.conditionnement == null) valeurs.conditionnement = condPf ?? p.conditionnement_qte ?? null;
-        if (ligne.conditionnement_libelle == null) valeurs.conditionnement_libelle = (memeFournisseur && pf.conditionnement) || p.conditionnement || null;
-        if (ligne.prix_unitaire == null) valeurs.prix_unitaire = pf?.prix_unitaire ?? p.prix_unitaire ?? null;
-        if (ligne.reference_fourn == null) valeurs.reference_fourn = (memeFournisseur && pf.reference) || p.reference_fourn || null;
-      }
-      if (ligne.stock_cible == null && c?.date_livraison) {
-        valeurs.stock_cible = (db.commande_cibles || []).find((x) => x.produit_id === ligne.produit_id && x.jour_livraison === jourIso(c.date_livraison))?.quantite ?? null;
-      }
-    }
-    const l = { ...ligne, ...valeurs };
-    valeurs.quantite_calculee = quantiteArrondie(l.stock_cible, l.reste, l.besoin_groupes, l.conditionnement);
-    const champs = ['statut_reception', 'quantite_recue', 'montant_recu', 'lot', 'dlc'];
-    if (type === 'INSERT' || champs.some((k) => ligne[k] !== o?.[k])) {
-      valeurs.recu_par = ligne.statut_reception ? sessionUid : null;
-      valeurs.recu_at = ligne.statut_reception ? maintenant : null;
-    }
-    valeurs.updated_at = maintenant;
-  }
-  if (table === 'commande_groupes' && type === 'INSERT') {
-    valeurs.fournisseur_id = db.commandes?.find((x) => x.id === ligne.commande_id)?.fournisseur_id ?? null;
-    valeurs.created_by = sessionUid;
-  }
-  if (table === 'commande_habituels' || table === 'pos_regles_correspondance') Object.assign(valeurs, { updated_by: sessionUid, updated_at: maintenant });
-  Object.assign(ligne, valeurs);
-  Object.assign(r, valeurs);
-}
-
 function apresEcriture(evt) {
-  declencheursCommande(evt);
   journaliser(evt);
   diffuser(evt);
 }

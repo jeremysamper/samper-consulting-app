@@ -302,13 +302,6 @@ export const SECTIONS = [
     signaux: ['reglages_modules:pertes'],
   },
   {
-    id: 'commande', libelle: "Commande", detail: "Jours de livraison, heure limite, stock cible par fournisseur",
-    motsCles: "fournisseur livraison heure limite stock cible", groupe: 'modules', portee: 'maison', module: 'commande',
-    garde: (ctx) => ouvreLeModule('commande')(ctx) && estDirectionModules(ctx.user?.role),
-    charger: () => import('../commande/SectionReglagesCommande.jsx'),
-    signaux: ['table:fournisseurs','table:commande_cibles'],
-  },
-  {
     id: 'mep', libelle: "Mise en place", detail: "Postes et modèles de liste",
     motsCles: "poste modèle liste préparation", groupe: 'modules', portee: 'maison', module: 'mep',
     garde: (ctx) => ouvreLeModule('mep')(ctx) && estDirectionModules(ctx.user?.role),
@@ -342,12 +335,6 @@ export const SECTIONS = [
     garde: (ctx) => ouvreLeModule('catalogue')(ctx) && estDirectionModules(ctx.user?.role),
     charger: () => import('../catalogue/SectionReglagesCatalogue.jsx'),
     signaux: ['reglages_modules:catalogue'],
-  },
-  {
-    id: 'ventes_pos', libelle: "Ventes POS", detail: "Connexion de la caisse Lightspeed, dernière synchro",
-    motsCles: "lightspeed synchro synchronisation caisse connexion", groupe: 'modules', portee: 'maison', module: 'pos',
-    garde: (ctx) => ouvreLeModule('pos')(ctx) && estDirectionModules(ctx.user?.role),
-    charger: () => import('../pos/SectionReglagesPos.jsx'),
   },
   {
     id: 'kds', libelle: "KDS", detail: "Son, bon en attente et en retard, postes",
