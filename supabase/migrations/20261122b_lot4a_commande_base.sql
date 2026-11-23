@@ -499,7 +499,9 @@ begin
                old.lot, old.dlc, old.note_reception, old.recu_par, old.recu_at) then
       return new;
     end if;
-    if (select public.current_user_role()) not in ('consultant', 'patron', 'resp_cuisine')
+    -- Un rôle nul compte comme un rôle hors direction : la garde ne dépend
+    -- pas de ce que current_user_role() rend '' plutôt que null.
+    if coalesce((select public.current_user_role()), '') not in ('consultant', 'patron', 'resp_cuisine')
        or row(new.produit_id, new.nom, new.unite, new.conditionnement, new.conditionnement_libelle,
               new.stock_cible, new.reste, new.besoin_groupes, new.quantite, new.prix_unitaire,
               new.reference_fourn, new.source, new.ordre)
