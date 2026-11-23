@@ -18,10 +18,7 @@ import { SectionHeader, Btn } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { usePosItemsMapping } from './hooks/usePosItemsMapping.js';
 import { useMatchSuggestions } from './hooks/useMatchSuggestions.js';
-import { getMatchStatus, THRESHOLD_AUTO } from './lib/dice-coefficient.js';
-import { loteEnSerie, regleQuiCorrespond } from './lib/reglesCorrespondance.js';
-import ReglesPos, { useReglesPos } from './components/ReglesPos.jsx';
-import { dbService } from '../../services/dbService.js';
+import { getMatchStatus } from './lib/dice-coefficient.js';
 import { MappingStats }   from './components/MappingStats.jsx';
 import { MappingFilters } from './components/MappingFilters.jsx';
 import { PosItemRow }     from './components/PosItemRow.jsx';
@@ -156,27 +153,7 @@ export default function MappingPlats({ user, etablissement }) {
     validateMapping, changeMapping, unlinkMapping,
   } = usePosItemsMapping(etablissement, user);
 
-  const suggestionsBrutes = useMatchSuggestions(posItems, recettes, mappings);
-  // Règles de la maison (plan 15, lot 4) : un article « ignoré » sort de la
-  // liste à relier ; un article « relié » par une règle la prend pour
-  // suggestion sûre, tant qu'il n'a pas de correspondance.
-  const { regles, relire: relireRegles } = useReglesPos(etablissement?.id || null);
-  const itemsVisibles = useMemo(
-    () => posItems.filter((i) => regleQuiCorrespond(i.name, regles)?.action !== 'ignorer'),
-    [posItems, regles],
-  );
-  const ignores = posItems.length - itemsVisibles.length;
-  const suggestions = useMemo(() => {
-    const r = { ...suggestionsBrutes };
-    posItems.forEach((i) => {
-      const rg = regleQuiCorrespond(i.name, regles);
-      if (rg?.action === 'relier' && rg.recette_id && !mappings[i.id]) {
-        r[i.id] = { recipeId: rg.recette_id, recipeName: recettes.find((x) => x.id === rg.recette_id)?.nom || '', score: 100, regleId: rg.id };
-      }
-    });
-    return r;
-  }, [suggestionsBrutes, posItems, regles, mappings, recettes]);
-  const [serieEnCours, setSerieEnCours] = useState(false);
+  const suggestions   = useMatchSuggestions(posItems, recettes, mappings);
   const [filter, setFilter]   = useState('all');
   const [search, setSearch]   = useState('');
 
@@ -186,25 +163,24 @@ export default function MappingPlats({ user, etablissement }) {
   // ── Statuts calculés pour tous les items ────────────────────────
   const itemStatuses = useMemo(() => {
     const result = {};
-    for (const item of itemsVisibles) {
+    for (const item of posItems) {
       result[item.id] = deriveStatus(mappings[item.id] ?? null, suggestions[item.id] ?? null);
     }
     return result;
-  }, [itemsVisibles, mappings, suggestions]);
+  }, [posItems, mappings, suggestions]);
 
   // ── Compteurs ──────────────────────────────────────────────────
   const counts = useMemo(() => {
     const c = { auto: 0, suggested: 0, manual: 0 };
     for (const s of Object.values(itemStatuses)) c[s]++;
-    return { ...c, all: itemsVisibles.length };
-  }, [itemStatuses, itemsVisibles.length]);
+    return { ...c, all: posItems.length };
+  }, [itemStatuses, posItems.length]);
 
-  const mappedCount = itemsVisibles.filter((i) => mappings[i.id]).length;
-  const lot = canEdit ? loteEnSerie({ posItems: itemsVisibles, mappings, suggestions, regles, seuil: THRESHOLD_AUTO }) : [];
+  const mappedCount = Object.keys(mappings).length;
 
   // ── Items filtrés ──────────────────────────────────────────────
   const filteredItems = useMemo(() => {
-    let items = itemsVisibles;
+    let items = posItems;
     if (search.trim()) {
       const q = normalizeSearch(search);
       items = items.filter((i) => normalizeSearch(i.name).includes(q));
@@ -213,7 +189,7 @@ export default function MappingPlats({ user, etablissement }) {
       items = items.filter((i) => itemStatuses[i.id] === filter);
     }
     return items;
-  }, [itemsVisibles, search, filter, itemStatuses]);
+  }, [posItems, search, filter, itemStatuses]);
 
   // ── Handlers ───────────────────────────────────────────────────
   async function handleValidate(posItemId) {
@@ -229,25 +205,6 @@ export default function MappingPlats({ user, etablissement }) {
     } catch (e) {
       notify(messageErreur(e, 'ventes caisse', 'Validation impossible.'), 'error');
     }
-  }
-
-  // Valider en série : toutes les suggestions sûres et les articles reliés
-  // par une règle, en une seule écriture.
-  async function validerEnSerie() {
-    if (!lot.length || serieEnCours) return;
-    setSerieEnCours(true);
-    const maintenant = new Date().toISOString();
-    const { error: err } = await dbService.getClient().from('pos_item_recipe_mapping').upsert(
-      lot.map((l) => ({
-        pos_item_id: l.posItemId, recipe_id: l.recipeId, confidence: l.confidence, manually_validated: true,
-        matched_at: maintenant, matched_by: user?.id ?? null, regle_id: l.regleId,
-      })),
-      { onConflict: 'pos_item_id' },
-    );
-    setSerieEnCours(false);
-    if (err) { notify(messageErreur(err, 'ventes caisse', 'Validation impossible.'), 'error'); return; }
-    notify(`${lot.length} ${lot.length > 1 ? 'correspondances validées' : 'correspondance validée'}.`, 'success');
-    reload();
   }
 
   async function handleChange(posItemId, recipeId, score) {
@@ -290,7 +247,7 @@ export default function MappingPlats({ user, etablissement }) {
     );
   }
 
-  if (!loading && !error && itemsVisibles.length > 0 && mappedCount === itemsVisibles.length) {
+  if (!loading && !error && posItems.length > 0 && mappedCount === posItems.length) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SectionHeader title="Correspondance des plats POS et des recettes" subtitle={etabNom} />
@@ -298,8 +255,7 @@ export default function MappingPlats({ user, etablissement }) {
           total={posItems.length} mapped={mappedCount}
           auto={counts.auto} suggested={counts.suggested} manual={counts.manual}
         />
-        <AllMappedState total={itemsVisibles.length} />
-        <ReglesPos etabId={etablissement?.id} regles={regles} recettes={recettes} canEdit={canEdit} onChange={relireRegles} />
+        <AllMappedState total={posItems.length} />
       </div>
     );
   }
@@ -318,18 +274,6 @@ export default function MappingPlats({ user, etablissement }) {
           total={posItems.length} mapped={mappedCount}
           auto={counts.auto} suggested={counts.suggested} manual={counts.manual}
         />
-      )}
-
-      {/* En série (plan 15, lot 4) : les suggestions sûres et les règles. */}
-      {!loading && !error && (lot.length > 0 || ignores > 0) && (
-        <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-          {lot.length > 0 && (
-            <Btn variant="primary" disabled={serieEnCours} onClick={validerEnSerie}>
-              Valider <span data-no-translate="">{lot.length}</span> {lot.length > 1 ? 'suggestions sûres' : 'suggestion sûre'}
-            </Btn>
-          )}
-          {ignores > 0 && <span style={{ fontSize: 'var(--t2)', color: 'var(--text2)' }}><span data-no-translate="">{ignores}</span> {ignores > 1 ? 'articles écartés par une règle' : 'article écarté par une règle'}</span>}
-        </div>
       )}
 
       {/* Filtres */}
@@ -367,8 +311,6 @@ export default function MappingPlats({ user, etablissement }) {
           ))}
         </div>
       )}
-
-      {!loading && !error && <ReglesPos etabId={etablissement?.id} regles={regles} recettes={recettes} canEdit={canEdit} onChange={relireRegles} />}
     </div>
   );
 }

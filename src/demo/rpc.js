@@ -3,7 +3,6 @@
 // hors production rend une erreur claire au lieu d'un faux succès.
 import { uuid } from './postgrest.js';
 import { planEnLigne } from '../reservation/choixTable.js';
-import { quantiteArrondie } from './donnees/commande.js';
 
 const heureZurich = () => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
 const jourZurich = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -83,9 +82,9 @@ const heureDe = (iso) => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zu
 
 // ── Table des fonctions ─────────────────────────────────────────────────────
 
-// ── Commande et marchandise (lot 4a) ─────────────────────────────────────────
-// Même contrat que commande_receptionner, pertes_frequentes et
-// recettes_relier_ingredients (migration 20261122b_lot4a_commande_base).
+// ── Marchandise (lot 4a) ─────────────────────────────────────────────────────
+// Même contrat que pertes_frequentes et recettes_relier_ingredients (migration
+// 20261122b_lot4a_commande_base).
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const arrondiA = (n, d) => Math.round(n * 10 ** d) / 10 ** d;
@@ -94,70 +93,6 @@ function jourMoins(jours) {
   const d = new Date(jourZurich() + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() - jours);
   return d.toISOString().slice(0, 10);
-}
-
-function receptionner(ctx, a) {
-  const lignes = a.p_lignes == null ? [] : a.p_lignes;
-  if (!Array.isArray(lignes) || lignes.length > 500) throw new ErreurRpc('Lignes de réception invalides.', '22023');
-  if (lignes.some((e) => !e || typeof e !== 'object' || !['recu', 'ecart', 'manquant'].includes(e.statut) || !UUID.test(String(e.id || '').toLowerCase()))) {
-    throw new ErreurRpc('Chaque ligne reçue donne son id et son statut : recu, ecart ou manquant.', '22023');
-  }
-  const c = (ctx.db.commandes || []).find((x) => x.id === a.p_commande_id);
-  if (!c) throw new ErreurRpc('Commande introuvable.', 'P0002');
-  if (c.statut === 'recue') throw new ErreurRpc('Cette commande est déjà reçue.', '22023');
-  const siennes = (ctx.db.commande_lignes || []).filter((l) => l.commande_id === c.id);
-  const parId = new Map();
-  lignes.forEach((e) => { if (!parId.has(String(e.id).toLowerCase())) parId.set(String(e.id).toLowerCase(), e); });
-  if ([...parId.keys()].some((id) => !siennes.some((l) => l.id.toLowerCase() === id))) {
-    throw new ErreurRpc("Une ligne de réception n'appartient pas à cette commande.", '22023');
-  }
-  const quand = maintenant();
-  const commandee = (l) => l.quantite ?? l.quantite_calculee;
-  for (const l of siennes) {
-    const e = parId.get(l.id.toLowerCase());
-    if (e) {
-      ctx.maj('commande_lignes', l, {
-        statut_reception: e.statut,
-        quantite_recue: e.statut === 'manquant' ? 0 : ('quantite_recue' in e ? (e.quantite_recue ?? commandee(l)) : (l.quantite_recue ?? commandee(l))),
-        ...('montant_recu' in e ? { montant_recu: e.montant_recu } : {}),
-        ...('lot' in e ? { lot: String(e.lot ?? '').trim() || null } : {}),
-        ...('dlc' in e ? { dlc: String(e.dlc ?? '').trim() || null } : {}),
-        ...('note' in e ? { note_reception: String(e.note ?? '').trim() || null } : {}),
-        recu_par: ctx.uid, recu_at: quand, updated_at: quand,
-      });
-    } else if (l.statut_reception == null && Number(commandee(l) || 0) > 0) {
-      ctx.maj('commande_lignes', l, { statut_reception: 'recu', quantite_recue: commandee(l), recu_par: ctx.uid, recu_at: quand, updated_at: quand });
-    }
-  }
-  let docId = null;
-  if (a.p_achat !== false) {
-    const recues = siennes.filter((l) => ['recu', 'ecart'].includes(l.statut_reception) && Number(l.quantite_recue) > 0)
-      .sort((x, y) => (x.ordre - y.ordre) || String(x.created_at).localeCompare(String(y.created_at)));
-    if (recues.length) {
-      const montant = (l) => l.montant_recu ?? (l.prix_unitaire != null ? arrondiA(l.prix_unitaire * l.quantite_recue, 2) : null);
-      const total = recues.reduce((s, l) => (montant(l) == null ? s : (s ?? 0) + montant(l)), null);
-      const doc = ctx.inserer('achats_documents', {
-        etablissement_id: c.etablissement_id, perimetre: c.perimetre || 'Général', type_document: 'bon_livraison',
-        fournisseur_nom: c.fournisseur_nom, fournisseur_id: c.fournisseur_id,
-        numero: String(a.p_numero || '').trim() || 'Commande du ' + c.date_livraison.split('-').reverse().join('.'),
-        date_document: jourZurich(), total_ht: total == null ? null : arrondiA(total, 2), exclu: false, source: 'commande', created_by: ctx.uid,
-        lignes: recues.map((l) => {
-          const pr = l.produit_id ? ctx.db.produits.find((p) => p.id === l.produit_id) : null;
-          return {
-            libelle: l.nom, produitId: l.produit_id, produitNom: pr?.nom ?? null, lien: pr ? 'manuel' : null,
-            quantite: l.conditionnement > 0 ? arrondiA(l.quantite_recue / l.conditionnement, 3) : l.quantite_recue,
-            quantiteTotale: l.quantite_recue, uniteTotale: l.unite, montantLigne: montant(l),
-            referenceFourn: l.reference_fourn || '', conditionnement: l.conditionnement_libelle || '',
-            issues: l.statut_reception === 'ecart' ? ['écart à la réception'] : [],
-          };
-        }),
-      });
-      docId = doc.id;
-    }
-  }
-  ctx.maj('commandes', c, { statut: 'recue', recue_at: quand, recue_par: ctx.uid, achat_document_id: docId, updated_at: quand });
-  const compte = (s) => siennes.filter((l) => l.statut_reception === s).length;
-  return { commande_id: c.id, achat_document_id: docId, recues: compte('recu'), ecarts: compte('ecart'), manquantes: compte('manquant') };
 }
 
 function pertesFrequentes(ctx, a) {
@@ -216,8 +151,6 @@ function relierIngredients(ctx, a) {
 }
 
 const RPC = {
-  commande_quantite_arrondie: (ctx, a) => quantiteArrondie(a.p_stock_cible, a.p_reste, a.p_besoin_groupes, a.p_conditionnement),
-  commande_receptionner: receptionner,
   pertes_frequentes: pertesFrequentes,
   recettes_relier_ingredients: relierIngredients,
   // Pointage : l'heure est celle de Zurich, comme la vraie fonction.

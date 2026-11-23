@@ -123,25 +123,7 @@ export const MEP_MODELES = [
   },
 ].map((m) => ({ etablissement_id: ETAB, actif: true, created_by: 'demo-chef', created_at: LE, updated_at: LE, ...m }));
 
-// Stock cible par produit et par jour de livraison (1 = lundi), dans l'unité
-// de référence du produit (g ou pièce). Jours pris dans ceux du fournisseur.
-const CIBLES = [
-  ['p-courge', [1, 3, 5], 6000],
-  ['p-pomme-de-terre', [1, 5], 25000],
-  ['p-oignon', [1, 3, 5], 5000],
-  ['p-boeuf-filet', [2, 4], 4000],
-  ['p-volaille-supreme', [2, 4], 3000],
-];
-export const COMMANDE_CIBLES = CIBLES.flatMap(([produit, jours, quantite], i) => jours.map((j) => ({
-  id: `00000000-0000-4000-8000-0000000003${i}${j}`,
-  etablissement_id: ETAB,
-  produit_id: produit,
-  jour_livraison: j,
-  quantite,
-  updated_by: 'demo-chef',
-  created_at: LE,
-  updated_at: LE,
-})));
+
 
 // Fils d'équipe de Messages (décision D5) : canaux_messages, canal 'cuisine',
 // 'restaurant' (affiché « Salle ») et 'tous' (Toute l'équipe). Le front déjà
