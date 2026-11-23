@@ -12,6 +12,7 @@ import { resolvePrixProduit } from '../../services/prixResolution.js';
 import { CATEGORIES_PRODUITS, affinerCategorie, categorieAffichee } from './categoriesCatalogue.js';
 import { Pencil, Trash2 } from 'lucide-react';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import RelierIngredients from './RelierIngredients.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { prixAffiche } from './prixAffiche.js';
 import { ChoixFiltre, Panneau } from '../../components/ui/index.jsx';
@@ -492,8 +493,12 @@ const Catalogue = ({ user, etablissement }) => {
         tabs={[
           { id: 'produits', label: `Produits (${produits.length})` },
           { id: 'fournisseurs', label: `Fournisseurs (${fournisseurs.length})` },
+          // Lignes de fiches sans produit, reliées par nom en un geste (plan 15, lot 4).
+          ...(canWrite ? [{ id: 'relier', label: 'Ingrédients à relier' }] : []),
         ]}
       />
+
+      {activeTab === 'relier' && canWrite && <RelierIngredients etablissement={etablissement} produits={produits} />}
 
       {activeTab === 'produits' && (
         <>
