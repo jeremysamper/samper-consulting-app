@@ -43,3 +43,12 @@
   /* Dans la colonne de droite, un gros bouton par ligne. */
   .commande-cote .accueil-grille { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Commande V1 (plan 15, lot 4) : les repères redisent l'en-tête de la
+   commande (livraison, heure limite) ; ils ne prennent pas le premier écran
+   de la tablette et du téléphone, la commande vient juste après les tuiles.
+   Ils reviennent dans la colonne de droite à l'ordinateur. */
+.commande-page .commande-v1-reperes { display: none; }
+@container commande (min-width: 1080px) {
+  .commande-page .commande-v1-reperes { display: grid; grid-template-columns: minmax(0, 1fr); }
+}

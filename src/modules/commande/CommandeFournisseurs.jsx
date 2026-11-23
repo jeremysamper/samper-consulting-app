@@ -370,7 +370,7 @@ export default function CommandeFournisseurs({ user, etablissement, onParCarte }
             <LigneRegler section="commande" user={user} etablissement={etablissement} className="" />
           </div>
           {commande && (
-            <div className="commande-reperes no-print" data-commande-reperes="">
+            <div className="commande-reperes commande-v1-reperes no-print" data-commande-reperes="">
               <CarteRepere Icone={Truck} texte={<TexteRepere titre={<>Livraison <Jour date={commande.date_livraison} /></>} detail={<span data-no-translate="">{commande.fournisseur_nom || fournisseur?.nom}</span>} />} />
               {recue ? (
                 <CarteRepere Icone={ClipboardCheck} texte={<TexteRepere titre="Commande reçue" detail={commande.recue_at ? <Jour date={zurichDateHeure(commande.recue_at).jour} /> : null} />} />
