@@ -32,7 +32,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // v8 (lot 6b) : réglages des modules Étages, Demandes et Repas hôtel.
 // v9 (lot 4a) : commandes par fournisseur, réception, produits habituels,
 // pertes reliées, liste J+1, règles de Ventes POS, ingrédients à relier.
-const VERSION_BASE = 'v9-4a-' + aujourdhui();
+// v10 (lot 5) : cadeaux demandés, procédures rappelée et commencée, fiches en
+// brouillon, alertes de cuisine, dossiers de Documents aux types de la base.
+const VERSION_BASE = 'v10-lot5-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -139,7 +141,7 @@ const DEFAUTS = {
   produits: { categorie: 'Autres', unite_ref: 'g', actif: true, allergenes: [], strategie_prix: 'max', prix_verrouille: false },
   pertes: { quantite: 0, unite: 'pcs', valeur_unit: 0, valide: false, produit_id: null, recette_id: null, mep_item_id: null, source: 'saisie' },
   haccp_releves: {},
-  documents: {},
+  documents: { roles_visibles: null },
   private_messages: { read_at: null, sender_id: () => sessionUid },
   caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid },
   caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false },
@@ -151,7 +153,7 @@ const DEFAUTS = {
   // Lot 2 (migration 20261122_lot2a_reglages_modules) : défauts de la base.
   fournisseurs: { actif: true, delai_commande_jours: 1 },
   sops: { roles_designes: [], rappel_actif: false },
-  compta_reglages: { delai_paiement_jours: 30, categories_charges: [] },
+  compta_reglages: { delai_paiement_jours: 30, categories_charges: [], exercice_debut_mois: 1, cartes_accueil: null },
   reglages_modules: { config: {}, updated_by: () => sessionUid },
   mep_modeles: { lignes: [], ordre: 0, actif: true, created_by: () => sessionUid },
   commande_cibles: { updated_by: () => sessionUid },

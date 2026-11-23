@@ -3,7 +3,11 @@ import './compta.css';
 import { getPermissionsForRole } from '../../data/demoData.js';
 import { isPageActiveForEtab } from '../moduleConfig.js';
 import { dbService } from '../../services/dbService.js';
-import { navigateToPage } from '../../services/navigationService.js';
+import { navigateToPage, ouvrirVerificationAchats } from '../../services/navigationService.js';
+import { notify } from '../../components/toast/index.js';
+import { lignesFiduciaire } from '../inventaire/exportFiduciaire.js';
+import { telechargerFichier } from '../inventaire/exportXlsxInventaire.js';
+import { feuillesCompta, nomFichierCompta, xlsxCompta } from './exportCompta.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { readJson, writeJson } from '../../utils/storage.js';
 import { zurichToday } from '../../utils/zurichTime.js';
@@ -25,10 +29,10 @@ import EcranBanque from './EcranBanque.jsx';
 import EcranTresorerie from './EcranTresorerie.jsx';
 import FenetreExportCompta from './FenetreExportCompta.jsx';
 import { writeLegacyStorage } from '../../legacy/legacyApi.js';
-import { useLecture } from './comptaService.js';
-import { useCompta } from './useCompta.js';
+import { REGLAGES_DEFAUT, useLecture, useTableCompta } from './comptaService.js';
+import { etatDe, useCompta } from './useCompta.js';
 import { estDirection, peutReglerFactures } from './gardesCompta.js';
-import { ventesComparables } from './syntheseCompta.js';
+import { idsFacturesAVerifier, ventesComparables } from './syntheseCompta.js';
 import { Chf, pluriel, st as ui } from './comptaUi.jsx';
 import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
 import {
@@ -59,6 +63,7 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const CLE_PERIODE = 'sc_comptabilite_periode';
+const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 const ECRANS_REPRIS = ['ensemble', 'ventes', 'achats', 'charges', 'marges'];
 
 export default function Comptabilite({ user, etablissement, setPage }) {
@@ -102,6 +107,11 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
     return TYPES_PERIODE.some(x => x.id === t) ? t : 'mois';
   });
   const [ancre, setAncre] = React.useState(null); // début de la période choisie ; null = en cours
+  // Lot 5 : exercice et cartes de l'accueil choisis par la maison, lus avant
+  // la période (l'année est l'exercice).
+  const reglagesLus = useTableCompta('compta_reglages', etabId, { actif: !!etabId, ordre: ['etablissement_id'] });
+  const affichage = React.useMemo(() => ({ ...REGLAGES_DEFAUT, ...(reglagesLus.lignes[0] || {}) }), [reglagesLus.lignes]);
+  const debutMois = affichage.exerciceDebutMois;
   const [fenetre, setFenetre] = React.useState(null); // { type: 'export', choix, tva }
   const fermerFenetre = React.useCallback(() => setFenetre(null), []);
   const [jourSaisie, setJourSaisie] = React.useState(null);
@@ -112,11 +122,11 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
 
   const periode = React.useMemo(() => {
     if (type === 'inventaire') return (ancre && periodesInv.find(p => p.debut === ancre)) || periodesInv[periodesInv.length - 1] || null;
-    if (!ancre) return periodeCourante(type, aujourdhui);
+    if (!ancre) return periodeCourante(type, aujourdhui, { debutMois });
     if (type === 'trimestre') return periodeTrimestre(ancre);
-    if (type === 'annee') return periodeAnnee(ancre);
+    if (type === 'annee') return periodeAnnee(ancre, debutMois);
     return periodeMois(ancre);
-  }, [type, ancre, periodesInv, aujourdhui]);
+  }, [type, ancre, periodesInv, aujourdhui, debutMois]);
   // Sans inventaire validé, les tuiles se lisent sur le mois en cours.
   const periodeCalcul = React.useMemo(() => periode || periodeMois(aujourdhui), [periode, aujourdhui]);
   const precedente = React.useMemo(() => (periode ? periodePrecedente(periode, { periodesInv }) : null), [periode, periodesInv]);
@@ -134,7 +144,7 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
   const data = useCompta({ etablissement, periode: periodeCalcul, precedente: comparaison, aujourdhui, inventaires, direction, banque: peutEcrire });
   // Réglages enregistrés dans la page des réglages (section 'comptabilite') :
   // les chiffres gardés montés se recalculent sans recharger l'app.
-  useReglageModifie('comptabilite', () => data.reloadTout());
+  useReglageModifie('comptabilite', () => { data.reloadTout(); reglagesLus.reload(); });
 
   // Un écran soumis à un droit n'est repris que si le droit est là.
   const repris = [...ECRANS_REPRIS, ...(direction ? ['personnel'] : []), ...(peutEcrire ? ['tva', 'banque', 'tresorerie'] : [])];
@@ -166,6 +176,40 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
     if (m.id === 'inventaire') return etats.matiere === 'ready';
     return true;
   });
+
+  // Lot 5 : chaque manque ouvre l'endroit où il se corrige. Un jour sans
+  // chiffre : sa saisie, sur le premier jour manquant ; une facture sans
+  // montant hors TVA ou sans taux : Factures & achats, sur la vérification de
+  // ces factures ; aucune charge fixe : la fenêtre d'une charge neuve.
+  const [chargeNeuve, setChargeNeuve] = React.useState(false);
+  const ouvrirManque = (m) => {
+    if (m.id === 'jours' && peutEcrire && data.ventesJour.status === 'ready' && s.ventes?.manquants?.length) {
+      setJourSaisie(s.ventes.manquants[0]);
+      setEcran('jour');
+      return;
+    }
+    if ((m.id === 'sansHt' || m.id === 'sansTaux') && peutOuvrirAchats && periodeCalcul) {
+      const ids = idsFacturesAVerifier(data.docs, periodeCalcul, m.id);
+      if (ids.length) { ouvrirVerificationAchats(ids); return; }
+    }
+    if (m.id === 'aucuneCharge' && peutEcrire) { setChargeNeuve(true); setEcran('charges'); return; }
+    ouvrir(m.ecran);
+  };
+
+  // Lot 5 : « Pour la fiduciaire » de l'accueil, en une touche : le classeur
+  // Excel de la période affichée, celui que donnerait la fenêtre d'export.
+  const pretExport = Boolean(periode) && etatDe(
+    etats.ventes, etats.achats,
+    data.charges.status === 'absente' ? 'ready' : etats.charges,
+    direction ? (etats.personnel === 'absente' ? 'ready' : etats.personnel) : 'ready',
+  ) === 'ready';
+  const exporterFiduciaire = () => {
+    if (!pretExport) return;
+    const lignesAchats = lignesFiduciaire(data.docs, { debut: periode.debut, fin: periode.fin });
+    const feuilles = feuillesCompta({ periode, synthese: data.synthese, parJour: data.parJour, lignesAchats, etatTva: data.tvaPeriode, direction });
+    telechargerFichier(xlsxCompta(feuilles), nomFichierCompta(periode.debut, periode.fin, 'xlsx'), MIME_XLSX);
+    notify('Classeur Excel téléchargé.', 'success');
+  };
 
   const libelle = periode ? libellePeriode(periode) : '';
   const libellePrec = comparaison ? libellePeriode(comparaison) : '';
@@ -205,6 +249,9 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
           direction={direction}
           peutEcrire={peutEcrire}
           onOuvrir={ouvrir}
+          onManque={ouvrirManque}
+          cartes={affichage.cartesAccueil}
+          fiduciaire={peutEcrire ? { pret: pretExport, onExporter: exporterFiduciaire } : null}
         />
       )}
 
@@ -281,8 +328,9 @@ function ModuleCompta({ user, etablissement, setPage, direction, peutEcrire }) {
           aujourdhui={aujourdhui}
           peutEcrire={peutEcrire}
           doublons={s.doublons}
-          onRetour={retourAccueil}
+          onRetour={() => { setChargeNeuve(false); retourAccueil(); }}
           onChange={data.charges.reload}
+          ouvrirNouvelle={chargeNeuve}
         />
       )}
 

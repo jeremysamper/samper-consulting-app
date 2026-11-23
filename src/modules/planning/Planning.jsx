@@ -10,7 +10,8 @@ import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import PhoneLink from '../../components/PhoneLink.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
-import { ouvrirCompte } from '../../services/navigationService.js';
+import { ouvrirCompte, ouvrirDossier } from '../../services/navigationService.js';
+import { DOSSIERS_MODULES, peutOuvrirDocuments, peutReglerVisibilite } from '../documents/gardesDocuments.js';
 import { peutOuvrirSection } from '../../components/ui/BoutonRegler.jsx';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
@@ -1470,6 +1471,12 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const choixReglages = peutOuvrirSection('planning_modeles', { user, etablissement, shellMode: 'ordinateur' })
     && { titre: 'Régler le planning', detail: "Modèles d'horaires, groupes, contrats et pointage, dans Réglages.", onClick: () => ouvrirCompte('planning_modeles') };
 
+  // Plan 15, lot 5 : les contrats de l'équipe, dans Documents (dossier
+  // Contrats, réservé à la direction) : consultant et patron qui ouvrent
+  // Documents.
+  const choixContrats = peutReglerVisibilite(user?.role) && peutOuvrirDocuments(user, etablissement, getPermissionsForRole(user?.role))
+    && { titre: 'Dossier des contrats', detail: "Les contrats et avenants de l'équipe, dans Documents.", onClick: () => ouvrirDossier(DOSSIERS_MODULES.contrats) };
+
   // Solde du mois de la personne connectée (Mes horaires) : du 1er à hier,
   // le 1er le mois précédent. Rien tant que contrats et absences ne sont pas lus.
   const periodeSolde = periodeEnCours(zurichToday());
@@ -1514,6 +1521,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             choixAbsences,
             { titre: 'Dupliquer la semaine', onClick: () => setShowDupliquer(true) },
             canExport && { titre: 'Exporter', onClick: () => setExportOuvert(true) },
+            choixContrats,
             choixReglages,
           ]}
           onPointer={pointerDepuisAccueil}
@@ -1589,6 +1597,7 @@ const Planning = ({ user, etablissement, initialTab }) => {
             canWrite && activeTab === 'planning' && { titre: 'Sélectionner plusieurs horaires', detail: 'Pour les supprimer ou les recopier ailleurs.', onClick: () => { setRemplissage(null); if (!selectionMode) toggleSelectionMode(); } },
             activeTab === 'planning' && choixAbsences,
             activeTab === 'planning' && estDirectionPlanning(user?.role) && masquesEtab.status !== 'absent' && { titre: 'Personnes masquées', detail: "Retirer quelqu'un de l'affichage du planning.", onClick: () => setShowMasques(true) },
+            choixContrats,
             choixReglages,
           ] }]}
         />

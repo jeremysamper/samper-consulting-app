@@ -32,6 +32,16 @@ import FilConversation from './FilConversation.jsx';
 import FicheContact from './FicheContact.jsx';
 import { useEnregistreur } from './useEnregistreur.js';
 import { cibleDe, sm } from './messagerie.styles.js';
+import FilEquipe, { LigneFil } from './FilEquipe.jsx';
+import {
+  CLE_CANAUX_LUS, MAX_MESSAGE_EQUIPE, cleLu, equipeDuSoir, libelleFil, lireCanauxLus, participe, resumeFils,
+} from './filsEquipe.js';
+import { useMessagesCanaux } from '../hebergement/hotelData.js';
+import { supabase } from '../../services/supabase.js';
+import { useUserSettings } from '../../hooks/useUserSettings.js';
+import { useDemandeOuverture } from '../../hooks/useDemandeOuverture.js';
+import { UI_STORAGE_KEYS } from '../../utils/storage.js';
+import { zurichMinuitIso, zurichToday } from '../../utils/zurichTime.js';
 
 const VUES = [
   { id: 'discussions', label: 'Discussions' },
@@ -39,6 +49,11 @@ const VUES = [
 ];
 
 const libelleRole = (profile) => (roleConfig[profile?.role] || { label: profile?.role || '' }).label;
+const DETAIL_FIL = {
+  cuisine: 'La brigade de cuisine et la direction',
+  restaurant: "L'équipe de salle et la direction",
+  tous: "Toute l'équipe de la maison",
+};
 
 // La loupe dépliée prend toute la ligne de titre : SearchToggle garde seul
 // son état ouvert, on le lit donc dans le DOM de la ligne.
@@ -56,7 +71,55 @@ function useRechercheOuverte(ref) {
   return ouverte;
 }
 
-const Messages = ({ user, isActive = true }) => {
+// Fils d'équipe (plan 15, D5) : les fils de la personne en tête des
+// discussions, chacun avec son dernier message et ses non-lus (user_settings,
+// canaux_lus), puis « Écrire à l'équipe du soir » quand le planning en
+// nomme. La RLS de canaux_messages ne rend que les canaux où l'on participe.
+function useFilsEquipe({ etabId, user, actif }) {
+  const canaux = useMessagesCanaux(etabId, { actif: Boolean(etabId) });
+  const messages = React.useMemo(
+    () => canaux.rows.filter((m) => ['cuisine', 'restaurant', 'tous'].includes(m.canal)),
+    [canaux.rows],
+  );
+  const reglages = useUserSettings([CLE_CANAUX_LUS]);
+  const [lus, setLus] = React.useState({});
+  React.useEffect(() => {
+    if (!reglages.loading) setLus(lireCanauxLus(reglages.settings[CLE_CANAUX_LUS]));
+  }, [reglages.loading, reglages.settings]);
+  const marquerLu = React.useCallback((canal) => {
+    const cle = cleLu(etabId, canal);
+    setLus((avant) => {
+      const suivant = { ...avant, [cle]: new Date().toISOString() };
+      Promise.resolve(reglages.setSetting(CLE_CANAUX_LUS, suivant)).catch((e) => console.warn('[messages] lecture du fil non gardée', e));
+      return suivant;
+    });
+  }, [etabId, reglages.setSetting]);
+
+  // Horaires du jour : seulement l'équipe du soir, lue quand le module est
+  // affiché. Une lecture en échec retire simplement la ligne du soir.
+  const aujourdhui = zurichToday();
+  const [soir, setSoir] = React.useState([]);
+  React.useEffect(() => {
+    if (!etabId || !actif) return undefined;
+    let vivant = true;
+    supabase.from('shifts').select('id, user_id, date, debut, fin').eq('etablissement_id', etabId).eq('date', aujourdhui)
+      .then(({ data, error }) => {
+        if (!vivant || error) return;
+        const shifts = (data || []).map((r) => ({ userId: r.user_id, date: r.date, debut: String(r.debut || '').slice(0, 5), fin: String(r.fin || '').slice(0, 5) }));
+        setSoir(equipeDuSoir(shifts, aujourdhui, { sauf: user.id }));
+      });
+    return () => { vivant = false; };
+  }, [etabId, actif, aujourdhui, user.id]);
+
+  const fils = React.useMemo(() => resumeFils({
+    role: user.role, messages, lus, etabId, moi: user.id, debutJour: zurichMinuitIso(aujourdhui),
+  }), [user.role, user.id, messages, lus, etabId, aujourdhui]);
+
+  return { fils, messages, soir, marquerLu, inserer: canaux.inserer, status: canaux.status };
+}
+
+const Messages = ({ user, etablissement, isActive = true }) => {
+  const etabId = etablissement?.id || null;
   const isMobile = useIsMobile();
   const tactile = estTactile(useShellMode());
   const cible = cibleDe(tactile);
@@ -76,7 +139,17 @@ const Messages = ({ user, isActive = true }) => {
   const titreRef = React.useRef(null);
   const rechercheOuverte = useRechercheOuverte(titreRef);
 
+  // Fil d'équipe ouvert (canal), son brouillon, et « pour l'équipe du soir ».
+  const equipe = useFilsEquipe({ etabId, user, actif: isActive });
+  const [filCanal, setFilCanal] = React.useState(null);
+  const [filDraft, setFilDraft] = React.useState('');
+  const [filSoir, setFilSoir] = React.useState(false);
+  const [filEnvoi, setFilEnvoi] = React.useState(false);
+  const filEquipeRef = React.useRef(null);
+  const composerEquipeRef = React.useRef(null);
+
   const filOuvert = vue === 'discussions' && Boolean(selectedId);
+  const filEquipeOuvert = vue === 'discussions' && Boolean(filCanal);
   const ficheOuverte = vue === 'contacts' && Boolean(ficheId);
 
   // Un vocal en cours appartient au fil où il a commencé : il est abandonné,
@@ -93,8 +166,62 @@ const Messages = ({ user, isActive = true }) => {
   // sienne et pose celle du fil dans le même geste (historyNav l'ordonne).
   const closeThread = React.useCallback(() => setSelectedId(null), []);
   const closeFiche = React.useCallback(() => setFicheId(null), []);
+  const closeFilEquipe = React.useCallback(() => { setFilCanal(null); setFilSoir(false); }, []);
   useBackLayer(isMobile && filOuvert, closeThread, 'message-thread');
   useBackLayer(isMobile && ficheOuverte, closeFiche, 'contact-fiche');
+  useBackLayer(isMobile && filEquipeOuvert, closeFilEquipe, 'message-fil-equipe');
+
+  // Un fil d'équipe : la conversation à deux se referme, le brouillon de
+  // l'alerte ou les noms du soir se posent.
+  const ouvrirFil = React.useCallback((canal, { texte = '', soir = false } = {}) => {
+    const c = participe(canal, user.role) ? canal : 'tous';
+    setVue('discussions');
+    setFicheId(null);
+    setSelectedId(null);
+    setFilCanal(c);
+    setFilSoir(soir);
+    setFilDraft(texte || '');
+    if (!isMobile) requestAnimationFrame(() => composerEquipeRef.current?.focus());
+  }, [user.role, isMobile]);
+
+  // Raccourci d'une alerte (« Prévenir l'équipe ») ou de l'accueil.
+  useDemandeOuverture(UI_STORAGE_KEYS.messagesOuvrir, 'sc:messages-ouvrir', (d) => {
+    ouvrirFil(d.canal || 'tous', { texte: d.texte || '', soir: Boolean(d.soir) });
+  });
+
+  // Fil d'équipe affiché : il est lu.
+  const messagesFil = React.useMemo(
+    () => (filCanal ? equipe.messages.filter((m) => m.canal === filCanal)
+      .sort((a, b) => String(a.createdAt || '').localeCompare(String(b.createdAt || ''))) : []),
+    [equipe.messages, filCanal],
+  );
+  const { marquerLu } = equipe;
+  const nonLusFil = equipe.fils.find((f) => f.canal === filCanal)?.nonLus || 0;
+  React.useEffect(() => {
+    if (isActive && filEquipeOuvert && nonLusFil > 0) marquerLu(filCanal);
+  }, [isActive, filEquipeOuvert, filCanal, nonLusFil, marquerLu]);
+  React.useEffect(() => {
+    const el = filEquipeRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messagesFil.length, filCanal]);
+
+  const envoyerEquipe = async () => {
+    const texte = filDraft.trim();
+    if (!texte || !filCanal || filEnvoi) return;
+    if (texte.length > MAX_MESSAGE_EQUIPE) {
+      notifyLegacy(`Message trop long (${MAX_MESSAGE_EQUIPE} caractères au maximum)`, 'warning');
+      return;
+    }
+    setFilEnvoi(true);
+    const mentions = filSoir && filCanal === 'tous' ? equipe.soir : [];
+    const r = await equipe.inserer({ canal: filCanal, contenu: texte, mentions, created_by: user.id });
+    setFilEnvoi(false);
+    if (r.error) { notifyLegacy('Message non envoyé. ' + r.error, 'error'); return; }
+    setFilDraft('');
+    setFilSoir(false);
+    marquerLu(filCanal);
+    composerEquipeRef.current?.focus();
+  };
 
   // Hauteur du cadre : le reste de la zone de contenu sous lui, mesuré contre
   // le conteneur qui défile (jamais innerHeight, faux sur iPad).
@@ -168,6 +295,8 @@ const Messages = ({ user, isActive = true }) => {
   }, [thread.length, selectedId, filOuvert]);
 
   const openConversation = (id) => {
+    setFilCanal(null);
+    setFilSoir(false);
     setSelectedId(id);
     setDraft('');
     if (!isMobile) requestAnimationFrame(() => composerRef.current?.focus());
@@ -230,6 +359,39 @@ const Messages = ({ user, isActive = true }) => {
       onClick={() => openConversation(id)}
     />
   ));
+  // Fils d'équipe en tête des discussions (sans recherche en cours) : un
+  // toucher ouvre le fil ; « Écrire à l'équipe du soir » ouvre Toute
+  // l'équipe avec les noms de ceux qui travaillent ce soir.
+  const nomCourt = (id) => profileById.get(id)?.prenom || profileById.get(id)?.nom || '';
+  const lignesEquipe = !search && equipe.fils.length > 0 ? (
+    <>
+      <div style={ms.rubrique}>Équipe</div>
+      {equipe.fils.map((f) => (
+        <LigneFil
+          key={f.canal}
+          libelle={f.libelle}
+          date={f.dernier ? formatListDate(f.dernier.createdAt) : null}
+          apercu={f.dernier ? `${f.dernier.createdBy === user.id ? 'Vous : ' : ''}${f.dernier.contenu}` : 'Aucun message pour le moment'}
+          apercuDonnee={Boolean(f.dernier)}
+          nonLus={f.nonLus}
+          actif={filCanal === f.canal && !filSoir}
+          onClick={() => ouvrirFil(f.canal)}
+        />
+      ))}
+      {equipe.soir.length > 0 && participe('tous', user.role) && (
+        <LigneFil
+          icone="soir"
+          libelle="Écrire à l'équipe du soir"
+          apercu={equipe.soir.map(nomCourt).filter(Boolean).join(', ')}
+          apercuDonnee
+          actif={filCanal === 'tous' && filSoir}
+          onClick={() => ouvrirFil('tous', { soir: true })}
+        />
+      )}
+      <div style={ms.rubrique}>Personnes</div>
+    </>
+  ) : null;
+
   const listeContacts = annuaire.length === 0 ? videListe : annuaire.map((p) => (
     <LignePersonne key={p.id} profile={p} apercu={libelleRole(p)} actif={ficheId === p.id} onClick={() => setFicheId(p.id)} />
   ));
@@ -245,7 +407,7 @@ const Messages = ({ user, isActive = true }) => {
         )}
         <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une personne…" style={{ minWidth: cible, minHeight: cible }} />
       </div>
-      <div style={sm.liste}>{vue === 'contacts' ? listeContacts : listeDiscussions}</div>
+      <div style={sm.liste}>{vue === 'contacts' ? listeContacts : <>{lignesEquipe}{listeDiscussions}</>}</div>
     </div>
   );
 
@@ -272,6 +434,29 @@ const Messages = ({ user, isActive = true }) => {
     </div>
   );
 
+  const filEquipePanel = filCanal && (
+    <div style={ms.colonne}>
+      <FilEquipe
+        libelle={libelleFil(filCanal)}
+        detail={DETAIL_FIL[filCanal] || null}
+        messages={messagesFil}
+        profileById={profileById}
+        userId={user.id}
+        filRef={filEquipeRef}
+        composerRef={composerEquipeRef}
+        draft={filDraft}
+        onDraft={setFilDraft}
+        onSend={envoyerEquipe}
+        sending={filEnvoi}
+        mentions={filSoir && filCanal === 'tous' ? equipe.soir : []}
+        onRetirerMentions={() => setFilSoir(false)}
+        onRetour={isMobile ? closeFilEquipe : undefined}
+        cible={cible}
+        aide={!isMobile}
+      />
+    </div>
+  );
+
   const fichePanel = fiche && (
     <div style={ms.colonne}>
       <FicheContact
@@ -289,29 +474,29 @@ const Messages = ({ user, isActive = true }) => {
   const videDroite = (
     <div style={ms.droiteVide}>
       <MessageSquare size={34} strokeWidth={1.5} aria-hidden="true" style={{ opacity: 0.35, color: 'var(--text2)' }} />
-      <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginTop: 8 }}>Choisissez une personne</div>
-      {vue === 'discussions' && (
-        <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4, maxWidth: 320 }}>
-          Chaque conversation est privée : seuls vous et votre interlocuteur la voyez.
-        </div>
-      )}
+      <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', marginTop: 8 }}>
+        {vue === 'discussions' && equipe.fils.length ? 'Choisissez un fil ou une personne' : 'Choisissez une personne'}
+      </div>
     </div>
   );
 
   let contenu;
   if (isMobile) {
-    contenu = filOuvert ? threadPanel : (ficheOuverte && fichePanel) || listPanel;
+    contenu = filOuvert ? threadPanel : (filEquipeOuvert && filEquipePanel) || (ficheOuverte && fichePanel) || listPanel;
   } else {
-    const droite = vue === 'contacts' ? (fichePanel || videDroite) : (selectedId ? threadPanel : videDroite);
+    const droite = vue === 'contacts' ? (fichePanel || videDroite)
+      : (selectedId ? threadPanel : (filCanal ? filEquipePanel : videDroite));
     contenu = <>{listPanel}{droite}</>;
   }
 
   return (
     <div style={ms.root}>
       {/* Téléphone : la phrase d'explication cède sa place au fil et à la fiche. */}
-      {!(isMobile && (filOuvert || ficheOuverte)) && (
+      {!(isMobile && (filOuvert || ficheOuverte || filEquipeOuvert)) && (
         <SectionHeader
-          sub="Écrivez à vos collègues et à votre consultant. Chaque conversation n'est visible que par ses deux participants."
+          sub={equipe.fils.length
+            ? "Écrivez à votre équipe dans son fil, ou à une personne. Une conversation à deux n'est visible que par ses deux participants."
+            : "Écrivez à vos collègues et à votre consultant. Chaque conversation n'est visible que par ses deux participants."}
         />
       )}
       <div ref={cadreRef} style={{ ...(isMobile ? ms.cadreTelephone : ms.cadreBureau), height: hauteur ?? undefined }}>
@@ -343,6 +528,8 @@ const ms = {
   // Deux onglets tiennent dans la colonne la plus étroite (187 px sur 301) :
   // la barre ne défile pas en largeur.
   vues: (cible) => ({ padding: 0, borderWidth: 0, gap: 8, alignItems: 'stretch', minHeight: cible, overflowX: 'visible' }),
+  // Titre d'un groupe de la liste (Équipe, Personnes).
+  rubrique: { padding: '10px 8px 4px', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text3)', flexShrink: 0 },
   // Vide : une carte à la hauteur de son contenu, pas étirée sur la rangée.
   droiteVide: { ...carte, alignSelf: 'start', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '44px 20px', minWidth: 0 },
 };

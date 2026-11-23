@@ -47,6 +47,18 @@ export function achatsPeriode(docs, { debut, fin }) {
   };
 }
 
+// Lot 5 : les factures d'une période qui portent un manque, pour les ouvrir
+// à la vérification (Factures & achats). Même règle que achatsPeriode :
+// 'sansHt' = montant hors TVA absent (compté TVA comprise), 'sansTaux' = taux
+// de TVA absent.
+export function idsFacturesAVerifier(docs, { debut, fin }, manque) {
+  const { factures } = trierDocuments((docs || []).filter(d => dansIntervalle(d.dateDocument, { debut, fin })));
+  return factures
+    .filter((f) => (manque === 'sansTaux' ? nombre(f.tvaTaux) == null : montantFacture(f).source !== 'ht'))
+    .map((f) => f.id)
+    .filter(Boolean);
+}
+
 // Variation de stock d'une période d'inventaire : null hors mode inventaire,
 // ou quand l'inventaire du début ou de la fin manque.
 export function variationStock(inventaires, periode) {

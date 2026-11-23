@@ -15,8 +15,10 @@ import { Chf, dateCH, pluriel, st as ui, tauxTexte } from './comptaUi.jsx';
 // droit « Régler les factures » (factures_achat), comme en base.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function EcranCharges({ etabId, charges, aujourdhui, peutEcrire, doublons, onRetour, onChange }) {
-  const [fenetre, setFenetre] = React.useState(null); // { mode, charge }
+// ouvrirNouvelle (lot 5) : l'écran s'ouvre sur la fenêtre d'une charge neuve
+// (manque « aucune charge fixe saisie » de l'accueil).
+export default function EcranCharges({ etabId, charges, aujourdhui, peutEcrire, doublons, onRetour, onChange, ouvrirNouvelle = false }) {
+  const [fenetre, setFenetre] = React.useState(() => (ouvrirNouvelle && peutEcrire ? { mode: 'nouvelle' } : null)); // { mode, charge }
   const fermer = React.useCallback(() => setFenetre(null), []);
   const [fin, setFin] = React.useState(aujourdhui);
   const [enCours, setEnCours] = React.useState(false);

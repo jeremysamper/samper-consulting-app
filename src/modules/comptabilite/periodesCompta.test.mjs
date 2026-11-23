@@ -95,3 +95,16 @@ test('comparaison à durée égale : un mois entamé se compare aux mêmes jours
   const mars = periodeMois('2026-03-31');
   assert.equal(periodeComparable(mars, periodePrecedente(mars), '2026-03-31').partielle, undefined);
 });
+
+// Plan 15, lot 5 : exercice de la maison décalé (début le 1er juillet).
+test('exercice décalé : bornes, voisins et libellé', async () => {
+  const { periodeAnnee, periodePrecedente, periodeSuivante, periodeCourante, libellePeriode, moisExercice } = await import('./periodesCompta.js');
+  assert.deepEqual(periodeAnnee('2026-11-22', 7), { type: 'annee', debut: '2026-07-01', fin: '2027-06-30', debutMois: 7 });
+  assert.deepEqual(periodeAnnee('2026-03-10', 7), { type: 'annee', debut: '2025-07-01', fin: '2026-06-30', debutMois: 7 });
+  assert.deepEqual(periodeAnnee('2026-03-10'), { type: 'annee', debut: '2026-01-01', fin: '2026-12-31' });
+  const p = periodeCourante('annee', '2026-11-22', { debutMois: 7 });
+  assert.equal(periodePrecedente(p).debut, '2025-07-01');
+  assert.equal(periodeSuivante(periodePrecedente(p), '2026-11-22').debut, '2026-07-01');
+  assert.equal(libellePeriode(p), 'exercice 2026-2027');
+  assert.equal(moisExercice(13), 1);
+});

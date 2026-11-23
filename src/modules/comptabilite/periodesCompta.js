@@ -55,9 +55,16 @@ export function periodeTrimestre(iso) {
   return { type: 'trimestre', numero, debut: `${a}-${pad(mDebut)}-01`, fin: `${a}-${pad(mFin)}-${pad(dernierJourDuMois(a, mFin))}` };
 }
 
-export function periodeAnnee(iso) {
-  const { a } = parties(iso);
-  return { type: 'annee', debut: `${a}-01-01`, fin: `${a}-12-31` };
+// Plan 15, lot 5 : l'année est l'exercice de la maison, qui commence le 1er
+// du mois `debutMois` (compta_reglages.exercice_debut_mois, janvier par
+// défaut). Un exercice décalé porte son mois de début pour ses voisins.
+export const moisExercice = (v) => (Number.isInteger(v) && v >= 1 && v <= 12 ? v : 1);
+export function periodeAnnee(iso, debutMois = 1) {
+  const { a, m } = parties(iso);
+  const dm = moisExercice(debutMois);
+  if (dm === 1) return { type: 'annee', debut: `${a}-01-01`, fin: `${a}-12-31` };
+  const an = m >= dm ? a : a - 1;
+  return { type: 'annee', debut: `${an}-${pad(dm)}-01`, fin: ajouterJours(`${an + 1}-${pad(dm)}-01`, -1), debutMois: dm };
 }
 
 // Périodes d'inventaire, de la plus ancienne à la plus récente. Seuls les
@@ -81,9 +88,9 @@ export function periodesInventaire(inventaires, aujourdhui) {
 }
 
 // Période en cours d'un type ; null pour l'inventaire sans inventaire validé.
-export function periodeCourante(type, aujourdhui, { periodesInv = [] } = {}) {
+export function periodeCourante(type, aujourdhui, { periodesInv = [], debutMois = 1 } = {}) {
   if (type === 'trimestre') return periodeTrimestre(aujourdhui);
-  if (type === 'annee') return periodeAnnee(aujourdhui);
+  if (type === 'annee') return periodeAnnee(aujourdhui, debutMois);
   if (type === 'inventaire') return periodesInv[periodesInv.length - 1] || null;
   return periodeMois(aujourdhui);
 }
@@ -99,7 +106,7 @@ export function periodePrecedente(p, { periodesInv = [] } = {}) {
   }
   const veille = ajouterJours(p.debut, -1);
   if (p.type === 'trimestre') return periodeTrimestre(veille);
-  if (p.type === 'annee') return periodeAnnee(veille);
+  if (p.type === 'annee') return periodeAnnee(veille, p.debutMois);
   return periodeMois(veille);
 }
 
@@ -124,7 +131,7 @@ export function periodeSuivante(p, aujourdhui, { periodesInv = [] } = {}) {
   const lendemain = ajouterJours(p.fin, 1);
   if (lendemain > aujourdhui) return null;
   if (p.type === 'trimestre') return periodeTrimestre(lendemain);
-  if (p.type === 'annee') return periodeAnnee(lendemain);
+  if (p.type === 'annee') return periodeAnnee(lendemain, p.debutMois);
   return periodeMois(lendemain);
 }
 
@@ -155,7 +162,7 @@ export function libellePeriode(p) {
   if (p.partielle) return intervalleLong(p.debut, p.fin);
   if (p.type === 'mois') return `${MOIS[m - 1]} ${a}`;
   if (p.type === 'trimestre') return `${ordinal(p.numero || Math.floor((m - 1) / 3) + 1)} trimestre ${a}`;
-  if (p.type === 'annee') return `année ${a}`;
+  if (p.type === 'annee') return p.debutMois > 1 ? `exercice ${a}-${a + 1}` : `année ${a}`;
   if (p.type === 'inventaire') {
     if (p.ouverte) return `depuis le ${dateLongue(p.inventaireDebut)}`;
     return intervalleLong(p.debut, p.fin);

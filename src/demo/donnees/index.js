@@ -23,6 +23,7 @@ import {
 import { genererHotel } from './hotel.js';
 import { genererSpa } from './spa.js';
 import { empreinteDemo } from '../rpc.js';
+import { alertesCuisine, commandesCadeaux, executionsDuJour, fichesEnBrouillon, procedures } from './bureau.js';
 
 // Codes de pointage de la brigade de démo (borne, lot L6) : Inès 4826,
 // Sofia 5937, Hugo 3816. Seule l'empreinte est gardée, comme en base.
@@ -76,7 +77,8 @@ export function creerBase() {
     plat_recettes: PLAT_RECETTES,
     cartes: CARTES,
     carte_plats: CARTE_PLATS,
-    fiches_salle: FICHES_SALLE,
+    // Lot 5 : deux fiches en brouillon, à publier en un geste.
+    fiches_salle: fichesEnBrouillon(FICHES_SALLE),
     carte_fiches_salle: CARTE_FICHES_SALLE,
     salles: SALLES,
     salle_tables: SALLE_TABLES,
@@ -117,8 +119,9 @@ export function creerBase() {
     mep_listes: mep.mep_listes,
     mep_items: mep.mep_items,
     mep_modeles: MEP_MODELES,
-    sops: SOPS,
-    sop_executions: [],
+    // Lot 5 : une procédure rappelée à l'heure qu'il est, une commencée par Inès.
+    sops: procedures(SOPS),
+    sop_executions: executionsDuJour(SOPS).executions,
     sop_step_states: [],
     kit_items: [],
     documents: DOCUMENTS,
@@ -128,7 +131,7 @@ export function creerBase() {
     points_reglages: POINTS_REGLAGES,
     points_cadeaux: POINTS_CADEAUX,
     points_mouvements: genererPointsMouvements(),
-    points_commandes: [],
+    points_commandes: commandesCadeaux(POINTS_CADEAUX),
     compta_reglages: COMPTA_REGLAGES,
     charges_fixes: CHARGES_FIXES,
     achats_documents: [...genererAchats(), achatReception],
@@ -138,9 +141,11 @@ export function creerBase() {
     releve_lignes: [],
     ventes_jour: genererVentesJour(),
     journal_activite: genererJournal(),
+    // Lot 5 : la semaine en cours du journal (vue de la base), mêmes lignes.
+    journal_activite_semaine: genererJournal(),
     demarrage_etapes: ['etablissement', 'recettes', 'catalogue', 'planning', 'exemple'].map((etape) => ({ etablissement_id: ETAB, etape, fait_le: '2026-03-01T08:00:00Z', fait_par: 'demo-patron' })),
     alert_rules: [],
-    alert_instances: [],
+    alert_instances: alertesCuisine(),
     alert_reads: [],
     push_abonnements: [],
     traductions: [],
