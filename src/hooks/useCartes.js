@@ -164,7 +164,7 @@ export function useCartes(etabId, { role, genre = 'mets' } = {}) {
     };
     if (legacySB) {
       try {
-        const saved = await legacySB.db.upsertCarte(carte);
+        const saved = await legacySB.db.upsertCarte(carte, { creation: true });
         setAllCartes(prev => (prev.some(c => c.id === saved.id) ? prev : [...prev, saved]));
         // L'écriture a abouti : la liste à l'écran est de nouveau fiable, même
         // si la dernière lecture avait échoué (réseau revenu entre-temps).

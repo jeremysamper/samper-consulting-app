@@ -1474,7 +1474,9 @@ export function installLegacySupabase() {
         .sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
     },
 
-    async upsertCarte(carte) {
+    // creation : vrai pour une carte neuve (addCarte). Seule une création
+    // envoie le genre (voir plus bas).
+    async upsertCarte(carte, { creation = false } = {}) {
       const payload = {
         id: carte.id || ('carte-' + Date.now()),
         etablissement_id: carte.etablissementId,
@@ -1492,7 +1494,12 @@ export function installLegacySupabase() {
         // Genre (Carte des boissons, migration 20261122) : envoyé seulement à
         // la création d'une carte de boissons. Sans clé, l'upsert garde la
         // valeur en base : renommer une carte ne change jamais son genre.
-        ...(carte.genre === 'boissons' ? { genre: 'boissons' } : {}),
+        // La garde du lot C (20261123_carte_boissons_droits) l'exige : un
+        // upsert vérifie la policy d'insertion sur la ligne proposée, et créer
+        // une carte de boissons demande le droit boissons. Un renommage qui
+        // renverrait le genre serait refusé à qui gère les cartes par
+        // « Modifier » recettes (Fiches salle).
+        ...(creation && carte.genre === 'boissons' ? { genre: 'boissons' } : {}),
       };
       const { data, error } = await client.from('cartes').upsert(payload).select().single();
       if (error) throw error;
