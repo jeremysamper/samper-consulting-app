@@ -70,7 +70,7 @@ export default function CommandeFournisseurs({ user, etablissement, onParCarte }
   const etabId = etablissement?.id || null;
   const donnees = useCommandeV1(etabId);
   const { status, fournisseurs, commandes, lignes, groupesPris, habituels, cibles, produits, groupes, relire, poserLigne } = donnees;
-  const { config: reglageGroupes } = useReglagesModule(etabId, 'groupes');
+  const { reglages: reglageGroupes } = useReglagesModule(etabId, 'groupes');
   const delaiGroupes = Number.isInteger(reglageGroupes?.delai_alerte_jours) ? reglageGroupes.delai_alerte_jours : 14;
   const { menuDe } = useGroupeMenus(etabId);
   const estDirection = DIRECTION.includes(user?.role);
@@ -122,7 +122,8 @@ export default function CommandeFournisseurs({ user, etablissement, onParCarte }
   const produitsFournisseur = React.useMemo(() => produits.filter((p) => p.fournisseur_id === fournisseur?.id), [produits, fournisseur]);
   const livraison = fournisseur ? prochaineLivraison(fournisseur) : null;
   const aCommander = lignesCommande.filter((l) => { const q = quantiteRetenue(l); return q !== null && q > 0; });
-  const enAttente = lignesCommande.filter((l) => quantiteRetenue(l) === null);
+  // Restes à taper : lignes à stock cible dont le reste n’est pas encore donné.
+  const enAttente = lignesCommande.filter((l) => l.stock_cible != null && l.reste == null && l.quantite == null && !(Number(l.besoin_groupes) > 0));
 
   // ── Écritures ──
   const creerCommande = async (fid, dateLivraison) => {
@@ -498,7 +499,7 @@ export default function CommandeFournisseurs({ user, etablissement, onParCarte }
               )}
 
               {modifiable && (
-                <Panneau style={s.carte}>
+                <Panneau style={s.carteNote}>
                   <label style={fs.section}>
                     <span style={fs.label}>Note pour le fournisseur</span>
                     <NoteCommande valeur={commande.note || ''} onValider={ecrireNote} />
@@ -622,7 +623,7 @@ function LigneCommande({ ligne, modifiable, recue, derniere, onReste, onOuvrir }
         </label>
       )}
       <button type="button" style={s.colQuantite} onClick={onOuvrir} aria-describedby={idNom}>
-        <span style={s.libelleChamp}>{ligne.quantite != null ? 'À commander, corrigé' : 'À commander'}</span>
+        <span style={s.libelleChamp}>À commander</span>
         <span style={q === null ? s.quantiteVide : s.quantite}>
           {q === null ? (aCible ? 'Tapez le reste' : 'Quantité à choisir') : q === 0 ? 'Rien' : <span data-no-translate="">{libelleCommande(ligne, q)}</span>}
         </span>
@@ -760,6 +761,7 @@ function NoteCommande({ valeur, onValider }) {
 
 const s = {
   carte: { padding: 0, overflow: 'hidden' },
+  carteNote: { padding: 16 },
   entete: { display: 'flex', alignItems: 'flex-start', gap: 12, padding: '14px 16px', boxShadow: 'inset 0 -1px 0 var(--rule-soft)', flexWrap: 'wrap' },
   titre: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)' },
   sousTitre: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 2 },

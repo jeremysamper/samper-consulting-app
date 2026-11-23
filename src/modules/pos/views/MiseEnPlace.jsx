@@ -13,6 +13,8 @@ import { PosEmptyState }  from '../components/PosEmptyState.jsx';
 import { PosExportButton } from '../components/PosExportButton.jsx';
 import { ArrowRight } from 'lucide-react';
 import { nomLisible } from '../lib/nomLisible.js';
+import { navigateToPage } from '../../../services/navigationService.js';
+import { Btn } from '../../../components/ui/index.jsx';
 
 const PRINT_ID = 'pos-print-mise-en-place';
 
@@ -132,6 +134,13 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* La liste se prépare dans le module Mise en place (plan 15, lot 4) :
+          ces quantités y sont reprises, ajustées par la prévision. */}
+      <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 'var(--t2)', color: 'var(--text2)', flex: '1 1 240px' }}>Préparez la liste de demain dans la Mise en place : ces quantités y sont reprises.</span>
+        <Btn variant="ghost" onClick={() => navigateToPage('mep')}>Ouvrir la Mise en place</Btn>
+      </div>
 
       {/* Barre d'actions (hors impression) */}
       <div className="no-print" style={{

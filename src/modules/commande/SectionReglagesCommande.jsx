@@ -83,6 +83,9 @@ function FenetreFournisseur({ etabId, fournisseur, onClose, onSaved }) {
   }));
   const [produits, setProduits] = React.useState(null);
   const [cibles, setCibles] = React.useState({}); // `${produit}:${jour}` -> texte
+  // Produits habituels (commande_habituels, lot 4) : repris dans chaque commande neuve.
+  const [habituels, setHabituels] = React.useState(null); // produits habituels lus en base
+  const [habituelsChoisis, setHabituelsChoisis] = React.useState(new Set());
   const [enCours, setEnCours] = React.useState(false);
 
   React.useEffect(() => {
@@ -94,6 +97,13 @@ function FenetreFournisseur({ etabId, fournisseur, onClose, onSaved }) {
       if (error) { console.error('[commande] produits', error); setProduits([]); return; }
       setProduits(prods || []);
       const ids = (prods || []).map((p) => p.id);
+      const { data: hs, error: eh } = await supabase.from('commande_habituels').select('produit_id')
+        .eq('etablissement_id', etabId).eq('fournisseur_id', fournisseur.id);
+      if (!vivant) return;
+      if (eh) { console.error('[commande] habituels', eh); } else {
+        const lus = new Set((hs || []).map((h) => h.produit_id));
+        setHabituels(lus); setHabituelsChoisis(new Set(lus));
+      }
       if (!ids.length) return;
       const { data: cs, error: e2 } = await supabase.from('commande_cibles').select('produit_id, jour_livraison, quantite')
         .eq('etablissement_id', etabId).in('produit_id', ids);
@@ -143,6 +153,19 @@ function FenetreFournisseur({ etabId, fournisseur, onClose, onSaved }) {
       const r = await supabase.from('commande_cibles').delete().eq('produit_id', x.produit).eq('jour_livraison', x.jour);
       erreur = r.error;
     }
+    // Produits habituels : ajoutés ou retirés selon les cases cochées.
+    if (!erreur && habituels) {
+      const ajouts = [...habituelsChoisis].filter((id) => !habituels.has(id));
+      const retraits = [...habituels].filter((id) => !habituelsChoisis.has(id));
+      if (ajouts.length) {
+        const r = await supabase.from('commande_habituels').insert(ajouts.map((id, i) => ({ etablissement_id: etabId, fournisseur_id: fournisseur.id, produit_id: id, ordre: habituels.size + i })));
+        erreur = r.error;
+      }
+      if (!erreur && retraits.length) {
+        const r = await supabase.from('commande_habituels').delete().eq('fournisseur_id', fournisseur.id).in('produit_id', retraits);
+        erreur = r.error;
+      }
+    }
     setEnCours(false);
     if (erreur) { console.error('[commande] cibles', erreur); notify("Les stocks cibles n'ont pas pu être enregistrés. Réessayez.", 'error'); return; }
     notify('Fournisseur réglé.', 'success');
@@ -179,6 +202,24 @@ function FenetreFournisseur({ etabId, fournisseur, onClose, onSaved }) {
           <span style={fs.remarque}>0 : le jour même, avant l'heure limite.</span>
         </label>
       </div>
+      {produits && produits.length > 0 && habituels && (
+        <div style={fs.section}>
+          <span style={fs.label}>Produits habituels</span>
+          <span style={fs.remarque}>Ils entrent dans chaque nouvelle commande de ce fournisseur, même sans stock cible.</span>
+          <div style={st.habituels}>
+            {produits.map((p) => (
+              <label key={p.id} style={st.habituel}>
+                <input
+                  type="checkbox" style={st.case}
+                  checked={habituelsChoisis.has(p.id)}
+                  onChange={() => setHabituelsChoisis((s) => { const n = new Set(s); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })}
+                />
+                <span data-no-translate="">{p.nom}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
       <div style={fs.section}>
         <span style={fs.label}>Stock cible le jour de la livraison</span>
         {produits === null && <EtatModule status="loading" />}
@@ -236,6 +277,10 @@ const st = {
   celluleNom: { flex: '1 1 180px', minWidth: 140, fontSize: 'var(--t2)', color: 'var(--text)' },
   celluleJour: { flex: '0 0 92px', width: 92, fontSize: 'var(--t1)', color: 'var(--text2)', textAlign: 'center' },
   unite: { fontSize: 'var(--t1)', color: 'var(--text3)' },
+  habituels: { display: 'flex', flexWrap: 'wrap', gap: '4px 16px' },
+  // Case dans un label de 44 px de haut (cible tactile) ; la case fait 24 px.
+  habituel: { display: 'inline-flex', alignItems: 'center', gap: 10, minHeight: 44, minWidth: 44, fontSize: 'var(--t2)', color: 'var(--text)', cursor: 'pointer' },
+  case: { width: 24, height: 24, margin: 0, accentColor: 'var(--accent)', flexShrink: 0 },
   champCible: {
     width: '100%', minHeight: 44, boxSizing: 'border-box', padding: '0 8px', textAlign: 'right',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)',

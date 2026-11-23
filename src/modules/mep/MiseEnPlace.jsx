@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardCheck, ClipboardList, ListChecks, ListPlus } from 'lucide-react';
+import { CalendarClock, ClipboardCheck, ClipboardList, ListChecks, ListPlus } from 'lucide-react';
 import { dbService } from '../../services/dbService.js';
 import { canManageModule } from '../../data/demoData.js';
 import { getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
@@ -11,6 +11,7 @@ import { useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import MepDetail from './MepDetail.jsx';
 import MepEditor from './MepEditor.jsx';
+import PreparerDemain from './PreparerDemain.jsx';
 import { s, formatDateService } from './MiseEnPlace.styles.js';
 import { messageErreur } from '../../utils/messageErreur.js';
 import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
@@ -65,6 +66,7 @@ const MiseEnPlace = ({ user, etablissement }) => {
   const [search, setSearch] = React.useState('');
   const [activeId, setActiveId] = React.useState(null);
   const [editing, setEditing] = React.useState(null); // liste en cours d'edition (null = nouvelle)
+  const [demainOuvert, setDemainOuvert] = React.useState(false);
 
   const reload = React.useCallback(async () => {
     if (!legacySB) { setLoading(false); return; }
@@ -161,6 +163,7 @@ const MiseEnPlace = ({ user, etablissement }) => {
   const duService = loading ? null : listeDuService(listesVues);
   const tuiles = [
     { id: 'service', Icone: ClipboardCheck, libelle: 'Ma liste du service', etat: duService && <span data-no-translate>{duService.nom}</span>, visible: Boolean(duService), onClick: () => openDetail(duService.id) },
+    { id: 'demain', Icone: CalendarClock, libelle: 'Mise en place de demain', etat: <>selon les ventes et la prévision</>, visible: canEdit, onClick: () => setDemainOuvert(true) },
     { id: 'nouvelle', Icone: ListPlus, libelle: 'Nouvelle liste', etat: <>pour un service</>, visible: canEdit, onClick: openNew },
   ];
 
@@ -184,6 +187,14 @@ const MiseEnPlace = ({ user, etablissement }) => {
           {/* Les autres tâches, en gros boutons au-dessus des listes ; « Nouvelle
               liste » remplace aussi l'appel de la liste vide (un seul bouton principal). */}
           {tuiles.some(t => t.visible) && <div className="mep-tuiles"><AccueilModule tuiles={tuiles} /></div>}
+          {demainOuvert && (
+            <PreparerDemain
+              etablissement={etablissement}
+              user={user}
+              onClose={() => setDemainOuvert(false)}
+              onCreee={(id) => { setDemainOuvert(false); reload(); openDetail(id); }}
+            />
+          )}
           {!loading && listesVues.length > 0 && (
             <div className="mep-reperes" data-mep-reperes="">
               <CarteRepere

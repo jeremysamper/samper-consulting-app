@@ -51,7 +51,7 @@ export function useCommandeV1(etabId) {
       if (!vivant.current) return;
       setEtat({
         status: 'ready',
-        fournisseurs: fournisseurs.filter((f) => f.actif !== false),
+        fournisseurs: fournisseurs.filter((f) => f.actif !== false).sort((a, b) => String(a.nom || '').localeCompare(String(b.nom || ''), 'fr', { sensitivity: 'base' })),
         commandes, lignes, groupesPris, habituels, cibles, produits, groupes,
       });
     } catch {

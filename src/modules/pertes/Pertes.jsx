@@ -23,6 +23,7 @@ import { Printer, Trash2 } from 'lucide-react';
 import { useReglagesModule } from '../../hooks/useReglagesModule.js';
 import { peutValider } from '../../utils/reglagesModules.js';
 import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
+import { PertesFrequentes } from './DeclarationRapide.jsx';
 
 // Choix exclusif en tuiles (motif, unité) : un toucher au lieu des deux d'une
 // liste déroulante, même valeur écrite. data-cadre : chaque tuile garde son
@@ -271,6 +272,8 @@ const Pertes = ({ user, etablissement }) => {
           { id: 'jette', Icone: Trash2, libelle: 'Je jette', etat: <>produit, quantité, motif</>, visible: Boolean(perms.pertes), onClick: () => setShowForm(true), pastille: <PastillePoints n={pastilles.pastille('perte_declaree')} /> },
           { id: 'exporter', Icone: Printer, libelle: 'Exporter', etat: <>PDF ou imprimante</>, onClick: () => setFenetreExport(true) },
         ]} />
+        {/* Deux touches : le produit, puis « Déclarer » (plan 15, lot 4). */}
+        {Boolean(perms.pertes) && <div style={{ marginTop: 16 }}><PertesFrequentes etablissement={etablissement} user={user} /></div>}
       </div>
 
       {/* Repères : les chiffres de l'ensemble affiché. */}

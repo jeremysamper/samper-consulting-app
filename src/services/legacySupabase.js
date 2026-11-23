@@ -1715,6 +1715,13 @@ export function installLegacySupabase() {
         valide_par: perte.validePar || null,
         commentaire: perte.commentaire || null,
       };
+      // Liens du lot 4 (produit du catalogue, fiche, ligne de mise en place,
+      // source) : envoyés seulement quand l'écran les donne, pour qu'une
+      // validation ou une correction ne les efface pas.
+      if (perte.produitId !== undefined) payload.produit_id = perte.produitId || null;
+      if (perte.recetteId !== undefined) payload.recette_id = perte.recetteId || null;
+      if (perte.mepItemId !== undefined) payload.mep_item_id = perte.mepItemId || null;
+      if (perte.source !== undefined) payload.source = perte.source || 'saisie';
       const { data, error } = await client.from('pertes').upsert(payload).select().single();
       if (error) throw error;
       return this.mapPerteFromDB(data);
@@ -1787,6 +1794,10 @@ export function installLegacySupabase() {
         valide: !!row.valide,
         validePar: row.valide_par,
         commentaire: row.commentaire || '',
+        produitId: row.produit_id ?? null,
+        recetteId: row.recette_id ?? null,
+        mepItemId: row.mep_item_id ?? null,
+        source: row.source || 'saisie',
       };
     },
 

@@ -8,6 +8,8 @@ import { messageErreur } from '../../utils/messageErreur.js';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { avancementMep } from './serieMep.js';
+import { supabase } from '../../services/supabase.js';
+import { FenetreDeclaration } from '../pertes/DeclarationRapide.jsx';
 
 // Detail d'une liste : deux sections (Urgent non congelable en premier, puis
 // Grosse production congelable), case a cocher en temps reel, barre d'avancement
@@ -17,12 +19,21 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
   const [items, setItems] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [busyId, setBusyId] = React.useState(null);
+  // Lignes déjà déclarées jetées (pertes.mep_item_id), et la ligne en cours.
+  const [jetes, setJetes] = React.useState(() => new Set());
+  const [aJeter, setAJeter] = React.useState(null);
 
   const reload = React.useCallback(async () => {
     if (!legacySB || !listeId) { setLoading(false); return; }
     try {
       const rows = await legacySB.db.listMepItems(listeId);
       setItems(rows || []);
+      const ids = (rows || []).map((r) => r.id);
+      if (ids.length) {
+        const { data, error } = await supabase.from('pertes').select('mep_item_id').in('mep_item_id', ids);
+        if (error) console.error('[MEP pertes reliées]', error);
+        else setJetes(new Set((data || []).map((p) => p.mep_item_id)));
+      }
     } catch (err) {
       console.error('[MEP listMepItems]', err);
     } finally {
@@ -36,7 +47,7 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
     reload();
     let unsub = null;
     if (legacySB) {
-      unsub = legacySB.realtime.subscribeReload(['mep_items'], () => { if (mounted) reload(); });
+      unsub = legacySB.realtime.subscribeReload(['mep_items', 'pertes'], () => { if (mounted) reload(); });
     }
     return () => { mounted = false; unsub && unsub(); };
   }, [reload, legacySB]);
@@ -59,17 +70,6 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
     setBusyId(null);
   };
 
-  const supprimerItem = async (item) => {
-    if (!canEdit) return;
-    if (!window.confirm(`Retirer « ${item.label} » de la liste ?`)) return;
-    setItems(prev => prev.filter(i => i.id !== item.id));
-    try {
-      await legacySB.db.deleteMepItem(item.id);
-    } catch (err) {
-      notifyLegacy(messageErreur(err, 'mise en place', 'Suppression impossible.'), 'error');
-      reload();
-    }
-  };
 
   const exportPdf = () => {
     const toPdfItem = (i) => ({
@@ -129,7 +129,11 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
               {i.quantite != null && i.quantite !== '' && (
                 <span style={s.qtyTag}>{i.quantite}{i.unite ? ` ${i.unite}` : ''}</span>
               )}
-              {canEdit && <button type="button" style={s.itemDel} title="Retirer" aria-label="Retirer la préparation" onClick={() => supprimerItem(i)}>×</button>}
+              {/* Jeté : une perte reliée à la ligne, en deux touches (plan 15, lot 4).
+                  Retirer une préparation passe par « Modifier » la liste. */}
+              {jetes.has(i.id)
+                ? <span style={s.jete}>jeté</span>
+                : <button type="button" style={s.jeteBtn} aria-label={`Jeté : ${i.label || ''}`} onClick={() => setAJeter(i)}>Jeté</button>}
             </div>
           ))
         )}
@@ -139,8 +143,22 @@ const MepDetail = ({ listeId, listeMeta, user, etablissement, canEdit, onBack, o
 
   // Écran de tâche : Retour, le nom et la date de la liste, puis les deux
   // boutons nommés d'avant, « Exporter » (le PDF) et « Gérer » (modifier, supprimer).
+  const fenetreJete = aJeter && (
+    <FenetreDeclaration
+      etablissement={etablissement}
+      user={user}
+      depart={{
+        produit: aJeter.label || 'Préparation', quantite: aJeter.quantite ?? '', unite: aJeter.unite || '', valeurUnit: 0,
+        recetteId: aJeter.recetteId || null, mepItemId: aJeter.id, source: 'mep', commentaire: 'Depuis la mise en place',
+      }}
+      onClose={() => setAJeter(null)}
+      onDeclaree={reload}
+    />
+  );
+
   return (
     <div style={s.root}>
+      {fenetreJete}
       <EcranTache
         titre={listeMeta?.nom || 'Liste'}
         etat={formatDateService(listeMeta?.dateService)}
