@@ -2,12 +2,12 @@
 import { ETAB, jour, deuxDec } from './base.js';
 
 export const FOURNISSEURS = [
-  { id: 'f-primeurs', jours_livraison: [1, 3, 5], heure_limite: '18:00', delai_commande_jours: 1, delai_paiement_jours: null, nom: 'Primeurs du Rhône', contact: 'Service commandes', tel: '027 000 10 10', email: 'commandes@primeurs-rhone.test', adresse: 'Zone artisanale 4, 1950 Sion', notes: 'Livraison lundi, mercredi et vendredi avant 9 h.' },
-  { id: 'f-boucherie', jours_livraison: [2, 4], heure_limite: '16:00', delai_commande_jours: 1, delai_paiement_jours: 30, nom: 'Boucherie des Alpes', contact: 'Comptoir', tel: '027 000 20 20', email: 'pro@boucherie-alpes.test', adresse: 'Rue du Marché 8, 1950 Sion', notes: 'Viande suisse, maturée sur os.' },
-  { id: 'f-laiterie', jours_livraison: [2, 5], heure_limite: '12:00', delai_commande_jours: 1, delai_paiement_jours: null, nom: 'Laiterie du Vallon', contact: 'Livraisons', tel: '027 000 30 30', email: 'livraison@laiterie-vallon.test', adresse: 'Route de la Fromagerie 2, 1966 Ayent', notes: 'Raclette et crème de la Gruyère.' },
-  { id: 'f-epicerie', jours_livraison: [3], heure_limite: '12:00', delai_commande_jours: 2, delai_paiement_jours: 30, nom: 'Épicerie fine Martin', contact: 'Service client', tel: '021 000 40 40', email: 'pro@epicerie-martin.test', adresse: 'Avenue de la Gare 15, 1003 Lausanne', notes: 'Franco dès 250 CHF.' },
-  { id: 'f-pecherie', jours_livraison: [2, 3, 4, 5, 6], heure_limite: '15:00', delai_commande_jours: 1, delai_paiement_jours: null, nom: 'Pêcherie du Léman', contact: 'Marée', tel: '021 000 50 50', email: 'maree@pecherie-leman.test', adresse: 'Quai des Pêcheurs 3, 1820 Montreux', notes: 'Commande la veille avant 15 h.' },
-  { id: 'f-cave', jours_livraison: [4], heure_limite: '17:00', delai_commande_jours: 2, delai_paiement_jours: 60, nom: 'Cave des Coteaux', contact: 'Vente pro', tel: '027 000 60 60', email: 'pro@cave-coteaux.test', adresse: 'Chemin des Vignes 21, 1957 Ardon', notes: 'Vins du Valais, livraison le jeudi.' },
+  { id: 'f-primeurs', delai_paiement_jours: null, nom: 'Primeurs du Rhône', contact: 'Service commandes', tel: '027 000 10 10', email: 'commandes@primeurs-rhone.test', adresse: 'Zone artisanale 4, 1950 Sion', notes: 'Livraison lundi, mercredi et vendredi avant 9 h.' },
+  { id: 'f-boucherie', delai_paiement_jours: 30, nom: 'Boucherie des Alpes', contact: 'Comptoir', tel: '027 000 20 20', email: 'pro@boucherie-alpes.test', adresse: 'Rue du Marché 8, 1950 Sion', notes: 'Viande suisse, maturée sur os.' },
+  { id: 'f-laiterie', delai_paiement_jours: null, nom: 'Laiterie du Vallon', contact: 'Livraisons', tel: '027 000 30 30', email: 'livraison@laiterie-vallon.test', adresse: 'Route de la Fromagerie 2, 1966 Ayent', notes: 'Raclette et crème de la Gruyère.' },
+  { id: 'f-epicerie', delai_paiement_jours: 30, nom: 'Épicerie fine Martin', contact: 'Service client', tel: '021 000 40 40', email: 'pro@epicerie-martin.test', adresse: 'Avenue de la Gare 15, 1003 Lausanne', notes: 'Franco dès 250 CHF.' },
+  { id: 'f-pecherie', delai_paiement_jours: null, nom: 'Pêcherie du Léman', contact: 'Marée', tel: '021 000 50 50', email: 'maree@pecherie-leman.test', adresse: 'Quai des Pêcheurs 3, 1820 Montreux', notes: 'Commande la veille avant 15 h.' },
+  { id: 'f-cave', delai_paiement_jours: 60, nom: 'Cave des Coteaux', contact: 'Vente pro', tel: '027 000 60 60', email: 'pro@cave-coteaux.test', adresse: 'Chemin des Vignes 21, 1957 Ardon', notes: 'Vins du Valais, livraison le jeudi.' },
 ];
 
 // [clé, nom, catégorie, unité, prix (CHF par kg, par litre ou par pièce), fournisseur, conditionnement, allergènes]

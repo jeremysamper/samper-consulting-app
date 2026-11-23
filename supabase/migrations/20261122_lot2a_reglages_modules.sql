@@ -34,14 +34,15 @@
 --                                RLS de la table inchangée (toute l'équipe) ;
 --                                ces colonnes-là, direction seule (déclencheur).
 --
---   5. fournisseurs              jours de livraison, heure limite, délai de
---                                commande (D3), délai de paiement propre.
---                                RLS de la table inchangée (toute l'équipe) ;
---                                ces colonnes-là, direction seule (déclencheur).
+--   5. fournisseurs              délai de paiement propre. RLS de la table
+--                                inchangée (toute l'équipe) ; cette colonne,
+--                                direction seule (déclencheur).
 --
---   6. commande_cibles           stock cible par produit et par jour de
---                                livraison (D3), lu par le lot 4. Lu par
---                                l'équipe, écrit par la direction.
+--   6. (retiré le 23.11.2026)    les jours de livraison, l'heure limite, le
+--                                délai de commande des fournisseurs et la
+--                                table commande_cibles de la Commande V1 (D3) :
+--                                après la démo, Jérémy garde le module
+--                                Commande de la production.
 --
 --   7. compta_reglages           délai de paiement par défaut et catégories de
 --                                charges de la maison. RLS inchangée
@@ -571,24 +572,14 @@ comment on column public.sops.rappel_jours is 'Jours du rappel, 1 = lundi à 7 =
 
 
 -- =============================================================================
--- 5. fournisseurs : livraison, commande, paiement (D3)
+-- 5. fournisseurs : délai de paiement
 -- =============================================================================
 
 alter table public.fournisseurs
-  add column if not exists jours_livraison smallint[]
-    constraint fournisseurs_jours_livraison_check
-    check (jours_livraison is null
-      or (cardinality(jours_livraison) between 1 and 7 and jours_livraison <@ array[1,2,3,4,5,6,7]::smallint[])),
-  add column if not exists heure_limite time,
-  add column if not exists delai_commande_jours smallint not null default 1
-    constraint fournisseurs_delai_commande_check check (delai_commande_jours between 0 and 14),
   add column if not exists delai_paiement_jours smallint
     constraint fournisseurs_delai_paiement_check
     check (delai_paiement_jours is null or delai_paiement_jours between 0 and 180);
 
-comment on column public.fournisseurs.jours_livraison is 'Jours de livraison, 1 = lundi à 7 = dimanche (lot 2, D3). Null = non réglé.';
-comment on column public.fournisseurs.heure_limite is 'Heure limite de commande, le jour qui précède la livraison de delai_commande_jours.';
-comment on column public.fournisseurs.delai_commande_jours is 'Jours entre la commande et la livraison (0 = le jour même, avant heure_limite).';
 comment on column public.fournisseurs.delai_paiement_jours is 'Délai de paiement propre au fournisseur, en jours. Null = délai par défaut de la maison (compta_reglages).';
 
 
@@ -614,11 +605,9 @@ begin
 
   if tg_table_name = 'fournisseurs' then
     if tg_op = 'INSERT' then
-      v_change := new.jours_livraison is not null or new.heure_limite is not null
-        or new.delai_commande_jours is distinct from 1 or new.delai_paiement_jours is not null;
+      v_change := new.delai_paiement_jours is not null;
     else
-      v_change := row(new.jours_livraison, new.heure_limite, new.delai_commande_jours, new.delai_paiement_jours)
-        is distinct from row(old.jours_livraison, old.heure_limite, old.delai_commande_jours, old.delai_paiement_jours);
+      v_change := new.delai_paiement_jours is distinct from old.delai_paiement_jours;
     end if;
   elsif tg_table_name = 'sops' then
     if tg_op = 'INSERT' then
@@ -646,86 +635,6 @@ create or replace trigger trg_fournisseurs_reglage_garde
 create or replace trigger trg_sops_reglage_garde
   before insert or update on public.sops
   for each row execute function public.lot2_colonnes_reglage_garde();
-
-
--- =============================================================================
--- 6. commande_cibles (D3)
--- =============================================================================
-
-create table if not exists public.commande_cibles (
-  id                uuid        primary key default gen_random_uuid(),
-  etablissement_id  text        not null references public.etablissements(id) on delete cascade,
-  produit_id        text        not null references public.produits(id) on delete cascade,
-  jour_livraison    smallint    not null,
-  quantite          numeric     not null,
-  updated_by        text,
-  created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now(),
-  constraint commande_cibles_jour_check check (jour_livraison between 1 and 7),
-  constraint commande_cibles_quantite_check check (quantite >= 0 and quantite < 1000000),
-  constraint commande_cibles_produit_jour_key unique (produit_id, jour_livraison)
-);
-
-comment on table public.commande_cibles is
-  'Stock cible par produit et par jour de livraison (lot 2, D3), dans l''unité de référence du produit (produits.unite_ref). Lu par la commande du lot 4.';
-
--- produit_id est couvert par la clé unique (produit_id, jour_livraison).
-create index if not exists idx_commande_cibles_etab on public.commande_cibles (etablissement_id);
-
-create or replace function public.commande_cibles_avant_ecriture()
-returns trigger
-language plpgsql
-security invoker
-set search_path = pg_catalog, public
-as $fn$
-begin
-  new.updated_at := now();
-  new.updated_by := (select auth.uid())::text;
-  return new;
-end;
-$fn$;
-
-revoke all on function public.commande_cibles_avant_ecriture() from public, anon, authenticated;
-
-create or replace trigger trg_commande_cibles_avant_ecriture
-  before insert or update on public.commande_cibles
-  for each row execute function public.commande_cibles_avant_ecriture();
-
-alter table public.commande_cibles enable row level security;
-revoke all on table public.commande_cibles from public, anon, authenticated;
-grant select, insert, update, delete on table public.commande_cibles to authenticated;
-
-drop policy if exists commande_cibles_select on public.commande_cibles;
-create policy commande_cibles_select on public.commande_cibles
-  for select to authenticated
-  using (user_can_access_etab(etablissement_id));
-
--- Le produit appartient au même établissement que la cible.
-drop policy if exists commande_cibles_insert on public.commande_cibles;
-create policy commande_cibles_insert on public.commande_cibles
-  for insert to authenticated
-  with check (user_can_access_etab(etablissement_id)
-    and (select public.current_user_role()) in ('consultant', 'patron', 'resp_cuisine')
-    and exists (select 1 from public.produits p
-                where p.id = commande_cibles.produit_id
-                  and p.etablissement_id = commande_cibles.etablissement_id));
-
-drop policy if exists commande_cibles_update on public.commande_cibles;
-create policy commande_cibles_update on public.commande_cibles
-  for update to authenticated
-  using (user_can_access_etab(etablissement_id)
-    and (select public.current_user_role()) in ('consultant', 'patron', 'resp_cuisine'))
-  with check (user_can_access_etab(etablissement_id)
-    and (select public.current_user_role()) in ('consultant', 'patron', 'resp_cuisine')
-    and exists (select 1 from public.produits p
-                where p.id = commande_cibles.produit_id
-                  and p.etablissement_id = commande_cibles.etablissement_id));
-
-drop policy if exists commande_cibles_delete on public.commande_cibles;
-create policy commande_cibles_delete on public.commande_cibles
-  for delete to authenticated
-  using (user_can_access_etab(etablissement_id)
-    and (select public.current_user_role()) in ('consultant', 'patron', 'resp_cuisine'));
 
 
 -- =============================================================================

@@ -2,28 +2,42 @@
 -- A jouer APRES le retour du front à une version qui ne lit ni n'écrit les
 -- réglages du lot 2 (Instant Rollback Vercel) : le front du lot 2b envoie ces
 -- colonnes et lit ces tables, et ses écritures échoueraient sans elles.
--- Pertes : les réglages des modules, les modèles de mise en place, les stocks
--- cibles, les jours de livraison et délais des fournisseurs, les rappels des
--- procédures, les catégories de charges et les jours des créneaux HACCP.
+-- Pertes : les réglages des modules, les modèles de mise en place, le délai
+-- de paiement des fournisseurs, les rappels des procédures, les catégories de
+-- charges et les jours des créneaux HACCP.
 -- Aucune donnée de service (relevés, ventes, commandes) n'est touchée.
+--
+-- Ordre des retours arrière, à l'inverse de l'application : 4a
+-- (20261122b_lot4a_commande_base), puis 5 (20261122_lot5_bureau), puis 6b
+-- (20261122_lot6b_reglages_hotel), puis 2a D5, puis ce fichier. Après lui,
+-- reglages_modules n'existe plus : les retours arrière de 5 et 6b, qui la
+-- modifient, échoueraient. Le bloc suivant s'arrête tant que 4a, 5 ou 6b est
+-- encore en place.
+
+do $$
+begin
+  if exists (select 1 from information_schema.columns
+             where table_schema = 'public' and table_name = 'mep_listes' and column_name = 'modele_id') then
+    raise exception 'Jouer d''abord 20261122b_lot4a_commande_base.rollback.sql';
+  end if;
+  if to_regprocedure('public.reglages_modules_bureau_valide(text,jsonb)') is not null then
+    raise exception 'Jouer d''abord 20261122_lot5_bureau.rollback.sql';
+  end if;
+  if to_regprocedure('public.reglages_modules_hotel_valide(text,jsonb)') is not null then
+    raise exception 'Jouer d''abord 20261122_lot6b_reglages_hotel.rollback.sql';
+  end if;
+end $$;
 
 -- 7. compta_reglages
 alter table public.compta_reglages drop column if exists categories_charges;
 alter table public.compta_reglages drop column if exists delai_paiement_jours;
 drop function if exists public.compta_categories_charges_valides(jsonb);
 
--- 6. commande_cibles
-drop table if exists public.commande_cibles;
-drop function if exists public.commande_cibles_avant_ecriture();
-
 -- 5. fournisseurs (et garde des colonnes de réglage, partagé avec sops)
 drop trigger if exists trg_fournisseurs_reglage_garde on public.fournisseurs;
 drop trigger if exists trg_sops_reglage_garde on public.sops;
 drop function if exists public.lot2_colonnes_reglage_garde();
 alter table public.fournisseurs drop column if exists delai_paiement_jours;
-alter table public.fournisseurs drop column if exists delai_commande_jours;
-alter table public.fournisseurs drop column if exists heure_limite;
-alter table public.fournisseurs drop column if exists jours_livraison;
 
 -- 4. sops
 alter table public.sops drop constraint if exists sops_rappel_coherent_check;

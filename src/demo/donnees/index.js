@@ -15,10 +15,10 @@ import {
   genererAchats, genererVentesJour, SALAIRES_ESTIMES, genererJournal,
 } from './operations.js';
 import { genererCaisse } from './caisse.js';
-import { REGLAGES_MODULES, MEP_MODELES, COMMANDE_CIBLES, CANAUX_MESSAGES } from './reglages.js';
+import { REGLAGES_MODULES, MEP_MODELES, CANAUX_MESSAGES } from './reglages.js';
 import { genererPos } from './pos.js';
 import {
-  genererCommandes, COMMANDE_HABITUELS, avecConditionnement, pertesLot4a, mepLot4a, reglesPos, ingredientsARelier,
+  pertesLot4a, mepLot4a, ingredientsARelier,
 } from './commande.js';
 import { genererHotel } from './hotel.js';
 import { genererSpa } from './spa.js';
@@ -55,8 +55,7 @@ export function creerBase() {
   const { reservations, tags, liens } = genererReservations();
   const { releves, controles } = genererHaccp();
   const { plats_boissons: boissons, ...caisse } = genererCaisse();
-  // Lot 4a : commandes par fournisseur, réception, pertes reliées, liste J+1.
-  const { commandes, commande_lignes: commandeLignes, commande_groupes: commandeGroupes, achat: achatReception } = genererCommandes();
+  // Lot 4a : pertes reliées et liste J+1.
   const mep = mepLot4a(MEP_LISTES, MEP_ITEMS);
   const pos = genererPos();
   return {
@@ -68,7 +67,7 @@ export function creerBase() {
     user_settings: reglagesUtilisateurs(),
     app_settings: [],
     fournisseurs: fournisseursEtab,
-    produits: PRODUITS.map(avecConditionnement),
+    produits: PRODUITS,
     produit_fournisseurs: PRODUIT_FOURNISSEURS,
     produit_prix_historique: PRODUIT_PRIX_HISTORIQUE,
     produit_alias: [],
@@ -111,11 +110,6 @@ export function creerBase() {
     inventaires: genererInventaires(),
     pertes: pertesLot4a(PERTES, mep.mep_items),
     commande_items: COMMANDE_ITEMS,
-    commande_cibles: COMMANDE_CIBLES,
-    commande_habituels: COMMANDE_HABITUELS,
-    commandes,
-    commande_lignes: commandeLignes,
-    commande_groupes: commandeGroupes,
     mep_listes: mep.mep_listes,
     mep_items: mep.mep_items,
     mep_modeles: MEP_MODELES,
@@ -134,7 +128,7 @@ export function creerBase() {
     points_commandes: commandesCadeaux(POINTS_CADEAUX),
     compta_reglages: COMPTA_REGLAGES,
     charges_fixes: CHARGES_FIXES,
-    achats_documents: [...genererAchats(), achatReception],
+    achats_documents: genererAchats(),
     achats_hausses_vues: [],
     salaires_estimes: SALAIRES_ESTIMES,
     releves_bancaires: [],
@@ -166,8 +160,6 @@ export function creerBase() {
     scans_facture: [],
     ...caisse,
     ...pos,
-    pos_item_recipe_mapping: pos.pos_item_recipe_mapping.map((m) => ({ regle_id: null, ...m })),
-    pos_regles_correspondance: reglesPos(),
     ...genererHotel(),
     ...genererSpa(),
   };
