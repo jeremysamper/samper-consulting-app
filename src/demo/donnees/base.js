@@ -19,7 +19,7 @@ export const ETABLISSEMENT = {
   modules_actifs: [
     'planning', 'messages', 'comptabilite', 'recettes', 'inventaire', 'pertes', 'haccp', 'sop',
     'fiches_salle', 'documents', 'catalogue', 'previsions', 'caisse', 'groupes', 'commande', 'mep',
-    'statistiques', 'kds', 'pos',
+    'statistiques', 'kds', 'pos', 'boissons',
   ],
   created_at: '2026-01-05T08:00:00Z',
   updated_at: '2026-11-01T08:00:00Z',

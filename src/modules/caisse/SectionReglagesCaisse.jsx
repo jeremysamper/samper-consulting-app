@@ -5,7 +5,7 @@ import * as caisse from '../../services/caisseService.js';
 import * as tpe from '../../services/caisseTpeService.js';
 import ReglagesCaisse from './ReglagesCaisse.jsx';
 import { idPoste } from './modeTest.js';
-import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
+import { articlesDeCaisse, cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section « Caisse » de la page des réglages : monte ReglagesCaisse tel quel
@@ -76,7 +76,7 @@ export default function SectionReglagesCaisse({ user, etablissement, signaler })
 
   const reglages = React.useMemo(() => fusionnerReglages(config), [config]);
   const { cartesActives, articles } = React.useMemo(
-    () => cartesEtArticlesEnVente({ plats, cartes: cartesLues, cartesIds: reglages.cartes_ids }),
+    () => cartesEtArticlesEnVente({ plats: articlesDeCaisse({ plats, cartes: cartesLues }), cartes: cartesLues, cartesIds: reglages.cartes_ids }),
     [plats, cartesLues, reglages.cartes_ids],
   );
 

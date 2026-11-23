@@ -14,7 +14,27 @@ export const PLAGES_MAX = 4;
 
 const centimes = (prix) => Math.round(Number(prix || 0) * 100);
 
-// ── Panier : { [platId]: quantite } ──
+// ── Articles : un par produit sans format, un par format sinon ──
+// Carte des boissons (22.11.2026) : un produit vendu en formats (1 dl, 50 cl)
+// donne un article par format, au prix du format, nommé « Nom, 1 dl ». Un
+// produit à un seul format donne un article, dans ce format. La clé d'un
+// article est l'id du produit, suivie de « ~ » et de l'id du format.
+
+const SEPARATEUR = '~';
+export const cleArticle = (platId, formatId) => (formatId ? `${platId}${SEPARATEUR}${formatId}` : platId);
+
+export function articlesDe(produits) {
+  return (produits || []).flatMap((p) => {
+    const formats = Array.isArray(p.formats) ? p.formats : [];
+    if (!formats.length) return [{ id: p.id, platId: p.id, formatId: null, nom: p.nom, prix: Number(p.prix) || 0 }];
+    return formats.map((f) => ({
+      id: cleArticle(p.id, f.id), platId: p.id, formatId: f.id, format: f.libelle,
+      nom: `${p.nom}, ${f.libelle}`, prix: Number(f.prix) || 0,
+    }));
+  });
+}
+
+// ── Panier : { [cle d'article]: quantite } ──
 
 export function quantiteDe(panier, platId) {
   return Number(panier?.[platId]) || 0;
@@ -52,9 +72,9 @@ export function peutAjouter(panier, platId) {
 // Les lignes du panier, dans l'ordre de la carte, au prix affiché.
 // Un produit qui n'est plus à la carte (rupture, catégorie fermée) sort.
 export function lignesPanier(panier, produits) {
-  return (produits || [])
-    .filter((p) => quantiteDe(panier, p.id) > 0)
-    .map((p) => ({ id: p.id, nom: p.nom, prix: Number(p.prix) || 0, quantite: quantiteDe(panier, p.id) }));
+  return articlesDe(produits)
+    .filter((a) => quantiteDe(panier, a.id) > 0)
+    .map((a) => ({ id: a.id, nom: a.nom, prix: a.prix, quantite: quantiteDe(panier, a.id) }));
 }
 
 export function totalPanier(panier, produits) {
@@ -64,7 +84,7 @@ export function totalPanier(panier, produits) {
 
 // Le panier réduit aux produits encore proposés (après relecture de la carte).
 export function nettoyerPanier(panier, produits) {
-  const ids = new Set((produits || []).map((p) => p.id));
+  const ids = new Set(articlesDe(produits).map((a) => a.id));
   const suite = {};
   Object.entries(panier || {}).forEach(([id, q]) => {
     const n = Math.min(Math.floor(Number(q) || 0), LIMITES.parProduit);
@@ -73,11 +93,17 @@ export function nettoyerPanier(panier, produits) {
   return suite;
 }
 
-// Charge de l'envoi : jamais de prix, le serveur prend les siens.
+// Charge de l'envoi : jamais de prix, le serveur prend les siens (celui du
+// format nommé par format_id, lu en base).
 export function chargeLignes(panier) {
   return Object.entries(panier || {})
     .filter(([, q]) => Number(q) > 0)
-    .map(([plat_id, q]) => ({ plat_id, quantite: Math.floor(Number(q)) }));
+    .map(([cle, q]) => {
+      const [plat_id, format_id] = cle.split(SEPARATEUR);
+      return format_id
+        ? { plat_id, quantite: Math.floor(Number(q)), format_id }
+        : { plat_id, quantite: Math.floor(Number(q)) };
+    });
 }
 
 // ── Prénom et table ──

@@ -715,3 +715,18 @@ test('bons cadeaux : une feuille dans l\'export et dans le dossier, une règle e
   assert.equal(feuillesRapport(sans).some((x) => x.id === 'bons'), false);
   assert.match(texteLisezMoi({ rapport: sans, etablissement: 'Maison', date: new Date('2026-11-19T10:00:00Z') }), /Deux points ne sont pas confirmés/);
 });
+
+test('plats vendus : une boisson vendue dans deux formats donne deux lignes (Carte des boissons)', () => {
+  const donnees = jeuEssai();
+  const vins = donnees.lignes.filter((l) => l.plat_id === 'vin');
+  assert.equal(vins.length, 2);
+  vins[0].libelle = 'Vin de la maison, 1 dl';
+  vins[1].libelle = 'Vin de la maison, 50 cl';
+  const r = rapportCaisse(donnees, DEUX_JOURS);
+  assert.equal(produit(r, 'Vin de la maison'), undefined);
+  assert.equal(produit(r, 'Vin de la maison, 1 dl').qte, 1);
+  assert.equal(produit(r, 'Vin de la maison, 50 cl').qte, 1);
+  assert.notEqual(produit(r, 'Vin de la maison, 1 dl').cle, produit(r, 'Vin de la maison, 50 cl').cle);
+  // Le total des plats vendus ne bouge pas.
+  assert.equal(somme(r.plats.lignes, (l) => l.ttc), somme(rapportCaisse(jeuEssai(), DEUX_JOURS).plats.lignes, (l) => l.ttc));
+});

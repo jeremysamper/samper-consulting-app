@@ -34,6 +34,11 @@ const MESSAGES_RPC = {
   // Bons cadeaux : le paiement par bon passe par caisse_encaisser.
   ...MESSAGES_BONS_CADEAUX,
   'caisse: acces refuse': "Vous n'avez pas les droits pour cette action.",
+  // Formats de vente (Carte des boissons, migration 20261122).
+  'caisse: format inconnu pour ce plat': "Ce format n'existe plus pour ce produit. Rechargez la caisse et choisissez de nouveau.",
+  'caisse: ce produit se vend dans un format': 'Ce produit se vend dans un format. Touchez sa case et choisissez le format.',
+  'caisse: une ligne porte un seul format': 'Une ligne ne porte qu\'un seul format.',
+  "caisse: le format d'une ligne ne change pas (retirer la ligne et la reposer)": 'Le format ne se change pas sur une ligne. Retirez la ligne et ajoutez le bon format.',
   'caisse: table inconnue pour cet etablissement': 'Cette table ne fait plus partie du plan de salle.',
   'caisse: reservation introuvable': 'Réservation introuvable.',
   "caisse: reservation d'un autre jour": "Cette réservation n'est pas du jour.",
@@ -342,6 +347,9 @@ export async function ajouterLigne(ligne) {
       prix_unitaire: ligne.prixUnitaire ?? 0,
       suite: ligne.suite ?? 1,
       note: ligne.note || null,
+      // Format de vente (Carte des boissons) : la base en lit le prix et le
+      // libellé. Sans options, la colonne garde son défaut.
+      ...(Array.isArray(ligne.options) && ligne.options.length ? { options: ligne.options } : {}),
     })
     .select()
     .single();

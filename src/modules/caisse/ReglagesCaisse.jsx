@@ -600,20 +600,32 @@ function SectionCartes({ cartes, reglages, regler }) {
     regler({ cartes_ids: toutes ? null : ids.filter((x) => apres.includes(x)) });
   }
 
+  // Les cartes des boissons (Carte des boissons, cartes.genre) dans leur
+  // groupe, sous les cartes de mets ; un seul réglage pour les deux.
+  const groupes = [
+    { titre: null, liste: cartes.filter((c) => c.genre !== 'boissons') },
+    { titre: 'Cartes des boissons', liste: cartes.filter((c) => c.genre === 'boissons') },
+  ].filter((g) => g.liste.length);
+
   return (
     <div style={st.bloc}>
       <div style={st.sousTitre}>Cartes qui alimentent la caisse</div>
       {!cartes.length && <p style={st.aide}>Aucune carte active dans cette maison : tous les plats actifs sont en vente.</p>}
-      <div style={st.listeSimple}>
-        {cartes.map((c) => (
-          <div key={c.id} style={st.rangSimple}>
-            <label style={st.produit}>
-              <input type="checkbox" checked={cochee(c.id)} onChange={() => basculer(c.id)} style={st.case} />
-              <span style={st.produitNom} data-no-translate>{c.nom}</span>
-            </label>
+      {groupes.map((g) => (
+        <React.Fragment key={g.titre || 'mets'}>
+          {g.titre && <div style={st.sousTitre} data-caisse-cartes-boissons="">{g.titre}</div>}
+          <div style={st.listeSimple}>
+            {g.liste.map((c) => (
+              <div key={c.id} style={st.rangSimple}>
+                <label style={st.produit}>
+                  <input type="checkbox" checked={cochee(c.id)} onChange={() => basculer(c.id)} style={st.case} />
+                  <span style={st.produitNom} data-no-translate>{c.nom}</span>
+                </label>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </React.Fragment>
+      ))}
       {restreint && !choisies.length && cartes.length > 0 && (
         <p style={st.aide}>Les cartes choisies ne sont plus actives : rien n'est en vente tant qu'aucune carte n'est cochée.</p>
       )}

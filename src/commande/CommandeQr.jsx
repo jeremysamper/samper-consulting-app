@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, Minus, Plus, ShoppingBag } from 'lucide-react';
 import { envoyerCommande, idAppareil, lireCarte } from './api.js';
 import {
-  LIMITES, ajouter, chargeLignes, libellePlage, lignesPanier, nbArticles, nettoyerPanier, peutAjouter,
+  LIMITES, ajouter, chargeLignes, cleArticle, libellePlage, lignesPanier, nbArticles, nettoyerPanier, peutAjouter,
   quantiteDe, retirer, totalPanier, verifierEnvoi,
 } from './regles.js';
 import './commande.css';
@@ -32,6 +32,7 @@ const MESSAGES = {
   panier: `Une commande en ligne porte au plus ${LIMITES.parProduit} fois le même produit et ${LIMITES.articles} articles.`,
   rupture: "Un produit vient d'être épuisé. Nous l'avons retiré de votre panier.",
   produit: 'La carte vient de changer. Votre panier a été mis à jour.',
+  format: 'Les formats d\'une boisson viennent de changer. Votre panier a été mis à jour.',
   trop_vite: "Une commande vient de partir de ce téléphone. Patientez une minute avant d'en envoyer une autre.",
   en_attente: "Vos commandes précédentes attendent encore l'équipe. Patientez un instant.",
   occupe: 'Le bar reçoit beaucoup de commandes. Réessayez dans quelques minutes, ou commandez auprès du personnel.',
@@ -162,7 +163,7 @@ export default function CommandeQr() {
         return;
       }
       const code = r?.erreur || 'reseau';
-      if (code === 'rupture' || code === 'produit' || code === 'ferme') {
+      if (code === 'rupture' || code === 'produit' || code === 'format' || code === 'ferme') {
         const c = await charger();
         if (code === 'ferme' || (c && !c.ouvert)) { setEtape('carte'); return; }
       }
@@ -252,16 +253,49 @@ export default function CommandeQr() {
                 >
                   <h2 id={`cq-cat-${c.id}`} className="cq-section-titre">{c.nom}</h2>
                   <div className="cq-carte cq-liste">
-                    {liste.map((p) => (
-                      <LigneProduit
-                        key={p.id}
-                        produit={p}
-                        quantite={quantiteDe(panier, p.id)}
-                        peutPlus={peutAjouter(panier, p.id)}
-                        onPlus={() => setPanier((x) => ajouter(x, p.id))}
-                        onMoins={() => setPanier((x) => retirer(x, p.id))}
-                      />
-                    ))}
+                    {liste.map((p) => {
+                      const formats = Array.isArray(p.formats) ? p.formats : [];
+                      // Sans format, ou un seul format : une ligne, comme avant.
+                      if (formats.length <= 1) {
+                        const f = formats[0] || null;
+                        const cle = cleArticle(p.id, f?.id);
+                        return (
+                          <LigneProduit
+                            key={cle}
+                            produit={f ? { ...p, prix: f.prix } : p}
+                            detail={f?.libelle || null}
+                            quantite={quantiteDe(panier, cle)}
+                            peutPlus={peutAjouter(panier, cle)}
+                            onPlus={() => setPanier((x) => ajouter(x, cle))}
+                            onMoins={() => setPanier((x) => retirer(x, cle))}
+                          />
+                        );
+                      }
+                      // Plusieurs formats : le nom, puis une ligne par format.
+                      return (
+                        <div key={p.id} className="cq-groupe" data-formats="">
+                          <div className="cq-ligne cq-ligne-tete">
+                            {p.photo ? <img className="cq-photo" src={p.photo} alt="" loading="lazy" /> : null}
+                            <div className="cq-ligne-texte"><span className="cq-nom">{p.nom}</span></div>
+                          </div>
+                          {formats.map((f) => {
+                            const cle = cleArticle(p.id, f.id);
+                            return (
+                              <LigneProduit
+                                key={cle}
+                                produit={{ id: cle, nom: f.libelle, prix: f.prix }}
+                                nomAccessible={`${p.nom}, ${f.libelle}`}
+                                format
+                                quantite={quantiteDe(panier, cle)}
+                                peutPlus={peutAjouter(panier, cle)}
+                                onPlus={() => setPanier((x) => ajouter(x, cle))}
+                                onMoins={() => setPanier((x) => retirer(x, cle))}
+                              />
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
                   </div>
                 </section>
               );
@@ -385,21 +419,25 @@ export default function CommandeQr() {
   );
 }
 
-function LigneProduit({ produit, quantite, peutPlus, onPlus, onMoins, sousTotal = false }) {
+// detail : le format d'un produit vendu dans un seul format (« 75 cl »), dit
+// devant son prix. format : la ligne d'un format sous le nom de sa boisson.
+function LigneProduit({ produit, quantite, peutPlus, onPlus, onMoins, sousTotal = false, detail = null, format = false, nomAccessible = null }) {
   const prix = Number(produit.prix) || 0;
+  const nomLu = nomAccessible || produit.nom;
   return (
-    <div className="cq-ligne" data-choisi={quantite > 0 ? '1' : undefined}>
+    <div className={format ? 'cq-ligne cq-ligne-format' : 'cq-ligne'} data-choisi={quantite > 0 ? '1' : undefined}>
       {produit.photo ? <img className="cq-photo" src={produit.photo} alt="" loading="lazy" /> : null}
       <div className="cq-ligne-texte">
         <span className="cq-nom">{produit.nom}</span>
         <span className="cq-prix">
+          {detail ? `${detail}, ` : ''}
           {sousTotal && quantite > 1 ? `${quantite} × ${chf(prix)} = ${chf(prix * quantite)} CHF` : `${chf(prix)} CHF`}
         </span>
       </div>
       <div className="cq-pas">
         {quantite > 0 && (
           <>
-            <button type="button" className="cq-rond cq-rond-doux" onClick={onMoins} aria-label={`Retirer ${produit.nom}`}>
+            <button type="button" className="cq-rond cq-rond-doux" onClick={onMoins} aria-label={`Retirer ${nomLu}`}>
               <Minus size={18} aria-hidden="true" />
             </button>
             <span className="cq-quantite" aria-live="polite">{quantite}</span>
@@ -410,7 +448,7 @@ function LigneProduit({ produit, quantite, peutPlus, onPlus, onMoins, sousTotal 
           className="cq-rond"
           onClick={onPlus}
           disabled={!peutPlus}
-          aria-label={`Ajouter ${produit.nom}`}
+          aria-label={`Ajouter ${nomLu}`}
         >
           <Plus size={18} aria-hidden="true" />
         </button>

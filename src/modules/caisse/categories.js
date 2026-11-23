@@ -1,4 +1,5 @@
 import { normalizeSearch } from '../../utils/searchText.js';
+import { categorieCaisseDeRubrique } from '../../utils/categoriesBoisson.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Catégories de caisse (caisse_categories, migration v4).
@@ -11,8 +12,13 @@ import { normalizeSearch } from '../../utils/searchText.js';
 //   1. la catégorie choisie par la maison (caisse_boutons.categorie_id) ;
 //   2. la catégorie de caisse qui porte le même nom que plats.categorie
 //      (Entrées, Plats, Desserts retombent ainsi à leur place) ;
-//   3. « Boissons à trier » pour plats.categorie = Boissons ;
-//   4. « Autres » pour le reste.
+//   3. pour une boisson d'une carte de boissons (article.boisson), la
+//      catégorie de caisse de sa rubrique (Vins blancs vers « Vins »,
+//      Spiritueux vers « Alcools »... categoriesBoisson.js) si la maison l'a,
+//      sinon sa catégorie « Boissons » si elle en a une ;
+//   4. « Boissons à trier » pour plats.categorie = Boissons et pour toute
+//      autre boisson d'une carte de boissons, jamais « Autres » ;
+//   5. « Autres » pour le reste.
 // Relevé en base le 10.11.2026 : Entrées, Plats, Desserts, Boissons (68 au
 // Rucher), puis des catégories maison (Apéritifs, Gâteaux, Stations...).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -93,9 +99,12 @@ export function rangerArticles({ articles, boutons, categoriesMaison }) {
   (articles || []).forEach((a, rang) => {
     const b = boutons?.[a.id];
     const origine = a.categorie || 'Plats';
+    const rubriqueCaisse = a.boisson ? categorieCaisseDeRubrique(origine) : null;
     const cible = (b?.categorie_id && parId.get(b.categorie_id))
       || parNom.get(cle(origine))
-      || (cle(origine) === cle('Boissons') ? aTrier : autres);
+      || (rubriqueCaisse && parNom.get(cle(rubriqueCaisse)))
+      || (a.boisson && parNom.get(cle('Boissons')))
+      || (a.boisson || cle(origine) === cle('Boissons') ? aTrier : autres);
     cible.articles.push({ article: a, ordre: b?.ordre ?? null, rang });
     parArticle.set(a.id, cible);
   });

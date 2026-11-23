@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {
   LIMITES, ajouter, retirer, peutAjouter, nbArticles, lignesPanier, totalPanier, nettoyerPanier, chargeLignes,
   prenomPropre, tablePropre, verifierEnvoi, plageValide, plagesValides, ouvertMaintenant, libellePlage,
-  slugValide, slugDepuisNom, aleaSlug, estAdresseDemo,
+  slugValide, slugDepuisNom, aleaSlug, estAdresseDemo, articlesDe, cleArticle,
 } from './regles.js';
 
 const PRODUITS = [
@@ -146,4 +146,29 @@ test('suffixe au hasard : cinq signes sans confusion (ni l, ni o, ni 0, ni 1)', 
   const alea = aleaSlug(() => 0.999);
   assert.equal(alea.length, 5);
   assert.match(aleaSlug(), /^[a-km-np-z2-9]{5}$/);
+});
+
+test('formats (Carte des boissons) : un article par format, nommé et payé au format', () => {
+  const produits = [
+    { id: 'fendant', nom: 'Fendant', prix: 17, formats: [{ id: 'f-1dl', libelle: '1 dl', prix: 3.5 }, { id: 'f-50cl', libelle: '50 cl', prix: 17 }] },
+    { id: 'pinot', nom: 'Pinot blanc', prix: 49, formats: [{ id: 'f-75cl', libelle: '75 cl', prix: 49 }] },
+    { id: 'eau', nom: 'Eau minérale', prix: 4, formats: [] },
+  ];
+  assert.deepEqual(articlesDe(produits).map((a) => a.id), ['fendant~f-1dl', 'fendant~f-50cl', 'pinot~f-75cl', 'eau']);
+  let panier = {};
+  panier = ajouter(panier, cleArticle('fendant', 'f-1dl'));
+  panier = ajouter(panier, cleArticle('fendant', 'f-1dl'));
+  panier = ajouter(panier, cleArticle('fendant', 'f-50cl'));
+  panier = ajouter(panier, cleArticle('eau', null));
+  assert.deepEqual(lignesPanier(panier, produits).map((l) => [l.nom, l.prix, l.quantite]),
+    [['Fendant, 1 dl', 3.5, 2], ['Fendant, 50 cl', 17, 1], ['Eau minérale', 4, 1]]);
+  assert.equal(totalPanier(panier, produits), 28);
+  assert.deepEqual(chargeLignes(panier), [
+    { plat_id: 'fendant', quantite: 2, format_id: 'f-1dl' },
+    { plat_id: 'fendant', quantite: 1, format_id: 'f-50cl' },
+    { plat_id: 'eau', quantite: 1 },
+  ]);
+  // Un format retiré de la carte sort du panier à la relecture.
+  const relue = [{ ...produits[0], formats: [produits[0].formats[1]] }, produits[2]];
+  assert.deepEqual(nettoyerPanier(panier, relue), { 'fendant~f-50cl': 1, eau: 1 });
 });

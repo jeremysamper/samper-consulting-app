@@ -25,6 +25,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { centimes, detailTva } from '../tva.js';
+import { formatDuLibelle } from '../../../utils/formatsBoisson.js';
 
 const fr = (c) => c / 100;
 const nombre = (v) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : 0);
@@ -261,13 +262,20 @@ export function bonsCadeaux(liste, periode, jourCourant = null) {
 // 3. Plats vendus : quantité et chiffre par produit, répartis midi et soir,
 // par catégorie de caisse, avec les offerts et les remises. La somme des
 // lignes fait le chiffre d'affaires net de la période.
+// Une boisson vendue dans plusieurs formats (Carte des boissons) donne une
+// ligne par format : 1 dl et 50 cl du même vin se lisent à part. Le format se
+// lit à la fin du libellé (« Fendant, 1 dl »), la lecture du rapport ne
+// rendant pas les options des lignes.
 function plats(mvts) {
   const par = new Map();
   const vide = () => ({ qte: 0, ttc: 0 });
   mvts.forEach((m) => {
     const service = m.ticket.service === 'midi' ? 'midi' : 'soir';
     m.lignes.forEach((l) => {
-      const cle = l.plat_id ? `p:${l.plat_id}` : `l:${String(l.libelle || '').trim().toLocaleLowerCase('fr')}`;
+      const format = l.plat_id ? formatDuLibelle(l.libelle) : null;
+      const cle = l.plat_id
+        ? `p:${l.plat_id}${format ? `|f:${format.toLocaleLowerCase('fr')}` : ''}`
+        : `l:${String(l.libelle || '').trim().toLocaleLowerCase('fr')}`;
       if (!par.has(cle)) {
         par.set(cle, {
           cle, platId: l.plat_id || null, libelle: l.libelle || '', categorie: l.categorie || (l.plat_id ? 'Plats' : 'Article libre'),

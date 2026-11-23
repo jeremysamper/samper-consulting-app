@@ -51,6 +51,10 @@ const AVANT = {
   // Points & boutique (14.11.2026, page neuve) : ouverte sauf clé retirée ;
   // le module ferme lui-même son écran à qui ne participe pas.
   points: ouverte('points'),
+  // Carte des boissons (22.11.2026, page neuve) : ouverte sauf clé retirée ;
+  // les défauts du code la ferment au cuisinier, au praticien spa et aux rôles
+  // de l'hôtel (getRolePermissions complète la table par eux).
+  boissons: ouverte('boissons'),
 };
 
 const ROLES = Object.keys(roles);

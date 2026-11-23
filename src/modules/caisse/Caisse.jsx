@@ -24,7 +24,9 @@ import { bonEnAttente, oublierBonEnAttente } from './bonsCadeaux/bonEnAttente.js
 import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
 import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
-import { cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
+import { articlesDeCaisse, cartesEtArticlesEnVente, fusionnerReglages } from './reglages.js';
+import { listFormats } from '../../services/formatsService.js';
+import { formatsParPlat } from '../../utils/formatsBoisson.js';
 import { useMaintenant } from './mesures.js';
 import { useCommandesQr } from './commandeQr/useCommandesQr.js';
 import BandeauCommandesQr from './commandeQr/BandeauCommandesQr.jsx';
@@ -116,6 +118,15 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // le réglage « Cartes en vente » (voir plus bas).
   const [plats, setPlats] = React.useState([]);
   const [cartesLues, setCartesLues] = React.useState([]);
+  // Formats de vente des boissons (plat_id -> formats), en temps réel : un prix
+  // de format changé dans la Carte des boissons arrive sur tous les postes.
+  const [formats, setFormats] = React.useState(() => new Map());
+  const rechargerFormats = React.useCallback(async () => {
+    if (!etabId) return;
+    const { data, error } = await listFormats(etabId);
+    // Lecture en échec : les formats connus restent.
+    if (!error) setFormats(formatsParPlat(data));
+  }, [etabId]);
   // Allergènes des fiches (recette_id -> ids), pour l'alerte à la commande.
   const [allergenesFiches, setAllergenesFiches] = React.useState(() => new Map());
   // Réservations d'aujourd'hui et de la veille (v5), et la table dont la
@@ -175,15 +186,18 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   React.useEffect(() => { rechargerTerminaux(); }, [rechargerTerminaux, legacyVersion]);
   React.useEffect(() => {
     setCategories([]); setConfig({});
-    setReservations([]); setQuiTable(null); setPlats([]); setCartesLues([]);
+    setReservations([]); setQuiTable(null); setPlats([]); setCartesLues([]); setFormats(new Map());
     setTickets([]); setCleTest(lireModeTest(etabId)); setProposerVider(false);
     setTerminaux([]);
   }, [etabId]);
   // Cartes en vente et articles vendables : fermé par défaut (une carte
   // archivée ou cachée ne vend jamais), sans réglage tout vend comme avant.
+  // Chaque article porte ses formats et dit s'il vient d'une carte de boissons.
   const { cartesEnVente, articles } = React.useMemo(
-    () => cartesEtArticlesEnVente({ plats, cartes: cartesLues, cartesIds: reglages.cartes_ids }),
-    [plats, cartesLues, reglages.cartes_ids],
+    () => cartesEtArticlesEnVente({
+      plats: articlesDeCaisse({ plats, cartes: cartesLues, formats }), cartes: cartesLues, cartesIds: reglages.cartes_ids,
+    }),
+    [plats, cartesLues, formats, reglages.cartes_ids],
   );
   const rechargerReglages = React.useCallback(async () => {
     if (!etabId) return;
@@ -303,6 +317,12 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   React.useEffect(() => { rechargerReservations(); }, [rechargerReservations, legacyVersion]);
   React.useEffect(() => { rechargerBoutons(); }, [rechargerBoutons, legacyVersion]);
   React.useEffect(() => { rechargerReglages(); }, [rechargerReglages, legacyVersion]);
+  React.useEffect(() => { rechargerFormats(); }, [rechargerFormats, legacyVersion]);
+  React.useEffect(() => {
+    const rt = dbService.getRealtime();
+    if (!rt?.subscribeReload || !etabId) return undefined;
+    return rt.subscribeReload(['plat_formats'], rechargerFormats);
+  }, [etabId, rechargerFormats]);
 
   // Realtime : un autre iPad qui vend, la direction qui annule.
   React.useEffect(() => {

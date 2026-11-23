@@ -24,19 +24,54 @@ export const BOISSONS = [
   updated_at: '2026-09-02T08:00:00Z',
 }));
 
-// Formats de vente (Carte des boissons, lot A) : le Cornalin se vend en
-// bouteille de 75 cl, comme les vins de Woodland ; son prix de vente reste
-// celui du format. Un seul format tant que la page QR ne sait pas en faire
-// choisir un (lot B) : un format unique se commande sans question.
-export const PLAT_FORMATS = [['75 cl', 58, 4]].map(([libelle, prix, ordre], i) => ({
+// Vins de la carte des vins (Carte des boissons, lot B) : rangés à part des
+// boissons des tickets passés, qui se vendaient sans format.
+export const VINS_CARTE = [
+  ['fendant-favre', 'Fendant, Fils de Charles Favre (Sion)', 17, 'Vins blancs', 'Chasselas du Valais, frais et minéral.'],
+  ['pinot-blanc-travaletti', 'Pinot blanc, Travaletti (St-Romain)', 49, 'Vins blancs', null],
+].map(([id, nom, prix, categorie, description], i) => ({
+  id: 'pl-b-' + id,
+  etablissement_id: ETAB,
+  nom,
+  categorie,
+  prix_vente: prix,
+  description,
+  notes: null,
+  ordre: 120 + i,
+  actif: true,
+  photo_url: null,
+  created_at: '2026-11-22T08:00:00Z',
+  updated_at: '2026-11-22T08:00:00Z',
+}));
+
+// Formats de vente (Carte des boissons) : le Cornalin se vend en bouteille de
+// 75 cl ; le Fendant au décilitre et en 50 cl, par un seul bouton qui demande
+// le format ; le Pinot blanc en 75 cl seulement, sans question.
+export const PLAT_FORMATS = [
+  ['pl-b-cornalin-btl', '75 cl', 58, 4],
+  ['pl-b-fendant-favre', '1 dl', 3.5, 0],
+  ['pl-b-fendant-favre', '50 cl', 17, 1],
+  ['pl-b-pinot-blanc-travaletti', '75 cl', 49, 0],
+].map(([platId, libelle, prix, ordre], i) => ({
   id: uid('8006', i + 1),
-  plat_id: 'pl-b-cornalin-btl',
+  plat_id: platId,
   etablissement_id: ETAB,
   libelle,
   prix,
   ordre,
   created_at: '2026-11-22T08:00:00Z',
   updated_at: '2026-11-22T08:00:00Z',
+}));
+
+// La carte des vins de la démo : une carte de boissons (cartes.genre), vue
+// dans la Carte des boissons et vendue par la caisse, jamais dans Cartes &
+// Recettes.
+export const CARTE_VINS = {
+  id: 'carte-vins', etablissement_id: ETAB, nom: 'Carte des vins', genre: 'boissons', date_debut: null, date_fin: null,
+  plats: [], archive: false, ordre: 4, masquee: false, created_at: '2026-11-22T08:00:00Z', updated_at: '2026-11-22T08:00:00Z',
+};
+export const CARTE_VINS_PLATS = ['pl-b-cornalin-btl', 'pl-b-fendant-favre', 'pl-b-pinot-blanc-travaletti'].map((platId, i) => ({
+  id: `cp-v-${i}`, carte_id: CARTE_VINS.id, plat_id: platId, ordre: i, created_at: '2026-11-22T08:00:00Z',
 }));
 
 const CATEGORIES = [['Entrées', 8.1], ['Plats', 8.1], ['Desserts', 8.1], ['Boissons', 8.1]];
@@ -181,7 +216,7 @@ export function genererCaisse() {
   });
 
   return {
-    plats_boissons: BOISSONS,
+    plats_boissons: [...BOISSONS, ...VINS_CARTE],
     plat_formats: PLAT_FORMATS,
     caisse_categories: CAISSE_CATEGORIES,
     caisse_boutons: boutons,

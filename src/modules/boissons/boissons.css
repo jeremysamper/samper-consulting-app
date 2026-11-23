@@ -1,0 +1,52 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Carte des boissons : mise en page (direction Galet). Les couleurs passent par
+   les jetons d'app.css ; cette feuille ne règle que la grille, par la largeur
+   réellement disponible (requêtes de conteneur). .boissons-page est le
+   conteneur, la grille vit sur .boissons-grille.
+   Une rubrique est une carte blanche : le nom à gauche, une colonne par
+   format comme sur la carte papier (--boissons-colonnes, posé en ligne).
+   Sous 560 px de contenu, les colonnes tombent : les prix passent sous le
+   nom, chacun précédé de son format, et une case vide n'est pas rendue.
+   ───────────────────────────────────────────────────────────────────────────── */
+.boissons-page { container-type: inline-size; container-name: boissons; min-width: 0; }
+.boissons-grille { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.boissons-reperes {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+.boissons-reperes > :last-child { grid-column: 1 / -1; }
+.boissons-page .ui-repere { padding: 12px; }
+.boissons-page .ui-repere-icone { display: none !important; }
+
+/* Téléphone : le nom sur toute la largeur, les prix dessous, en ligne. */
+.boissons-entete { display: flex; align-items: center; padding-bottom: 8px; min-width: 0; }
+.boissons-entete .boissons-colonne { display: none; }
+.boissons-ligne { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 14px; row-gap: 4px; min-width: 0; }
+.boissons-ligne > :first-child { flex: 1 0 100%; }
+.boissons-ligne .boissons-prix { display: inline-flex; gap: 6px; }
+.boissons-ligne .boissons-prix[data-vide] { display: none; }
+.boissons-ligne .boissons-prix-format { color: var(--text2); font-family: var(--font); }
+.boissons-liste > :last-child { border-bottom-width: 0 !important; }
+
+@container boissons (min-width: 560px) {
+  .boissons-reperes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .boissons-reperes > :last-child { grid-column: auto; }
+  .boissons-page .ui-repere { padding: 16px; }
+  .boissons-page .ui-repere-icone { display: inline-flex !important; }
+
+  .boissons-entete,
+  .boissons-ligne {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(var(--boissons-colonnes, 0), minmax(64px, 84px));
+    align-items: center;
+    column-gap: 16px;
+  }
+  .boissons-ligne > :first-child { flex: none; }
+  .boissons-entete .boissons-colonne { display: block; }
+  .boissons-ligne .boissons-prix,
+  .boissons-ligne .boissons-prix[data-vide] { display: block; text-align: right; }
+  .boissons-ligne .boissons-prix-format { display: none; }
+}

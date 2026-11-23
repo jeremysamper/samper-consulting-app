@@ -14,7 +14,7 @@ import {
   PROFILE_CONTACTS, POINTS_REGLAGES, POINTS_CADEAUX, genererPointsMouvements, COMPTA_REGLAGES, CHARGES_FIXES,
   genererAchats, genererVentesJour, SALAIRES_ESTIMES, genererJournal,
 } from './operations.js';
-import { genererCaisse } from './caisse.js';
+import { genererCaisse, CARTE_VINS, CARTE_VINS_PLATS } from './caisse.js';
 import { genererPos } from './pos.js';
 import { empreinteDemo } from '../rpc.js';
 
@@ -57,8 +57,8 @@ export function creerBase() {
     recettes: RECETTES,
     plats: [...PLATS, ...boissons],
     plat_recettes: PLAT_RECETTES,
-    cartes: CARTES,
-    carte_plats: CARTE_PLATS,
+    cartes: [...CARTES, CARTE_VINS],
+    carte_plats: [...CARTE_PLATS, ...CARTE_VINS_PLATS],
     fiches_salle: FICHES_SALLE,
     carte_fiches_salle: CARTE_FICHES_SALLE,
     salles: SALLES,

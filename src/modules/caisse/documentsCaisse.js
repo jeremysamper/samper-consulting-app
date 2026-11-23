@@ -37,8 +37,11 @@ const dateDe = (jour) => {
 const libelleMoyen = (p) => p.libelle || LIBELLES_MOYENS[p.moyen] || p.moyen;
 // « 1 ticket », « 4 tickets » : l'accord se fait ici, pas à la lecture.
 const nb = (n, un, plusieurs) => `${Number(n || 0)} ${Number(n || 0) > 1 ? plusieurs : un}`;
+// Le format de vente est déjà dans le libellé (« Fendant, 1 dl ») : il ne se
+// répète pas.
 const parametres = (l) => [
-  ...(Array.isArray(l.options) ? l.options : []).map((o) => (o?.type === 'sans' ? `sans ${o.valeur}` : o?.valeur)),
+  ...(Array.isArray(l.options) ? l.options : []).filter((o) => o?.type !== 'format')
+    .map((o) => (o?.type === 'sans' ? `sans ${o.valeur}` : o?.valeur)),
   l.note,
 ].filter(Boolean).join(', ');
 

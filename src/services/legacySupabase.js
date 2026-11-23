@@ -1489,6 +1489,10 @@ export function installLegacySupabase() {
         // Sans clé, l'upsert préserve la valeur en base (même contrat que
         // `archive`) : renommer une carte ne la renvoie pas en tête.
         ...(Number.isFinite(carte.ordre) ? { ordre: carte.ordre } : {}),
+        // Genre (Carte des boissons, migration 20261122) : envoyé seulement à
+        // la création d'une carte de boissons. Sans clé, l'upsert garde la
+        // valeur en base : renommer une carte ne change jamais son genre.
+        ...(carte.genre === 'boissons' ? { genre: 'boissons' } : {}),
       };
       const { data, error } = await client.from('cartes').upsert(payload).select().single();
       if (error) throw error;
@@ -1610,6 +1614,9 @@ export function installLegacySupabase() {
         // donc `false` : tant que la migration n'est pas appliquée toutes les
         // cartes restent visibles. Jamais renvoyée par upsertCarte.
         masquee: row.masquee === true,
+        // Carte de mets (Cartes & Recettes) ou de boissons (Carte des boissons).
+        // Colonne absente ou valeur inconnue : 'mets'.
+        genre: row.genre === 'boissons' ? 'boissons' : 'mets',
         // Rang d'affichage : clé exposée UNIQUEMENT si la colonne existe, pour
         // qu'un upsert issu d'un objet carte (renommage, sync de plats) ne
         // tente pas de l'écrire tant que la migration 20260805 n'est pas

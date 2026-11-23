@@ -70,6 +70,14 @@
   border-bottom-width: 1px; border-bottom-style: solid; border-bottom-color: var(--q-line);
 }
 .cq-liste > .cq-ligne:last-child { border-bottom-width: 0; }
+/* Carte des boissons : une boisson vendue en formats, son nom puis une ligne
+   par format, en retrait ; le filet sépare les boissons, pas les formats. */
+.cq-groupe { border-bottom: 1px solid var(--q-line); }
+.cq-liste > .cq-groupe:last-child { border-bottom-width: 0; }
+.cq-groupe > .cq-ligne { border-bottom-width: 0; }
+.cq-ligne-tete { padding-bottom: 0; min-height: 0; }
+.cq-ligne-format { padding-left: 20px; padding-top: 6px; padding-bottom: 6px; }
+.cq-ligne-format .cq-nom { font-size: 15px; }
 .cq-photo { width: 52px; height: 52px; border-radius: 14px; object-fit: cover; flex-shrink: 0; background: var(--q-piste); }
 .cq-ligne-texte { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .cq-nom { font-size: 16px; font-weight: 500; overflow-wrap: anywhere; }

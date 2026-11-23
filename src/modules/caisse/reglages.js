@@ -176,6 +176,19 @@ export function cartesEtArticlesEnVente({ plats, cartes, cartesIds }) {
   return { cartesActives: actives, cartesEnVente: enVente, articles, regle };
 }
 
+// Les plats lus, habillés pour la caisse (Carte des boissons, 22.11.2026) :
+//   formats : les formats de vente du plat (plat_id -> formats), [] sans format ;
+//   boisson : vrai quand le plat est sur une carte de boissons (cartes.genre),
+//             ce qui le range parmi les boissons de la grille (categories.js).
+export function articlesDeCaisse({ plats, cartes, formats }) {
+  const idsBoissons = new Set((cartes || []).filter((c) => c?.genre === 'boissons').map((c) => c.id));
+  return (plats || []).map((p) => ({
+    ...p,
+    formats: formats?.get?.(p.id) || [],
+    boisson: (p.carteIds || []).some((id) => idsBoissons.has(id)),
+  }));
+}
+
 // Nom d'un mode. suite 1 = En direct, 2 = À suivre, 3 = À suivre 2...
 export function libelleModeDefaut(suite) {
   if (suite <= 1) return 'En direct';
