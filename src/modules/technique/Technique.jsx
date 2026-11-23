@@ -443,6 +443,13 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
   const plansDus = plans.rows.filter((p) => planDu(p, aujourdhui));
   const horsService = trierChambres(chambres.rows.filter((c) => c.actif && c.statutMenage === 'hors_service'));
   const ordreDuPlan = (p) => ouverts.find((o) => o.planId === p.id) || null;
+  // Lot 6b : les demandes ouvertes du pôle Technique qui n'ont pas encore
+  // d'ordre. « Créer l'ordre » le remplit depuis la demande (titre, détail,
+  // chambre, priorité, lien vers la demande) : il reste à enregistrer.
+  const demandesSansOrdre = demandes.rows
+    .filter((d) => d.pole === 'technique' && demandeOuverte(d) && !ordres.rows.some((o) => o.demandeId === d.id))
+    .sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)));
+  const creerDepuisDemande = (d) => setForm({ ordre: null, prerempli: { titre: d.titre, detail: d.detail || '', chambreId: d.chambreId || '', priorite: d.priorite || 'normale', demandeId: d.id } });
 
   const remettreChambre = async (c) => {
     const r = await chambres.modifier(c.id, { statut_menage: 'a_faire', hors_service_motif: null });
@@ -452,7 +459,7 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
 
   const etat = (n, un, plusieurs) => <><span>{n}</span> <span>{n === 1 ? un : plusieurs}</span></>;
   const tuiles = [
-    { id: 'ordres', libelle: 'Ordres de travail', Icone: ClipboardList, etat: <>{etat(ouverts.length, 'ordre ouvert', 'ordres ouverts')}{ouverts.some((o) => o.priorite === 'urgente') && <> <Puce ton="danger">Urgent</Puce></>}</>, onClick: () => { setVue('ouverts'); setEcran('ordres'); } },
+    { id: 'ordres', libelle: 'Ordres de travail', Icone: ClipboardList, etat: <>{etat(ouverts.length, 'ordre ouvert', 'ordres ouverts')}{demandesSansOrdre.length > 0 && <>, {etat(demandesSansOrdre.length, 'demande sans ordre', 'demandes sans ordre')}</>}{ouverts.some((o) => o.priorite === 'urgente') && <> <Puce ton="danger">Urgent</Puce></>}</>, onClick: () => { setVue('ouverts'); setEcran('ordres'); } },
     { id: 'nouveau', libelle: 'Nouvel ordre', Icone: Plus, onClick: () => setForm({ ordre: null, prerempli: {} }) },
     { id: 'preventif', libelle: 'Préventif', Icone: Repeat, etat: etat(plansDus.length, 'tâche à faire', 'tâches à faire'), onClick: () => setEcran('preventif') },
     { id: 'hors_service', libelle: 'Chambres hors service', Icone: DoorClosed, etat: etat(horsService.length, 'chambre', 'chambres'), onClick: () => setEcran('hors_service') },
@@ -538,6 +545,29 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
             <SegmentedTabs size="sm" tabs={[{ id: 'ouverts', label: 'À faire' }, { id: 'clos', label: 'Terminés et annulés' }]} active={vue} onChange={setVue} />
             <SearchToggle value={recherche} onChange={setRecherche} placeholder="Titre, chambre, équipement, lieu…" />
           </div>
+          {vue === 'ouverts' && !recherche && demandesSansOrdre.length > 0 && (
+            <>
+              <div style={h.sousTitre}>Demandes sans ordre</div>
+              <Liste>
+                {demandesSansOrdre.map((d) => (
+                  <div key={d.id} style={{ ...h.ligne, cursor: 'default' }} data-demande-sans-ordre={d.id}>
+                    <span style={h.ligneGauche}>
+                      <span style={h.nomHote} data-no-translate>{d.titre}</span>
+                      <span style={h.detail}>
+                        <span>{libelleDe(PRIORITES, d.priorite)}</span>
+                        {d.chambreId && <>, <span>ch.</span> <span data-no-translate>{numero(d.chambreId)}</span></>}
+                        <>, <span>demandée le</span> <span data-no-translate>{dateHeureZurich(d.createdAt)}</span></>
+                      </span>
+                    </span>
+                    <span style={h.ligneDroite}>
+                      <Btn onClick={() => creerDepuisDemande(d)}>Créer l'ordre</Btn>
+                    </span>
+                  </div>
+                ))}
+              </Liste>
+              <div style={h.sousTitre}>Ordres à faire</div>
+            </>
+          )}
           {!liste.length && <Vide>{vue === 'ouverts' ? 'Aucun ordre de travail à faire.' : 'Aucun ordre terminé ou annulé.'}</Vide>}
           <Liste>{liste.map(ligneOrdre)}</Liste>
         </>

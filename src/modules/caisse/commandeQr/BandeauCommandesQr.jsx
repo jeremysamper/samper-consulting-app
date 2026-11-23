@@ -18,6 +18,10 @@ import { ageCommande, lieuCommande, MOTIFS_REFUS } from './bandeau.js';
 // commande refusée ne compte nulle part. « Tout refuser » vide le bandeau d'un
 // geste quand il déborde.
 //
+// Replié par défaut (lot 1, chiffres justes) : une ligne qui dit le nombre de
+// commandes et l'âge de la plus ancienne, et « Voir » qui déplie la liste. Le
+// plan de salle reste en haut de l'écran pendant le service.
+//
 // Prénoms, tables et produits sont des données : data-no-translate. Chaque
 // nombre vit dans son propre noeud (traduction du DOM).
 // ─────────────────────────────────────────────────────────────────────────────
@@ -25,6 +29,7 @@ import { ageCommande, lieuCommande, MOTIFS_REFUS } from './bandeau.js';
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 
 export default function BandeauCommandesQr({ commandes, maintenant, onTraitee }) {
+  const [ouvert, setOuvert] = React.useState(false);
   const [occupe, setOccupe] = React.useState(null);
   const [refus, setRefus] = React.useState(null); // { ids: [], prenom }
   if (!commandes?.length) return null;
@@ -66,7 +71,17 @@ export default function BandeauCommandesQr({ commandes, maintenant, onTraitee })
         <span style={s.picto} aria-hidden="true"><QrCode size={20} /></span>
         <h2 id="commandes-qr-titre" style={s.titre}>Commande QR à valider</h2>
         <span style={s.compte}>{commandes.length}</span>
-        {commandes.length > 1 && (
+        {!ouvert && <AgePlusAncienne commandes={commandes} maintenant={maintenant} />}
+        <button
+          type="button"
+          onClick={() => setOuvert((o) => !o)}
+          aria-expanded={ouvert}
+          aria-controls="commandes-qr-liste"
+          style={s.bascule}
+        >
+          {ouvert ? 'Replier' : 'Voir'}
+        </button>
+        {ouvert && commandes.length > 1 && (
           <Btn
             onClick={() => setRefus({ ids: commandes.map((c) => c.id), prenom: null })}
             disabled={Boolean(occupe)}
@@ -76,7 +91,8 @@ export default function BandeauCommandesQr({ commandes, maintenant, onTraitee })
           </Btn>
         )}
       </div>
-      <div style={s.liste}>
+      {ouvert && (
+      <div style={s.liste} id="commandes-qr-liste">
         {commandes.map((c) => {
           const age = ageCommande(c.created_at, maintenant);
           const lieu = lieuCommande(c);
@@ -114,6 +130,7 @@ export default function BandeauCommandesQr({ commandes, maintenant, onTraitee })
           );
         })}
       </div>
+      )}
       {refus && (
         <FenetreRefus
           nombre={refus.ids.length}
@@ -124,6 +141,20 @@ export default function BandeauCommandesQr({ commandes, maintenant, onTraitee })
         />
       )}
     </section>
+  );
+}
+
+// Âge de la commande la plus ancienne, sur la ligne repliée.
+function AgePlusAncienne({ commandes, maintenant }) {
+  const plusAncienne = [...commandes].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0];
+  const age = ageCommande(plusAncienne?.created_at, maintenant);
+  return (
+    <span style={s.detail}>
+      <span>la plus ancienne</span>{' '}
+      {age.unite === 'instant' ? <span>à l'instant</span> : (
+        <><span>il y a</span> <span style={s.num}>{age.valeur}</span> <span>{age.unite}</span></>
+      )}
+    </span>
   );
 }
 
@@ -189,7 +220,11 @@ const s = {
     minWidth: 28, height: 28, padding: '0 8px', borderRadius: 'var(--r-full)', background: 'var(--piste)', color: 'var(--text)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-num)', fontSize: 'var(--t2)',
   },
-  toutRefuser: { marginLeft: 'auto', minHeight: 44 },
+  toutRefuser: { minHeight: 44 },
+  bascule: {
+    marginLeft: 'auto', minHeight: 44, padding: '0 18px', borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
+  },
   liste: { display: 'flex', flexDirection: 'column' },
   ligne: {
     display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 6, padding: '12px 0',

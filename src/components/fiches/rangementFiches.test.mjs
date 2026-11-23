@@ -118,3 +118,11 @@ test('sections : fiches servies dans l\'ordre de service, préparations de base 
   assert.deepEqual(sectionsDeFiches([fera]).map(([cat]) => cat), ['Poissons']);
   assert.deepEqual(sectionsDeFiches([]), []);
 });
+
+test('allergènes d\'une fiche salle : les recettes du plat du même nom, plus la fiche', async () => {
+  const { allergenesDeFicheSalle } = await import('./rangementFiches.js');
+  const plats = [{ nom: 'Risotto aux cèpes', recettes: [{ recetteId: 'r1' }, { recetteId: 'r2' }] }];
+  const recettes = [{ id: 'r1', allergenesIds: ['lactose'] }, { id: 'r2', allergenesIds: ['sulfites'], masquee: true }];
+  assert.deepEqual(allergenesDeFicheSalle({ nom: 'Risotto aux Cèpes', allergenes: ['celeri'] }, plats, recettes).sort(), ['celeri', 'lactose', 'sulfites']);
+  assert.deepEqual(allergenesDeFicheSalle({ nom: 'Autre plat', allergenes: ['gluten'] }, plats, recettes), ['gluten']);
+});

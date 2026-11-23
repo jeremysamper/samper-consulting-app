@@ -41,6 +41,16 @@ export function metaType(id) {
   return TYPE_PAR_ID[id] || { id, label: nom, moyen: nom, court: nom.slice(0, 2).toUpperCase() };
 }
 
+// Le menu d'un groupe dans une phrase qui nomme déjà le client (tableau de
+// bord) : « menu 1 » pour un simple groupe, « Mariage, menu 2 » sinon ; sans
+// menu arrêté, le type seul (rien pour un simple groupe).
+export function libelleMenuGroupe(typeId, numero) {
+  const menu = numero ? `menu ${numero}` : '';
+  if (!typeId || typeId === 'groupe') return menu;
+  const t = metaType(typeId);
+  return menu ? `${t.label}, ${menu}` : t.label;
+}
+
 // « Mariage n°4 », ou « Mariage » tant que le menu n'est pas arrêté.
 export function libelleGroupe(typeId, numero) {
   const t = metaType(typeId);
@@ -81,9 +91,32 @@ export const STATUT_META = {
   },
 };
 
-export function metaStatut(statut) {
-  return STATUT_META[statut] || STATUT_META.a_lire;
+// Réglages de la maison (Réglages > Groupes, reglages_modules 'groupes') :
+// libellés des états, étape « lu » éteinte ou non, types proposés, délai
+// d'alerte. Posés par useReglagesGroupes à chaque rendu qui les lit ; sans
+// réglage, les valeurs d'origine. Les codes restent ceux des CHECK de la base.
+let reglageMaison = { delai: 14, libelles: {}, luActif: true, typesActifs: null };
+export function reglerGroupes(r) {
+  reglageMaison = {
+    delai: Number.isInteger(r?.delai_alerte_jours) ? r.delai_alerte_jours : 14,
+    libelles: Object.fromEntries(STATUTS.map((s) => [s, r?.statuts?.[s]?.libelle || null]).filter(([, l]) => l)),
+    luActif: r?.statuts?.lu?.actif !== false,
+    typesActifs: Array.isArray(r?.types_actifs) ? r.types_actifs : null,
+  };
 }
+
+export function metaStatut(statut) {
+  const meta = STATUT_META[statut] || STATUT_META.a_lire;
+  const libelle = reglageMaison.libelles[STATUT_META[statut] ? statut : 'a_lire'];
+  return libelle ? { ...meta, label: libelle, detail: libelle } : meta;
+}
+
+// Les états proposés : « lu » sort du parcours si la maison l'a éteint (un
+// groupe déjà « lu » garde son état et le montre).
+export const statutsActifs = (courant) => STATUTS.filter((s) => s !== 'lu' || reglageMaison.luActif || s === courant);
+
+// Les types proposés à la saisie, plus le type courant d'un groupe existant.
+export const typesProposes = (courant) => TYPES_GROUPE.filter((t) => !reglageMaison.typesActifs || reglageMaison.typesActifs.includes(t.id) || t.id === courant);
 
 // Rang d'urgence : sert à trier et à choisir la couleur d'un jour qui porte
 // plusieurs groupes (le plus en retard l'emporte).
@@ -146,6 +179,8 @@ export function lignesParSection(lignes) {
 // lancer la grosse production et la congeler. Un groupe entre dans l'alerte à
 // J-14 et y reste jusqu'au jour J.
 export const JOURS_ANTICIPATION = 14;
+// Le délai de la maison (Réglages > Groupes), 14 jours sans réglage.
+export const joursAnticipation = () => reglageMaison.delai;
 
 export function joursAvant(dateISO, aujourdhuiISO) {
   const d = parseLocalDate(dateISO);
@@ -154,7 +189,7 @@ export function joursAvant(dateISO, aujourdhuiISO) {
 }
 
 export function finFenetreAnticipation(aujourdhuiISO) {
-  return isoDate(addDays(parseLocalDate(aujourdhuiISO), JOURS_ANTICIPATION));
+  return isoDate(addDays(parseLocalDate(aujourdhuiISO), joursAnticipation()));
 }
 
 // Groupes à anticiper : ceux de la fenêtre J → J+14, du plus proche au plus

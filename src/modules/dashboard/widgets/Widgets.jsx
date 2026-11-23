@@ -135,9 +135,15 @@ export function WidgetAVenir({ t }) {
       nonLu={t.nonLu}
       peutOuvrir={t.peutOuvrir}
       ouvrir={t.ouvrir}
+      couvertsJourAilleurs={afficheCouvertsJour(t)}
+      couvertsSemaineAilleurs={Boolean(t.affiches?.has('semaine') || t.affiches?.has('chiffre-couverts'))}
     />
   );
 }
+
+// Un widget affiché porte déjà les couverts du jour : les autres ne les
+// redisent pas (chaque chiffre une fois).
+const afficheCouvertsJour = (t) => Boolean(t.affiches?.has('reservations') || t.affiches?.has('repere-couverts'));
 
 export function WidgetChiffre({ t, id }) {
   const bloc = t.blocsGestion.find((b) => `chiffre-${b.id}` === id);
@@ -433,7 +439,7 @@ export function WidgetTempsGagne({ t, taille }) {
 // Briefing du service (lot C3) : les couverts du jour déjà lus, et l'entrée
 // vers la page du briefing.
 export function WidgetBriefing({ t }) {
-  const couverts = t.reperes?.find((r) => r.id === 'couverts')?.valeur || 0;
+  const couverts = afficheCouvertsJour(t) ? 0 : (t.reperes?.find((r) => r.id === 'couverts')?.valeur || 0);
   return (
     <Section id="tdb-w-briefing" titre="Briefing du service">
       <p style={w.detail}>

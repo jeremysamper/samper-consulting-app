@@ -1,6 +1,6 @@
 import React from 'react';
 import { Anneau, Arc, Barres, BoutonFleche, CarteAvant, carteAvantStyles } from '../../components/ui/index.jsx';
-import { couvertsDu, decaler, equipeDu, etatShift, jourRelatif } from './tableauLogique.js';
+import { couvertsDu, decaler, equipeDu, etatShift, jourRelatif, serviceDuShift, serviceEnVue, shiftsDu } from './tableauLogique.js';
 
 // ───────────────────────────────────────────────────────────────────────────
 // Cartes de mise en avant du tableau de bord (direction Galet) : une carte
@@ -37,9 +37,16 @@ const TUILES = [
   { id: 'termine', label: 'Terminé', couleur: 'var(--carte-nuit-doux)' },
 ];
 
+const TITRES_SERVICE = { midi: 'Ce midi', soir: 'Ce soir' };
+
+// La carte parle d'un seul service, nommé dans son titre (« Ce soir ») :
+// celui en cours, sinon le prochain, sinon le dernier (serviceEnVue).
 export function CarteEquipe({ shifts, aujourdhui, maintenant, onOuvrir }) {
   const st = carteAvantStyles('nuit');
-  const equipe = equipeDu(shifts, aujourdhui);
+  const service = serviceEnVue(shifts, aujourdhui, maintenant);
+  const equipe = service
+    ? equipeDu(shiftsDu(shifts, aujourdhui).filter((sh) => serviceDuShift(sh) === service), aujourdhui)
+    : equipeDu(shifts, aujourdhui);
   const comptes = { en_poste: 0, attendu: 0, en_retard: 0, termine: 0 };
   equipe.forEach((p) => { const e = etatDeLaPersonne(p.shifts, maintenant); if (e in comptes) comptes[e] += 1; });
   const total = equipe.length;
@@ -47,7 +54,7 @@ export function CarteEquipe({ shifts, aujourdhui, maintenant, onOuvrir }) {
     <CarteAvant ton="nuit" data-carte="equipe">
       <div style={s.tete}>
         <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-          <h2 style={{ ...st.titre, ...s.titre }}>L&apos;équipe aujourd&apos;hui</h2>
+          <h2 style={{ ...st.titre, ...s.titre }}>{service ? TITRES_SERVICE[service] : "L'équipe aujourd'hui"}</h2>
         </div>
         <div style={s.total}>
           <span style={{ ...st.chiffre, ...s.totalValeur }} data-no-translate>{total}</span>
@@ -146,7 +153,8 @@ export function CarteCouverts({ couverts, aujourdhui, onOuvrir, compacte = false
         <div style={compacte ? { ...s.services, ...s.servicesCompact } : s.services}>
           {parts.map((x) => (
             <span key={x.id} style={s.service}>
-              <span style={{ ...st.chiffre, fontSize: 'var(--t5)' }} data-no-translate>{c[x.id]}</span>
+              {/* Un seul service : son nombre est le total, déjà écrit au centre de l'arc. */}
+              {parts.length > 1 && <span style={{ ...st.chiffre, fontSize: 'var(--t5)' }} data-no-translate>{c[x.id]}</span>}
               <span style={s.serviceMot}>
                 <span aria-hidden="true" style={{ ...s.point, background: x.couleur }} />
                 <span style={st.libelle}>{x.mot}</span>

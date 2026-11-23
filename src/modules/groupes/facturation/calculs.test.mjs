@@ -111,6 +111,11 @@ test('devis expiré, suivi d\'un devis, repères', () => {
   assert.ok(csv.startsWith('﻿Numéro;Date;Échéance;Client'));
   assert.match(csv, /FAC-2026-0001;20\.10\.2026;01\.11\.2026;Dupont;;Acompte;En retard;1490\.85;1394\.85;104\.52;90\.00;3\.29;0\.00;0\.00;6\.00;0\.00;490\.85;1000\.00/);
   assert.match(csv, /1;05\.11\.2026;FAC-2026-0001;Dupont;TWINT;;490\.85/);
+  // Un nom saisi qui commence par = ne devient pas une formule ; un montant
+  // négatif reste un nombre.
+  const piege = csvFacturation({ factures: [{ ...factures[0], clientNom: '=HYPERLINK("x")', montant: -10, lignes: [] }], paiements: [] }, '2026-11-23');
+  assert.match(piege, /;"'=HYPERLINK\(""x""\)";/);
+  assert.match(piege, /;-10\.00;/);
 });
 
 test('devis depuis un groupe : menu aux adultes, ligne enfant, sans menu', () => {

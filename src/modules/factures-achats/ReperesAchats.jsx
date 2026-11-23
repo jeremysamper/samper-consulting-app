@@ -1,8 +1,9 @@
 import React from 'react';
 import { AlarmClock, Banknote, ChartLine } from 'lucide-react';
-import { Arc, Barres, CarteAvant, CarteRepere, Panneau, carteAvantStyles, ligneStyle } from '../../components/ui/index.jsx';
+import { Arc, Barres, Btn, CarteAvant, CarteRepere, Panneau, carteAvantStyles, ligneStyle } from '../../components/ui/index.jsx';
 import { dateCH } from '../inventaire/inventaireLignes.js';
 import { depensesSixMois, partsFournisseurs, prochainesEcheances, reperesAchats } from './accueilAchats.js';
+import { estFacture } from '../inventaire/facturesLogic.js';
 import './achats.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,9 +37,15 @@ const SERIES = ['var(--serie-1)', 'var(--serie-2)', 'var(--serie-3)', 'var(--ser
 
 export default function ReperesAchats({ docs, aujourdhui, canRegler, depenses }) {
   const r = React.useMemo(() => (canRegler ? reperesAchats(docs, aujourdhui) : null), [docs, aujourdhui, canRegler]);
+  // Aucune facture enregistrée : un seul repère le dit, au lieu de « tout est
+  // réglé » et « 0 en retard », qui se lisaient comme une réussite.
+  const aucune = r && r.nbFactures === 0;
   return (
     <div className="ach-reperes" data-achats-reperes="">
-      {r && (
+      {aucune && (
+        <CarteRepere data-repere="a-regler" Icone={Banknote} texte="Aucune facture enregistrée pour l'instant" />
+      )}
+      {r && !aucune && (
         <CarteRepere
           data-repere="a-regler"
           Icone={Banknote}
@@ -49,7 +56,7 @@ export default function ReperesAchats({ docs, aujourdhui, canRegler, depenses })
             : <>tout est réglé</>}
         />
       )}
-      {r && (
+      {r && !aucune && (
         <CarteRepere
           data-repere="en-retard"
           Icone={AlarmClock}
@@ -79,10 +86,10 @@ export default function ReperesAchats({ docs, aujourdhui, canRegler, depenses })
 
 // La liste des échéances et les deux cartes pastel, enfants directs de la
 // grille de l'accueil (achats.css les range).
-export function CartesAchats({ docs, aujourdhui, canRegler }) {
+export function CartesAchats({ docs, aujourdhui, canRegler, onSaisirFacture }) {
   return (
     <>
-      {canRegler && <ListeEcheances docs={docs} aujourdhui={aujourdhui} />}
+      {canRegler && <ListeEcheances docs={docs} aujourdhui={aujourdhui} onSaisirFacture={onSaisirFacture} />}
       <div className="ach-cartes">
         <CarteSixMois docs={docs} aujourdhui={aujourdhui} />
         <CarteFournisseurs docs={docs} aujourdhui={aujourdhui} />
@@ -91,15 +98,21 @@ export function CartesAchats({ docs, aujourdhui, canRegler }) {
   );
 }
 
-function ListeEcheances({ docs, aujourdhui }) {
+function ListeEcheances({ docs, aujourdhui, onSaisirFacture }) {
   const e = React.useMemo(() => prochainesEcheances(docs, aujourdhui, 5), [docs, aujourdhui]);
+  const aucune = React.useMemo(() => !(docs || []).some(estFacture), [docs]);
   return (
     <div className="ach-echeances" data-achats-echeances="">
       <Panneau style={st.panneau}>
         <div style={st.teteCarte}>
           <h2 style={st.titreCarte}>Prochaines échéances</h2>
         </div>
-        {e.lignes.length === 0 ? (
+        {aucune ? (
+          <div style={st.vide}>
+            <p style={{ margin: 0 }}>Aucune facture enregistrée pour l'instant.</p>
+            {onSaisirFacture && <div style={{ marginTop: 12 }}><Btn onClick={onSaisirFacture}>Saisir la première facture</Btn></div>}
+          </div>
+        ) : e.lignes.length === 0 ? (
           <p style={st.vide}>Toutes les factures sont réglées.</p>
         ) : (
           <div>

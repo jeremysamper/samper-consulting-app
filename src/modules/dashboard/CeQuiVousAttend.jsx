@@ -1,7 +1,7 @@
 import React from 'react';
 import { metaMotif, periodeAbsence } from '../../utils/absences.js';
 import { userDisplay } from '../../utils/userDisplay.js';
-import { libelleGroupe } from '../groupes/typesGroupe.js';
+import { libelleMenuGroupe } from '../groupes/typesGroupe.js';
 import {
   couvertsDu, dateLongue, decaler, equipeDu, heureParlee, jourRelatif, nbAllergies,
 } from './tableauLogique.js';
@@ -49,7 +49,7 @@ export default function CeQuiVousAttend(props) {
   // colonne du jour, et les barres de la semaine ne refont pas le premier lien.
   // En onglets, chaque bloc garde les siens.
   const panneau = (id, colonnes = false) => {
-    if (id === 'aujourdhui') return <Jour {...props} date={props.aujourdhui} titre="Aujourd'hui" sansCouverts={mobile} />;
+    if (id === 'aujourdhui') return <Jour {...props} date={props.aujourdhui} titre="Aujourd'hui" sansCouverts={mobile || props.couvertsJourAilleurs} />;
     if (id === 'demain') return <Jour {...props} date={decaler(props.aujourdhui, 1)} titre="Demain" estDemain sansLiens={colonnes} />;
     return <Semaine {...props} sansLienCouverts={colonnes} />;
   };
@@ -174,17 +174,19 @@ function CouvertsParService({ c }) {
   );
 }
 
-// « Anniversaire, 14 personnes à 19 h 30 » : même texte que phraseGroupe(),
-// en nœuds (type au glossaire, nombre et heure sans traduction).
+// « Anniversaire, menu 2, 14 couverts à 19 h 30 » : même texte que
+// phraseGroupe(), en nœuds (menu au glossaire, nombre et heure sans
+// traduction). Le client est nommé par la ligne au-dessus.
 function PhraseGroupe({ g }) {
   const pax = Number(g.nbPax) || 0;
+  const menu = libelleMenuGroupe(g.typeGroupe, g.menuNumero);
   return (
     <>
-      <span>{libelleGroupe(g.typeGroupe, g.menuNumero)}</span>,{' '}
+      {menu ? <><span>{menu}</span>,{' '}</> : null}
       <span data-no-translate>{pax}</span>{' '}
       {g.heure
-        ? <><span>{pax > 1 ? 'personnes à' : 'personne à'}</span>{' '}<span data-no-translate>{heureParlee(g.heure)}</span></>
-        : <span>{pax > 1 ? 'personnes' : 'personne'}</span>}
+        ? <><span>{pax > 1 ? 'couverts à' : 'couvert à'}</span>{' '}<span data-no-translate>{heureParlee(g.heure)}</span></>
+        : <span>{pax > 1 ? 'couverts' : 'couvert'}</span>}
     </>
   );
 }
@@ -275,8 +277,12 @@ function AutresGroupes({ n, onClick }) {
 }
 
 function Semaine({
-  aujourdhui, couverts, groupes, absences, avecCouverts, avecGroupes, avecAbsences, nonLu, peutOuvrir, ouvrir, sansLienCouverts = false,
+  aujourdhui, couverts, groupes, absences, avecCouverts: avecCouvertsLus, avecGroupes, avecAbsences, nonLu, peutOuvrir, ouvrir, sansLienCouverts = false,
+  couvertsSemaineAilleurs = false,
 }) {
+  // Les couverts de la semaine déjà portés par un autre widget affiché (carte
+  // de la semaine, chiffre de gestion) ne sont pas redits ici.
+  const avecCouverts = avecCouvertsLus && !couvertsSemaineAilleurs;
   const vers = (page) => (peutOuvrir(page) ? () => ouvrir(page) : null);
   const jours = Array.from({ length: 7 }, (_, i) => decaler(aujourdhui, i));
   const totaux = jours.map((d) => couvertsDu(couverts, d).total);

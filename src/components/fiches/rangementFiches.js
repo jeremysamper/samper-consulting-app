@@ -84,6 +84,22 @@ export function photoDeFicheSalle(fiche, plats, recettes) {
   return recette ? recette.photoUrl : null;
 }
 
+// Allergènes d'une fiche salle lus depuis les recettes de son plat (le plat du
+// même nom, comme la photo) : la copie gardée sur la fiche peut dater. Union
+// des recettes du plat et de la fiche, jamais moins que la fiche : un
+// allergène ne se perd pas. Recettes masquées comprises (calcul de sécurité).
+// Sans plat relié par le nom ou sans recette lue : la liste de la fiche.
+export function allergenesDeFicheSalle(fiche, plats, recettes) {
+  const propres = fiche?.allergenes || [];
+  const cle = nomCompare(fiche?.nom);
+  const plat = cle ? (plats || []).find((p) => p && p.actif !== false && nomCompare(p.nom) === cle) : null;
+  if (!plat) return propres;
+  const parId = new Map((recettes || []).filter(Boolean).map((r) => [r.id, r]));
+  const lues = (plat.recettes || []).map((pr) => parId.get(pr.recetteId)).filter(Boolean);
+  if (!lues.length) return propres;
+  return [...new Set([...lues.flatMap((r) => r.allergenesIds || []), ...propres])];
+}
+
 // a commence par b, au mot près (« tarte aux pruneaux maison » commence par
 // « tarte aux pruneaux », « tartelette » ne commence pas par « tarte »).
 const commencePar = (a, b) => a.startsWith(b) && (a.length === b.length || /[^a-z0-9]/.test(a[b.length]));

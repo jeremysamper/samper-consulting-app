@@ -7,20 +7,23 @@ import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
 import { exportRowsToXlsx } from '../../utils/exportXlsx.js';
 import { userDisplay } from '../../utils/userDisplay.js';
-import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
-import { Btn, Panneau } from '../../components/ui/index.jsx';
+import { Btn, ChoixFiltre, Panneau } from '../../components/ui/index.jsx';
 import { CarteRepartition, CarteSeptJours, ReperesPertes } from './CartesPertes.jsx';
 import { zurichToday } from '../../utils/zurichTime.js';
 import './pertes.css';
 import PastillePoints, { porteurPoints } from '../points/PastillePoints.jsx';
 import { usePastillesPoints } from '../points/IndicateursPoints.jsx';
-import { Choix, Fenetre, st as stFenetre } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Choix, Fenetre, st as stFenetre } from '../../components/ui/Fenetres.jsx';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
 import { messageErreur } from '../../utils/messageErreur.js';
-import { totauxPertes } from './calculPertes.js';
+import { datePerte, periodePertes, totauxPertes, unitePerte } from './calculPertes.js';
 import { Printer, Trash2 } from 'lucide-react';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
+import { peutValider } from '../../utils/reglagesModules.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
+import { PertesFrequentes } from './DeclarationRapide.jsx';
 
 // Choix exclusif en tuiles (motif, unité) : un toucher au lieu des deux d'une
 // liste déroulante, même valeur écrite. data-cadre : chaque tuile garde son
@@ -73,7 +76,11 @@ const Pertes = ({ user, etablissement }) => {
   const [fenetreExport, setFenetreExport] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const [motifFilter, setMotifFilter] = React.useState('Tous');
-  const [form, setForm] = React.useState({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif:'DLC dépassée', categorie:'Légumes', commentaire:'' });
+  // Motifs et valideurs de la maison (Réglages > Pertes) ; sans réglage, ceux
+  // d'avant : la liste d'origine et le droit « Modifier » des Pertes.
+  const { reglages: reglagesPertes } = useReglagesModule(etablissement?.id || null, 'pertes');
+  const motifDefaut = reglagesPertes.motifs[0] || 'Autre';
+  const [form, setForm] = React.useState({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif: motifDefaut, categorie:'Légumes', commentaire:'' });
   // Lot B (moitié des gestes) : un produit pris dans le catalogue apporte son
   // prix et son unité ; la valeur unitaire, la date, la catégorie et le
   // commentaire se replient alors sous « Plus de détails ».
@@ -120,7 +127,13 @@ const Pertes = ({ user, etablissement }) => {
 
   React.useEffect(() => { demoData.pertes = pertes; if (!legacySB) writeLegacyStorage('sc_pertes', pertes); }, [pertes]);
 
+  // Un motif retiré par la maison ne reste pas choisi dans le formulaire.
+  React.useEffect(() => {
+    setForm(f => (reglagesPertes.motifs.includes(f.motif) ? f : { ...f, motif: reglagesPertes.motifs[0] || 'Autre' }));
+  }, [reglagesPertes.motifs]);
   const canManage = canManageModule(user.role, 'pertes');
+  const peutValiderPertes = peutValider(reglagesPertes.valideurs, user.role, canManage);
+  const colonnesAction = canManage || peutValiderPertes;
 
   const supprimer = async (id) => {
     if (!canManage || !confirmLegacy('Supprimer cette perte ?')) return;
@@ -168,7 +181,9 @@ const Pertes = ({ user, etablissement }) => {
     setBulkBusy(false);
   };
 
-  const MOTIFS = ['Tous','DLC dépassée','Surproduction','Erreur de préparation','Erreur de commande','Retour client','Casse','Autre'];
+  // Filtre : les motifs de la maison, plus ceux des pertes déjà déclarées
+  // sous un motif retiré depuis (elles restent trouvables).
+  const MOTIFS = ['Tous', ...reglagesPertes.motifs, ...[...new Set(pertes.map(p => p.motif).filter(Boolean))].filter(m => !reglagesPertes.motifs.includes(m))];
   const CATS = ['Viandes','Poissons','Légumes','Fruits','Épicerie sèche','Produits laitiers','Préparations','Fonds & sauces','Vins & alcools','Autres'];
   const UNITES = ['kg','g','L','ml','portions','pièces','bottes','unités'];
 
@@ -214,14 +229,14 @@ const Pertes = ({ user, etablissement }) => {
     }
     setPertes([newPerte, ...pertes]);
     setShowForm(false);
-    setForm({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif:'DLC dépassée', categorie:'Légumes', commentaire:'' });
+    setForm({ date: todayStr, produit:'', quantite:'', unite:'kg', valeurUnit:'', motif: motifDefaut, categorie:'Légumes', commentaire:'' });
     setPrixDuCatalogue(false);
     setDetails(false);
   };
 
   const valider = async (id) => {
     const p = pertes.find(x => x.id === id);
-    if (!p) return;
+    if (!p || !peutValiderPertes) return;
     const updated = { ...p, valide: true, validePar: user.id };
     if (legacySB) {
       try { await legacySB.db.upsertPerte(updated); }
@@ -257,31 +272,37 @@ const Pertes = ({ user, etablissement }) => {
           { id: 'jette', Icone: Trash2, libelle: 'Je jette', etat: <>produit, quantité, motif</>, visible: Boolean(perms.pertes), onClick: () => setShowForm(true), pastille: <PastillePoints n={pastilles.pastille('perte_declaree')} /> },
           { id: 'exporter', Icone: Printer, libelle: 'Exporter', etat: <>PDF ou imprimante</>, onClick: () => setFenetreExport(true) },
         ]} />
+        {/* Deux touches : le produit, puis « Déclarer » (plan 15, lot 4). */}
+        {Boolean(perms.pertes) && <div style={{ marginTop: 16 }}><PertesFrequentes etablissement={etablissement} user={user} /></div>}
       </div>
 
       {/* Repères : les chiffres de l'ensemble affiché. */}
       <ReperesPertes
         totalValeur={totalValeur}
+        periode={periodePertes(filtered)}
         declarations={filtered.length}
         nonValidees={pertesEtab.filter(p=>!p.valide).length}
         parCategorie={parCategorie}
       />
       </div>
 
-      {/* Filtres du registre : la loupe et les motifs en pilules. */}
+      {/* Filtres du registre : la loupe et le motif dans une liste (huit
+          pilules ne tenaient pas sur une ligne de tablette). */}
       <div style={pts.header}>
         <div style={pts.headerLeft}>
           <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher un produit…" />
-          <SegmentedTabs
-            size="sm"
-            active={motifFilter}
+          <ChoixFiltre
+            libelle="Motif"
+            valeur={motifFilter}
+            defaut="Tous"
             onChange={setMotifFilter}
-            tabs={MOTIFS.map(m => ({ id: m, label: m }))}
+            options={MOTIFS.map(m => ({ id: m, label: m === 'Tous' ? 'Tous les motifs' : m }))}
           />
         </div>
-        {canManage && !sel.active && (
+        {!sel.active && (
           <div className="module-actions">
-            <Btn variant="ghost" onClick={sel.enter}>Sélectionner</Btn>
+            {canManage && <Btn variant="ghost" onClick={sel.enter}>Sélectionner</Btn>}
+            <BoutonRegler section="pertes" user={user} etablissement={etablissement} />
           </div>
         )}
       </div>
@@ -315,7 +336,7 @@ const Pertes = ({ user, etablissement }) => {
       <div style={pts.tableWrap} id="pertes-print" className="grid-table-scroll">
         {/* Colonnes dynamiques : les 2 colonnes d'action n'existent que pour les
             rôles gestionnaires, sinon les cellules débordent sur une ligne implicite. */}
-        <div className="grid-table-row" style={{ ...pts.tableHead, gridTemplateColumns: (sel.active ? '34px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (canManage ? ' 80px 80px' : '') }}>
+        <div className="grid-table-row" style={{ ...pts.tableHead, gridTemplateColumns: (sel.active ? '44px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (colonnesAction ? ' 80px 80px' : '') }}>
           {sel.active && <span className="no-print" />}
           <span>Date</span>
           <span>Produit</span>
@@ -325,39 +346,40 @@ const Pertes = ({ user, etablissement }) => {
           <span style={{textAlign:'right'}}>Valeur</span>
           <span>Déclaré par</span>
           <span>Statut</span>
-          {canManage && <span/>}
-          {canManage && <span/>}
+          {colonnesAction && <span/>}
+          {colonnesAction && <span/>}
         </div>
         {filtered.length === 0 && <div style={{padding:'20px 18px', color:'var(--text2)', fontSize: 'var(--t2)'}}>Aucune perte pour ces critères.</div>}
         {(filtered || []).map(p => {
           const emp = userDisplay(p.declarePar);
           const role = emp.role ? demoData.roles[emp.role] : null;
           const valeur = (p.quantite * p.valeurUnit).toFixed(2);
-          const canVal = canManage && !p.valide;
+          const canVal = peutValiderPertes && !p.valide;
           return (
             <div key={p.id} className="grid-table-row" style={{
               ...pts.tableRow,
-              gridTemplateColumns: (sel.active ? '34px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (canManage ? ' 80px 80px' : ''),
+              gridTemplateColumns: (sel.active ? '44px ' : '') + '90px 2fr 1.2fr 1fr 90px 100px 100px 90px' + (colonnesAction ? ' 80px 80px' : ''),
               ...(sel.active && sel.isSelected(p.id) ? { background: 'var(--bg)' } : {}),
             }}>
               {sel.active && (
-                <span className="no-print" style={{ display: 'flex', alignItems: 'center' }}>
+                <label className="no-print" style={pts.caseCible}>
                   <input
                     type="checkbox"
+                    aria-label={p.produit}
                     checked={sel.isSelected(p.id)}
                     onChange={() => sel.toggle(p.id)}
-                    style={{ width: 16, height: 16, cursor: 'pointer' }}
+                    style={{ width: 24, height: 24, margin: 0, cursor: 'pointer' }}
                   />
-                </span>
+                </label>
               )}
-              <span style={pts.cell}>{p.date}</span>
+              <span style={pts.cell} data-no-translate>{datePerte(p.date, todayStr)}</span>
               <span style={{...pts.cellBold, flex:2}}>
                 {p.produit}
                 {p.commentaire && <div style={{fontSize: 'var(--t1)',color:'var(--text2)',fontWeight: 'var(--g1)',marginTop:1}} data-no-translate>{p.commentaire}</div>}
               </span>
               <span style={pts.cell}><span style={pts.motifTag}>{p.motif}</span></span>
               <span style={pts.cell}>{p.categorie}</span>
-              <span style={{...pts.cell,textAlign:'right'}}>{p.quantite} {p.unite}</span>
+              <span style={{...pts.cell,textAlign:'right'}}>{p.quantite} {unitePerte(p.quantite, p.unite)}</span>
               <span style={{...pts.cell,textAlign:'right',color:'var(--danger-strong)',fontWeight: 'var(--g2)'}}>−CHF {valeur}</span>
               <span style={pts.cell}>
                 <div style={{display:'flex',alignItems:'center',gap:6}}>
@@ -370,14 +392,22 @@ const Pertes = ({ user, etablissement }) => {
                   {p.valide ? 'Validé' : 'À valider'}
                 </span>
               </span>
-              {canManage && (
+              {colonnesAction && (
                 <span>
                   {canVal && <button style={pts.valBtn} onClick={()=>valider(p.id)}>Valider</button>}
                 </span>
               )}
+              {colonnesAction && !canManage && <span/>}
               {canManage && (
                 <span>
-                  <button style={pts.deleteBtn} onClick={()=>supprimer(p.id)}>Supprimer</button>
+                  <BoutonActions
+                    id={`perte-${p.id}`}
+                    label="Gérer"
+                    style={pts.gererBtn}
+                    titre="Gérer"
+                    sousTitre={<span data-no-translate="">{p.produit}, {datePerte(p.date, todayStr)}</span>}
+                    sections={[{ items: [{ titre: 'Supprimer', detail: 'Retire cette perte de la liste.', onClick: () => supprimer(p.id) }] }]}
+                  />
                 </span>
               )}
             </div>
@@ -537,7 +567,7 @@ const Pertes = ({ user, etablissement }) => {
                 </div>
                 )}
                 <ChoixTuiles nom="unite" libelle="Unité" valeur={form.unite} options={UNITES} onChange={u => setForm({ ...form, unite: u })} />
-                <ChoixTuiles nom="motif" libelle="Motif *" valeur={form.motif} options={MOTIFS.slice(1)} onChange={m => setForm({ ...form, motif: m })} />
+                <ChoixTuiles nom="motif" libelle="Motif *" valeur={form.motif} options={reglagesPertes.motifs} onChange={m => setForm({ ...form, motif: m })} />
                 {!details && (
                   <button type="button" style={pts.plusDetails} onClick={() => setDetails(true)} data-pertes-details="">
                     Plus de détails : date, catégorie, commentaire
@@ -578,6 +608,8 @@ const Pertes = ({ user, etablissement }) => {
 };
 
 const pts = {
+  // Case de sélection : le label est la cible, 44 x 44 (règle de l'iPad).
+  caseCible:{display:'flex',alignItems:'center',justifyContent:'center',width:44,height:44,cursor:'pointer'},
   plusDetails:{gridColumn:'1/-1',justifySelf:'start',minHeight:44,padding:'0 4px',background:'transparent',borderWidth:0,borderStyle:'none',color:'var(--lien)',fontSize:'var(--t2)',fontFamily:'var(--font)',cursor:'pointer',textDecoration:'underline',textUnderlineOffset:3},
   root:{display:'flex',flexDirection:'column',gap:16},
   // Carte du registre (Panneau) : sans retrait, le tableau défile dedans.
@@ -603,7 +635,7 @@ const pts = {
   motifTag:{fontSize: 'var(--t1)',background:'var(--selection)',color:'var(--text2)',padding:'2px 8px',borderRadius: 'var(--r)',fontWeight: 'var(--g2)'},
   empDot:{width:22,height:22,borderRadius: 'var(--r)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontWeight: 'var(--g3)',fontSize: 'var(--t1)',flexShrink:0},
   valBtn:{background: 'var(--success-bg-soft)',border: '1px solid transparent',color:'var(--success-text)',borderRadius: 'var(--r-full)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
-  deleteBtn:{background: 'var(--danger-bg-soft)',border: '1px solid transparent',color:'var(--danger-strong)',borderRadius: 'var(--r-full)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
+  gererBtn:{background: 'var(--btn-fond)',borderWidth: 1,borderStyle: 'solid',borderColor: 'var(--btn-bord)',color:'var(--btn-texte)',borderRadius: 'var(--r-full)',padding:'4px 10px',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   chartCard:{background:'var(--surface)',border:'1px solid var(--border)',borderRadius:'var(--r)', boxShadow: 'var(--sh-xs)',padding:'18px 20px'},
   chartTitle:{fontSize: 'var(--t1)',fontWeight: 'var(--g3)',color:'var(--text)',marginBottom:14},
   chartBars:{display:'flex',flexDirection:'column',gap:10},

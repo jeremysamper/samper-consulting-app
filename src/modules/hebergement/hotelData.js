@@ -708,6 +708,17 @@ export function jourZurich(iso) {
   return `${y}-${m}-${d}`;
 }
 export const heureZurich = (iso) => (iso ? zurichDateHeure(iso).heure : '');
+// Lot 6b : une échéance proche se lit en mots, sans l'année : « aujourd'hui »,
+// « demain » ou « hier », puis l'heure ; sinon « 24.11 15:00 ».
+// Rend { jour: texte à traduire ou null, date: texte brut ou null, heure }.
+export function quandLisible(iso, aujourdhui) {
+  if (!iso) return null;
+  const { jour, date, heure } = zurichDateHeure(iso);
+  if (jour === aujourdhui) return { jour: 'aujourd\'hui', date: null, heure };
+  if (jour === zurichAjouterJours(aujourdhui, 1)) return { jour: 'demain', date: null, heure };
+  if (jour === zurichAjouterJours(aujourdhui, -1)) return { jour: 'hier', date: null, heure };
+  return { jour: null, date: date.slice(0, 5), heure };
+}
 // Horodatage ISO d'un jour de Zurich à une heure donnée (« 07:00 »).
 export function isoZurich(jour, heure) {
   const [hh, mm] = String(heure || '00:00').split(':').map(Number);

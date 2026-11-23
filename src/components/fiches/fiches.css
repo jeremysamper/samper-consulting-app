@@ -619,6 +619,16 @@
   font-size: var(--t2);
   color: var(--text2);
 }
+/* Allergène que les ingrédients nomment sans que la fiche le déclare. */
+.fv-probables {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: var(--r);
+  background: var(--warning-bg-soft);
+  color: var(--warning-text);
+  border: 1px solid var(--warning-bd);
+  font-size: var(--t2);
+}
 
 /* Deux colonnes dès 760 px de fiche (iPad portrait compris), une seule
    au téléphone, dans le même ordre de lecture. */

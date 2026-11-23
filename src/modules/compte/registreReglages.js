@@ -13,8 +13,10 @@ import { peutGererPassations } from '../passations/gardesPassations.js';
 import { peutGererTechnique } from '../technique/gardesTechnique.js';
 import { estDirectionPlanning, peutEcrirePlanning, peutOuvrirGroupes } from '../planning/gardesPlanning.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
-import { estDirectionMaison } from './gardesMaison.js';
+import { estDirectionModules } from '../../utils/reglagesModules.js';
+import { peutGererPoints } from '../points/bareme.js';
 import { canManageModule } from '../../data/demoData.js';
+import { estDirectionMaison } from './gardesMaison.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -71,20 +73,34 @@ export const GROUPES = [
 // Les modules qui ont des réglages, avec le nom de leur entrée.
 export const MODULES = {
   caisse: 'Caisse',
+  kds: 'KDS',
+  pos: 'Ventes POS',
   planning: 'Planning',
   previsions: 'Réservations',
   inventaire: 'Inventaire',
+  commande: 'Commande',
+  pertes: 'Pertes',
   achats: 'Factures & achats',
   comptabilite: 'Comptabilité',
   haccp: 'HACCP',
   cartes: 'Cartes & Recettes',
+  mep: 'Mise en place',
+  groupes: 'Groupes',
+  fiches_salle: 'Fiches salle',
+  sop: 'SOP',
+  catalogue: 'Catalogue',
+  points: 'Points',
+  journal: "Journal d'activité",
+  statistiques: 'Statistiques',
   spa: 'Spa',
   hebergement: 'Hébergement',
+  etages: 'Étages',
+  demandes: 'Demandes',
+  repas: 'Repas hôtel',
   activites: 'Activités',
   passations: 'Passations',
   technique: 'Technique',
   factures: 'Factures',
-  groupes: 'Groupes',
 };
 
 // Qui ouvre le module ouvre ses réglages, pas les autres : droit de la page et
@@ -125,14 +141,15 @@ export const SECTIONS = [
     motsCles: 'barre latérale tablette téléphone ordinateur glisser', groupe: 'appareil', portee: 'appareil', garde: toutLeMonde,
     charger: () => import('./sections/SectionMenuGestes.jsx'),
   },
-  // Ouverte à qui voit Réservations ou ouvre la Caisse : un appareil abonné
+  // Ouverte à qui voit Réservations, ouvre la Caisse ou les Messages (plan 15,
+  // lot 2 : l'avis d'un nouveau message) : un appareil abonné
   // reçoit les réservations en ligne (seulement si la personne voit
   // Réservations), les plats prêts de la caisse (seulement ceux qu'elle a
   // envoyés) et les alertes qui la visent. Aucun droit ne change.
   {
-    id: 'notifications', libelle: 'Notifications', detail: 'Être prévenu des réservations en ligne et des plats prêts',
-    motsCles: 'alerte vibration push', groupe: 'appareil', portee: 'appareil',
-    garde: (ctx) => ouvreLeModule('previsions')(ctx) || ouvreLeModule('caisse')(ctx),
+    id: 'notifications', libelle: 'Notifications', detail: 'Être prévenu des réservations en ligne, des plats prêts et des messages',
+    motsCles: 'alerte vibration push message', groupe: 'appareil', portee: 'appareil',
+    garde: (ctx) => ouvreLeModule('previsions')(ctx) || ouvreLeModule('caisse')(ctx) || ouvreLeModule('messages')(ctx),
     charger: () => import('../previsions/SectionNotificationsAppareil.jsx'),
   },
 
@@ -237,10 +254,23 @@ export const SECTIONS = [
   // Hausses de prix fournisseur (18.11.2026) : le seuil d'alerte de
   // l'établissement, pour qui voit les hausses dans Factures & achats.
   {
-    id: 'achats_hausses', libelle: 'Hausses de prix', detail: "Seuil d'alerte sur les prix des fournisseurs",
+    id: 'achats_hausses', libelle: 'Hausses de prix', onglet: 'Hausses de prix', detail: "Seuil d'alerte sur les prix des fournisseurs",
     motsCles: 'alerte augmentation fournisseur seuil facture', groupe: 'modules', portee: 'maison', module: 'achats',
     garde: (ctx) => ouvreLeModule('achats')(ctx) && peutReglerFactures(ctx.user?.role),
     charger: () => import('../factures-achats/SectionHaussesPrix.jsx'),
+  },
+  {
+    id: 'achats_paiement', libelle: "Conditions de paiement", onglet: "Conditions de paiement", detail: "Délai de paiement de la maison et par fournisseur",
+    motsCles: "échéance délai paiement fournisseur jours", groupe: 'modules', portee: 'maison', module: 'achats',
+    garde: (ctx) => ouvreLeModule('achats')(ctx) && peutReglerFactures(ctx.user?.role),
+    charger: () => import('../factures-achats/SectionConditionsPaiement.jsx'),
+    signaux: ['achats_paiement','table:fournisseurs'],
+  },
+  {
+    id: 'achats_categories', libelle: "Catégories de charges", onglet: "Catégories de charges", detail: "Les catégories proposées pour une charge fixe, et leur nom",
+    motsCles: "charge fixe loyer énergie catégorie", groupe: 'modules', portee: 'maison', module: 'achats',
+    garde: (ctx) => ouvreLeModule('achats')(ctx) && peutReglerFactures(ctx.user?.role),
+    charger: () => import('../factures-achats/SectionCategoriesCharges.jsx'),
   },
   {
     id: 'comptabilite', libelle: 'Comptabilité', detail: 'Méthode de TVA, charges sociales, coût horaire moyen',
@@ -253,6 +283,89 @@ export const SECTIONS = [
     motsCles: 'température relevé', groupe: 'modules', portee: 'maison', module: 'haccp',
     garde: (ctx) => ouvreLeModule('haccp')(ctx) && peutConfigurerHaccp(ctx.user?.role),
     charger: () => import('../haccp/SectionReglagesHaccp.jsx'),
+  },
+  // Plan 15, lot 2 (22.11.2026) : chaque module a sa section, même courte ;
+  // dans le module, « Régler » (BoutonRegler) y mène en une touche. Les
+  // réglages de reglages_modules s'écrivent par la direction de la maison
+  // (consultant, patron, resp_cuisine), comme la RLS.
+  {
+    id: 'cartes', libelle: "Cartes & Recettes", detail: "Ordre des onglets, carte d'accueil, cartes cachées, archives",
+    motsCles: "onglets ordre accueil par défaut cachée masquée archive", groupe: 'modules', portee: 'maison', module: 'cartes',
+    garde: (ctx) => ouvreLeModule('cartes')(ctx) && peutGererCartes(ctx.user?.role),
+    charger: () => import('../recettes/SectionReglagesCartes.jsx'),
+  },
+  {
+    id: 'pertes', libelle: "Pertes", detail: "Motifs, qui valide, seuil d'alerte",
+    motsCles: "motif valider alerte seuil gaspillage", groupe: 'modules', portee: 'maison', module: 'pertes',
+    garde: (ctx) => ouvreLeModule('pertes')(ctx) && estDirectionModules(ctx.user?.role),
+    charger: () => import('../pertes/SectionReglagesPertes.jsx'),
+    signaux: ['reglages_modules:pertes'],
+  },
+  {
+    id: 'mep', libelle: "Mise en place", detail: "Postes et modèles de liste",
+    motsCles: "poste modèle liste préparation", groupe: 'modules', portee: 'maison', module: 'mep',
+    garde: (ctx) => ouvreLeModule('mep')(ctx) && estDirectionModules(ctx.user?.role),
+    charger: () => import('../mep/SectionReglagesMep.jsx'),
+    signaux: ['reglages_modules:mep','table:mep_modeles'],
+  },
+  {
+    id: 'groupes', libelle: "Groupes", onglet: 'Alertes et types', detail: "Délai d'alerte, états de préparation, types de groupe",
+    motsCles: "alerte délai statut type mariage séminaire", groupe: 'modules', portee: 'maison', module: 'groupes',
+    garde: (ctx) => ouvreLeModule('groupes')(ctx) && estDirectionModules(ctx.user?.role),
+    charger: () => import('../groupes/SectionReglagesGroupes.jsx'),
+    signaux: ['reglages_modules:groupes'],
+  },
+  {
+    id: 'sop', libelle: "SOP", detail: "Fréquence, qui la fait, rappel de chaque procédure",
+    motsCles: "procédure checklist rappel fréquence rôle", groupe: 'modules', portee: 'maison', module: 'sop',
+    garde: (ctx) => ouvreLeModule('sop')(ctx) && estDirectionModules(ctx.user?.role),
+    charger: () => import('../sop/SectionReglagesSop.jsx'),
+    signaux: ['table:sops'],
+  },
+  {
+    id: 'fiches_salle', libelle: "Fiches salle", detail: "Qui valide, brouillons, ce que la salle voit",
+    motsCles: "brouillon valider accords allergènes temps", groupe: 'modules', portee: 'maison', module: 'fiches_salle',
+    garde: (ctx) => ouvreLeModule('fiches_salle')(ctx) && estDirectionModules(ctx.user?.role),
+    charger: () => import('../fiches-salle/SectionReglagesFichesSalle.jsx'),
+    signaux: ['reglages_modules:fiches_salle'],
+  },
+  {
+    id: 'catalogue', libelle: "Catalogue", detail: "Catégories et unités de la maison",
+    motsCles: "catégorie unité produit bouteille carton", groupe: 'modules', portee: 'maison', module: 'catalogue',
+    garde: (ctx) => ouvreLeModule('catalogue')(ctx) && estDirectionModules(ctx.user?.role),
+    charger: () => import('../catalogue/SectionReglagesCatalogue.jsx'),
+    signaux: ['reglages_modules:catalogue'],
+  },
+  {
+    id: 'kds', libelle: "KDS", detail: "Son, bon en attente et en retard, postes",
+    motsCles: "cuisine passe bon retard son poste", groupe: 'modules', portee: 'maison', module: 'kds',
+    garde: (ctx) => ouvreLeModule('kds')(ctx) && estDirectionModules(ctx.user?.role),
+    charger: () => import('../kds/SectionReglagesKds.jsx'),
+    signaux: ['reglages_modules:kds'],
+  },
+  {
+    id: 'points', libelle: "Points", detail: "Allumer les points, barème, plafonds, participants",
+    motsCles: "points boutique cadeaux barème", groupe: 'modules', portee: 'maison', module: 'points',
+    garde: (ctx) => ouvreLeModule('points')(ctx) && peutGererPoints(ctx.user?.role, canManageModule(ctx.user?.role, 'points')),
+    charger: () => import('../points/SectionReglagesPoints.jsx'),
+  },
+  {
+    // Lot 5 : le journal se lit par le consultant et le patron (garde dure de
+    // la page) ; eux seuls règlent sa vue et son export.
+    id: 'journal', libelle: "Journal d'activité", detail: "Vue d'office et format de l'export",
+    motsCles: "journal activité export csv excel regrouper", groupe: 'modules', portee: 'maison', module: 'journal',
+    garde: ouvreLeModule('journal'),
+    charger: () => import('../journal/SectionReglagesJournal.jsx'),
+    signaux: ['reglages_modules:journal'],
+  },
+  {
+    // Lot 5 : la vue d'office de la maison ; écrite par la direction de la
+    // maison qui ouvre le module (RLS de reglages_modules).
+    id: 'statistiques', libelle: 'Statistiques', detail: "Vue d'office de la maison",
+    motsCles: "statistiques vue défaut analyse question", groupe: 'modules', portee: 'maison', module: 'statistiques',
+    garde: (ctx) => ouvreLeModule('statistiques')(ctx) && estDirectionModules(ctx.user?.role),
+    charger: () => import('../statistiques/SectionReglagesStatistiques.jsx'),
+    signaux: ['reglages_modules:statistiques'],
   },
   {
     id: 'spa_en_ligne', libelle: 'Spa : réservation en ligne', onglet: 'Réservation en ligne', detail: 'Ouverture, horaires, délais, praticiens, lien à partager',
@@ -281,6 +394,31 @@ export const SECTIONS = [
     garde: (ctx) => ouvreLeModule('hebergement')(ctx) && estDirectionHotel(ctx.user?.role),
     charger: () => import('../hebergement/SectionChambresHotel.jsx'),
     signaux: ['table:chambres'],
+  },
+  // Plan 15, lot 6b (22.11.2026) : trois modules de l'hôtel réglés dans
+  // reglages_modules (migration 20261122_lot6b_reglages_hotel). La base n'en
+  // laisse écrire que la direction de l'hôtel (déclencheur) ; les sections ne
+  // sont proposées qu'à elle, comme ses autres réglages.
+  {
+    id: 'etages', libelle: 'Étages', detail: 'Temps de ménage et linge par type de chambre',
+    motsCles: 'ménage temps tournée linge draps serviettes catégorie chambre', groupe: 'modules', portee: 'maison', module: 'etages',
+    garde: (ctx) => ouvreLeModule('etages')(ctx) && estDirectionHotel(ctx.user?.role),
+    charger: () => import('../etages/SectionReglagesEtages.jsx'),
+    signaux: ['reglages_modules:etages', 'table:chambres'],
+  },
+  {
+    id: 'demandes', libelle: 'Demandes', detail: 'Demandes courantes, pôle, priorité et délai',
+    motsCles: 'catégorie délai échéance priorité pôle demande courante', groupe: 'modules', portee: 'maison', module: 'demandes',
+    garde: (ctx) => ouvreLeModule('demandes')(ctx) && estDirectionHotel(ctx.user?.role),
+    charger: () => import('../demandes/SectionReglagesDemandes.jsx'),
+    signaux: ['reglages_modules:demandes'],
+  },
+  {
+    id: 'repas', libelle: 'Repas hôtel', detail: 'Horaires des repas, heures et carte du room service',
+    motsCles: 'horaire petit-déjeuner déjeuner dîner room service carte menu livraison frais', groupe: 'modules', portee: 'maison', module: 'repas',
+    garde: (ctx) => ouvreLeModule('repas')(ctx) && estDirectionHotel(ctx.user?.role),
+    charger: () => import('../repas/SectionReglagesRepas.jsx'),
+    signaux: ['reglages_modules:repas'],
   },
   {
     id: 'activites_forfaits', libelle: 'Activités : forfaits', detail: 'Les forfaits et ce que chacun donne',
@@ -342,11 +480,14 @@ export const SECTIONS = [
 // garde que la section d'avant : la recherche ne montre à personne un
 // réglage qu'il ne peut pas toucher.
 export const RENVOIS = [
+  // 22.11.2026 : la carte d'accueil des recettes est redevenue une section
+  // (Cartes & Recettes, plan 15, lot 2). Les menus types des groupes sont du
+  // contenu : ils restent dans le module, la recherche y mène.
   {
-    id: 'renvoi_carte_accueil', libelle: "Carte d'accueil des recettes", page: 'cartes',
-    ou: 'Dans Cartes & Recettes, le bouton « Définir par défaut » de la carte',
-    motsCles: 'carte par défaut arrivée recettes',
-    garde: (ctx) => ouvreLeModule('cartes')(ctx) && peutGererCartes(ctx.user?.role),
+    id: 'renvoi_groupes_menus', libelle: 'Menus types des groupes', page: 'groupes',
+    ou: "Dans Groupes, l'onglet « Menus »",
+    motsCles: 'menu groupe mariage banquet composer',
+    garde: (ctx) => ouvreLeModule('groupes')(ctx) && estDirectionModules(ctx.user?.role),
   },
   {
     id: 'renvoi_planning_masques', libelle: 'Personnes masquées du planning', page: 'planning',

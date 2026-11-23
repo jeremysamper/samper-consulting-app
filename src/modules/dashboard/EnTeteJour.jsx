@@ -52,13 +52,16 @@ export function EnTete({ date, salutation, prenom, pret, service, onAssistant, o
 // Débuts de phrase, un par service : chacun est une entrée du glossaire.
 const DEBUT = {
   brunch: { dans: 'Brunch dans', a: 'Brunch à', enCours: 'Brunch en cours.', sansHeure: 'Au brunch :' },
-  midi: { dans: 'Service du midi dans', a: 'Service du midi à', enCours: 'Service du midi en cours.', sansHeure: 'Ce midi :' },
-  soir: { dans: 'Service du soir dans', a: 'Service du soir à', enCours: 'Service du soir en cours.', sansHeure: 'Ce soir :' },
+  midi: { dans: 'Service du midi dans', a: 'Service du midi à', enCours: 'Service du midi en cours.', sansHeure: 'Ce midi :', seul: "Service du midi aujourd'hui." },
+  soir: { dans: 'Service du soir dans', a: 'Service du soir à', enCours: 'Service du soir en cours.', sansHeure: 'Ce soir :', seul: "Service du soir aujourd'hui." },
 };
 // Au-delà de trois heures, l'heure du service plutôt qu'un compte à rebours.
 const COMPTE_A_REBOURS_MAX = 180;
 
+// n null : les couverts du jour sont dits par un widget affiché, la ligne ne
+// les redit pas.
 function Couverts({ n }) {
+  if (n == null) return null;
   if (!n) return <span>Aucune réservation pour l&apos;instant.</span>;
   return <><span data-no-translate>{n}</span>{' '}<span>{n === 1 ? 'couvert réservé.' : 'couverts réservés.'}</span></>;
 }
@@ -80,6 +83,7 @@ export function LigneService({ service }) {
     case 'en_cours':
       return <><span>{debut.enCours}</span>{' '}<Couverts n={couverts} /></>;
     case 'sans_heure':
+      if (couverts == null) return <span>{debut.seul}</span>;
       return <><span>{debut.sansHeure}</span>{' '}<Couverts n={couverts} /></>;
     case 'termine': {
       const parts = [];

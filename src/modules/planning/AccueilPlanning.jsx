@@ -55,7 +55,8 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats
     },
     {
       id: 'equipe', Icone: Users, libelle: 'L\'équipe aujourd\'hui', onClick: onEquipe,
-      etat: equipe.total ? <><span>{equipe.pointes}</span> / <span>{equipe.total}</span> pointés</> : <>aucun horaire aujourd'hui</>,
+      // Les chiffres du service sont sur la carte : la tuile mène à la liste.
+      etat: equipe.total ? <>qui est là, qui a pointé</> : <>aucun horaire aujourd'hui</>,
     },
     {
       id: 'planning', Icone: CalendarDays, libelle: canWrite ? 'Faire le planning' : 'La semaine de l\'équipe', onClick: onPlanning,
@@ -63,7 +64,7 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats
     },
     {
       id: 'gerer', Icone: Settings2, libelle: 'Gérer', onClick: () => setGererOuvert(true), visible: canWrite && choix.length > 0,
-      etat: <>absences, modèles, groupes, export</>,
+      etat: <>absences, export, réglages</>,
     },
   ];
 
@@ -91,7 +92,7 @@ export default function AccueilPlanning({ jour, prochain, equipe, semaine, etats
           />
         )}
         <div className="pl-grille">
-          <ReperesPlanning equipe={equipe} heures={heures} absents={absents} />
+          <ReperesPlanning equipe={equipe} heures={heures} absents={absents} avecCarte={etats.total > 0} />
           <CartePlanningEquipe etats={etats} />
           <AccueilModule tuiles={tuiles} />
         </div>

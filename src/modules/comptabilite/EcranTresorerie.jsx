@@ -67,7 +67,7 @@ export default function EcranTresorerie({
                     </span>
                     <span style={st.chiffres}>
                       <span style={st.cell}>
-                        <span>entrées estimées</span> {s.entrees == null ? <span>n/a</span> : <Chf v={s.entrees} entier />}
+                        <span>entrées estimées</span> {s.entrees == null ? <span>pas encore de chiffre</span> : <Chf v={s.entrees} entier />}
                       </span>
                       <span style={st.cell}>
                         <span>sorties prévues</span> <Chf v={s.sorties.total} entier />

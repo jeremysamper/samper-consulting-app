@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { formatDateCourte, formatJourSemaine } from '../../utils/dateHelpers.js';
 import {
-  JOURS_ANTICIPATION, joursAvant, libelleEcheance, libelleGroupe, metaStatut,
+  joursAnticipation, joursAvant, libelleEcheance, libelleGroupe, metaStatut,
 } from './typesGroupe.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,17 +46,18 @@ export default function AlerteAnticipation({ groupes, aujourdhui, compact = fals
     >
       <button
         type="button"
+        className="touch-target"
         onClick={() => setChoix(!ouvert)}
         aria-expanded={ouvert}
         style={{
-          display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+          display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 24,
           padding: 0, margin: 0, background: 'none', border: 'none', cursor: 'pointer',
           textAlign: 'left', fontFamily: 'var(--font)', fontSize: 13, color: ton.texte, lineHeight: 1.4,
         }}
       >
         <span style={{ flex: '1 1 auto', minWidth: 0 }}>
           <span style={{ fontWeight: 700, fontFamily: 'var(--font-serif)' }}>
-            À anticiper : {n} groupe{n > 1 ? 's' : ''} dans les {JOURS_ANTICIPATION} prochains jours.
+            À anticiper : {n} groupe{n > 1 ? 's' : ''} dans les {joursAnticipation()} prochains jours.
           </span>{' '}
           {toutPret
             ? 'Tout est lu et préparé.'
@@ -99,9 +100,9 @@ export default function AlerteAnticipation({ groupes, aujourdhui, compact = fals
                 flex: '1 1 auto', minWidth: 0, fontSize: 13, fontWeight: 700,
                 whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
               }}>
-                {libelleGroupe(g.typeGroupe, g.menuNumero)}
+                {g.nom || libelleGroupe(g.typeGroupe, g.menuNumero)}
                 <span style={{ fontWeight: 500, color: 'var(--text2)' }}>
-                  {', '}{formatJourSemaine(g.dateEvenement)} {formatDateCourte(g.dateEvenement)}, {g.nbPax} pax
+                  {', '}{formatJourSemaine(g.dateEvenement)} {formatDateCourte(g.dateEvenement)}, {g.nbPax} couvert{g.nbPax > 1 ? 's' : ''}
                 </span>
               </span>
               <span style={{

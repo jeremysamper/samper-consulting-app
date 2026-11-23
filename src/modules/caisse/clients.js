@@ -10,7 +10,7 @@
 //     reservation_tags: [{ type_tag, valeur }], resa_clients: { allergies } }
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { idsDeTagAllergene, labelAllergene, sortAllergenes, splitAllergenesText } from '../../utils/allergenes.js';
+import { idsDeTagAllergene, labelAllergene, libelleTagAllergene, sortAllergenes, splitAllergenesText } from '../../utils/allergenes.js';
 
 export const COUVERTS_RAPIDES = [1, 2, 3, 4, 5, 6, 7, 8];
 export const COUVERTS_MAX = 99;
@@ -34,7 +34,7 @@ export function allergiesDe(resa) {
   ajouter(resa?.resa_clients?.allergies);
   (resa?.reservation_tags || [])
     .filter((t) => t.type_tag === 'allergene' || t.type_tag === 'regime')
-    .forEach((t) => ajouter(t.valeur));
+    .forEach((t) => ajouter(t.type_tag === 'allergene' ? libelleTagAllergene(t.valeur) : t.valeur));
   return vus;
 }
 

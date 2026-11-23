@@ -21,8 +21,10 @@ import { reperesGroupes } from './accueilGroupes.js';
 import MenusGroupe from './MenusGroupe.jsx';
 import { dateComplete } from './pdfGroupe.js';
 import {
-  NUMERO_COMPLEMENTS, STATUTS, groupesAAnticiper, libelleGroupe, metaStatut,
+  NUMERO_COMPLEMENTS, groupesAAnticiper, libelleGroupe, metaStatut, statutsActifs,
 } from './typesGroupe.js';
+import { useReglagesGroupes } from './useReglagesGroupes.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import { chiffresGroupes } from './serieGroupes.js';
 import { BoutonActions, st as stFenetres } from '../../components/ui/Fenetres.jsx';
 import { useFacturationGroupes } from '../../hooks/useFacturationGroupes.js';
@@ -144,6 +146,8 @@ function useLargeur() {
 
 export default function Groupes({ user, etablissement }) {
   const etabId = etablissement?.id || null;
+  // Délai d'alerte, libellés des états et types proposés de la maison.
+  const { reglages: reglagesGroupes } = useReglagesGroupes(etabId);
   const canEdit = canManageModule(user?.role, 'groupes');
   const canEditMenus = canEdit && ROLES_MENUS.includes(user?.role);
   const canSupprimer = canEdit && ROLES_SUPPRESSION.includes(user?.role);
@@ -185,7 +189,7 @@ export default function Groupes({ user, etablissement }) {
   }, [vue.annee, vue.mois, assurerDepuis]);
 
   const actifs = useMemo(() => groupes.filter((g) => !g.annule), [groupes]);
-  const aAnticiper = useMemo(() => groupesAAnticiper(groupes, aujourdhui), [groupes, aujourdhui]);
+  const aAnticiper = useMemo(() => groupesAAnticiper(groupes, aujourdhui), [groupes, aujourdhui, reglagesGroupes.delai_alerte_jours]);
   // Repères de l'accueil (direction Galet, ReperesGroupes.jsx).
   const reperes = useMemo(() => reperesGroupes(groupes, aujourdhui), [groupes, aujourdhui]);
 
@@ -353,7 +357,7 @@ export default function Groupes({ user, etablissement }) {
             <>
               {/* L'action principale avant « Plus » : au téléphone la rangée
                   défile, la pilule sombre reste la plus proche. */}
-              <button type="button" onClick={() => fenetresFacturation.ouvrirDevis({})} style={st.nouveau}>
+              <button type="button" className="touch-target" onClick={() => fenetresFacturation.ouvrirDevis({})} style={st.nouveau}>
                 Nouveau devis
               </button>
               <BoutonActions
@@ -368,10 +372,11 @@ export default function Groupes({ user, etablissement }) {
             </>
           )}
           {onglet !== 'facturation' && canEdit && status !== 'absent' && (
-            <button type="button" onClick={() => setFormulaire({})} style={st.nouveau}>
+            <button type="button" className="touch-target" onClick={() => setFormulaire({})} style={st.nouveau}>
               Nouveau groupe
             </button>
           )}
+          <BoutonRegler section="groupes" user={user} etablissement={etablissement} />
         </div>
       </div>
 
@@ -424,7 +429,7 @@ export default function Groupes({ user, etablissement }) {
 
           {/* ── Légende : les trois états, rien d'autre ── */}
           <div style={st.legende}>
-            {STATUTS.map((sid) => {
+            {statutsActifs().map((sid) => {
               const m = metaStatut(sid);
               return (
                 <span key={sid} style={st.legendeItem}>
@@ -442,7 +447,7 @@ export default function Groupes({ user, etablissement }) {
           <div style={{ marginTop: 18 }}>
             <div style={st.titreListe}>
               {chiffresMois.groupes
-                ? `${chiffresMois.groupes} groupe${chiffresMois.groupes > 1 ? 's' : ''} en ${MOIS[vue.mois].toLowerCase()}, ${chiffresMois.convives} pax`
+                ? `${chiffresMois.groupes} groupe${chiffresMois.groupes > 1 ? 's' : ''} en ${MOIS[vue.mois].toLowerCase()}, ${chiffresMois.convives} couvert${chiffresMois.convives > 1 ? 's' : ''}`
                 : status === 'ready' ? `Aucun groupe en ${MOIS[vue.mois].toLowerCase()}.` : ''}
             </div>
             <div style={st.liste}>
@@ -603,10 +608,10 @@ function CorpsLigneGroupe({ groupe, onClick, enRangee }) {
           textDecoration: groupe.annule ? 'line-through' : 'none',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}, {groupe.nom}
+          {groupe.nom || libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}
         </span>
         <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>
-          {groupe.nbPax} pax{groupe.heure ? `, ${groupe.heure}` : ''}
+          {groupe.nom ? `${libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}, ` : ''}{groupe.nbPax} couvert{groupe.nbPax > 1 ? 's' : ''}{groupe.heure ? `, ${groupe.heure}` : ''}
           {!groupe.menuNumero ? ', menu à définir' : ''}
           {groupe.menuNumero && !groupe.annule && choixEstVide(groupe.choix) ? ', choix à cocher' : ''}
           {groupe.allergenesIds.length || groupe.allergiesNote ? ', allergies' : ''}

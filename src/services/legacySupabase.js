@@ -1371,6 +1371,13 @@ export function installLegacySupabase() {
         ordre: row.ordre || 0,
         actif: row.actif !== false,
         updatedAt: row.updated_at,
+        // Réglages de la procédure (lot 2 du plan 15), écrits par la direction
+        // dans Réglages > SOP ; upsertSop ne les envoie jamais.
+        rolesDesignes: Array.isArray(row.roles_designes) ? row.roles_designes : [],
+        rappelActif: !!row.rappel_actif,
+        rappelMoment: row.rappel_moment || null,
+        rappelHeure: row.rappel_heure ? String(row.rappel_heure).slice(0, 5) : null,
+        rappelJours: Array.isArray(row.rappel_jours) && row.rappel_jours.length ? row.rappel_jours.map(Number) : null,
       };
     },
 
@@ -1708,6 +1715,13 @@ export function installLegacySupabase() {
         valide_par: perte.validePar || null,
         commentaire: perte.commentaire || null,
       };
+      // Liens du lot 4 (produit du catalogue, fiche, ligne de mise en place,
+      // source) : envoyés seulement quand l'écran les donne, pour qu'une
+      // validation ou une correction ne les efface pas.
+      if (perte.produitId !== undefined) payload.produit_id = perte.produitId || null;
+      if (perte.recetteId !== undefined) payload.recette_id = perte.recetteId || null;
+      if (perte.mepItemId !== undefined) payload.mep_item_id = perte.mepItemId || null;
+      if (perte.source !== undefined) payload.source = perte.source || 'saisie';
       const { data, error } = await client.from('pertes').upsert(payload).select().single();
       if (error) throw error;
       return this.mapPerteFromDB(data);
@@ -1780,6 +1794,10 @@ export function installLegacySupabase() {
         valide: !!row.valide,
         validePar: row.valide_par,
         commentaire: row.commentaire || '',
+        produitId: row.produit_id ?? null,
+        recetteId: row.recette_id ?? null,
+        mepItemId: row.mep_item_id ?? null,
+        source: row.source || 'saisie',
       };
     },
 
@@ -1794,7 +1812,9 @@ export function installLegacySupabase() {
       return (data || []).map(this.mapDocumentFromDB);
     },
 
-    async createFolder({ etablissementId, parentId, nom, userId }) {
+    // rolesVisibles (lot 5) : un dossier né réservé l'est dès l'insertion,
+    // jamais visible un instant (consultant et patron, déclencheur).
+    async createFolder({ etablissementId, parentId, nom, userId, rolesVisibles }) {
       const payload = {
         id: 'dir-' + Date.now() + Math.floor(Math.random() * 1000),
         etablissement_id: etablissementId,
@@ -1802,6 +1822,7 @@ export function installLegacySupabase() {
         type: 'folder',
         nom,
         uploaded_by: userId || null,
+        ...(Array.isArray(rolesVisibles) ? { roles_visibles: rolesVisibles } : {}),
       };
       const { data, error } = await client.from('documents').insert(payload).select().single();
       if (error) throw error;
@@ -1857,38 +1878,48 @@ export function installLegacySupabase() {
       return data.signedUrl;
     },
 
+    // Plan 15, lot 5 : la ligne part d'abord, les fichiers ensuite. Une
+    // suppression refusée par la base (dossier réservé dans la descendance,
+    // déclencheur documents_garde_suppression ; ou document caché) ne laisse
+    // plus des lignes sans leurs fichiers.
     async deleteDocument(doc) {
-      // Si c'est un fichier, supprimer aussi du storage
-      if (doc.type === 'file' && doc.storagePath) {
-        await client.storage.from('documents').remove([doc.storagePath]).catch(err => console.error('[storage remove]', err));
-      }
-      // Pour un dossier, il faut récursivement supprimer les enfants
-      // (ON DELETE CASCADE sur parent_id gère les enfants en DB, mais pas les fichiers storage)
+      // Fichiers à retirer du stockage : celui du document, ou tous ceux de
+      // la descendance d'un dossier (ON DELETE CASCADE sur parent_id gère les
+      // lignes en base, pas les fichiers).
+      let chemins = [];
+      if (doc.type === 'file' && doc.storagePath) chemins = [doc.storagePath];
       if (doc.type === 'folder') {
-        const { data: children } = await client.from('documents').select('*').eq('parent_id', doc.id);
-        if (children && children.length > 0) {
-          // Collecte récursive de tous les storage_path descendants
-          const collectPaths = async (parentId) => {
-            const { data: kids } = await client.from('documents').select('*').eq('parent_id', parentId);
-            const paths = [];
-            for (const kid of (kids || [])) {
-              if (kid.type === 'file' && kid.storage_path) paths.push(kid.storage_path);
-              if (kid.type === 'folder') paths.push(...await collectPaths(kid.id));
-            }
-            return paths;
-          };
-          const allPaths = await collectPaths(doc.id);
-          if (allPaths.length > 0) {
-            await client.storage.from('documents').remove(allPaths).catch(err => console.error('[bulk remove]', err));
+        const collectPaths = async (parentId) => {
+          const { data: kids } = await client.from('documents').select('*').eq('parent_id', parentId);
+          const paths = [];
+          for (const kid of (kids || [])) {
+            if (kid.type === 'file' && kid.storage_path) paths.push(kid.storage_path);
+            if (kid.type === 'folder') paths.push(...await collectPaths(kid.id));
           }
-        }
+          return paths;
+        };
+        chemins = await collectPaths(doc.id);
       }
-      const { error } = await client.from('documents').delete().eq('id', doc.id);
+      const { data: supprimes, error } = await client.from('documents').delete().eq('id', doc.id).select('id');
       if (error) throw error;
+      if (!supprimes || !supprimes.length) throw new Error('Suppression refusée : ce document est réservé ou n\'existe plus.');
+      if (chemins.length > 0) {
+        await client.storage.from('documents').remove(chemins).catch(err => console.error('[storage remove]', err));
+      }
     },
 
     async renameDocument(id, newName) {
       const { data, error } = await client.from('documents').update({ nom: newName }).eq('id', id).select().single();
+      if (error) throw error;
+      return this.mapDocumentFromDB(data);
+    },
+
+    // Plan 15, lot 5 : rôles qui voient un dossier (null = toute l'équipe,
+    // [] = la direction seule).
+    // Consultant et patron seulement (déclencheur documents_garde_visibilite).
+    async setDocumentRolesVisibles(id, roles) {
+      const valeur = Array.isArray(roles) ? roles : null;
+      const { data, error } = await client.from('documents').update({ roles_visibles: valeur }).eq('id', id).select().single();
       if (error) throw error;
       return this.mapDocumentFromDB(data);
     },
@@ -1915,6 +1946,9 @@ export function installLegacySupabase() {
         uploadedBy: row.uploaded_by,
         description: row.description || '',
         createdAt: row.created_at,
+        // Plan 15, lot 5 : rôles qui voient ce dossier (null = toute l'équipe).
+        // [] = la direction seule (consultant et patron).
+        rolesVisibles: Array.isArray(row.roles_visibles) ? row.roles_visibles : null,
       };
     },
 
@@ -2130,6 +2164,8 @@ export function installLegacySupabase() {
         label: creneau.label,
         heure: creneau.heure,
         actif: creneau.actif !== false,
+        // Jours de la semaine (1 = lundi) ; null = tous les jours.
+        jours: Array.isArray(creneau.jours) && creneau.jours.length ? creneau.jours : null,
       };
       const { data, error } = await client.from('haccp_creneaux').upsert(payload).select().single();
       if (error) throw error;
@@ -2149,6 +2185,7 @@ export function installLegacySupabase() {
         // format manipulé par les <input type="time"> et par les relevés.
         heure: row.heure ? String(row.heure).slice(0, 5) : '',
         actif: !!row.actif,
+        jours: Array.isArray(row.jours) && row.jours.length ? row.jours.map(Number) : null,
       };
     },
 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { VALEURS_TAG_ALLERGENES } from '../../utils/allergenes.js';
+import { VALEURS_TAG_ALLERGENES, libelleTagAllergene } from '../../utils/allergenes.js';
 
 const TAG_GROUPS = [
   {
@@ -28,7 +28,7 @@ const TYPE_LABELS  = { allergene: 'Allergène', regime: 'Régime', occasion: 'Oc
 
 // Libellé affiché d'un tag prédéfini ; la valeur enregistrée ne change pas.
 const LIBELLES = { fruits_de_mer: 'fruits de mer', vegetarien: 'végétarien', menu_fixe: 'menu fixe' };
-const libelleTag = (valeur) => LIBELLES[valeur] || String(valeur).replace(/_/g, ' ');
+const libelleTag = (valeur) => LIBELLES[valeur] || libelleTagAllergene(valeur).replace(/_/g, ' ');
 
 // compact (téléphone) : un seul nuage de tags en cases tactiles, sans titres
 // de groupe ; la couleur dit le groupe (rouge allergène, vert régime).

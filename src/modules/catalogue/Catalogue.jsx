@@ -12,7 +12,13 @@ import { resolvePrixProduit } from '../../services/prixResolution.js';
 import { CATEGORIES_PRODUITS, affinerCategorie, categorieAffichee } from './categoriesCatalogue.js';
 import { Pencil, Trash2 } from 'lucide-react';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import RelierIngredients from './RelierIngredients.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { prixAffiche } from './prixAffiche.js';
+import { ChoixFiltre, Panneau } from '../../components/ui/index.jsx';
+import { useShellMode, estTactile } from '../../hooks/useShellMode.js';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 
 // ═══════════════════════════════════════════════════════════════
 // MODULE CATALOGUE - Base de données produits & fournisseurs
@@ -30,6 +36,10 @@ const Catalogue = ({ user, etablissement }) => {
   const legacySB = dbService.getBridge();
   const canWrite = canManageModule(user.role, 'catalogue');
   const isConsultant = user.role === 'consultant';
+  // Catégories et unités de la maison (Réglages > Catalogue). Sans liste
+  // réglée : les catégories de l'app.
+  const { reglages: reglagesCatalogue } = useReglagesModule(etablissement?.id || null, 'catalogue');
+  const categoriesMaison = reglagesCatalogue.categories.length ? reglagesCatalogue.categories : CATEGORIES_PRODUITS;
 
   const [produits, setProduits] = React.useState([]);
   const [fournisseurs, setFournisseurs] = React.useState([]);
@@ -37,6 +47,14 @@ const Catalogue = ({ user, etablissement }) => {
   const [activeTab, setActiveTab] = React.useState('produits'); // 'produits' | 'fournisseurs'
   const [search, setSearch] = React.useState('');
   const [catFilter, setCatFilter] = React.useState('Tous');
+  // Tablette et téléphone (lot 3) : les produits en liste, une ligne par
+  // produit, sans liste déroulante ni bouton dessus ; « Sélectionner » ouvre
+  // la sélection (attribuer un fournisseur, supprimer).
+  const tactile = estTactile(useShellMode());
+  const [selectionTactile, setSelectionTactile] = React.useState(false);
+  // Filtre « sans fournisseur » : dit une fois en tête, au lieu de « Aucun »
+  // écrit dans le sélecteur de chaque ligne.
+  const [sansFournisseur, setSansFournisseur] = React.useState(false);
   const [showProdForm, setShowProdForm] = React.useState(false);
   const [showFournForm, setShowFournForm] = React.useState(false);
   const [editProd, setEditProd] = React.useState(null);
@@ -103,9 +121,11 @@ const Catalogue = ({ user, etablissement }) => {
     return () => { mounted = false; unsubs.forEach(u => u && u()); };
   }, [etabId]);
 
+  const nbSansFournisseur = produits.filter(p => !p.fournisseurId).length;
   const searchValue = normalizeSearch(search);
   const filtered = produits.filter(p =>
     (catFilter === 'Tous' || categorieAffichee(p) === catFilter) &&
+    (!sansFournisseur || !p.fournisseurId) &&
     (searchValue === '' || normalizeSearch(p.nom).includes(searchValue) ||
      normalizeSearch(p.fournisseurNom).includes(searchValue))
   );
@@ -428,7 +448,7 @@ const Catalogue = ({ user, etablissement }) => {
     }
   };
 
-  const cats = ['Tous', ...CATEGORIES_PRODUITS];
+  const cats = ['Tous', ...categoriesMaison];
   const totalValeur = produits.reduce((s, p) => s + (p.prixUnitaire || 0), 0);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
@@ -440,10 +460,12 @@ const Catalogue = ({ user, etablissement }) => {
         <div>
           <div style={cat.sub}>{produits.length} produit{produits.length > 1 ? 's' : ''}, {fournisseurs.length} fournisseur{fournisseurs.length > 1 ? 's' : ''}</div>
         </div>
+        {/* Une action principale, une secondaire, et les trois façons
+            d'importer rangées dans une seule fenêtre ; « Régler » mène aux
+            catégories et unités de la maison. */}
+        <div className="module-actions">
         {canWrite && (
-          // Une action principale, une secondaire, et les trois façons
-          // d'importer rangées dans une seule fenêtre.
-          <div className="module-actions">
+          <>
             <button style={{ ...cat.btn, background: 'var(--accent)', color: 'var(--on-accent)', borderWidth: 0 }} onClick={() => { setEditProd(null); setShowProdForm(true); }}>Nouveau produit</button>
             <button style={cat.btn} onClick={() => { setEditFourn(null); setShowFournForm(true); }}>Nouveau fournisseur</button>
             <BoutonActions
@@ -458,8 +480,10 @@ const Catalogue = ({ user, etablissement }) => {
               ] }]}
             />
             <input ref={fileRef} type="file" accept=".xlsx,.xls" style={{ display: 'none' }} onChange={handleImportExcel} disabled={importing} />
-          </div>
+          </>
         )}
+          <BoutonRegler section="catalogue" user={user} etablissement={etablissement} />
+        </div>
       </div>
 
       {/* Tabs */}
@@ -469,20 +493,43 @@ const Catalogue = ({ user, etablissement }) => {
         tabs={[
           { id: 'produits', label: `Produits (${produits.length})` },
           { id: 'fournisseurs', label: `Fournisseurs (${fournisseurs.length})` },
+          // Lignes de fiches sans produit, reliées par nom en un geste (plan 15, lot 4).
+          ...(canWrite ? [{ id: 'relier', label: 'Ingrédients à relier' }] : []),
         ]}
       />
+
+      {activeTab === 'relier' && canWrite && <RelierIngredients etablissement={etablissement} produits={produits} />}
 
       {activeTab === 'produits' && (
         <>
           {/* Filtres */}
           <div style={cat.filters}>
             <SearchToggle value={search} onChange={setSearch} placeholder="Je cherche un produit ou un fournisseur…" />
-            <SegmentedTabs
-              size="sm"
-              active={catFilter}
+            {/* Dix-huit catégories : une liste plutôt qu'une rangée de pilules. */}
+            <ChoixFiltre
+              libelle="Catégorie"
+              valeur={catFilter}
+              defaut="Tous"
               onChange={setCatFilter}
-              tabs={cats.map(c => ({ id: c, label: c === 'Tous' ? `Tous (${produits.length})` : c }))}
+              options={cats.map(c => ({ id: c, label: c === 'Tous' ? 'Toutes les catégories' : c }))}
             />
+            {(nbSansFournisseur > 0 || sansFournisseur) && (
+              <button
+                type="button"
+                className="touch-target"
+                aria-pressed={sansFournisseur}
+                onClick={() => setSansFournisseur(v => !v)}
+                style={{ ...cat.filtreFournisseur, ...(sansFournisseur ? cat.filtreFournisseurActif : null) }}
+                data-filtre-sans-fournisseur=""
+              >
+                <span>Sans fournisseur</span> <span data-no-translate>({nbSansFournisseur})</span>
+              </button>
+            )}
+            {tactile && canWrite && !selectionTactile && filtered.length > 0 && (
+              <button type="button" className="touch-target" style={{ ...cat.filtreFournisseur, marginLeft: 'auto' }} onClick={() => setSelectionTactile(true)}>
+                Sélectionner
+              </button>
+            )}
           </div>
 
           {/* Table produits */}
@@ -497,10 +544,10 @@ const Catalogue = ({ user, etablissement }) => {
             </div>
           ) : (
             <>
-              {/* Barre sélection de masse */}
-              {canWrite && (
+              {/* Barre sélection de masse (au doigt : après « Sélectionner ») */}
+              {canWrite && (!tactile || selectionTactile) && (
                 <div style={cat.selectBar}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 7, minHeight: 44, cursor: 'pointer', fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>
                     <input
                       type="checkbox"
                       checked={selected.size === filtered.length && filtered.length > 0}
@@ -508,7 +555,7 @@ const Catalogue = ({ user, etablissement }) => {
                         if (e.target.checked) setSelected(new Set(filtered.map(p => p.id)));
                         else setSelected(new Set());
                       }}
-                      style={{ width: 16, height: 16, cursor: 'pointer', accentColor: 'var(--accent)' }}
+                      style={{ width: 24, height: 24, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }}
                     />
                     {selected.size > 0
                       ? `${selected.size} produit${selected.size > 1 ? 's' : ''} sélectionné${selected.size > 1 ? 's' : ''}`
@@ -544,7 +591,8 @@ const Catalogue = ({ user, etablissement }) => {
                         {(fournisseurs || []).map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                       </select>
                       <button
-                        style={{ ...cat.miniBtn, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }}
+                        className="touch-target"
+                        style={{ ...cat.miniBtn, ...cat.miniTexte, color: 'var(--danger-strong)', borderColor: 'var(--danger-bd)' }}
                         onClick={async () => {
                           if (!confirmLegacy(
                             `Supprimer définitivement ${selected.size} produit${selected.size > 1 ? 's' : ''} sélectionné${selected.size > 1 ? 's' : ''} ?\n\n` +
@@ -573,23 +621,39 @@ const Catalogue = ({ user, etablissement }) => {
                         Supprimer
                       </button>
                       <button
-                        style={{ ...cat.miniBtn, color: 'var(--text2)' }}
+                        className="touch-target"
+                        style={{ ...cat.miniBtn, ...cat.miniTexte, color: 'var(--text2)' }}
                         onClick={() => setSelected(new Set())}
                       >
                         Désélectionner
                       </button>
                     </div>
                   )}
+                  {tactile && (
+                    <button type="button" className="touch-target" style={{ ...cat.filtreFournisseur, marginLeft: 'auto' }} onClick={() => { setSelected(new Set()); setSelectionTactile(false); }}>
+                      Terminer
+                    </button>
+                  )}
                 </div>
               )}
 
+              {tactile ? (
+                <ListeProduitsTactile
+                  produits={filtered}
+                  canWrite={canWrite}
+                  selection={canWrite && selectionTactile}
+                  selected={selected}
+                  onBasculer={(id) => { const next = new Set(selected); next.has(id) ? next.delete(id) : next.add(id); setSelected(next); }}
+                  onOuvrir={(p) => { setEditProd(p); setShowProdForm(true); }}
+                />
+              ) : (
               <div style={cat.tableWrap}>
                 <table style={cat.table}>
                   <thead>
                     <tr>
-                      {canWrite && <th style={{ ...cat.th, width: 36 }}></th>}
-                      {['Produit', 'Référence', 'Catégorie', 'Fournisseur', 'Prix / unité', 'Unité', ''].map(h => (
-                        <th key={h} style={{ ...cat.th, ...(h === 'Prix / unité' ? { textAlign: 'right' } : null) }}>{h}</th>
+                      {canWrite && <th style={{ ...cat.th, width: 44 }}></th>}
+                      {['Produit', 'Référence', 'Catégorie', 'Fournisseur', 'Prix', ''].map(h => (
+                        <th key={h} style={{ ...cat.th, ...(h === 'Prix' ? { textAlign: 'right' } : null) }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -597,17 +661,21 @@ const Catalogue = ({ user, etablissement }) => {
                     {(filtered || []).map(p => (
                       <tr key={p.id} style={{ ...cat.tr, background: selected.has(p.id) ? 'var(--accent-light)' : 'transparent' }}>
                         {canWrite && (
-                          <td style={{ ...cat.td, width: 36 }}>
-                            <input
-                              type="checkbox"
-                              checked={selected.has(p.id)}
-                              onChange={e => {
-                                const next = new Set(selected);
-                                e.target.checked ? next.add(p.id) : next.delete(p.id);
-                                setSelected(next);
-                              }}
-                              style={{ width: 15, height: 15, cursor: 'pointer', accentColor: 'var(--accent)' }}
-                            />
+                          <td style={{ ...cat.td, width: 44, padding: 0 }}>
+                            {/* Le label est la cible : 44 x 44 (WCAG 2.5.8, règle de l'iPad). */}
+                            <label style={cat.caseCible}>
+                              <input
+                                type="checkbox"
+                                aria-label={p.nom}
+                                checked={selected.has(p.id)}
+                                onChange={e => {
+                                  const next = new Set(selected);
+                                  e.target.checked ? next.add(p.id) : next.delete(p.id);
+                                  setSelected(next);
+                                }}
+                                style={{ width: 24, height: 24, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }}
+                              />
+                            </label>
                           </td>
                         )}
                         <td style={{ ...cat.td, fontWeight: 'var(--g2)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.nom}>{p.nom}</td>
@@ -626,7 +694,7 @@ const Catalogue = ({ user, etablissement }) => {
                               }}
                               style={{ padding: '4px 8px', border: '1px solid var(--border)', borderRadius: 'var(--r)', fontSize: 'var(--t1)', fontFamily: 'var(--font)', background: 'var(--bg)', color: p.fournisseurId ? 'var(--text)' : 'var(--text2)', maxWidth: 160, cursor: 'pointer' }}
                             >
-                              <option value="">Aucun</option>
+                              <option value="" aria-label="Sans fournisseur"></option>
                               {(fournisseurs || []).map(f => <option key={f.id} value={f.id}>{f.nom}</option>)}
                             </select>
                           ) : (
@@ -634,14 +702,13 @@ const Catalogue = ({ user, etablissement }) => {
                           )}
                         </td>
                         <td style={{ ...cat.td, fontWeight: 'var(--g-chiffre)', color: 'var(--lien)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                          {p.prixUnitaire > 0 ? `CHF ${p.prixUnitaire.toFixed(4)}` : <span style={{ color: 'var(--text2)' }}>-</span>}
+                          {p.prixUnitaire > 0 ? prixAffiche(p.prixUnitaire, p.uniteRef) : <span style={{ color: 'var(--text2)' }}>-</span>}
                         </td>
-                        <td style={{ ...cat.td, color: 'var(--text2)' }}>/{p.uniteRef}</td>
                         <td style={cat.tdAction}>
                           {canWrite && (
                             <>
-                              <button style={cat.miniBtn} onClick={() => { setEditProd(p); setShowProdForm(true); }} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
-                              <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteProd(p.id)} title="Supprimer" aria-label="Supprimer"><Trash2 size={14} aria-hidden="true" /></button>
+                              <button className="touch-target" style={cat.miniBtn} onClick={() => { setEditProd(p); setShowProdForm(true); }} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
+                              <button className="touch-target" style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteProd(p.id)} title="Supprimer" aria-label="Supprimer"><Trash2 size={14} aria-hidden="true" /></button>
                             </>
                           )}
                         </td>
@@ -650,6 +717,7 @@ const Catalogue = ({ user, etablissement }) => {
                   </tbody>
                 </table>
               </div>
+              )}
             </>
           )}
         </>
@@ -683,8 +751,8 @@ const Catalogue = ({ user, etablissement }) => {
                       <td style={cat.tdAction}>
                         {canWrite && (
                           <>
-                            <button style={cat.miniBtn} onClick={() => { setEditFourn(f); setShowFournForm(true); }} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
-                            <button style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteFourn(f.id)} title="Supprimer" aria-label="Supprimer"><Trash2 size={14} aria-hidden="true" /></button>
+                            <button className="touch-target" style={cat.miniBtn} onClick={() => { setEditFourn(f); setShowFournForm(true); }} title="Modifier" aria-label="Modifier"><Pencil size={14} aria-hidden="true" /></button>
+                            <button className="touch-target" style={{ ...cat.miniBtn, color: 'var(--danger-strong)', marginLeft: 6 }} onClick={() => deleteFourn(f.id)} title="Supprimer" aria-label="Supprimer"><Trash2 size={14} aria-hidden="true" /></button>
                           </>
                         )}
                       </td>
@@ -703,6 +771,8 @@ const Catalogue = ({ user, etablissement }) => {
           prod={editProd}
           fournisseurs={fournisseurs}
           etabId={etabId}
+          categories={categoriesMaison}
+          unitesMaison={reglagesCatalogue.unites}
           onSave={saveProd}
           onClose={() => setShowProdForm(false)}
         />
@@ -760,6 +830,52 @@ const Catalogue = ({ user, etablissement }) => {
   );
 };
 
+// Liste des produits au doigt (tablette, téléphone ; lot 3) : une ligne par
+// produit, nom, catégorie, fournisseur et prix, sans liste déroulante ni
+// bouton dessus. Toucher la ligne ouvre la fiche du produit (qui peut
+// écrire) ; en sélection, la ligne entière coche le produit.
+function ListeProduitsTactile({ produits, canWrite, selection, selected, onBasculer, onOuvrir }) {
+  return (
+    <Panneau style={{ padding: 0, overflow: 'hidden' }}>
+      {produits.map((p, i) => {
+        const coche = selected.has(p.id);
+        const ligne = { ...cat.ligne, ...(i === produits.length - 1 ? { borderBottomWidth: 0 } : null), ...(coche ? { background: 'var(--selection)' } : null) };
+        const contenu = (
+          <>
+            <span style={cat.ligneTexte}>
+              <span style={cat.ligneNom}>{p.nom}</span>
+              <span style={cat.ligneDetail}>
+                <span>{categorieAffichee(p)}</span>
+                <span>, </span>
+                {p.fournisseurNom ? <span data-no-translate="">{p.fournisseurNom}</span> : <span>Sans fournisseur</span>}
+                {p.referenceFourn ? <><span>, </span><span data-no-translate="">{p.referenceFourn}</span></> : null}
+              </span>
+            </span>
+            <span style={cat.lignePrix}>{p.prixUnitaire > 0 ? prixAffiche(p.prixUnitaire, p.uniteRef) : '-'}</span>
+          </>
+        );
+        if (selection) {
+          return (
+            <label key={p.id} style={{ ...ligne, cursor: 'pointer' }}>
+              <span style={cat.caseLigne}>
+                <input type="checkbox" aria-label={p.nom} checked={coche} onChange={() => onBasculer(p.id)} style={{ width: 24, height: 24, margin: 0, cursor: 'pointer', accentColor: 'var(--accent)' }} />
+              </span>
+              <span style={{ ...cat.ligneBouton, paddingLeft: 4 }}>{contenu}</span>
+            </label>
+          );
+        }
+        return (
+          <div key={p.id} style={ligne}>
+            {canWrite
+              ? <button type="button" style={cat.ligneBouton} onClick={() => onOuvrir(p)}>{contenu}</button>
+              : <div style={cat.ligneBouton}>{contenu}</div>}
+          </div>
+        );
+      })}
+    </Panneau>
+  );
+}
+
 // Liste et libellés viennent du référentiel partagé ; seul le pictogramme
 // est propre au catalogue.
 const ALLERGENE_EMOJIS = {
@@ -770,7 +886,7 @@ const ALLERGENE_EMOJIS = {
 const ALLERGENES_OPTIONS = ALLERGENES.map(a => ({ ...a, emoji: ALLERGENE_EMOJIS[a.id] || '⚠' }));
 
 // ─── Formulaire Produit ───
-const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
+const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose, categories = CATEGORIES_PRODUITS, unitesMaison = [] }) => {
   const legacySB = dbService.getBridge();
   const [form, setForm] = React.useState(() => (prod ? {
     ...prod,
@@ -901,7 +1017,8 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
             <div>
               <label style={cat.lbl}>Catégorie</label>
               <select style={cat.inp} value={form.categorie} onChange={e => up('categorie', e.target.value)}>
-                {CATEGORIES_PRODUITS.map(c => <option key={c} value={c}>{c}</option>)}
+                {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                {form.categorie && !categories.includes(form.categorie) && <option value={form.categorie}>{form.categorie}</option>}
               </select>
             </div>
           </div>
@@ -934,7 +1051,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 8 }}>
               <label style={{ ...cat.lbl, margin: 0 }}>Prix retenu pour le chiffrage</label>
               <div style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g-chiffre)', color: 'var(--lien)', fontFamily: 'var(--font-num)' }}>
-                CHF {prixRetenu.toFixed(4)} <span style={{ color: 'var(--text2)', fontWeight: 'var(--g1)' }}>/{form.uniteRef}</span>
+                {prixAffiche(prixRetenu, form.uniteRef) || 'CHF 0.00'}
               </div>
             </div>
             <div style={{ fontSize: 'var(--t1)', color: 'var(--text2)', marginBottom: 8 }}>{provenancePrix}</div>
@@ -1047,7 +1164,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                         <td style={cat.td}>CHF {pf.prixAchat}</td>
                         <td style={cat.td}>{pf.conditionnement || '-'}</td>
                         <td style={{ ...cat.td, fontWeight: 'var(--g2)', color: 'var(--lien)' }}>
-                          {pf.prixUnitaire ? `${parseFloat(pf.prixUnitaire).toFixed(4)}` : '-'}
+                          {pf.prixUnitaire ? prixAffiche(pf.prixUnitaire, form.uniteRef) : '-'}
                         </td>
                         <td style={cat.td}>{pf.estPrincipal ? 'Principal' : ''}</td>
                       </tr>
@@ -1074,8 +1191,18 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                       <label style={cat.lbl}>Qté conditionnement</label>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <input style={{ ...cat.inp, flex: 2 }} type="number" step="0.001" value={newPF.quantiteCond} onChange={e => setNewPF(p => ({ ...p, quantiteCond: e.target.value }))} placeholder="5" />
-                        <select style={{ ...cat.inp, flex: 1 }} value={newPF.uniteCond} onChange={e => setNewPF(p => ({ ...p, uniteCond: e.target.value }))}>
+                        <select style={{ ...cat.inp, flex: 1 }} value={newPF.uniteCond} onChange={e => {
+                          // Une unité de la maison (bouteille 75 cl) se ramène tout
+                          // de suite à son unité de référence : 2 bouteilles = 1500 ml.
+                          const maison = unitesMaison.find(u => `maison:${u.code}` === e.target.value);
+                          if (maison) {
+                            setNewPF(p => ({ ...p, uniteCond: maison.base, quantiteCond: String((Number(String(p.quantiteCond).replace(',', '.')) || 1) * maison.facteur) }));
+                            return;
+                          }
+                          setNewPF(p => ({ ...p, uniteCond: e.target.value }));
+                        }}>
                           {['g','kg','ml','L','pcs','cs'].map(u => <option key={u} value={u}>{u}</option>)}
+                          {unitesMaison.map(u => <option key={u.code} value={`maison:${u.code}`}>{u.code}</option>)}
                         </select>
                       </div>
                     </div>
@@ -1130,7 +1257,7 @@ const ProduitForm = ({ prod, fournisseurs, etabId, onSave, onClose }) => {
                           <td style={cat.td}>{(h.releveLe || '').split('-').reverse().join('.')}</td>
                           <td style={cat.td}>{h.fournisseurNom || '-'}</td>
                           <td style={{ ...cat.td, fontWeight: 'var(--g2)' }}>
-                            {Number(h.prixUnitaire).toFixed(4)}
+                            {prixAffiche(h.prixUnitaire, form.uniteRef) || '-'}
                             {delta !== null && Math.abs(delta) >= 0.5 && (
                               <span style={{
                                 marginLeft: 6, fontSize: 'var(--t1)', fontWeight: 'var(--g3)',
@@ -1215,6 +1342,8 @@ const cat = {
   tabActive: { borderBottomColor: 'var(--accent)', color: 'var(--lien)' },
   // Une seule ligne : loupe + onglets de catégories qui coulissent.
   filters: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' },
+  filtreFournisseur: { flexShrink: 0, minHeight: 36, padding: '6px 14px', borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', whiteSpace: 'nowrap' },
+  filtreFournisseurActif: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
   filterBtn: { padding: '5px 12px', borderRadius: 'var(--r)', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   filterActive: { background: 'var(--accent)', borderColor: 'var(--accent)', color: 'var(--on-accent)' },
   tableWrap: { overflowX: 'auto', background: 'var(--zone)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r)' },
@@ -1226,6 +1355,17 @@ const cat = {
   tdAction: { padding: '6px 10px', textAlign: 'right', whiteSpace: 'nowrap' },
   catBadge: { display: 'inline-block', padding: '2px 8px', borderRadius: 'var(--r)', background: 'var(--selection)', color: 'var(--text)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)' },
   miniBtn: { width: 26, height: 26, borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', borderRadius: 'var(--r)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', cursor: 'pointer', fontSize: 'var(--t1)' },
+  // Bouton à texte de la barre de sélection : la largeur suit le libellé.
+  miniTexte: { width: 'auto', padding: '0 12px' },
+  caseCible: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, cursor: 'pointer' },
+  // Liste au doigt (lot 3) : lignes de la carte blanche, filet doux.
+  ligne: { display: 'flex', alignItems: 'stretch', minWidth: 0, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)' },
+  ligneBouton: { flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, minHeight: 'var(--ligne-aeree)', padding: '8px 16px', background: 'transparent', borderWidth: 0, borderStyle: 'none', borderRadius: 0, color: 'var(--text)', textAlign: 'left', fontFamily: 'var(--font)', cursor: 'pointer' },
+  ligneTexte: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
+  ligneNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', overflowWrap: 'anywhere' },
+  ligneDetail: { fontSize: 'var(--t1)', color: 'var(--text2)' },
+  lignePrix: { flexShrink: 0, fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t2)', color: 'var(--text)', whiteSpace: 'nowrap' },
+  caseLigne: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, flexShrink: 0, paddingLeft: 8 },
   miniLink: { background: 'none', border: 'none', color: 'var(--lien)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)' },
   empty: { padding: 60, textAlign: 'center', color: 'var(--text2)' },
   overlay: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 },

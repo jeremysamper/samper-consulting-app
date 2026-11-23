@@ -136,7 +136,7 @@ export default function EcranTva({ decomptes, defaut, etat, chargesAbsentes, cha
           </div>
           <div style={ui.ligne}>
             <span style={ui.ligneTitre}>Votre taux de la dette fiscale nette</span>
-            <span style={ui.num}>{e.tauxTdfn == null ? 'n/a' : tauxTexte(e.tauxTdfn)}</span>
+            <span style={ui.num}>{e.tauxTdfn == null ? 'pas encore de chiffre' : tauxTexte(e.tauxTdfn)}</span>
           </div>
           {e.tauxTdfn == null && <p style={{ ...ui.texte, margin: 0, color: 'var(--warning-text)' }}>Saisissez votre taux de la dette fiscale nette dans les Réglages.</p>}
         </section>

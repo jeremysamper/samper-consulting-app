@@ -33,6 +33,8 @@ import { perimetreDe } from '../factures-achats/analysesAchats.js';
 import { SERVICES_LABELS } from '../previsions/rapport/computeReservationStats.js';
 import { dateComparable } from '../previsions/rapport/periodesRapport.js';
 import { ORDRE_ANALYSES, RACCOURCIS, demandeRaccourci } from './raccourcisStatistiques.js';
+import { QUESTIONS, demandeQuestion } from './questionsStatistiques.js';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
 
 // Le rapport complet de la caisse, chargé à sa première ouverture.
 const RapportCaisse = lazy(() => import('./RapportCaisse.jsx'));
@@ -86,6 +88,7 @@ const st = {
   note: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.45 },
   etat: { fontSize: 'var(--t2)', color: 'var(--text2)', minHeight: 44, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
   bouton: { minHeight: 44, flexShrink: 0 },
+  questions: { display: 'flex', flexWrap: 'wrap', gap: 8, minWidth: 0 },
   menu: { ...stFenetre.secondaire, minHeight: 44, flexShrink: 0 },
 };
 
@@ -165,7 +168,9 @@ function ChoixService({ vue, services, onVue }) {
   );
 }
 
-function Filtres({ vue, bornes, bornesComp, aujourdhui, perimetres, services, onVue }) {
+// simple (lot 3) : la période et la comparaison seules ; le périmètre, le
+// service et le pas attendent « Plus de choix ».
+function Filtres({ vue, bornes, bornesComp, aujourdhui, perimetres, services, onVue, simple = false }) {
   const possibles = pasPossibles(bornes.debut, bornes.fin);
   const changerPeriode = (id) => onVue(vueAvecPeriode(vue, id, bornes, aujourdhui));
   const changerDate = (champ, valeur) => {
@@ -193,12 +198,16 @@ function Filtres({ vue, bornes, bornesComp, aujourdhui, perimetres, services, on
           </label>
         </>
       ) : null}
-      <ChoixPerimetre vue={vue} perimetres={perimetres} onVue={onVue} />
-      <ChoixService vue={vue} services={services} onVue={onVue} />
-      <div style={st.champ}>
-        <span>Pas</span>
-        <SegmentedTabs tabs={PAS.filter((p) => possibles.includes(p.id))} active={vue.pas} onChange={(pas) => onVue({ ...vue, pas })} />
-      </div>
+      {simple ? null : (
+        <>
+          <ChoixPerimetre vue={vue} perimetres={perimetres} onVue={onVue} />
+          <ChoixService vue={vue} services={services} onVue={onVue} />
+          <div style={st.champ}>
+            <span>Pas</span>
+            <SegmentedTabs tabs={PAS.filter((p) => possibles.includes(p.id))} active={vue.pas} onChange={(pas) => onVue({ ...vue, pas })} />
+          </div>
+        </>
+      )}
       <label style={st.champ}>
         <span>Comparer avec</span>
         <select style={st.select} value={vue.comparaison} onChange={(e) => onVue({ ...vue, comparaison: e.target.value })} data-stat-comparaison-choix="">
@@ -219,7 +228,7 @@ function Filtres({ vue, bornes, bornesComp, aujourdhui, perimetres, services, on
 //   l'appelant les pose dans leur propre carte, sous les tuiles.
 function CarteGraphique({
   rang, nb, graphique, composition, tableau, tranches, mesures, familles, hauteur, libelleComparaison, options = null, resume = null, compact = false, tableauDedans = true,
-  objectifs = null, onChange, onRetirer, onReessayer, onAjouterGraphique, peutAjouter,
+  objectifs = null, onChange, onRetirer, onReessayer, onAjouterGraphique, peutAjouter, simple = false, fin = null,
 }) {
   const [casesOuvertes, setCasesOuvertes] = useState(false);
   const seule = graphique.mesures.length === 1 ? mesures.find((m) => m.id === graphique.mesures[0]) : null;
@@ -268,7 +277,7 @@ function CarteGraphique({
         <Btn variant="ghost" onClick={() => setCasesOuvertes(true)} style={st.bouton}>
           <span>Mesures</span> <span data-no-translate>({graphique.mesures.length})</span>
         </Btn>
-        {ventilations.length ? (
+        {ventilations.length && (!simple || graphique.ventilation) ? (
           <select className="no-print" style={st.select} value={graphique.ventilation} onChange={(e) => onChange({ ventilation: e.target.value, type: '' })} aria-label="Ventilation" data-stat-ventilation="">
             <option value="">Sans ventilation</option>
             {ventilations.map((v) => <option key={v.id} value={v.id}>{v.libelle}</option>)}
@@ -279,10 +288,11 @@ function CarteGraphique({
             {c.options.map((o) => <option key={o.cle} value={o.cle} {...(o.traduire ? {} : { 'data-no-translate': '' })}>{o.libelle}</option>)}
           </select>
         ))}
-        {composition.types.length > 1 ? (
+        {composition.types.length > 1 && !simple ? (
           <SegmentedTabs tabs={composition.types.map((t) => ({ id: t, label: LIBELLE_TYPE[t] }))} active={composition.type} onChange={(type) => onChange({ type })} />
         ) : null}
         {nb > 1 ? <Btn variant="ghost" onClick={onRetirer} style={st.bouton}>Retirer</Btn> : null}
+        {fin}
         </div>
       </div>
       <div style={{ minWidth: 0 }}>
@@ -351,6 +361,7 @@ export default function Statistiques({ user, etablissement }) {
   const signatureFamilles = idsFamilles.join(',');
 
   const [vue, setVue] = useState(null);
+  const [plusDeChoix, setPlusDeChoix] = useState(false);
   // Raccourci d'un écran d'analyse parti (S3) : ses vues en puces, la
   // vue choisie. Rien d'enregistré : il dure le temps de la visite.
   const [raccourci, setRaccourci] = useState(null);
@@ -358,10 +369,13 @@ export default function Statistiques({ user, etablissement }) {
   const [vuesOuvertes, setVuesOuvertes] = useState(false);
   const [pdfEnCours, setPdfEnCours] = useState(false);
   const reglages = useUserSettings([CLE_VUE, CLE_VUES]);
+  // Lot 5 : vue d'office de la maison (Réglages > Statistiques), pour qui n'a
+  // pas encore de vue à lui.
+  const reglagesStats = useReglagesModule(etabId, 'statistiques');
   const vuesNommees = useMemo(() => vuesNommeesLues(reglages.settings[CLE_VUES]), [reglages.settings]);
 
   const bornes = useMemo(() => bornesDe(vue?.periode || { id: '30j' }, aujourdhui), [vue?.periode, aujourdhui]);
-  const bornesComp = useMemo(() => bornesDeComparaison(bornes, vue?.comparaison || ''), [bornes, vue?.comparaison]);
+  const bornesComp = useMemo(() => bornesDeComparaison(bornes, vue?.comparaison || '', aujourdhui), [bornes, vue?.comparaison, aujourdhui]);
   const pas = vue?.pas || 'jour';
   const tranches = useMemo(() => tranchesDe(bornes.debut, bornes.fin, pas), [bornes, pas]);
   const tranchesComp = useMemo(() => (bornesComp ? tranchesDe(bornesComp.debut, bornesComp.fin, pas) : null), [bornesComp, pas]);
@@ -415,12 +429,16 @@ export default function Statistiques({ user, etablissement }) {
     return demande;
   }, []);
   useEffect(() => {
-    if (vue || !etabId || reglages.loading || !sondesPretes) return;
+    if (vue || !etabId || reglages.loading || !sondesPretes || reglagesStats.status === 'loading') return;
     const demande = prendreLien();
     const depuisLien = vueDepuisLien(demande, mesures, aujourdhui);
     setRaccourci(depuisLien ? raccourciDe(demande) : null);
-    setVue(depuisLien || nettoyerVue(reglages.settings[CLE_VUE], mesures, aujourdhui));
-  }, [vue, etabId, reglages.loading, reglages.settings, sondesPretes, mesures, aujourdhui, prendreLien]);
+    const sienne = reglages.settings[CLE_VUE];
+    const defautMaison = !depuisLien && !sienne && reglagesStats.reglages.vue_defaut
+      ? vueDepuisLien(demandeQuestion(reglagesStats.reglages.vue_defaut), mesures, aujourdhui)
+      : null;
+    setVue(depuisLien || defautMaison || nettoyerVue(sienne, mesures, aujourdhui));
+  }, [vue, etabId, reglages.loading, reglages.settings, sondesPretes, mesures, aujourdhui, prendreLien, reglagesStats.status, reglagesStats.reglages.vue_defaut]);
   // Module déjà monté (gardé en arrière-plan) : le lien prévient par un événement.
   useEffect(() => {
     const w = getBrowserWindow();
@@ -692,6 +710,15 @@ export default function Statistiques({ user, etablissement }) {
     <TableauDense key={`t${i}`} tableau={t} onReessayer={relancer} onChoix={(cle, valeur) => setVue({ ...vue, tableaux: vue.tableaux.map((x, k) => (k === i ? { ...x, choix: { ...(x.choix || {}), [cle]: valeur } } : x)) })} />
   );
   const barreFiltres = vue ? <Filtres vue={vue} bornes={bornes} bornesComp={bornesComp} aujourdhui={aujourdhui} perimetres={perimetres} services={servicesResa} onVue={setVue} /> : null;
+  // Vue simple par défaut (lot 3, tablette) : période, mesure et comparaison.
+  // Le pas, les filtres, la ventilation, la forme du tracé et les actions
+  // attendent « Plus de choix ».
+  const barreFiltresVue = vue ? <Filtres vue={vue} bornes={bornes} bornesComp={bornesComp} aujourdhui={aujourdhui} perimetres={perimetres} services={servicesResa} onVue={setVue} simple={!plusDeChoix} /> : null;
+  const basculeChoix = vue ? (
+    <Btn variant="ghost" onClick={() => setPlusDeChoix((v) => !v)} style={st.bouton}>
+      {plusDeChoix ? 'Moins de choix' : 'Plus de choix'}
+    </Btn>
+  ) : null;
   const periodeChoisie = PERIODES.find((p) => p.id === vue?.periode.id);
 
   // Pilules d'analyses : « Ma vue », puis une par analyse venue d'un module,
@@ -714,6 +741,15 @@ export default function Statistiques({ user, etablissement }) {
     if (!v) return;
     setVue(v);
     setRaccourci({ id, vue: premiere.id });
+  };
+  // Lot 5 : réponses toutes faites, une touche chacune. La vue ouverte dure
+  // le temps de la visite, comme une analyse : « Ma vue » reste la sienne.
+  const questions = useMemo(() => QUESTIONS.filter((q) => vueDepuisLien(q.demande, mesures, aujourdhui)), [mesures, aujourdhui]);
+  const poserQuestion = (q) => {
+    const v = vueDepuisLien(q.demande, mesures, aujourdhui);
+    if (!v) return;
+    setVue(v);
+    setRaccourci({ id: `question:${q.id}`, vue: q.id });
   };
   // Retour du rapport monté : la première vue tracée de son analyse.
   const quitterEcranMonte = () => {
@@ -739,12 +775,16 @@ export default function Statistiques({ user, etablissement }) {
               {PERIODES.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
             </select>
           </label>
-          <ChoixPerimetre vue={vue} perimetres={perimetres} onVue={setVue} />
-          <ChoixService vue={vue} services={servicesResa} onVue={setVue} />
-          <Btn variant="ghost" onClick={() => setFiltresOuverts(true)} style={st.bouton}>Période et filtres</Btn>
+          {plusDeChoix ? (
+            <>
+              <ChoixPerimetre vue={vue} perimetres={perimetres} onVue={setVue} />
+              <ChoixService vue={vue} services={servicesResa} onVue={setVue} />
+              <Btn variant="ghost" onClick={() => setFiltresOuverts(true)} style={st.bouton}>Période et filtres</Btn>
+            </>
+          ) : null}
         </>
-      ) : barreFiltres}
-      <BoutonActions
+      ) : barreFiltresVue}
+      {plusDeChoix ? <BoutonActions
         id="stat-actions"
         label={pdfEnCours ? 'Export en cours' : 'Actions'}
         disabled={pdfEnCours}
@@ -756,7 +796,7 @@ export default function Statistiques({ user, etablissement }) {
           { titre: 'Exporter en Excel', onClick: exporter },
           { titre: 'Exporter en PDF', onClick: exporterPdf },
         ] }]}
-      />
+      /> : null}
     </>
   ) : null;
 
@@ -766,7 +806,23 @@ export default function Statistiques({ user, etablissement }) {
         <>
           {analyses.length ? (
             <div data-stat-analyses="" style={{ minWidth: 0 }}>
-              <SegmentedTabs tabs={[{ id: 'libre', label: 'Ma vue' }, ...analyses]} active={raccourci && RACCOURCIS[raccourci.id] ? raccourci.id : 'libre'} onChange={choisirAnalyse} retourLigne />
+              <SegmentedTabs tabs={[{ id: 'libre', label: 'Ma vue' }, ...analyses]} active={raccourci && RACCOURCIS[raccourci.id] ? raccourci.id : (raccourci ? '' : 'libre')} onChange={choisirAnalyse} retourLigne />
+            </div>
+          ) : null}
+          {questions.length ? (
+            <div data-stat-questions="" role="group" aria-label="Réponses toutes faites" style={st.questions}>
+              {questions.map((q) => {
+                const choisie = raccourci?.id === `question:${q.id}`;
+                return (
+                  <Btn key={q.id} variant={choisie ? 'primary' : 'ghost'} onClick={() => poserQuestion(q)} title={q.detail} style={st.bouton}>
+                    {q.libelle}
+                  </Btn>
+                );
+              })}
+              {/* Sans rangée d'analyses, le retour à « Ma vue » se fait ici. */}
+              {!analyses.length && String(raccourci?.id || '').startsWith('question:') ? (
+                <Btn variant="ghost" onClick={() => choisirAnalyse('libre')} style={st.bouton}>Ma vue</Btn>
+              ) : null}
             </div>
           ) : null}
           {vuesRaccourci && vuesRaccourci.length > 1 ? (
@@ -796,6 +852,8 @@ export default function Statistiques({ user, etablissement }) {
                   familles={famillesPanneau}
                   hauteur={i === 0 ? hauteurPrincipale : hauteurAutres}
                   options={i === 0 ? optionsPrincipales : null}
+                  simple={!plusDeChoix}
+                  fin={i === 0 ? basculeChoix : null}
                   resume={i === 0 && etroit ? <span style={st.resume}><span>{periodeChoisie?.label}</span>, <span data-no-translate>{bornesTranche(bornes)}</span></span> : null}
                   compact={etroit}
                   tableauDedans={!(i === 0 && seul)}

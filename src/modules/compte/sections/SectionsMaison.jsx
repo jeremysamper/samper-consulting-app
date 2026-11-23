@@ -4,6 +4,8 @@ import { notify } from '../../../components/toast/index.js';
 import { useReglagesMaison } from '../../../hooks/useReglagesMaison.js';
 import { ChoixMultiple, ChampNombre, EtatMaison } from './reglagesMaisonUi.jsx';
 import { Ligne, ui } from './reglagesUi.jsx';
+import { synchroniserFermeturesEnLigne } from '../../previsions/fermeturesEnLigne.js';
+import { zurichToday } from '../../../utils/zurichTime.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Deux réglages de « La maison » (18.11.2026), table reglages_maison :
@@ -36,6 +38,13 @@ export function SectionHorairesFermetures({ etablissement }) {
     const { error } = await maison.enregistrer('fermetures', valeur);
     setEnCours(false);
     if (error) { notify(error, 'error'); return false; }
+    // La réservation en ligne lit ses jours fermés ici (plan 15, lot 2) : sa
+    // page publique suit tout de suite.
+    const sync = await synchroniserFermeturesEnLigne(etablissement.id, f, valeur, zurichToday());
+    if (sync.error) {
+      console.error('[fermetures] réservation en ligne', sync.error);
+      notify("Les fermetures sont enregistrées. La réservation en ligne les prendra à son prochain enregistrement.", 'warning');
+    }
     return true;
   };
   const ajouterPeriode = async () => {
@@ -51,7 +60,7 @@ export function SectionHorairesFermetures({ etablissement }) {
       <Ligne
         colonne
         titre="Jours de fermeture"
-        aide="Chaque semaine. Ces jours-là, aucune alerte de pointage, de relevé HACCP ni de ventes n'est envoyée, et le planning les marque « Fermé »."
+        aide="Chaque semaine. Ces jours-là, aucune alerte de pointage, de relevé HACCP ni de ventes n'est envoyée, le planning les marque « Fermé » et la réservation en ligne ne propose rien."
       >
         <ChoixMultiple
           label="Jours de fermeture"

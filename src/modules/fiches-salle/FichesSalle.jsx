@@ -15,8 +15,11 @@ import {
   normalizeAllergenes, partitionAllergenes,
 } from '../../utils/allergenes.js';
 import { makeSearchMatcher, normalizeSearch } from '../../utils/searchText.js';
-import { BoutonActions } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
+import { peutValider } from '../../utils/reglagesModules.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
@@ -25,7 +28,7 @@ import VignetteFiche from '../../components/fiches/VignetteFiche.jsx';
 import SectionFiches, { GrilleFiches } from '../../components/fiches/SectionFiches.jsx';
 import PhotoFiche from '../../components/fiches/PhotoFiche.jsx';
 import AllergenesFiche from '../../components/fiches/AllergenesFiche.jsx';
-import { estCategorieTechnique, photoDeFicheSalle } from '../../components/fiches/rangementFiches.js';
+import { allergenesDeFicheSalle, estCategorieTechnique, photoDeFicheSalle } from '../../components/fiches/rangementFiches.js';
 import { categorieDuPlat, categoriesPresentes, grouperParCategorie } from '../../utils/categoriesPlat.js';
 
 
@@ -173,6 +176,11 @@ const FichesSalle = ({ user, etablissement }) => {
   const [bulkProgress, setBulkProgress] = React.useState(null);
   const bulkCancelRef = React.useRef(false);
   const [selBusy, setSelBusy] = React.useState(false);
+  // Plan 15, lot 5 : fiche depuis une recette, publication en un geste.
+  const [depuisRecette, setDepuisRecette] = React.useState(false);
+  const [filtreRecette, setFiltreRecette] = React.useState('');
+  const [publication, setPublication] = React.useState(null); // id de la fiche en cours
+  const [tousBrouillons, setTousBrouillons] = React.useState(false);
   const [showBulkCartes, setShowBulkCartes] = React.useState(false);
   const sel = useSelection();
 
@@ -210,7 +218,19 @@ const FichesSalle = ({ user, etablissement }) => {
   const [activeCarteTab, setActiveCarteTab] = React.useState(ALL_TAB);
 
   const canEdit = canManageModule(user.role, 'fiches_salle');
+  // Réglages de la maison (Réglages > Fiches salle) : qui publie une fiche,
+  // brouillons montrés ou non à la salle, champs montrés à la salle. Sans
+  // réglage : le droit « Modifier » publie, la salle ne voit ni brouillon ni
+  // champ caché.
+  const { reglages: reglagesFS } = useReglagesModule(etabId, 'fiches_salle');
+  const peutPublier = canEdit && peutValider(reglagesFS.valideurs, user.role, canEdit);
+  const champs = canEdit ? { temps: true, accords: true, allergenes: true } : reglagesFS.champs;
   const canManageCartes = canManageModule(user.role, 'recettes');
+  // Fenêtres de gestion des cartes (créer, modifier, archives) : la barre
+  // d'onglets les garde, « Gérer » les ouvre (lot 3, en-tête ramené aux
+  // cartes, aux catégories et à « Gérer »).
+  const barreCartesRef = React.useRef(null);
+  const carteActive = cartes.find(c => c.id === activeCarteTab) || null;
   const isConsultant = user.role === 'consultant';
   // Catégories que le formulaire et la génération produisent.
   const FICHE_CATS = ['Entrées','Plats','Desserts','Fromages','Boissons'];
@@ -320,7 +340,10 @@ const FichesSalle = ({ user, etablissement }) => {
   // affiché, dans l'ordre de service (Fromages et Boissons ne s'affichent plus
   // vides). Un filtre qui pointe une catégorie absente de la carte choisie
   // retombe sur « Tous » plutôt que d'afficher une grille vide.
-  const fichesCarte = fiches.filter(f => activeCarteTab === ALL_TAB || (f.carteIds || []).includes(activeCarteTab));
+  // Les brouillons (fiches rédigées pas encore relues) ne sont montrés qu'à qui
+  // gère les fiches : la salle ne lit que des fiches publiées.
+  const fichesVues = canEdit || reglagesFS.brouillons_visibles_salle ? fiches : fiches.filter(f => f.statut !== 'brouillon');
+  const fichesCarte = fichesVues.filter(f => activeCarteTab === ALL_TAB || (f.carteIds || []).includes(activeCarteTab));
   const catsPresentes = categoriesPresentes(fichesCarte);
   const cats = ['Tous', ...catsPresentes];
   const catFilterEff = cats.includes(catFilter) ? catFilter : 'Tous';
@@ -331,20 +354,92 @@ const FichesSalle = ({ user, etablissement }) => {
   );
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const openEdit = (f) => {
-    setEditFiche(f || {
-      id: null, nom: '', categorie: 'Plats', statut: 'active',
-      descriptionService: '', temperatureService: '', dressageNotes: '',
-      allergenes: [], accords: [], accordsGeneraux: [], infosService: '', tempsPreparation: '',
-      carteIds: activeCarteTab !== ALL_TAB ? [activeCarteTab] : [],
-      etablissementId: etabId, modifiePar: user.id, modifie: todayStr,
+
+  // Plan 15, lot 5 : une fiche part de la recette du plat. Les plats de la
+  // carte affichée (toutes : les plats et les recettes servies) qui n'ont pas
+  // de fiche ; un toucher remplit la fiche (nom, catégorie, recette liée,
+  // allergènes), à compléter puis enregistrer. Elle naît en brouillon : le
+  // chef la publie ensuite en un geste.
+  const platsSansFiche = (() => {
+    if (!depuisRecette) return [];
+    const noms = new Set(fiches.map(f => normalizeSearch(f.nom || '')));
+    const liees = new Set(fiches.map(f => f.recetteId).filter(Boolean));
+    const recetteById = new Map((recettes || []).filter(r => r && r.statut !== 'archivée').map(r => [r.id, r]));
+    const carte = activeCarteTab === ALL_TAB ? null : activeCarteTab;
+    const unites = (plats || [])
+      .filter(p => p && p.actif !== false && (!carte || (p.carteIds || []).includes(carte)))
+      .map(p => ({ cle: `p-${p.id}`, nom: p.nom || '', categorie: p.categorie || 'Plats', recettes: (p.recettes || []).map(pr => recetteById.get(pr.recetteId)).filter(Boolean) }))
+      .filter(u => u.recettes.length);
+    if (!carte) {
+      const dansPlats = new Set(unites.flatMap(u => u.recettes.map(r => r.id)));
+      [...recetteById.values()]
+        .filter(r => estRecetteServie(r.categorie) && !dansPlats.has(r.id))
+        .forEach(r => unites.push({ cle: `r-${r.id}`, nom: r.nom || '', categorie: r.categorie || 'Plats', recettes: [r] }));
+    }
+    const trouve = makeSearchMatcher(filtreRecette);
+    return unites
+      .filter(u => u.nom && !noms.has(normalizeSearch(u.nom)) && !u.recettes.some(r => liees.has(r.id)) && trouve(u.nom))
+      .sort((a, b) => a.nom.localeCompare(b.nom, 'fr'));
+  })();
+  const creerDepuis = (u) => {
+    const { ids, nuances } = normalizeAllergenes(u.recettes.flatMap(r => r.allergenesIds || []));
+    setDepuisRecette(false);
+    setFiltreRecette('');
+    openEdit({
+      ...ficheVide(),
+      nom: u.nom,
+      categorie: FICHE_CATS.includes(u.categorie) ? u.categorie : 'Plats',
+      recetteId: u.recettes[0]?.id || null,
+      allergenes: ids,
+      infosService: nuances.length ? `Précisions allergènes : ${nuances.join(' ; ')}` : '',
+      statut: 'brouillon',
     });
+  };
+  const brouillonsAValider = peutPublier ? fichesCarte.filter(f => f.statut === 'brouillon') : [];
+  const ficheVide = () => ({
+    id: null, nom: '', categorie: 'Plats', statut: 'active',
+    descriptionService: '', temperatureService: '', dressageNotes: '',
+    allergenes: [], accords: [], accordsGeneraux: [], infosService: '', tempsPreparation: '',
+    carteIds: activeCarteTab !== ALL_TAB ? [activeCarteTab] : [],
+    etablissementId: etabId, modifiePar: user.id, modifie: todayStr,
+  });
+  const openEdit = (f) => {
+    setEditFiche(f || ficheVide());
     setShowForm(true);
   };
 
+  // Plan 15, lot 5 : publier une fiche en un geste, pour qui valide les fiches
+  // (réglage « Qui valide », sinon le droit Modifier).
+  const publierFiche = async (f) => {
+    if (!peutPublier || publication) return;
+    setPublication(f.id);
+    const publiee = { ...f, statut: 'active', etablissementId: etabId, modifiePar: user.id };
+    try {
+      if (legacySB) {
+        const saved = await legacySB.db.upsertFicheSalle(publiee);
+        const avecCartes = { ...saved, carteIds: f.carteIds || [] };
+        setFiches(prev => prev.map(x => (x.id === f.id ? avecCartes : x)));
+        if (selected?.id === f.id) setSelected(avecCartes);
+      } else {
+        setFiches(prev => prev.map(x => (x.id === f.id ? publiee : x)));
+        if (selected?.id === f.id) setSelected(publiee);
+      }
+      notifyLegacy(`Fiche « ${f.nom} » publiée.`, 'success');
+    } catch (err) {
+      notifyLegacy(messageErreur(err, 'fiches salle'), 'error');
+    } finally {
+      setPublication(null);
+    }
+  };
+
   const saveFiche = async (f) => {
+    // Sans le droit de publier : une fiche neuve ou en brouillon reste en
+    // brouillon ; une fiche déjà publiée le reste.
+    const avant = fiches.find(x => x.id && x.id === f.id);
+    const statut = peutPublier ? f.statut : (avant?.statut === 'active' ? 'active' : 'brouillon');
     const payload = {
       ...f,
+      statut,
       etablissementId: etabId,
       modifiePar: user.id,
       accordsGeneraux: (f.accordsGeneraux || []).map(s => String(s || '').trim()).filter(Boolean),
@@ -532,7 +627,9 @@ const FichesSalle = ({ user, etablissement }) => {
             temperatureService: ai.temperatureService,
             dressageNotes: '',
             infosService,
-            tempsPreparation: ai.tempsPreparation,
+            // Le temps de service se saisit : un temps proposé par la
+            // rédaction ne s'affiche pas comme s'il avait été mesuré.
+            tempsPreparation: '',
             allergenes: allergIds,
             accords: ai.accords,
             accordsGeneraux: ai.accordsGeneraux || [],
@@ -570,7 +667,7 @@ const FichesSalle = ({ user, etablissement }) => {
   };
 
   // ── Détail fiche ──
-  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} photo={photoDeFicheSalle(selected, plats, recettes)} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} cartes={cartes}/>;
+  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} photo={photoDeFicheSalle(selected, plats, recettes)} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} plats={plats} cartes={cartes} champs={champs} peutPublier={peutPublier} onPublier={publierFiche}/>;
 
   return (
     <div style={fss.root}>
@@ -586,6 +683,7 @@ const FichesSalle = ({ user, etablissement }) => {
         onDeleteCarte={deleteCarte}
         archivedCartes={archivedCartes}
         onArchiveCarte={archiveCarte}
+        commandesRef={barreCartesRef}
       />
       <div style={fss.toolbar}>
         <div style={fss.left}>
@@ -601,24 +699,86 @@ const FichesSalle = ({ user, etablissement }) => {
             />
           )}
         </div>
-        {canEdit && !sel.active && (
-          /* L'action principale d'abord ; générer (consultant) et sélectionner
-             rangés dans « Gérer ». */
+        {!sel.active && (
+          /* Un seul menu : les fiches (nouvelle, générer, sélectionner) et
+             les cartes (ajouter, modifier, archives), chacune à sa garde. */
           <div className="module-actions">
-            <button style={fss.addBtn} onClick={()=>openEdit(null)}>Nouvelle fiche</button>
-            <BoutonActions
+            <BoutonRegler section="fiches_salle" user={user} etablissement={etablissement} />
+            {(canEdit || canManageCartes) && <BoutonActions
               id="fiches-gerer"
               label="Gérer"
               style={fss.selectBtn}
               titre="Gérer les fiches salle"
-              sections={[{ items: [
-                isConsultant && !bulkProgress && { titre: 'Générer les fiches', detail: 'Une fiche par plat de la carte, à relire ensuite.', onClick: genererFichesSalleIA },
-                fiches.length > 0 && { titre: 'Sélectionner plusieurs fiches', detail: 'Pour les supprimer ou les exporter ensemble.', onClick: sel.enter },
-              ] }]}
-            />
+              sections={[
+                canEdit && { titre: 'Fiches', items: [
+                  { titre: 'Nouvelle fiche', onClick: () => openEdit(null) },
+                  { titre: 'Depuis une recette', detail: 'Les plats sans fiche ; nom, catégorie et allergènes repris de la recette.', onClick: () => setDepuisRecette(true) },
+                  isConsultant && !bulkProgress && { titre: 'Générer les fiches', detail: 'Une fiche par plat de la carte, à relire ensuite.', onClick: genererFichesSalleIA },
+                  fiches.length > 0 && { titre: 'Sélectionner plusieurs fiches', detail: 'Pour les supprimer ou les exporter ensemble.', onClick: sel.enter },
+                ] },
+                canManageCartes && { titre: 'Cartes', items: [
+                  { titre: 'Ajouter une carte', detail: 'Un onglet de plus, à remplir de plats', onClick: () => barreCartesRef.current?.creer() },
+                  carteActive && {
+                    titre: 'Modifier la carte',
+                    detail: <><span data-no-translate="">{String(carteActive.nom ?? '').trim() || '?'}</span><span> : nom, dates, archiver, supprimer</span></>,
+                    onClick: () => barreCartesRef.current?.modifier(carteActive),
+                  },
+                  archivedCartes.length > 0 && {
+                    titre: 'Archives',
+                    detail: <><span data-no-translate="">{archivedCartes.length}</span> <span>{archivedCartes.length > 1 ? 'cartes archivées, à restaurer' : 'carte archivée, à restaurer'}</span></>,
+                    onClick: () => barreCartesRef.current?.archives(),
+                  },
+                ] },
+              ].filter(Boolean)}
+            />}
           </div>
         )}
       </div>
+
+      {/* Plan 15, lot 5 : les brouillons à valider, publiés en un geste. */}
+      {brouillonsAValider.length > 0 && !sel.active && (
+        <section style={fss.aValider} data-cadre="" data-fiches-a-valider="">
+          <h3 style={fss.aValiderTitre}>
+            <span data-no-translate>{brouillonsAValider.length}</span>{' '}
+            <span>{brouillonsAValider.length > 1 ? 'fiches à valider' : 'fiche à valider'}</span>
+          </h3>
+          {(tousBrouillons ? brouillonsAValider : brouillonsAValider.slice(0, 4)).map(f => (
+            <div key={f.id} style={fss.aValiderLigne}>
+              <button type="button" style={fss.aValiderNom} onClick={() => ouvrirFiche(f)}>{f.nom}</button>
+              <Btn variant="ghost" onClick={() => publierFiche(f)} disabled={Boolean(publication)} style={{ minHeight: 44, flexShrink: 0 }}>
+                {publication === f.id ? 'Publication…' : 'Publier'}
+              </Btn>
+            </div>
+          ))}
+          {brouillonsAValider.length > 4 && (
+            <button type="button" style={fss.aValiderPlus} onClick={() => setTousBrouillons(v => !v)}>
+              {tousBrouillons ? <span>Réduire</span> : <><span>Voir les</span>{' '}<span data-no-translate>{brouillonsAValider.length - 4}</span>{' '}<span>autres</span></>}
+            </button>
+          )}
+        </section>
+      )}
+
+      {/* Depuis une recette (plan 15, lot 5) */}
+      {depuisRecette && (
+        <Fenetre id="fiches-depuis-recette" titre="Nouvelle fiche depuis une recette" sousTitre="Les plats qui n'ont pas encore de fiche salle." onClose={() => { setDepuisRecette(false); setFiltreRecette(''); }} largeur={480}>
+          <input
+            style={fss.fInput}
+            value={filtreRecette}
+            onChange={e => setFiltreRecette(e.target.value)}
+            placeholder="Je cherche un plat…"
+            aria-label="Chercher un plat"
+          />
+          <div style={fss.listeRecettes}>
+            {platsSansFiche.length === 0 && <p style={fss.vide}>Tous les plats ont déjà une fiche salle.</p>}
+            {platsSansFiche.map(u => (
+              <button key={u.cle} type="button" style={fss.ligneRecette} onClick={() => creerDepuis(u)}>
+                <span style={{ flex: 1, minWidth: 0 }}>{u.nom}</span>
+                <span style={fss.ligneRecetteCat}>{u.categorie}</span>
+              </button>
+            ))}
+          </div>
+        </Fenetre>
+      )}
 
       {/* Barre de sélection multiple */}
       {canEdit && sel.active && (
@@ -677,10 +837,10 @@ const FichesSalle = ({ user, etablissement }) => {
       ) : (
         <>
           {statutLecture === 'error' && <BandeauNonActualise onRetry={relireFiches} />}
-          {fiches.length === 0 ? (
+          {fichesVues.length === 0 ? (
             <div className="fv-etat">
               <p className="fv-etat-titre">Aucune fiche salle pour le moment.</p>
-              {canEdit && <p className="fv-etat-texte">La première se crée avec « Nouvelle fiche ».</p>}
+              {canEdit && <p className="fv-etat-texte">La première se crée avec « Gérer », puis « Nouvelle fiche ».</p>}
             </div>
           ) : filtered.length === 0 ? (
             <div className="fv-etat">
@@ -702,10 +862,10 @@ const FichesSalle = ({ user, etablissement }) => {
                         photo={photoDeFicheSalle(f, plats, recettes)}
                         categorie={categorieDuPlat(f)}
                         texte={f.descriptionService}
-                        allergenes={f.allergenes}
+                        allergenes={champs.allergenes ? allergenesDeFicheSalle(f, plats, recettes) : []}
                         meta={[
-                          f.tempsPreparation && { cle: 'temps', Icone: Clock, contenu: f.tempsPreparation },
-                          nbAccords > 0 && { cle: 'accords', Icone: Wine, contenu: <><span data-no-translate="">{nbAccords}</span> {nbAccords > 1 ? 'accords' : 'accord'}</> },
+                          champs.temps && f.tempsPreparation && { cle: 'temps', Icone: Clock, contenu: f.tempsPreparation },
+                          champs.accords && nbAccords > 0 && { cle: 'accords', Icone: Wine, contenu: <><span data-no-translate="">{nbAccords}</span> {nbAccords > 1 ? 'accords' : 'accord'}</> },
                         ]}
                         pastille={f.statut === 'brouillon' ? 'Brouillon' : null}
                         onOuvrir={() => ouvrirFiche(f)}
@@ -720,7 +880,7 @@ const FichesSalle = ({ user, etablissement }) => {
         </>
       )}
 
-      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes}/>}
+      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes} peutPublier={peutPublier}/>}
       {showBulkCartes && (
         <BulkCartesModal
           cartes={cartes}
@@ -735,7 +895,7 @@ const FichesSalle = ({ user, etablissement }) => {
 };
 
 // ── Détail d'une fiche ──
-const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], cartes = [] }) => {
+const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], plats = [], cartes = [], champs = { temps: true, accords: true, allergenes: true }, peutPublier = true, onPublier = null }) => {
   // Un onglet par famille réellement présente sur la fiche. Un type inconnu
   // (import ancien, famille ajoutée plus tard) garde son propre onglet plutôt
   // que d'être avalé : sans ça l'accord n'a pas d'onglet, donc il est invisible
@@ -773,7 +933,7 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
   // les 2 minutes »), trop longues pour une ligne posée sur la photo.
   const auService = [
     fiche.temperatureService && ['Température de service', fiche.temperatureService],
-    fiche.tempsPreparation && ['Temps de préparation', fiche.tempsPreparation],
+    champs.temps && fiche.tempsPreparation && ['Temps de préparation', fiche.tempsPreparation],
     fiche.dressageNotes && ['Notes de dressage / service', fiche.dressageNotes],
   ].filter(Boolean);
 
@@ -792,6 +952,10 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
         </Btn>
         {canEdit && (
           <div style={{display:'flex',gap:8,flexShrink:0,marginLeft:'auto'}}>
+            {/* Plan 15, lot 5 : un brouillon se publie en un geste. */}
+            {fiche.statut === 'brouillon' && peutPublier && onPublier && (
+              <Btn variant="primary" onClick={() => onPublier(fiche)} style={{ minHeight: 44 }}>Publier la fiche</Btn>
+            )}
             <button style={fss.editBtn} onClick={onEdit}>Modifier</button>
             <button style={fss.deleteBtn} onClick={onDelete}>Supprimer</button>
           </div>
@@ -827,7 +991,7 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
             )}
           </div>
           <div className="fv-col fv-col-b">
-            <AllergenesFiche ids={fiche.allergenes} variante="bandeau" />
+            {champs.allergenes && <AllergenesFiche ids={allergenesDeFicheSalle(fiche, plats, recettes)} variante="bandeau" />}
             {fiche.infosService && (
               <div style={{...encadreStyle('alerte'),fontSize: 'var(--t2)',lineHeight:1.5}}>
                 <strong style={encadreTitreStyle('alerte')}>Info service :</strong> {fiche.infosService}
@@ -838,7 +1002,7 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
 
         {/* Accords : un onglet par famille présente, le nombre dans son
             propre nœud ; liste à filets, en deux colonnes dès 600 px. */}
-        <section className="fv-bloc">
+        {champs.accords && <section className="fv-bloc">
           <h3 className="fv-titre-section">Accords mets & boissons</h3>
           {familles.length > 0 && (
             <p className="fv-familles">
@@ -871,20 +1035,20 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
               </ul>
             </>
           ) : <p className="fv-vide">Aucun accord renseigné.</p>}
-        </section>
+        </section>}
 
         {fiche.modifie && (
           <p className="fv-pied">Modifiée le <span data-no-translate="">{dateSuisse(fiche.modifie)}</span></p>
         )}
       </div>
 
-      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes}/>}
+      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes} peutPublier={peutPublier}/>}
     </div>
   );
 };
 
 // ── Formulaire création/édition ──
-const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], cartes = [] }) => {
+const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], cartes = [], peutPublier = true }) => {
   const allAllergs = ALLERGENE_IDS;
   const toggleAllerg = (a) => setFiche(f=>({...f,allergenes:(f.allergenes || []).includes(a)?f.allergenes.filter(x=>x!==a):[...f.allergenes,a]}));
   // Valeurs hors référentiel (texte libre d'un ancien import) : sans puce
@@ -939,9 +1103,10 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                 </select>
               </div>
               <div style={fss.field}><label style={fss.fLabel}>Statut</label>
-                <select style={fss.fInput} value={fiche?.statut||'active'} onChange={e=>setFiche(f=>({...f,statut:e.target.value}))}>
+                <select style={fss.fInput} value={peutPublier ? (fiche?.statut||'active') : (fiche?.statut === 'active' ? 'active' : 'brouillon')} disabled={!peutPublier} onChange={e=>setFiche(f=>({...f,statut:e.target.value}))}>
                   <option value="active">Active</option><option value="brouillon">Brouillon</option>
                 </select>
+                {!peutPublier && <span style={{fontSize:'var(--t1)',color:'var(--text2)',lineHeight:1.4}}>Une personne qui valide les fiches la publie ensuite.</span>}
               </div>
             </div>
             {/* Attribution : cartes (menus) où figure cette fiche. Placé haut
@@ -1237,6 +1402,17 @@ const fss = {
   modalBody:{padding:'20px 22px'},
   field:{display:'flex',flexDirection:'column',gap:6},
   fLabel:{fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color:'var(--text2)'},
+  // Plan 15, lot 5 : brouillons à valider (carte blanche à filets doux) et
+  // liste des plats sans fiche.
+  aValider: { background: 'var(--zone)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)', padding: '12px 20px', marginBottom: 16, display: 'flex', flexDirection: 'column', minWidth: 0 },
+  aValiderTitre: { margin: '0 0 4px', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
+  aValiderLigne: { display: 'flex', alignItems: 'center', gap: 12, minHeight: 48, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', minWidth: 0 },
+  aValiderNom: { flex: 1, minWidth: 0, minHeight: 44, textAlign: 'left', background: 'transparent', borderWidth: 0, borderRadius: 0, fontFamily: 'var(--font)', fontSize: 'var(--t2)', color: 'var(--text)', cursor: 'pointer', overflowWrap: 'anywhere' },
+  aValiderPlus: { alignSelf: 'flex-start', minHeight: 44, background: 'transparent', borderWidth: 0, fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--lien)', cursor: 'pointer', padding: '0 4px' },
+  listeRecettes: { display: 'flex', flexDirection: 'column', marginTop: 10, maxHeight: '50vh', overflowY: 'auto', minWidth: 0 },
+  ligneRecette: { display: 'flex', alignItems: 'center', gap: 10, minHeight: 48, width: '100%', textAlign: 'left', background: 'transparent', borderWidth: 0, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)', borderRadius: 0, fontFamily: 'var(--font)', fontSize: 'var(--t2)', color: 'var(--text)', cursor: 'pointer', padding: '0 4px' },
+  ligneRecetteCat: { fontSize: 'var(--t1)', color: 'var(--text2)', flexShrink: 0 },
+  vide: { margin: '12px 0', fontSize: 'var(--t2)', color: 'var(--text2)' },
   fInput:{padding:'9px 12px',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',color:'var(--text)',background: 'var(--surface)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'},
   smallBtn:{padding:'4px 10px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color: 'var(--btn-texte)',cursor:'pointer',fontFamily:'var(--font)'},
   cancelBtn:{padding:'8px 16px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},

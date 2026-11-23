@@ -4,19 +4,25 @@ import { pdfUtils } from '../../services/pdf.js';
 import { dbService } from '../../services/dbService.js';
 import { useSelection } from '../../hooks/useSelection.js';
 import { SelectionToolbar } from '../../components/ui/SelectionToolbar.jsx';
-import { canManageModule } from '../../data/demoData.js';
+import { canManageModule, getPermissionsForRole } from '../../data/demoData.js';
+import { isPageActiveForEtab, peutOuvrirPage } from '../moduleConfig.js';
+import { navigateToPage } from '../../services/navigationService.js';
 import { Anneau, Btn } from '../../components/ui/index.jsx';
 import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import PhotoUploader from '../consultant-tools/PhotoUploader.jsx';
 import { normalizeSearch } from '../../utils/searchText.js';
-import { ArrowLeft, Check, ChevronDown, ChevronRight, FilePlus2, History, Library, Trash2 } from 'lucide-react';
+import { ArrowLeft, Check, ChevronDown, ChevronRight, FilePlus2, History, Library, MoreHorizontal, Trash2 } from 'lucide-react';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { compteSop } from './serieSop.js';
+import { useDemandeOuverture } from '../../hooks/useDemandeOuverture.js';
+import { UI_STORAGE_KEYS } from '../../utils/storage.js';
+import { zurichToday } from '../../utils/zurichTime.js';
 
 // ═══════════════════════════════════════════════════════════════
 // SAMPER CONSULTING - MODULE SOP & CHECKLISTS
@@ -40,6 +46,9 @@ const FREQ_MAP = Object.fromEntries(SOP_FREQUENCES.map(f => [f.id, f]));
 // L'historique est un écran de tâche (Retour, geste retour et Échap ramènent
 // à la liste) ; la checklist et l'éditeur se referment aussi par le retour.
 const SOP = ({ user, etablissement }) => {
+  // Renvoi vers le module Inventaire (procédure d'inventaire) : seulement si
+  // le module est activé pour l'établissement et ouvert à la personne.
+  const versInventaire = isPageActiveForEtab(etablissement, 'inventaire') && peutOuvrirPage('inventaire', user, getPermissionsForRole(user?.role));
   const etabId = etablissement?.id || 'etab-1';
   const legacySB = dbService.getBridge();
   const canManage = canManageModule(user.role, 'sop');
@@ -52,6 +61,14 @@ const SOP = ({ user, etablissement }) => {
   const [selectedSop, setSelectedSop] = React.useState(null);  // pour éditer
   const [runningExec, setRunningExec] = React.useState(null);  // pour exécuter
   const [showTemplates, setShowTemplates] = React.useState(false);
+  // Plan 15, lot 5 : « Lancer » ou « Reprendre » depuis « À faire maintenant »
+  // (ouvrirSop) : la demande attend la fin du chargement.
+  const demandeRef = React.useRef(null);
+  const [tourDemande, setTourDemande] = React.useState(0);
+  useDemandeOuverture(UI_STORAGE_KEYS.sopOuvrir, 'sc:sop-ouvrir', (d) => {
+    demandeRef.current = d;
+    setTourDemande((n) => n + 1);
+  });
 
   // Chargement initial + realtime
   React.useEffect(() => {
@@ -105,6 +122,29 @@ const SOP = ({ user, etablissement }) => {
       notifyLegacy(messageErreur(err, 'sop'), 'error');
     }
   };
+
+  // Lance une exécution neuve. Celle qu'on a commencée et pas finie se reprend
+  // par setRunningExec : la checklist relit ses étapes cochées.
+  const lancer = async (sop) => {
+    try {
+      const exec = await legacySB.db.startSopExecution({
+        sopId: sop.id, etabId, userId: user.id, userName: user.nom || user.email
+      });
+      setRunningExec(exec);
+    } catch (err) { notifyLegacy(messageErreur(err, 'sop'), 'error'); }
+  };
+  const lancerRef = React.useRef(lancer);
+  lancerRef.current = lancer;
+
+  React.useEffect(() => {
+    const d = demandeRef.current;
+    if (!d || loading) return;
+    demandeRef.current = null;
+    const exec = d.execId ? executions.find((e) => e.id === d.execId && e.statut === 'en_cours') : null;
+    if (exec) { setRunningExec(exec); return; }
+    const sop = sops.find((x) => x.id === d.sopId && x.actif);
+    if (sop) lancerRef.current(sop);
+  }, [loading, tourDemande, executions, sops]);
 
   if (loading) return <div style={{ padding: 40, textAlign: 'center', color: 'var(--text2)' }}>Chargement…</div>;
 
@@ -163,6 +203,10 @@ const SOP = ({ user, etablissement }) => {
             {', '}{terminees} exécution{terminees > 1 ? 's' : ''} terminée{terminees > 1 ? 's' : ''}
           </div>
         </div>
+        {/* Fréquence, rôles et rappel de chaque procédure : Réglages > SOP. */}
+        <div className="module-actions">
+          <BoutonRegler section="sop" user={user} etablissement={etablissement} />
+        </div>
       </div>
 
       {/* Les autres tâches, en gros boutons au-dessus de la liste */}
@@ -171,6 +215,7 @@ const SOP = ({ user, etablissement }) => {
       </div>
 
       <SopList
+        versInventaire={versInventaire}
         sops={sops}
         sopTemplates={sopTemplates}
         executions={executions}
@@ -180,14 +225,8 @@ const SOP = ({ user, etablissement }) => {
         legacySB={legacySB}
         onEdit={(s) => setSelectedSop(s)}
         onAddToTemplates={addToTemplates}
-        onStart={async (sop) => {
-          try {
-            const exec = await legacySB.db.startSopExecution({
-              sopId: sop.id, etabId, userId: user.id, userName: user.nom || user.email
-            });
-            setRunningExec(exec);
-          } catch (err) { notifyLegacy(messageErreur(err, 'sop'), 'error'); }
-        }}
+        onStart={lancer}
+        onResume={(exec) => setRunningExec(exec)}
       />
 
       {/* Modale templates */}
@@ -204,7 +243,7 @@ const SOP = ({ user, etablissement }) => {
 };
 
 // ─── Liste des SOPs ───
-const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, etabId, legacySB, onEdit, onStart, onAddToTemplates }) => {
+const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, etabId, legacySB, onEdit, onStart, onResume, onAddToTemplates, versInventaire = false }) => {
   const [search, setSearch] = React.useState('');
   const sel = useSelection();
   const [bulkBusy, setBulkBusy] = React.useState(false);
@@ -281,7 +320,19 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
   // ─── Carte des SOPs déjà exécutées (terminées) aujourd'hui ───
   // Permet d'afficher un badge "Fait aujourd'hui" et d'éviter les doublons accidentels.
   // On ne compte que les exécutions au statut 'terminee' du jour courant.
-  const todayStr = new Date().toISOString().slice(0, 10);
+  // Jour de Zurich (et non d'UTC : entre minuit et 1 h, c'était la veille).
+  const todayStr = zurichToday();
+  // Plan 15, lot 5 : une exécution commencée par la personne aujourd'hui et
+  // pas finie se reprend là où elle s'est arrêtée.
+  const enCoursMap = React.useMemo(() => {
+    const map = {};
+    (executions || []).forEach(e => {
+      if (e.statut !== 'en_cours' || e.operateurId !== user.id) return;
+      if ((e.dateExecution || '').slice(0, 10) !== todayStr) return;
+      if (!map[e.sopId] || String(e.heureDebut || '') > String(map[e.sopId].heureDebut || '')) map[e.sopId] = e;
+    });
+    return map;
+  }, [executions, todayStr, user.id]);
   const doneTodayMap = React.useMemo(() => {
     const map = {};
     (executions || []).forEach(e => {
@@ -388,7 +439,7 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
         const Chevron = plie ? ChevronRight : ChevronDown;
         return (
         <div key={freq.id} style={{ marginBottom: 24 }}>
-          <button type="button" className="mini" style={ss.groupHeader} onClick={() => basculerFrequence(freq.id)} aria-expanded={!plie}>
+          <button type="button" className="mini touch-target" style={ss.groupHeader} onClick={() => basculerFrequence(freq.id)} aria-expanded={!plie}>
             <Chevron size={16} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--text2)' }} />
             <span style={ss.groupTitle}>{freq.label}</span>
             <span style={{ fontSize: 'var(--t1)', color: 'var(--text2)' }}>({byFreq[freq.id].length})</span>
@@ -404,42 +455,28 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                   ...(sel.active && sel.isSelected(sop.id) ? { borderColor: 'var(--accent)' } : {}),
                 }}>
                   {sel.active && (
-                    <input
-                      type="checkbox"
-                      checked={sel.isSelected(sop.id)}
-                      onChange={() => sel.toggle(sop.id)}
-                      style={{ width: 18, height: 18, cursor: 'pointer', alignSelf: 'center', marginRight: 4, flexShrink: 0 }}
-                    />
+                    <label style={ss.caseCible}>
+                      <input
+                        type="checkbox"
+                        aria-label={sop.titre}
+                        checked={sel.isSelected(sop.id)}
+                        onChange={() => sel.toggle(sop.id)}
+                        style={{ width: 24, height: 24, margin: 0, cursor: 'pointer' }}
+                      />
+                    </label>
                   )}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={ss.sopCardTitle}>{sop.titre}</div>
-                    {sop.description && <div style={ss.sopCardDesc}>{sop.description}</div>}
-                    <div style={ss.sopCardMeta}>
-                      <span style={ss.sopCardCat}>{sop.categorie}</span>
-                      <span style={ss.sopCardSteps}>{totalSteps} étape{totalSteps > 1 ? 's' : ''}</span>
-                      {(sop.tags || []).map(t => (
-                        <span key={t} style={ss.sopCardTag}>{t}</span>
-                      ))}
-                      {doneToday && (
-                        <span
-                          style={ss.sopCardFait}
-                          title={`Validée à ${new Date(doneToday.heureFin || doneToday.heureDebut).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })} par ${doneToday.operateurNom || '-'}`}
-                        >Fait aujourd'hui</span>
-                      )}
-                    </div>
-                    <div style={ss.sopCardActions}>
-                      <button
-                        style={ss.gererBtn}
-                        onClick={() => handleStart(sop)}
-                        title={doneToday && sop.frequence === 'quotidien'
-                            ? "Relancer (déjà validée aujourd'hui)"
-                            : "Lancer la checklist"}
-                      >{doneToday && sop.frequence === 'quotidien' ? 'Relancer' : 'Lancer'}</button>
-                      {canManage && (
+                    {/* « Lancer » seul sur la ligne d'actions (lot 3) : la
+                        gestion de la procédure passe dans le menu rond du
+                        coin, pour qui gère les SOP. */}
+                    <div style={ss.sopCardTete}>
+                      <div style={{ ...ss.sopCardTitle, flex: '1 1 auto', minWidth: 0 }}>{sop.titre}</div>
+                      {canManage && !sel.active && (
                         <BoutonActions
                           id={`sop-gerer-${sop.id}`}
-                          label="Gérer"
-                          style={ss.gererBtn}
+                          label={<MoreHorizontal size={18} strokeWidth={1.75} aria-hidden="true" />}
+                          ariaLabel="Gérer"
+                          style={ss.menuRond}
                           titre={sop.titre}
                           sousTitre={(
                             <>
@@ -454,6 +491,45 @@ const SopList = ({ sops, sopTemplates = [], executions = [], user, canManage, et
                             ],
                           }]}
                         />
+                      )}
+                    </div>
+                    {sop.description && <div style={ss.sopCardDesc}>{sop.description}</div>}
+                    {versInventaire && /inventaire/i.test(sop.titre || '') && (
+                      <div style={ss.sopCardDesc} data-sop-renvoi="inventaire">
+                        <span>Le comptage se fait dans le module Inventaire.</span>{' '}
+                        <button type="button" className="touch-target" style={ss.lienRenvoi} onClick={() => navigateToPage('inventaire')}>Ouvrir l'inventaire</button>
+                      </div>
+                    )}
+                    <div style={ss.sopCardMeta}>
+                      <span style={ss.sopCardCat}>{sop.categorie}</span>
+                      <span style={ss.sopCardSteps}>{totalSteps} étape{totalSteps > 1 ? 's' : ''}</span>
+                      {/* La catégorie une seule fois : un tag qui la répète n'est pas redit. */}
+                      {(sop.tags || []).filter(t => normalizeSearch(t) !== normalizeSearch(sop.categorie)).map(t => (
+                        <span key={t} style={ss.sopCardTag}>{t}</span>
+                      ))}
+                      {doneToday && (
+                        <span
+                          style={ss.sopCardFait}
+                          title={`Validée à ${new Date(doneToday.heureFin || doneToday.heureDebut).toLocaleTimeString('fr-CH', { hour: '2-digit', minute: '2-digit' })} par ${doneToday.operateurNom || '-'}`}
+                        >Fait aujourd'hui</span>
+                      )}
+                    </div>
+                    <div style={ss.sopCardActions}>
+                      {enCoursMap[sop.id] && onResume ? (
+                        <button
+                          style={ss.gererBtn}
+                          onClick={() => onResume(enCoursMap[sop.id])}
+                          title="Reprendre là où vous vous êtes arrêté"
+                          data-sop-reprendre=""
+                        >Reprendre</button>
+                      ) : (
+                        <button
+                          style={ss.gererBtn}
+                          onClick={() => handleStart(sop)}
+                          title={doneToday && sop.frequence === 'quotidien'
+                              ? "Relancer (déjà validée aujourd'hui)"
+                              : "Lancer la checklist"}
+                        >{doneToday && sop.frequence === 'quotidien' ? 'Relancer' : 'Lancer'}</button>
                       )}
                     </div>
                   </div>
@@ -1247,18 +1323,24 @@ const ss = {
   chipActive: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
   empty: { ...carte, padding: 40, textAlign: 'center' },
   // Titre d'un groupe de fréquence : un bouton qui replie le groupe.
-  groupHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' },
+  groupHeader: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, minHeight: 24, padding: 0, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font)', textAlign: 'left' },
   groupTitle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)' },
   cardsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 12 },
   sopCard: { ...carte, padding: '14px 16px', display: 'flex', alignItems: 'flex-start', gap: 10 },
   sopCardTitle: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)', lineHeight: 1.3 },
   sopCardDesc: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4, lineHeight: 1.45 },
+  lienRenvoi: { display: 'inline-flex', alignItems: 'center', background: 'none', borderWidth: 0, borderStyle: 'none', padding: '6px 0', minHeight: 32, color: 'var(--lien)', textDecoration: 'underline', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t1)' },
   sopCardMeta: { display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap', alignItems: 'center' },
   sopCardSteps: { fontSize: 'var(--t1)', color: 'var(--text2)' },
   sopCardCat: etiquette,
   sopCardTag: etiquette,
   sopCardFait: { ...etiquette, color: 'var(--success-text)', background: 'var(--success-bg-soft)' },
   sopCardActions: { display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' },
+  sopCardTete: { display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 },
+  // Menu de la procédure : cercle de 44 px en haut à droite de la carte.
+  menuRond: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0, margin: '-10px -8px 0 0', padding: 0, borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', cursor: 'pointer' },
+  // Case de sélection : le label est la cible, 44 x 44 (règle de l'iPad).
+  caseCible: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0, alignSelf: 'center', cursor: 'pointer' },
   gererBtn: { padding: '7px 16px', background: 'var(--btn-fond)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', color: 'var(--btn-texte)', borderRadius: 'var(--r-full)', cursor: 'pointer', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap' },
   iconBtn: { width: 30, height: 30, padding: 0, background: 'var(--piste)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-full)', cursor: 'pointer', fontSize: 'var(--t1)', color: 'var(--text2)' },
   // « × » discret : texte --text3, rouge au survol et au focus (classe btn-suppr-discret).

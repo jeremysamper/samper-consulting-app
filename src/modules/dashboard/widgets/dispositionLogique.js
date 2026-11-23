@@ -52,8 +52,11 @@ export function taillesDeGroupe(n, poste) {
 
 // Disposition d'origine : les cartes d'aujourd'hui, dans le même ordre de
 // lecture, selon les gardes du contexte. Au téléphone, une seule carte de mise
-// en avant (les autres attendent dans la galerie) et pas de repère qui répète
-// la carte de l'équipe.
+// en avant (les autres attendent dans la galerie). Chaque chiffre une fois :
+// pas de repère ni de chiffre de gestion qui répète une carte posée (l'équipe
+// du jour, les couverts du jour, ceux de la semaine), et une seule carte
+// d'équipe (« Qui travaille » attend dans la galerie quand la carte de
+// l'équipe est là).
 export function origine(poste, ctx) {
   const vu = (id) => estVisible(id, ctx);
   const tel = poste === 'telephone';
@@ -63,15 +66,19 @@ export function origine(poste, ctx) {
   // Établissement neuf : la mise en route avant tout le reste.
   pose('mise-en-route', 'pleine');
 
-  let reperes = ['repere-couverts', 'repere-groupes', 'repere-equipe', 'mes-points'].filter(vu);
-  if (tel && vu('equipe')) reperes = reperes.filter((id) => id !== 'repere-equipe');
+  // Cartes de mise en avant posées plus bas : au téléphone la première
+  // visible, ailleurs toutes celles qui sont visibles.
+  const avantTel = ['equipe', 'semaine', 'reservations'].find(vu);
+  const posee = (id) => (tel ? avantTel === id : vu(id));
+  const repete = { 'repere-equipe': 'equipe', 'repere-couverts': 'reservations' };
+  const reperes = ['repere-couverts', 'repere-groupes', 'repere-equipe', 'mes-points']
+    .filter((id) => vu(id) && !(repete[id] && posee(repete[id])));
   taillesDeGroupe(reperes.length, poste).forEach((taille, i) => liste.push({ id: reperes[i], taille }));
 
   if (tel) {
     pose('pointage', 'pleine');
     pose('a-faire', 'pleine');
-    const avant = ['equipe', 'semaine', 'reservations'].find(vu);
-    if (avant) liste.push({ id: avant, taille: avant === 'equipe' ? 'pleine' : 'moyen' });
+    if (avantTel) liste.push({ id: avantTel, taille: avantTel === 'equipe' ? 'pleine' : 'moyen' });
   } else {
     // Rangée « maintenant » : votre service et à faire d'un côté, les cartes
     // de mise en avant de l'autre, en rangées de la grille de quatre colonnes.
@@ -98,7 +105,7 @@ export function origine(poste, ctx) {
         : ['pointage', 'a-faire', 'equipe', 'semaine', 'reservations'];
       ordre.forEach((id) => pose(id, id === 'semaine' || id === 'reservations' ? 'moyen' : 'grand'));
     }
-    pose('qui-travaille', 'pleine');
+    if (!vu('equipe')) pose('qui-travaille', 'pleine');
   }
 
   // Hausses de prix : sous la rangée « maintenant », seulement quand il y en
@@ -112,7 +119,7 @@ export function origine(poste, ctx) {
   // Temps gagné : avec les chiffres, seulement quand la semaine a déjà un gain.
   const chiffres = ['chiffre-couverts', 'chiffre-heures', 'chiffre-pertes', 'chiffre-stock']
     .concat(ctx.tempsGagneSecondes > 0 ? ['temps-gagne'] : [])
-    .filter(vu);
+    .filter((id) => vu(id) && !(id === 'chiffre-couverts' && posee('semaine')));
   taillesDeGroupe(chiffres.length, poste).forEach((taille, i) => liste.push({ id: chiffres[i], taille }));
   pose('regularite', 'pleine');
   return liste;
@@ -155,6 +162,13 @@ export function normaliser(valeur) {
 // La liste du poste : la sienne si elle est gardée, sinon l'origine.
 export function listeDuPoste(disposition, poste, ctx) {
   return (disposition && disposition[poste]) || origine(poste, ctx);
+}
+
+// Widgets réellement rendus pour ce poste (liste gardée ou origine, gardes
+// ouvertes) : un widget ou l'en-tête ne redit pas un chiffre qu'un autre
+// widget affiché porte déjà (les couverts du jour, ceux de la semaine).
+export function widgetsAffiches(disposition, poste, ctx) {
+  return new Set(listeDuPoste(disposition, poste, ctx).filter((x) => estVisible(x.id, ctx)).map((x) => x.id));
 }
 
 // ── Gestes du mode « Personnaliser » ───────────────────────────────────────

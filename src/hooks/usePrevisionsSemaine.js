@@ -4,6 +4,7 @@ import { isoDate, parseLocalDate } from '../utils/dateHelpers.js';
 import { useReservations } from './useReservations.js';
 import { useOrdreLectures } from './useOrdreLectures.js';
 import { SERVICES_AFFICHES, serviceAffiche } from '../modules/previsions/statutsReservation.js';
+import { libelleTagAllergene } from '../utils/allergenes.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // La semaine du planning des réservations : les réservations elles-mêmes,
@@ -27,7 +28,7 @@ function mapJour(dateService, resas) {
   const allergenes = new Set();
   for (const r of comptees) {
     for (const t of Array.isArray(r.reservation_tags) ? r.reservation_tags : []) {
-      if (t.type_tag === 'allergene' && t.valeur) allergenes.add(t.valeur);
+      if (t.type_tag === 'allergene' && t.valeur) allergenes.add(libelleTagAllergene(t.valeur));
     }
   }
   const parService = {};

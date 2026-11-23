@@ -1,13 +1,15 @@
 import React from 'react';
 import { flushSync } from 'react-dom';
-import { getDemoData, canManageModule } from '../../data/demoData.js';
+import { getDemoData, canManageModule, getPermissionsForRole } from '../../data/demoData.js';
+import { ouvrirDossier } from '../../services/navigationService.js';
+import { DOSSIERS_MODULES, peutOuvrirDocuments } from '../documents/gardesDocuments.js';
 import { alertLegacy, confirmLegacy, notifyLegacy } from '../../legacy/legacyApi.js';
 import { pdfUtils } from '../../services/pdf.js';
 import { CRENEAUX_PRESETS, CTRL_TYPES, ECRANS_HACCP, INITIAL_CONTROLS, INITIAL_CTRL_TPL, INITIAL_RELEVES, INITIAL_ZONES, ZONE_TYPES } from './HACCP.constants.js';
 import { CreneauForm, CtrlForm, ZoneForm } from './ZoneForms.jsx';
 import ZoneTile from './ZoneTile.jsx';
 import { hcfg, hs } from './HACCP.styles.js';
-import { isReleveConforme, parseHaccpNumber, trierCreneaux } from './HACCP.utils.js';
+import { creneauDuJour, isReleveConforme, parseHaccpNumber, trierCreneaux } from './HACCP.utils.js';
 import { commentaireActions, compteControles, etatDuJour, verdictReleve } from './haccpJour.js';
 import { zurichAjouterJours, zurichClock, zurichToday } from '../../utils/zurichTime.js';
 import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
@@ -37,7 +39,9 @@ import Tracabilite from './Tracabilite.jsx';
 import EtiquettesDlc from './EtiquettesDlc.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
-import { peutConfigurerHaccp } from './gardesHaccp.js';
+import { peutConfigurerHaccp, peutSupprimerHistoriqueHaccp } from './gardesHaccp.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
+import JoursCreneau from './JoursCreneau.jsx';
 import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { chiffresReleves } from './serieHaccp.js';
 import DossierControleFenetre from './DossierControleFenetre.jsx';
@@ -188,7 +192,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   const [triggerCapture, setTriggerCapture] = React.useState(null);
   const registerCaptureTrigger = React.useCallback(fn => setTriggerCapture(() => fn), []);
 
+  // Réglages ouverts à la direction de la maison (D1) ; supprimer un frigo
+  // ou un contrôle retire de l'historique : consultant seul.
   const isConsultant = peutConfigurerHaccp(user.role);
+  const peutSupprimerHistorique = peutSupprimerHistoriqueHaccp(user.role);
   const enReglage = ecranReglage === 'config';
   const canWrite = ['consultant', 'patron', 'resp_cuisine', 'cuisinier'].includes(user.role);
   const canManage = canManageModule(user.role, 'haccp');
@@ -340,7 +347,9 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
 
   const activeZones = zones.filter(z=>z.actif);
   const activeTpls  = ctrlTpls.filter(t=>t.actif);
-  const activeCreneaux = trierCreneaux(creneaux.filter(c => c.actif));
+  // Tournées attendues aujourd'hui : actives et réglées pour ce jour.
+  const activeCreneaux = trierCreneaux(creneaux.filter(c => c.actif && creneauDuJour(c, todayStr)));
+  const nbCreneauxActifs = creneaux.filter(c => c.actif).length;
   const aDesCreneaux   = activeCreneaux.length > 0;
   const pret = lecture === 'pret';
 
@@ -509,6 +518,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
     setZoneModal(null);
   };
   const deleteZone = async (id) => {
+    if (!peutSupprimerHistorique) return;
     if (!confirmLegacy('Supprimer ce frigo ou appareil ? Ses relevés seront aussi supprimés.')) return;
     if (legacySB) {
       try { await legacySB.db.deleteHaccpZone(id); }
@@ -535,6 +545,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
     setCtrlModal(null);
   };
   const deleteCtrl = async (id) => {
+    if (!peutSupprimerHistorique) return;
     if (!confirmLegacy('Supprimer ce contrôle ?')) return;
     if (legacySB) {
       try { await legacySB.db.deleteHaccpTpl(id); }
@@ -832,6 +843,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   };
 
   // ─── Barres d'actions ───
+  const voitDocuments = peutOuvrirDocuments(user, etablissement, getPermissionsForRole(user?.role));
   const boutonExporter = (cible) => (
     <BoutonActions
       id="haccp-exporter"
@@ -841,7 +853,12 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
       sections={[{ items: [
         { titre: 'Télécharger le PDF', detail: cible === 'releves' ? 'Journalier ou mensuel, au choix ensuite.' : 'La vue affichée.', onClick: () => cible === 'releves' ? setExportRelevesMode('pdf') : pdfUtils?.exportElementToPdf(cible, 'registre-haccp.pdf') },
         { titre: 'Imprimer', detail: 'Le même registre, envoyé à l\'imprimante.', onClick: () => cible === 'releves' ? setExportRelevesMode('print') : pdfUtils?.printElement(cible, 'Registre HACCP') },
-      ] }]}
+      ] }, {
+        // Plan 15, lot 5 : le dossier HACCP de Documents (certificats,
+        // analyses, attestations), pour qui ouvre Documents.
+        titre: 'Classer',
+        items: [voitDocuments && { titre: 'Dossier HACCP dans Documents', detail: 'Certificats, analyses et attestations de la maison.', onClick: () => ouvrirDossier(DOSSIERS_MODULES.haccp) }],
+      }]}
     />
   );
 
@@ -923,8 +940,9 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                   <button type="button" style={hs.exportBtn} onClick={() => setDossierOuvert(true)}>Dossier du contrôle</button>
                 )}
                 {pret && boutonExporter('haccp-dashboard-print')}
-                {/* Les réglages du HACCP s'ouvrent par la page des réglages
-                    seule (section 'haccp') : plus de bouton ici. */}
+                {/* Les réglages du HACCP vivent dans la page des réglages
+                    (section 'haccp') : « Régler » y mène en une touche. */}
+                <BoutonRegler section="haccp" user={user} etablissement={etablissement} />
               </div>
             )}
           </div>
@@ -1096,8 +1114,8 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
           {/* Banner */}
           <div style={{background:'var(--zone)',borderRadius: 'var(--r)',padding:'16px 20px',display:'flex',alignItems:'center',gap:14,flexWrap:'wrap'}}>
             <div style={{flex:1,minWidth:220}}>
-              <div style={{color:'var(--text)',fontWeight: 'var(--g3)',fontSize: 'var(--t2)',fontFamily: 'var(--font)'}}>Configuration HACCP, réservée au consultant</div>
-              <div style={{color:'var(--text2)',fontSize: 'var(--t1)',marginTop:3}}>Ces réglages valent pour toute l'équipe de l'établissement.</div>
+              <div style={{color:'var(--text)',fontWeight: 'var(--g3)',fontSize: 'var(--t2)',fontFamily: 'var(--font)'}}>Réglages HACCP de la direction</div>
+              <div style={{color:'var(--text2)',fontSize: 'var(--t1)',marginTop:3}}>Ces réglages valent pour toute l'équipe de l'établissement. Seul le consultant supprime un frigo ou un contrôle avec son historique. Vous pouvez le mettre hors service.</div>
             </div>
           </div>
 
@@ -1109,7 +1127,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                 <div style={hcfg.sectionSub}>
                   {creneaux.length === 0
                     ? <>Aucune heure réglée : l'équipe relève une fois par jour.</>
-                    : <><N>{creneaux.length}</N> {creneaux.length>1?'heures réglées':'heure réglée'}, <N>{activeCreneaux.length}</N> {activeCreneaux.length>1?'actives':'active'}</>}
+                    : <><N>{creneaux.length}</N> {creneaux.length>1?'heures réglées':'heure réglée'}, <N>{nbCreneauxActifs}</N> {nbCreneauxActifs>1?'actives':'active'}</>}
                 </div>
               </div>
               <button style={hs.exportBtn} onClick={()=>setCreneauModal('new')}>Ajouter une heure de relevé</button>
@@ -1145,6 +1163,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                       <div style={{fontSize: 'var(--t1)',color:'var(--text2)',marginTop:2}}>
                         Relevé de <N>{activeZones.length}</N> {activeZones.length>1?'frigos et appareils':'frigo ou appareil'}
                       </div>
+                      <JoursCreneau jours={c.jours} />
                     </div>
                     <div style={{...hcfg.toggle,background:c.actif?'var(--accent)':'var(--border)'}} onClick={()=>toggleCreneau(c)}>
                       <div style={{...hcfg.toggleThumb,left:c.actif?'calc(100% - 20px)':'2px'}}/>
@@ -1187,7 +1206,9 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                   </div>
                   <BoutonActions id={`haccp-zone-${z.id}`} label="Gérer" style={hcfg.gererBtn} titre="Gérer" sousTitre={<span data-no-translate="">{z.nom}</span>} sections={[{ items: [
                     { titre: 'Modifier', onClick: () => setZoneModal(z) },
-                    { titre: 'Supprimer', danger: true, onClick: () => deleteZone(z.id) },
+                    peutSupprimerHistorique
+                      ? { titre: 'Supprimer', danger: true, onClick: () => deleteZone(z.id) }
+                      : { titre: z.actif ? 'Mettre hors service' : 'Remettre en service', onClick: () => toggleZone(z) },
                   ] }]} />
                 </div>
               ))}
@@ -1222,7 +1243,9 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
                   </div>
                   <BoutonActions id={`haccp-controle-${c.id}`} label="Gérer" style={hcfg.gererBtn} titre="Gérer" sousTitre={<span data-no-translate="">{c.label}</span>} sections={[{ items: [
                     { titre: 'Modifier', onClick: () => setCtrlModal(c) },
-                    { titre: 'Supprimer', danger: true, onClick: () => deleteCtrl(c.id) },
+                    peutSupprimerHistorique
+                      ? { titre: 'Supprimer', danger: true, onClick: () => deleteCtrl(c.id) }
+                      : { titre: c.actif ? 'Mettre hors service' : 'Remettre en service', onClick: () => toggleCtrl(c) },
                   ] }]} />
                 </div>
               ))}

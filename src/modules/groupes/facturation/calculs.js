@@ -391,8 +391,12 @@ export function joursEntre(debutISO, finISO) {
 export const dateFr = (iso) => (iso ? String(iso).slice(0, 10).split('-').reverse().join('.') : '');
 
 // ── Export CSV pour la fiduciaire ──────────────────────────────────────────
+// Un texte qui commence par =, +, -, @, une tabulation ou un retour devient
+// une formule à l'ouverture dans Excel (nom de client saisi) : une apostrophe
+// le garde en texte. Les montants (« -12.00 ») restent des nombres.
 const champCsv = (v) => {
-  const s = String(v ?? '');
+  let s = String(v ?? '');
+  if (/^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s)) s = `'${s}`;
   return /[";\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 };
 const nombreCsv = (n) => (Number(n) || 0).toFixed(2);

@@ -15,9 +15,16 @@ import {
   genererAchats, genererVentesJour, SALAIRES_ESTIMES, genererJournal,
 } from './operations.js';
 import { genererCaisse } from './caisse.js';
+import { REGLAGES_MODULES, MEP_MODELES, CANAUX_MESSAGES } from './reglages.js';
 import { genererPos } from './pos.js';
+import {
+  pertesLot4a, mepLot4a, ingredientsARelier,
+} from './marchandise.js';
+import { genererHotel } from './hotel.js';
+import { genererSpa } from './spa.js';
 import { genererFacturation } from './facturation.js';
 import { empreinteDemo } from '../rpc.js';
+import { alertesCuisine, commandesCadeaux, executionsDuJour, fichesEnBrouillon, procedures } from './bureau.js';
 
 // Codes de pointage de la brigade de démo (borne, lot L6) : Inès 4826,
 // Sofia 5937, Hugo 3816. Seule l'empreinte est gardée, comme en base.
@@ -35,6 +42,13 @@ function reglagesUtilisateurs() {
     { user_id: u.id, key: 'alertes_carte', value: { plus_tard: '2099-01-01T00:00:00.000Z' }, updated_at: '2026-11-15T08:00:00Z' },
     { user_id: u.id, key: 'current_etab_id', value: ETAB, updated_at: '2026-11-15T08:00:00Z' },
     { user_id: u.id, key: `cartes_default:${ETAB}`, value: 'carte-automne', updated_at: '2026-11-15T08:00:00Z' },
+  ]).concat([
+    // Lot 6b : la dernière facture émise pour la Brasserie Démo, que la
+    // facturation du consultant propose de reprendre en un toucher.
+    {
+      user_id: 'demo-patron', key: `facture_derniere:${ETAB}`, updated_at: '2026-10-31T09:00:00Z',
+      value: { numero: 'FAC-20261031-01', date: '2026-10-31', prestation: 'Mission de consulting culinaire, octobre 2026', montant: '2900', devise: 'CHF', htOuTtc: 'HT', referenceContratDevis: '20260224' },
+    },
   ]);
 }
 
@@ -42,6 +56,9 @@ export function creerBase() {
   const { reservations, tags, liens } = genererReservations();
   const { releves, controles } = genererHaccp();
   const { plats_boissons: boissons, ...caisse } = genererCaisse();
+  // Lots 4a et 4b : pertes reliées, liste J+1 (la commande par fournisseur ne part pas).
+  const mep = mepLot4a(MEP_LISTES, MEP_ITEMS);
+  const pos = genererPos();
   const facturation = genererFacturation();
   return {
     etablissements: [ETABLISSEMENT],
@@ -56,12 +73,13 @@ export function creerBase() {
     produit_fournisseurs: PRODUIT_FOURNISSEURS,
     produit_prix_historique: PRODUIT_PRIX_HISTORIQUE,
     produit_alias: [],
-    recettes: RECETTES,
+    recettes: ingredientsARelier(RECETTES),
     plats: [...PLATS, ...boissons],
     plat_recettes: PLAT_RECETTES,
     cartes: CARTES,
     carte_plats: CARTE_PLATS,
-    fiches_salle: FICHES_SALLE,
+    // Lot 5 : deux fiches en brouillon, à publier en un geste.
+    fiches_salle: fichesEnBrouillon(FICHES_SALLE),
     carte_fiches_salle: CARTE_FICHES_SALLE,
     salles: SALLES,
     salle_tables: SALLE_TABLES,
@@ -97,22 +115,24 @@ export function creerBase() {
     haccp_tracabilite: HACCP_TRACABILITE,
     etiquettes_perso: ETIQUETTES_PERSO,
     inventaires: genererInventaires(),
-    pertes: PERTES,
+    pertes: pertesLot4a(PERTES, mep.mep_items),
     commande_items: COMMANDE_ITEMS,
-    mep_listes: MEP_LISTES,
-    mep_items: MEP_ITEMS,
-    sops: SOPS,
-    sop_executions: [],
+    mep_listes: mep.mep_listes,
+    mep_items: mep.mep_items,
+    mep_modeles: MEP_MODELES,
+    // Lot 5 : une procédure rappelée à l'heure qu'il est, une commencée par Inès.
+    sops: procedures(SOPS),
+    sop_executions: executionsDuJour(SOPS).executions,
     sop_step_states: [],
     kit_items: [],
     documents: DOCUMENTS,
     private_messages: genererMessages(),
-    canaux_messages: [],
+    canaux_messages: CANAUX_MESSAGES,
     consultant_messages: [],
     points_reglages: POINTS_REGLAGES,
     points_cadeaux: POINTS_CADEAUX,
     points_mouvements: genererPointsMouvements(),
-    points_commandes: [],
+    points_commandes: commandesCadeaux(POINTS_CADEAUX),
     compta_reglages: COMPTA_REGLAGES,
     charges_fixes: CHARGES_FIXES,
     achats_documents: genererAchats(),
@@ -122,14 +142,17 @@ export function creerBase() {
     releve_lignes: [],
     ventes_jour: genererVentesJour(),
     journal_activite: genererJournal(),
+    // Lot 5 : la semaine en cours du journal (vue de la base), mêmes lignes.
+    journal_activite_semaine: genererJournal(),
     demarrage_etapes: ['etablissement', 'recettes', 'catalogue', 'planning', 'exemple'].map((etape) => ({ etablissement_id: ETAB, etape, fait_le: '2026-03-01T08:00:00Z', fait_par: 'demo-patron' })),
     alert_rules: [],
-    alert_instances: [],
+    alert_instances: alertesCuisine(),
     alert_reads: [],
     push_abonnements: [],
     traductions: [],
     temps_gagne: [],
     reglages_maison: [],
+    reglages_modules: REGLAGES_MODULES,
     bornes_pointage: [],
     bornes_pointage_essais: [],
     pointage_codes: CODES_POINTAGE,
@@ -143,6 +166,8 @@ export function creerBase() {
     factures_compteurs: [],
     scans_facture: [],
     ...caisse,
-    ...genererPos(),
+    ...pos,
+    ...genererHotel(),
+    ...genererSpa(),
   };
 }

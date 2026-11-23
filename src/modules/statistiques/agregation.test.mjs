@@ -7,7 +7,7 @@ import {
   bornesTranche, dernierReleve, ecartArrondi, ecartDe, libelleTranche, pasPossibles, semaineIso, sommeFlux, trancheEntiere,
   tranchesDe, valeurPeriode,
 } from './agregation.js';
-import { echelleDe, nombreDe, plafondRond, positionSur, rangsEtiquettes, valeurTableur } from './echelles.js';
+import { echelleDe, etiquettesAxe, nombreDe, plafondRond, positionSur, rangsEtiquettes, valeurTableur } from './echelles.js';
 import {
   ajouterGraphique, bornesDe, bornesDeComparaison, nettoyerVue, peutCocher, retirerGraphique, typeRetenu, typesValides,
   vueDepuisLien, vueParDefaut,
@@ -128,14 +128,16 @@ test('échelle : plafond rond, part de zéro, descend sous zéro seulement au be
   assert.equal(plafondRond(0.17), 0.2);
   assert.deepEqual(echelleDe([120, null, 480]), { min: 0, max: 500, graduations: [0, 250, 500] });
   assert.deepEqual(echelleDe([-48, 203.4]), { min: -50, max: 250, graduations: [-50, 0, 250] });
-  assert.deepEqual(echelleDe([null]), { min: 0, max: 1, graduations: [0, 0.5, 1] });
+  assert.deepEqual(echelleDe([null]), { min: 0, max: 1, graduations: [0] });
+  assert.deepEqual(etiquettesAxe([0, 0.5, 1], 'chf'), ['0,00', '0,50', '1,00']);
+  assert.deepEqual(etiquettesAxe([0, 250, 500], 'chf'), ['0', '250', '500']);
   assert.equal(positionSur({ min: 0, max: 500 }, 250), 0.5);
   assert.equal(positionSur({ min: 0, max: 500 }, null), null);
 });
 
 test('formats : n/a pour une valeur absente, jamais zéro ; pour cent depuis un rapport', () => {
-  assert.equal(nombreDe(null, 'chf'), 'n/a');
-  assert.equal(nombreDe(undefined, 'nombre'), 'n/a');
+  assert.equal(nombreDe(null, 'chf'), 'pas de chiffre');
+  assert.equal(nombreDe(undefined, 'nombre'), 'pas de chiffre');
   assert.equal(nombreDe(0, 'nombre'), '0');
   assert.equal(nombreDe(0.172, 'pct'), '17,2');
   assert.equal(nombreDe(3.5, 'nombre'), '3,5');

@@ -27,10 +27,12 @@ import './planning.css';
 
 const N = ({ children }) => <span data-no-translate="">{children}</span>;
 
-export default function ReperesPlanning({ equipe, heures, absents }) {
+export default function ReperesPlanning({ equipe, heures, absents, avecCarte = false }) {
+  // La carte de l'équipe dit déjà qui a pointé, pour le service qu'elle nomme :
+  // le repère « pointés » ne la redit pas (un seul bloc équipe).
   return (
     <div className="pl-reperes" data-planning-reperes="">
-      {equipe.total ? (
+      {avecCarte ? null : equipe.total ? (
         <CarteRepere
           data-repere="pointes"
           Icone={UserCheck}
@@ -76,7 +78,7 @@ export function CartePlanningEquipe({ etats }) {
   return (
     <CarteAvant ton="nuit" className="pl-carte-nuit" data-planning-carte="">
       <div style={st.tete}>
-        <h2 style={{ ...cs.titre, ...st.titre }}>L&apos;équipe aujourd&apos;hui</h2>
+        <h2 style={{ ...cs.titre, ...st.titre }}>{etats.service === 'soir' ? 'Ce soir' : etats.service === 'midi' ? 'Ce midi' : "L'équipe aujourd'hui"}</h2>
       </div>
       <span style={st.total}>
         <span style={{ ...cs.chiffre, ...st.totalChiffre }} data-no-translate="">{etats.total}</span>

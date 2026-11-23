@@ -2,6 +2,7 @@ import React from 'react';
 import { CircleCheck } from 'lucide-react';
 import { getModuleIcon } from '../moduleIcons.js';
 import { LigneAction, Section } from './tableauBriques.jsx';
+import { Btn } from '../../components/ui/index.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // À faire maintenant : ce qui attend quelqu'un, du plus urgent au moins
@@ -15,6 +16,29 @@ import { LigneAction, Section } from './tableauBriques.jsx';
 
 const MAX = 6;
 const COULEURS = { danger: 'var(--danger-text)', warning: 'var(--warning-text)', info: 'var(--lien)' };
+
+// Plan 15, lot 5 : une ligne qui porte une action (`item.action`, « Remettre »
+// un cadeau, « Lancer » ou « Reprendre » une procédure) la fait en une touche,
+// par son bouton : la ligne elle-même n'est plus un bouton (S4, un seul
+// contrôle par ligne). Le bouton reste éteint le temps de l'écriture.
+function BoutonAction({ action }) {
+  const [enCours, setEnCours] = React.useState(false);
+  const vivant = React.useRef(true);
+  React.useEffect(() => () => { vivant.current = false; }, []);
+  return (
+    <Btn
+      variant="ghost"
+      disabled={enCours}
+      style={{ minHeight: 44, flexShrink: 0 }}
+      onClick={async () => {
+        setEnCours(true);
+        try { await action.faire(); } finally { if (vivant.current) setEnCours(false); }
+      }}
+    >
+      {action.libelle}
+    </Btn>
+  );
+}
 
 export default function AFaire({ items, max = MAX, peutOuvrir, ouvrir }) {
   const [tout, setTout] = React.useState(false);
@@ -53,8 +77,9 @@ export default function AFaire({ items, max = MAX, peutOuvrir, ouvrir }) {
             titre={item.titre}
             titreBrut={item.brut}
             detail={item.detail}
-            droite={item.ton === 'danger' ? <span style={s.urgent}>Urgent</span> : null}
-            onClick={peutOuvrir(item.page) ? () => ouvrir(item.page) : null}
+            droite={item.action ? <BoutonAction action={item.action} />
+              : item.ton === 'danger' ? <span style={s.urgent}>Urgent</span> : null}
+            onClick={!item.action && peutOuvrir(item.page) ? () => ouvrir(item.page) : null}
           />
         ))}
       </div>

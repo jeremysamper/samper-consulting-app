@@ -157,13 +157,13 @@ export function genererReservations() {
 
 export const GROUPE_MENUS = [
   {
-    id: 'gm-1', etablissement_id: ETAB, type_groupe: 'standard', numero: 1, nom: 'Menu des Mélèzes', prix_pax: 58,
+    id: 'gm-1', etablissement_id: ETAB, type_groupe: 'groupe', numero: 1, nom: 'Menu des Mélèzes', prix_pax: 58,
     description: 'Trois plats, servi à partir de 10 personnes.',
     lignes: [{ type: 'entree', texte: 'Velouté de courge, crème de noisette' }, { type: 'plat', texte: 'Suprême de volaille, risotto aux champignons' }, { type: 'dessert', texte: 'Tarte fine aux pommes, glace vanille' }],
     regles: {}, created_at: '2026-09-01T08:00:00Z', updated_at: '2026-09-01T08:00:00Z',
   },
   {
-    id: 'gm-2', etablissement_id: ETAB, type_groupe: 'standard', numero: 2, nom: 'Menu valaisan', prix_pax: 49,
+    id: 'gm-2', etablissement_id: ETAB, type_groupe: 'groupe', numero: 2, nom: 'Menu valaisan', prix_pax: 49,
     description: 'Le terroir en trois temps.',
     lignes: [{ type: 'entree', texte: 'Terrine de campagne, pickles' }, { type: 'plat', texte: 'Croûte au fromage' }, { type: 'dessert', texte: 'Meringues, double crème de la Gruyère' }],
     regles: {}, created_at: '2026-09-01T08:00:00Z', updated_at: '2026-09-01T08:00:00Z',
@@ -182,7 +182,7 @@ export function genererGroupes() {
     etablissement_id: ETAB,
     date_evenement: jour(e.d),
     heure: e.h + ':00',
-    type_groupe: 'standard',
+    type_groupe: 'groupe',
     menu_numero: e.menu,
     nom: e.nom,
     contact: e.contact,

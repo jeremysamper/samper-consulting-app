@@ -11,7 +11,10 @@ import './fiches.css';
 // - variante « ligne » : dans une vignette (que des span, elle vit dans un
 //   bouton) ; rien du tout quand la fiche n'en déclare aucun.
 // - variante « bandeau » : en tête d'une fiche ouverte, titre compris, et
-//   « Aucun allergène déclaré » quand la liste est vide.
+//   « Aucun allergène déclaré » quand la liste est vide. `probables` (liste de
+//   allergenesProbablesNonDeclares) y ajoute une ligne à vérifier, hors
+//   impression : un allergène que les ingrédients nomment et que la fiche ne
+//   déclare pas.
 const elements = (ids) => {
   const { valides, inconnus } = partitionAllergenes(ids);
   return [
@@ -27,7 +30,7 @@ const Contenu = ({ Icone, libelle }) => (
   </>
 );
 
-export default function AllergenesFiche({ ids, variante = 'ligne' }) {
+export default function AllergenesFiche({ ids, variante = 'ligne', probables = null }) {
   const liste = elements(ids);
 
   if (variante !== 'bandeau') {
@@ -52,6 +55,18 @@ export default function AllergenesFiche({ ids, variante = 'ligne' }) {
         </ul>
       ) : (
         <p className="fv-vide">Aucun allergène déclaré</p>
+      )}
+      {probables?.length > 0 && (
+        <p className="fv-probables no-print" role="note" data-allergenes-probables="">
+          <span>{probables.length > 1 ? 'Allergènes probables non déclarés, à vérifier' : 'Allergène probable non déclaré, à vérifier'}</span>
+          {' : '}
+          {probables.map((p, i) => (
+            <React.Fragment key={p.id}>
+              {i > 0 && ', '}
+              <span>{ALLERGENES_LABELS[p.id]}</span>{' ('}<span>{p.ingredients.join(', ')}</span>{')'}
+            </React.Fragment>
+          ))}
+        </p>
       )}
     </section>
   );

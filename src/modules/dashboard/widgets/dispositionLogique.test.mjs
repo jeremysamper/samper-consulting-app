@@ -53,14 +53,20 @@ test('origine : seulement des widgets permis, aucune carte de mise en avant de t
   }));
 });
 
-test('origine : même ordre de lecture que le tableau de bord d\'avant', () => {
+test('origine : même ordre de lecture que le tableau de bord d\'avant, chaque chiffre une fois', () => {
+  // Les repères de l'équipe et des couverts du jour, « Qui travaille » et le
+  // chiffre des couverts de la semaine redisaient une carte posée : ils
+  // attendent dans la galerie.
   assert.deepEqual(ids(origine('ordinateur', CONSULTANT)), [
-    'repere-couverts', 'repere-groupes', 'repere-equipe', 'a-faire', 'equipe', 'semaine', 'reservations',
-    'qui-travaille', 'mot-consultant', 'a-venir', 'chiffre-couverts', 'chiffre-heures', 'chiffre-pertes', 'chiffre-stock', 'regularite',
+    'repere-groupes', 'a-faire', 'equipe', 'semaine', 'reservations',
+    'mot-consultant', 'a-venir', 'chiffre-heures', 'chiffre-pertes', 'chiffre-stock', 'regularite',
   ]);
   assert.deepEqual(ids(origine('ordinateur', CUISINIER)), [
-    'repere-couverts', 'repere-groupes', 'repere-equipe', 'pointage', 'equipe', 'a-faire', 'semaine', 'reservations', 'qui-travaille', 'a-venir',
+    'repere-groupes', 'pointage', 'equipe', 'a-faire', 'semaine', 'reservations', 'a-venir',
   ]);
+  // Sans la carte de l'équipe : « Qui travaille » et le repère de l'équipe reviennent.
+  const sansCarteEquipe = { ...CONSULTANT, carteEquipe: false };
+  assert.ok(['repere-equipe', 'qui-travaille'].every((id) => ids(origine('ordinateur', sansCarteEquipe)).includes(id)));
   // Téléphone : la carte de l'équipe seule, sans le repère qui la répète.
   assert.deepEqual(ids(origine('telephone', CUISINIER)), ['repere-couverts', 'repere-groupes', 'pointage', 'a-faire', 'equipe', 'a-venir']);
   // Sans planning : la carte de la semaine prend la place, les trois repères restent.
@@ -87,11 +93,11 @@ test('mes points : seulement pour qui participe, posé avec les repères du jour
   assert.ok(!ids(origine('ordinateur', CONSULTANT)).includes('mes-points'));
   const participant = { ...CUISINIER, avecPoints: true };
   assert.equal(estVisible('mes-points', participant), true);
-  // Ordinateur : quatre petits repères sur une rangée, rien d'autre ne bouge.
+  // Ordinateur : les repères qui restent remplissent leur rangée, rien d'autre ne bouge.
   const ordi = origine('ordinateur', participant);
-  assert.deepEqual(ids(ordi).slice(0, 4), ['repere-couverts', 'repere-groupes', 'repere-equipe', 'mes-points']);
-  assert.deepEqual(ordi.slice(0, 4).map((x) => x.taille), ['petit', 'petit', 'petit', 'petit']);
-  assert.deepEqual(ids(ordi).slice(4), ids(origine('ordinateur', CUISINIER)).slice(3));
+  assert.deepEqual(ids(ordi).slice(0, 2), ['repere-groupes', 'mes-points']);
+  assert.deepEqual(ordi.slice(0, 2).map((x) => x.taille), ['moyen', 'moyen']);
+  assert.deepEqual(ids(ordi).slice(2), ids(origine('ordinateur', CUISINIER)).slice(1));
   // Téléphone : la rangée de deux colonnes reste pleine.
   const tel = origine('telephone', participant);
   assert.deepEqual(ids(tel).slice(0, 3), ['repere-couverts', 'repere-groupes', 'mes-points']);
@@ -119,7 +125,7 @@ test('hausses de prix : la direction sous la garde de Factures & achats, posé �
     assert.equal(l[i].taille, 'pleine');
     assert.deepEqual(ids(l).filter((x) => x !== 'hausses-prix'), ids(origine(p, CONSULTANT)));
   });
-  assert.ok(ids(origine('ordinateur', avec)).indexOf('hausses-prix') > ids(origine('ordinateur', avec)).indexOf('qui-travaille'));
+  assert.ok(ids(origine('ordinateur', avec)).indexOf('hausses-prix') > ids(origine('ordinateur', avec)).indexOf('reservations'));
 });
 
 test('briefing du service : posé à l\'origine seulement un jour avec des couverts', () => {

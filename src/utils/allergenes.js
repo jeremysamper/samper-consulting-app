@@ -15,7 +15,9 @@
 
 export const ALLERGENES = [
   { id: 'gluten', label: 'Gluten' },
-  { id: 'lactose', label: 'Lactose' },
+  // L'allergène réglementaire est le lait (lactose compris) : le libellé le
+  // dit, l'identifiant `lactose` reste celui de la base.
+  { id: 'lactose', label: 'Lait' },
   { id: 'oeufs', label: 'Œufs' },
   { id: 'poissons', label: 'Poissons' },
   { id: 'crustaces', label: 'Crustacés' },
@@ -199,10 +201,45 @@ export function splitAllergenesText(raw) {
 // les écrans des réservations l'affichent tel quel, et resolveAllergene la
 // ramène à son id. Les anciennes valeurs (« noix », « fruits_de_mer »)
 // restent lisibles.
-export const valeurTagAllergene = (id) => labelAllergene(id).toLowerCase();
+// La valeur enregistrée ne suit pas un libellé qui change : « lactose » reste
+// la valeur du tag du lait (réservations déjà notées), « lait » s'affiche.
+const TAGS_HISTORIQUES = { lactose: 'lactose' };
+export const valeurTagAllergene = (id) => TAGS_HISTORIQUES[id] || labelAllergene(id).toLowerCase();
 export const VALEURS_TAG_ALLERGENES = ALLERGENES.map(a => valeurTagAllergene(a.id));
+
+// Libellé affiché d'un tag allergène : celui du référentiel pour une valeur
+// prédéfinie, la valeur telle quelle sinon (tag libre, ancienne valeur).
+const TAG_VERS_ID = ALLERGENES.reduce((acc, a) => { acc[valeurTagAllergene(a.id)] = a.id; return acc; }, {});
+export const libelleTagAllergene = (valeur) => {
+  const v = String(valeur ?? '').trim();
+  const id = TAG_VERS_ID[v.toLowerCase()];
+  if (!id) return String(valeur ?? '');
+  const l = labelAllergene(id).toLowerCase();
+  // La casse de la valeur enregistrée est gardée (« Lactose » donne « Lait »).
+  return v.charAt(0) !== v.charAt(0).toLowerCase() ? l.charAt(0).toUpperCase() + l.slice(1) : l;
+};
 
 export function idsDeTagAllergene(valeur) {
   if (norm(valeur).replace(/[_\s]+/g, ' ') === 'fruits de mer') return ['crustaces', 'mollusques'];
   return resolveAllergene(valeur).ids;
+}
+
+// ─── Allergènes probables non déclarés ───
+// Lus dans les noms des ingrédients d'une fiche (même vocabulaire, mêmes faux
+// amis et mêmes négations que resolveAllergene) et absents de ce que la fiche
+// déclare. Une piste à vérifier, jamais une déclaration : rien n'est écrit.
+//   → [{ id, ingredients: [noms qui l'ont fait trouver] }], ordre du référentiel
+export function allergenesProbablesNonDeclares(nomsIngredients, declares) {
+  const dec = new Set(normalizeAllergenes(declares || []).ids);
+  const parId = new Map();
+  for (const nom of nomsIngredients || []) {
+    const texte = String(nom ?? '').trim();
+    if (!texte) continue;
+    for (const id of resolveAllergene(texte).ids) {
+      if (dec.has(id)) continue;
+      if (!parId.has(id)) parId.set(id, []);
+      if (!parId.get(id).includes(texte)) parId.get(id).push(texte);
+    }
+  }
+  return sortAllergenes([...parId.keys()]).map((id) => ({ id, ingredients: parId.get(id) }));
 }

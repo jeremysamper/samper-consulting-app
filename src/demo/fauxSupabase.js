@@ -24,9 +24,22 @@ const CLE_BASE = PREFIXE + 'base';
 const CLE_ROLE = PREFIXE + 'role';
 // v2 (lot L3) : la commande par QR entre dans les jeux ; une base du jour en
 // cache dans l'onglet serait relue sans elle. v3 (Carte des boissons, lot A) :
-// plat_formats et cartes.genre.
-// v4 (23.11.2026) : devis, factures et paiements des groupes.
-const VERSION_BASE = 'v4-' + aujourdhui();
+// plat_formats et cartes.genre. v4 (lot 1, chiffres justes) : type de groupe
+// valide, temps de service des fiches salle non inventé. v5 (lot 2a) : réglages
+// des modules, modèles de mise en place, stocks cibles, livraisons des fournisseurs.
+// v6 (lot 2a, D5) : messages des fils d'équipe (canaux_messages).
+// v7 (lot 6a, D4) : branche Hôtel et Spa, praticienne spa dans l'équipe.
+// v8 (lot 6b) : réglages des modules Étages, Demandes et Repas hôtel.
+// v9 (lot 4a) : commandes par fournisseur, réception, produits habituels,
+// pertes reliées, liste J+1, règles de Ventes POS, ingrédients à relier.
+// v10 (lot 5) : cadeaux demandés, procédures rappelée et commencée, fiches en
+// brouillon, alertes de cuisine, dossiers de Documents aux types de la base.
+// v11 (lot 4b, retrait du 23.11) : commandes par fournisseur, stocks cibles,
+// produits habituels et règles de Ventes POS retirés des jeux.
+// v12 (lot 4a, retrait du 23.11) : fournisseurs sans jours de livraison, heure
+// limite ni délai de commande ; correspondances de Ventes POS sans regle_id.
+// v13 (23.11.2026) : devis, factures et paiements des groupes.
+const VERSION_BASE = 'v13-' + aujourdhui();
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -122,7 +135,7 @@ export function oublierBase() {
 
 // Valeurs par défaut de la base, pour les insertions de l'app.
 const DEFAUTS = {
-  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres', 'facturation_reglages', 'groupe_docs_compteurs'],
+  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres', 'reglages_modules', 'facturation_reglages', 'groupe_docs_compteurs'],
   reservations: { statut: 'confirme', origine: 'equipe', est_groupe: false, passeport_gourmand: false, created_by: () => sessionUid },
   shifts: { pause: 0, type_shift: 'simple', statut: 'confirmé', pointage_debut: null, pointage_fin: null, pointage_fin_auto: false },
   recettes: { statut: 'brouillon', version: 1, portions: 4, prix_vente: 0, allergenes_ids: [], ingredients: [], etapes: [], masquee: false, created_by: () => sessionUid },
@@ -131,9 +144,9 @@ const DEFAUTS = {
   cartes: { plats: [], archive: false, masquee: false, ordre: 0, genre: 'mets' },
   plat_formats: { ordre: 0 },
   produits: { categorie: 'Autres', unite_ref: 'g', actif: true, allergenes: [], strategie_prix: 'max', prix_verrouille: false },
-  pertes: { quantite: 0, unite: 'pcs', valeur_unit: 0, valide: false },
+  pertes: { quantite: 0, unite: 'pcs', valeur_unit: 0, valide: false, produit_id: null, recette_id: null, mep_item_id: null, source: 'saisie' },
   haccp_releves: {},
-  documents: {},
+  documents: { roles_visibles: null },
   private_messages: { read_at: null, sender_id: () => sessionUid },
   caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid },
   caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false },
@@ -142,6 +155,48 @@ const DEFAUTS = {
   journal_activite: {},
   temps_gagne: { quantite: 1, fait_par: () => sessionUid },
   points_mouvements: { sens: 'credit' },
+  // Lot 2 (migration 20261122_lot2a_reglages_modules) : défauts de la base.
+  fournisseurs: { actif: true },
+  sops: { roles_designes: [], rappel_actif: false },
+  compta_reglages: { delai_paiement_jours: 30, categories_charges: [], exercice_debut_mois: 1, cartes_accueil: null },
+  reglages_modules: { config: {}, updated_by: () => sessionUid },
+  mep_modeles: { lignes: [], ordre: 0, actif: true, created_by: () => sessionUid },
+  // Lot 4a (migration 20261122b_lot4a_commande_base) : colonnes gardées de la
+  // mise en place (la commande par fournisseur ne part pas).
+  mep_listes: { poste: null, modele_id: null, origine: 'manuel', base_calcul: null },
+  mep_items: { quantite_suggeree: null, origine: null },
+  // Lot 6a (D4) : branche Hôtel et Spa. Défauts des migrations hotel_h0 à h8 et
+  // spa_module ; l'auteur est posé par les déclencheurs de la base.
+  chambres: { statut_menage: 'a_faire', ordre: 0, actif: true },
+  sejours: { statut: 'prevu', pension: 'aucune', nb_adultes: 1, nb_enfants: 0, created_by: () => sessionUid },
+  chambres_minibar: { quantite: 1, par: () => sessionUid },
+  objets_trouves: { statut: 'trouve', par: () => sessionUid },
+  linge_mouvements: { sens: 'sale', quantite: 1, par: () => sessionUid },
+  chambres_turndown: { fait_par: () => sessionUid, at: () => new Date().toISOString() },
+  demandes: { origine: 'hote', priorite: 'normale', statut: 'ouverte', escaladee: false, cree_par: () => sessionUid },
+  hotes: { langue: 'fr', vip: false, consentement_marketing: false, archive: false, created_by: () => sessionUid },
+  tarifs: { pension: 'petit_dejeuner', personnes_incluses: 2, prix_personne_sup: 0, prix_enfant: 0, actif: true, ordre: 0 },
+  sejour_occupants: { exonere_taxe: false, created_by: () => sessionUid },
+  // montant : colonne calculée en base (quantité x prix unitaire).
+  sejour_lignes: { quantite: 1, prix_unitaire: 0, montant: (l) => Math.round((Number(l.quantite ?? 1) * Number(l.prix_unitaire ?? 0)) * 100) / 100, created_by: () => sessionUid },
+  forfaits: { prix_par_nuit: 0, actif: true, ordre: 0 },
+  forfait_droits: { categorie: 'autre', ordre: 0 },
+  activites: { prix: 0, inclus_forfait: true, annulee: false, created_by: () => sessionUid },
+  activite_inscriptions: { nb_personnes: 1, statut: 'inscrit', created_by: () => sessionUid },
+  consommations: { quantite: 1, at: () => new Date().toISOString(), par: () => sessionUid },
+  passations: { service: 'matin', important: false, created_by: () => sessionUid },
+  passation_lectures: { user_id: () => sessionUid, at: () => new Date().toISOString() },
+  taches_recurrentes: { recurrence: 'quotidien', actif: true, ordre: 0 },
+  taches_faites: { fait_par: () => sessionUid, at: () => new Date().toISOString() },
+  room_service_commandes: { articles: [], total: 0, statut: 'recue', portee_sur_note: false, created_by: () => sessionUid },
+  sejour_liens: { created_by: () => sessionUid },
+  equipements: { categorie: 'autre', actif: true },
+  maintenance_plans: { categorie: 'autre', actif: true },
+  ordres_travail: { categorie: 'autre', priorite: 'normale', statut: 'ouvert', created_by: () => sessionUid },
+  spa_soins: { duree_min: 60, actif: true, en_ligne: true },
+  spa_clients: { consentement_marketing: false, archive: false },
+  spa_reservations: { duree_min: 60, statut: 'prevue', origine: 'equipe' },
+  spa_bons: { motif: 'cadeau' },
   groupe_devis: { statut: 'brouillon', lignes: [], total: 0, date_devis: () => aujourdhui() },
   groupe_factures: { statut: 'prevue', type: 'totale', ordre: 1, lignes: [], relances: [], montant: 0, mode_prevu: 'virement' },
   groupe_paiements: { mode: 'virement', date_paiement: () => aujourdhui(), updated_at: null },
@@ -170,6 +225,8 @@ const CLES_PRIMAIRES = {
   factures_compteurs: ['etablissement_id', 'date'],
   caisse_compteurs: ['etablissement_id', 'cle'],
   caisse_commande_qr_parametres: ['etablissement_id'],
+  reglages_modules: ['etablissement_id', 'module'],
+  hotel_reglages: ['etablissement_id'],
   facturation_reglages: ['etablissement_id'],
 };
 
@@ -248,6 +305,39 @@ function diffuser(evt) {
   setTimeout(() => {
     for (const s of sockets) s.pousser(charge);
   }, 30);
+}
+
+// Déclencheurs de la base que les écrans de l'hôtel attendent (lot 6a) :
+// chambres_journal_statut, demandes_avant_ecriture et demandes_journal_ecrire.
+function journaliser(evt) {
+  const { type, table, record: r, old_record: o } = evt;
+  if (type === 'DELETE' || !r) return;
+  const maintenant = new Date().toISOString();
+  const ajouter = (t, ligne) => {
+    const l = { id: uuid(), etablissement_id: r.etablissement_id, par: sessionUid, at: maintenant, ...ligne };
+    (db[t] ||= []).push(l);
+    diffuser({ type: 'INSERT', table: t, record: { ...l } });
+  };
+  if (table === 'chambres' && (type === 'INSERT' || r.statut_menage !== o?.statut_menage)) {
+    ajouter('chambres_statut_journal', { chambre_id: r.id, ancien: type === 'UPDATE' ? o.statut_menage : null, nouveau: r.statut_menage });
+  }
+  if (table !== 'demandes') return;
+  const ligne = db.demandes?.find((x) => x.id === r.id);
+  if (ligne && r.statut === 'faite' && (type === 'INSERT' || o?.statut !== 'faite')) Object.assign(ligne, { faite_par: sessionUid, faite_at: ligne.faite_at || maintenant });
+  if (ligne && r.statut !== 'faite') Object.assign(ligne, { faite_par: null, faite_at: null });
+  if (ligne && r.escaladee && (type === 'INSERT' || !o?.escaladee)) ligne.escaladee_at = ligne.escaladee_at || maintenant;
+  const trace = (action, detail) => ajouter('demandes_journal', { demande_id: r.id, action, detail });
+  if (type === 'INSERT') { trace('creee', r.pole); return; }
+  if (r.statut !== o?.statut) trace('statut', r.statut);
+  if (r.assignee_a !== o?.assignee_a) trace('assignation', r.assignee_a);
+  if (r.escaladee !== o?.escaladee) trace('escalade', r.escaladee ? 'oui' : 'non');
+  if (r.echeance !== o?.echeance) trace('echeance', r.echeance);
+  if (r.pole !== o?.pole) trace('pole', r.pole);
+}
+
+function apresEcriture(evt) {
+  journaliser(evt);
+  diffuser(evt);
 }
 
 class SocketDemo {
@@ -510,7 +600,7 @@ async function servir(url, input, init) {
   }
   if (chemin.startsWith('/rest/v1/')) {
     const table = decodeURIComponent(chemin.slice('/rest/v1/'.length));
-    const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, avantEcriture, apresEcriture: diffuser });
+    const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, avantEcriture, apresEcriture });
     return reponse(r.status, r.corps, r.entetes);
   }
   const e = erreurPg(404, 'Chemin inconnu de la démo : ' + chemin);

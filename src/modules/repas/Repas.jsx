@@ -8,6 +8,8 @@ import { Btn } from '../../components/ui/index.jsx';
 import { BoutonActions, Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule } from '../../data/demoData.js';
+import { LigneRegler } from '../../components/ui/BoutonRegler.jsx';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
 import { zurichAjouterJours, zurichToday } from '../../utils/zurichTime.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
 import { CarteHotel, Champ, Liste, PageHotel, ReperesHotel, Vide, h } from '../hebergement/hotelUi.jsx';
@@ -29,6 +31,16 @@ import {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TITRES = { couverts: 'Les couverts', room_service: 'Le room service' };
+// Lot 6b : « 15 petits-déjeuners », jamais « 15 petit-déjeuner ».
+const MOTS_REPAS = {
+  petit_dejeuner: ['petit-déjeuner', 'petits-déjeuners'],
+  dejeuner: ['déjeuner', 'déjeuners'],
+  diner: ['dîner', 'dîners'],
+};
+const motRepas = (id, n) => (MOTS_REPAS[id] || ['', ''])[n === 1 ? 0 : 1];
+const LIBELLE_FRAIS = 'Frais de service';
+// « 07:00 à 10:30 ».
+const PlageHoraire = ({ plage }) => (plage ? <><span data-no-translate>{plage.debut}</span> <span>à</span> <span data-no-translate>{plage.fin}</span></> : null);
 
 function useAujourdhui() {
   const [jour, setJour] = React.useState(() => zurichToday());
@@ -41,7 +53,7 @@ function useAujourdhui() {
 
 const articleVide = () => ({ libelle: '', quantite: 1, prix: '' });
 
-function CommandeForm({ commande, sejours, chambres, roomService, aujourdhui, onClose }) {
+function CommandeForm({ commande, sejours, chambres, roomService, aujourdhui, carte = [], frais = 0, onClose }) {
   const [f, setF] = React.useState(() => (commande
     ? { sejourId: commande.sejourId, articles: commande.articles.map((a) => ({ ...a, prix: String(a.prix) })), heure: commande.souhaiteA ? heureZurich(commande.souhaiteA) : '', note: commande.note }
     : { sejourId: '', articles: [articleVide()], heure: '', note: '' }));
@@ -50,7 +62,16 @@ function CommandeForm({ commande, sejours, chambres, roomService, aujourdhui, on
   const actifs = sejoursActifs(sejours).sort((a, b) => a.nomHote.localeCompare(b.nomHote, 'fr'));
   const numero = (s) => chambres.find((c) => c.id === s?.chambreId)?.numero || '';
   const majArticle = (i, k, v) => setF((p) => ({ ...p, articles: p.articles.map((a, j) => (j === i ? { ...a, [k]: v } : a)) }));
-  const total = totalArticles(f.articles.map((a) => ({ ...a, prix: Number(String(a.prix).replace(',', '.')) || 0 })));
+  // Lot 6b : un toucher sur un article de la carte (Réglages, Repas hôtel)
+  // l'ajoute avec son prix, ou ajoute un de plus s'il est déjà là.
+  const ajouterDeLaCarte = (art) => setF((p) => {
+    const i = p.articles.findIndex((a) => a.libelle.trim().toLowerCase() === art.libelle.toLowerCase());
+    if (i >= 0) return { ...p, articles: p.articles.map((a, j) => (j === i ? { ...a, quantite: (Number(a.quantite) || 1) + 1 } : a)) };
+    const remplis = p.articles.filter((a) => a.libelle.trim());
+    return { ...p, articles: [...remplis, { libelle: art.libelle, quantite: 1, prix: String(art.prix) }] };
+  });
+  const avecFrais = !commande && frais > 0;
+  const total = totalArticles(f.articles.map((a) => ({ ...a, prix: Number(String(a.prix).replace(',', '.')) || 0 }))) + (avecFrais ? frais : 0);
 
   const enregistrer = async () => {
     setErreur('');
@@ -58,6 +79,7 @@ function CommandeForm({ commande, sejours, chambres, roomService, aujourdhui, on
     if (!s) { setErreur('Choisis un séjour.'); return; }
     const articles = f.articles.filter((a) => a.libelle.trim()).map((a) => ({ libelle: a.libelle.trim(), quantite: Math.max(1, Number(a.quantite) || 1), prix: Math.max(0, Number(String(a.prix).replace(',', '.')) || 0) }));
     if (!articles.length) { setErreur('Au moins un article avec un libellé.'); return; }
+    if (avecFrais && !articles.some((a) => a.libelle === LIBELLE_FRAIS)) articles.push({ libelle: LIBELLE_FRAIS, quantite: 1, prix: frais });
     setEnCours(true);
     const valeurs = { sejour_id: s.id, chambre_id: s.chambreId || null, articles, souhaite_a: f.heure ? isoZurich(aujourdhui, f.heure) : null, note: f.note.trim() || null };
     const res = commande ? await roomService.modifier(commande.id, valeurs) : await roomService.inserer(valeurs);
@@ -90,6 +112,18 @@ function CommandeForm({ commande, sejours, chambres, roomService, aujourdhui, on
         <Champ label="Heure souhaitée"><input type="time" style={h.saisie} value={f.heure} onChange={(ev) => setF((p) => ({ ...p, heure: ev.target.value }))} /></Champ>
         <Champ label="Note"><input style={h.saisie} value={f.note} onChange={(ev) => setF((p) => ({ ...p, note: ev.target.value }))} placeholder="Sans oignon, frapper doucement…" /></Champ>
       </div>
+      {carte.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={h.sousTitre}>La carte</div>
+          <div className="segmented-tabs segmented-tabs--retour" role="group" aria-label="La carte" style={{ maxWidth: '100%' }}>
+            {carte.map((art) => (
+              <button key={art.libelle} type="button" className="segmented-tab" onClick={() => ajouterDeLaCarte(art)}>
+                <span data-no-translate>{art.libelle}</span> <span data-no-translate style={{ opacity: 0.75 }}>{chf(art.prix)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div>
         <div style={h.sousTitre}>Articles</div>
         {f.articles.map((a, i) => (
@@ -102,7 +136,10 @@ function CommandeForm({ commande, sejours, chambres, roomService, aujourdhui, on
         ))}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, flexWrap: 'wrap', gap: 8 }}>
           <Btn onClick={() => setF((p) => ({ ...p, articles: [...p.articles, articleVide()] }))}>Ajouter un article</Btn>
-          <span style={{ fontSize: 14, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}><span>Total</span> <span data-no-translate>CHF {chf(total)}</span></span>
+          <span style={{ fontSize: 14, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' }}>
+            {avecFrais && <><span>dont frais de service</span> <span data-no-translate>CHF {chf(frais)}</span>, </>}
+            <span>Total</span> <span data-no-translate>CHF {chf(total)}</span>
+          </span>
         </div>
       </div>
       {erreur && <div style={h.erreur} role="alert">{erreur}</div>}
@@ -122,6 +159,8 @@ export default function Repas({ user, etablissement }) {
   const hotes = useHotes(etabId);
   const roomService = useRoomService(etabId);
   const lignes = useLignesSejour(etabId, { actif: peutNoter });
+  // Lot 6b : horaires, room service et carte (Réglages, Repas hôtel).
+  const { reglages: reglagesRepas } = useReglagesModule(etabId, 'repas');
 
   const { ecran, setEcran, retourAccueil } = useEcranModule('repas', { repris: ['couverts', 'room_service'] });
   const [jour, setJour] = React.useState('aujourdhui');
@@ -157,8 +196,8 @@ export default function Repas({ user, etablissement }) {
 
   const etat = (n, un, plusieurs) => <><span>{n}</span> <span>{n === 1 ? un : plusieurs}</span></>;
   const tuiles = [
-    { id: 'couverts', libelle: 'Couverts du jour', Icone: Croissant, etat: <>{REPAS.map((r, i) => <React.Fragment key={r.id}>{i > 0 && <span aria-hidden="true"> </span>}<span>{nb(couvertsRepas(sejours.rows, aujourdhui, r.id))}</span> <span>{r.label.toLowerCase()}</span></React.Fragment>)}</>, onClick: () => { setJour('aujourdhui'); setEcran('couverts'); } },
-    { id: 'room_service', libelle: 'Room service', Icone: BellRing, etat: etat(ouvertes.length, 'commande à préparer', 'commandes à préparer'), onClick: () => setEcran('room_service') },
+    { id: 'couverts', libelle: 'Couverts du jour', Icone: Croissant, etat: <>{REPAS.map((r, i) => { const n = nb(couvertsRepas(sejours.rows, aujourdhui, r.id)); return <React.Fragment key={r.id}>{i > 0 && <span>, </span>}<span>{n}</span> <span>{motRepas(r.id, n)}</span></React.Fragment>; })}</>, onClick: () => { setJour('aujourdhui'); setEcran('couverts'); } },
+    { id: 'room_service', libelle: 'Room service', Icone: BellRing, etat: <>{etat(ouvertes.length, 'commande à préparer', 'commandes à préparer')}{reglagesRepas.room_service.heures && <>, <span>ouvert de</span> <PlageHoraire plage={reglagesRepas.room_service.heures} /></>}</>, onClick: () => setEcran('room_service') },
     { id: 'nouvelle', libelle: 'Nouvelle commande', Icone: Plus, onClick: () => setForm({ commande: null }) },
   ];
 
@@ -173,11 +212,12 @@ export default function Repas({ user, etablissement }) {
           <AccueilModule tuiles={tuiles} />
           {sejours.status === 'ready' && (
             <ReperesHotel reperes={[
-              ...REPAS.map((r, i) => ({ id: r.id, Icone: [Croissant, Sun, Moon][i] || Croissant, valeur: nb(couvertsRepas(sejours.rows, aujourdhui, r.id)), libelle: r.label.toLowerCase(), detail: 'Couverts du jour' })),
+              ...REPAS.map((r, i) => { const n = nb(couvertsRepas(sejours.rows, aujourdhui, r.id)); return { id: r.id, Icone: [Croissant, Sun, Moon][i] || Croissant, valeur: n, libelle: motRepas(r.id, n), detail: 'Couverts du jour' }; }),
               { id: 'room-service', Icone: BellRing, valeur: ouvertes.length, libelle: ouvertes.length === 1 ? 'commande à préparer' : 'commandes à préparer', detail: 'Room service' },
             ]} />
           )}
           {etatLecture && <Vide>{etatLecture}</Vide>}
+          <LigneRegler section="repas" user={user} etablissement={etablissement} />
         </PageHotel>
       )}
       {etabId && ecran !== ECRAN_ACCUEIL && (
@@ -198,7 +238,7 @@ export default function Repas({ user, etablissement }) {
           <SegmentedTabs tabs={[{ id: 'aujourdhui', label: 'Aujourd\'hui' }, { id: 'demain', label: 'Demain' }]} active={jour} onChange={setJour} />
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 12 }}>
             {REPAS.map((r) => (
-              <CarteHotel key={r.id} titre={r.label} sousTitre={<><span>{nb(parRepas[r.id])}</span> <span>{nb(parRepas[r.id]) === 1 ? 'couvert' : 'couverts'}</span>, <span>{parRepas[r.id].length}</span> <span>{parRepas[r.id].length === 1 ? 'séjour' : 'séjours'}</span></>}>
+              <CarteHotel key={r.id} titre={r.label} sousTitre={<>{reglagesRepas.horaires[r.id] && <><PlageHoraire plage={reglagesRepas.horaires[r.id]} />, </>}<span>{nb(parRepas[r.id])}</span> <span>{nb(parRepas[r.id]) === 1 ? 'couvert' : 'couverts'}</span>, <span>{parRepas[r.id].length}</span> <span>{parRepas[r.id].length === 1 ? 'séjour' : 'séjours'}</span></>}>
                 {!parRepas[r.id].length && <div style={h.detail}>Personne pour ce repas.</div>}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {parRepas[r.id].map((s) => {
@@ -267,7 +307,7 @@ export default function Repas({ user, etablissement }) {
         </>
       )}
 
-      {form && <CommandeForm commande={form.commande} sejours={sejours.rows} chambres={chambres.rows} roomService={roomService} aujourdhui={aujourdhui} onClose={() => setForm(null)} />}
+      {form && <CommandeForm commande={form.commande} sejours={sejours.rows} chambres={chambres.rows} roomService={roomService} aujourdhui={aujourdhui} carte={reglagesRepas.carte} frais={reglagesRepas.room_service.frais} onClose={() => setForm(null)} />}
     </section>
   );
 }

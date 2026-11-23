@@ -67,6 +67,8 @@ SWIFT / BIC : BCVSCH2LXXX`,
   mentionTva: 'Numéro TVA : Non assujetti (activité indépendante en création)',
   ville: 'Erde',
   signature: 'Jérémy Samper, consultant culinaire',
+  // Lot 6b : délai de paiement du client, en jours ; il pré-remplit l'échéance.
+  delaiPaiementJours: '11',
   // ─── QR-facture suisse ───
   // L'adresse du créancier est saisie en champs séparés et non reprise du bloc
   // émetteur : depuis novembre 2025 la norme n'accepte plus que les adresses
@@ -93,6 +95,7 @@ export const FACTURE_TEXT_FIELDS = [
   { key: 'paiement', label: 'Coordonnées de paiement', rows: 5, hint: 'Une ligne par entrée, au format « Libellé : valeur ».' },
   { key: 'mentionTva', label: 'Mention TVA', rows: 2, hint: 'Laisser vide pour masquer la ligne.' },
   { key: 'ville', label: "Ville d'émission", rows: 0, hint: 'Utilisée pour la ligne « Fait à… ».' },
+  { key: 'delaiPaiementJours', label: 'Délai de paiement (jours)', rows: 0, hint: "Pré-remplit la date d'échéance des factures de ce client." },
   { key: 'signature', label: 'Signature', rows: 2 },
 
   { groupe: 'QR-facture', key: 'qrActive', label: 'Ajouter la QR-facture au bas du PDF', type: 'bool', hint: 'Récépissé et section paiement conformes à la norme suisse, générés depuis les champs ci-dessous.' },
@@ -106,6 +109,31 @@ export const FACTURE_TEXT_FIELDS = [
 ];
 
 export const factureTextsKey = (etabId) => `facture_textes:${etabId}`;
+
+// Lot 6b : délai de paiement lu dans les textes du client (1 à 120 jours,
+// sinon les 11 jours d'avant le réglage).
+export const delaiPaiement = (texts) => {
+  const n = parseInt(String(texts?.delaiPaiementJours ?? '').trim(), 10);
+  return Number.isInteger(n) && n >= 1 && n <= 120 ? n : 11;
+};
+
+// Lot 6b : la dernière facture émise pour un client (user_settings), pour la
+// reprendre en un toucher : prestation, montant, devise, HT ou TTC, référence.
+export const derniereFactureKey = (etabId) => `facture_derniere:${etabId}`;
+export const lireDerniereFacture = (raw) => {
+  if (!raw || typeof raw !== 'object') return null;
+  const montant = String(raw.montant ?? '').trim();
+  if (!montant || Number.isNaN(Number(montant))) return null;
+  return {
+    numero: typeof raw.numero === 'string' ? raw.numero : '',
+    date: typeof raw.date === 'string' ? raw.date : '',
+    prestation: typeof raw.prestation === 'string' ? raw.prestation : '',
+    montant,
+    devise: raw.devise === 'EUR' ? 'EUR' : 'CHF',
+    htOuTtc: raw.htOuTtc === 'TTC' ? 'TTC' : 'HT',
+    referenceContratDevis: typeof raw.referenceContratDevis === 'string' ? raw.referenceContratDevis : '',
+  };
+};
 
 // Fusion avec les valeurs par défaut : une facture enregistrée avant l'ajout
 // d'un champ ne doit pas afficher un bloc vide.
