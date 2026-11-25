@@ -18,7 +18,9 @@ if (roleDemande && ROLES_DEMO.some((r) => r.role === roleDemande)) choisirRole(r
 const theme = params.get('theme');
 if (theme === 'dark' || theme === 'light') window.localStorage.setItem('sc_theme', theme);
 
-installerFauxSupabase();
+// ?maisons=2 (lot 02 du panel) : une seconde maison fictive, pour la reprise
+// des réglages d'un autre établissement. Sans lui, la démo ne change pas.
+installerFauxSupabase(params.get('maisons') === '2' ? { maisons: 2 } : {});
 writeLegacyGlobal('SAMPER_DEMO_SUPABASE', { url: DEMO_URL, anonKey: 'demo-cle-publique' });
 
 // Session de la personne du rôle choisi, dans le stockage isolé de la démo.

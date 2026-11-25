@@ -17,6 +17,7 @@ import { estDirectionModules } from '../../utils/reglagesModules.js';
 import { peutGererPoints } from '../points/bareme.js';
 import { canManageModule } from '../../data/demoData.js';
 import { estDirectionMaison } from './gardesMaison.js';
+import { NON_REPRISES, REPRENABLES, idsSources } from './reprise/repriseReglages.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre des réglages : tout ce qui se règle dans l'app, une section par
@@ -197,6 +198,17 @@ export const SECTIONS = [
     id: 'alertes', libelle: 'Alertes', detail: "Les règles qui préviennent la direction et l'équipe",
     groupe: 'maison', portee: 'maison', garde: administre,
     charger: () => import('./sections/SectionAlertes.jsx'),
+  },
+  // Lot 02 du panel (25.11.2026) : copier ici les réglages d'un autre de ses
+  // établissements. Pour qui en a au moins deux au profil et peut écrire au
+  // moins une section reprenable ici ; chaque ligne de l'aperçu garde la garde
+  // de sa section d'origine (gardeReprise, plus bas).
+  {
+    id: 'reprendre_reglages', libelle: "Reprendre d'un autre établissement",
+    detail: "Copier ici les réglages d'un autre de vos établissements, section par section",
+    motsCles: 'copier dupliquer autre maison établissement site restaurant', groupe: 'maison', portee: 'maison',
+    garde: (ctx) => gardeReprise(ctx),
+    charger: () => import('./sections/SectionReprendre.jsx'),
   },
 
   // ── Les modules ──
@@ -520,6 +532,19 @@ export function signauxDe(id) {
   const section = SECTIONS.find((s) => s.id === id);
   if (!section) return [];
   return section.signaux || [section.id];
+}
+
+// Reprise d'un autre établissement : les sections de la liste blanche (et
+// celles dites non reprises) dont la garde passe ici. Parcourt ces seules
+// sections, jamais sectionsVisibles, qui rappellerait la garde de la reprise.
+const gardePasse = (id, ctx) => {
+  const section = SECTIONS.find((s) => s.id === id);
+  try { return Boolean(section) && section.garde(ctx) === true; } catch { return false; }
+};
+export const sectionsReprenables = (ctx) => REPRENABLES.filter((e) => gardePasse(e.section, ctx));
+export const sectionsNonReprises = (ctx) => NON_REPRISES.filter((e) => gardePasse(e.section, ctx));
+export function gardeReprise(ctx) {
+  return idsSources(ctx?.user, ctx?.etablissement?.id).length > 0 && sectionsReprenables(ctx).length > 0;
 }
 
 export function sectionsVisibles(ctx) {

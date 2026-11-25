@@ -24,6 +24,7 @@ import { genererHotel } from './hotel.js';
 import { genererSpa } from './spa.js';
 import { genererFacturation } from './facturation.js';
 import { empreinteDemo } from '../rpc.js';
+import { ETABLISSEMENT_2, ETAB_2, reglagesSecondeMaison } from './secondeMaison.js';
 import { alertesCuisine, commandesCadeaux, executionsDuJour, fichesEnBrouillon, procedures } from './bureau.js';
 
 // Codes de pointage de la brigade de démo (borne, lot L6) : Inès 4826,
@@ -52,7 +53,24 @@ function reglagesUtilisateurs() {
   ]);
 }
 
-export function creerBase() {
+// options.maisons === 2 (lot 02 du panel, ?maisons=2) : la base d'une maison,
+// plus une seconde maison fictive au profil de toute l'équipe, avec ses
+// réglages. Sans l'option, la base est celle d'avant, octet pour octet.
+export function creerBase(options = {}) {
+  const base = baseUneMaison();
+  if (options.maisons !== 2) return base;
+  const seconde = reglagesSecondeMaison();
+  return {
+    ...base,
+    etablissements: [...base.etablissements, ETABLISSEMENT_2],
+    profiles: base.profiles.map((u) => ({ ...u, etablissement_ids: [...u.etablissement_ids, ETAB_2] })),
+    reglages_maison: [...base.reglages_maison, ...seconde.reglages_maison],
+    objectifs_maison: [...base.objectifs_maison, ...seconde.objectifs_maison],
+    reglages_modules: [...base.reglages_modules, ...seconde.reglages_modules],
+  };
+}
+
+function baseUneMaison() {
   const { reservations, tags, liens } = genererReservations();
   const { releves, controles } = genererHaccp();
   const { plats_boissons: boissons, ...caisse } = genererCaisse();

@@ -7051,6 +7051,28 @@ export const UI_GLOSSARY = {
   "Continuer sans nom": "Continue without a name",
   "Choisissez une heure à venir.": "Choose a time that is still ahead.",
   "Prénom ou nom": "First name or last name",
+  // Lot 02 du panel : reprendre les réglages d'un autre établissement.
+  "Reprendre d'un autre établissement": "Copy from another establishment",
+  "Copier ici les réglages d'un autre de vos établissements, section par section": "Copy the settings of another of your establishments here, section by section",
+  "Les réglages cochés sont copiés ici. Rien n'est lié ensuite : chaque établissement garde la main sur ses réglages.": "The ticked settings are copied here. Nothing stays linked afterwards: each establishment keeps control of its own settings.",
+  "Reprendre depuis": "Copy from",
+  "Choisissez l'établissement dont vous reprenez les réglages.": "Choose the establishment whose settings you are copying.",
+  "La lecture a échoué. Réessayez.": "Reading failed. Please try again.",
+  "Aucune section n'a été écrite.": "No section was written.",
+  "Reprise": "Copied",
+  "Non reprise": "Not copied",
+  "Identique": "Identical",
+  "Différent": "Different",
+  "Non réglé là-bas": "Not set over there",
+  "Ici": "Here",
+  "Là-bas": "There",
+  "Le pointage à la borne seulement n'est jamais repris : le réglage d'ici reste.": "Clocking in at the terminal only is never copied: the setting here stays.",
+  "Propre à cette maison, non reprise.": "Specific to this establishment, not copied.",
+  "Reprendre les réglages cochés": "Copy the ticked settings",
+  "Aucun objectif": "No target",
+  "Non réglé": "Not set",
+  "L'établissement affiché a changé. Cette section n'a pas été écrite.": "The displayed establishment has changed. This section was not written.",
+  "Aucun autre établissement à proposer.": "No other establishment to offer.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

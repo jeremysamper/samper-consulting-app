@@ -5,7 +5,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  GROUPES, MODULES, RENVOIS, SECTIONS, cheminDe, chercherRenvois, chercherSections, entreesParGroupe, idEntree, renvoisVisibles, sectionsParGroupe, sectionsVisibles, signauxDe,
+  GROUPES, MODULES, RENVOIS, SECTIONS, gardeReprise, sectionsReprenables, cheminDe, chercherRenvois, chercherSections, entreesParGroupe, idEntree, renvoisVisibles, sectionsParGroupe, sectionsVisibles, signauxDe,
 } from './registreReglages.js';
 import { defaultPermissions, navItems, roles } from '../moduleConfig.js';
 import { getPermissionsForRole } from '../../data/demoData.js';
@@ -100,6 +100,9 @@ const AVANT = {
   // 23.11.2026 : devis et factures des groupes, réglage neuf, pour qui a le
   // droit « Devis et factures des groupes » (consultant et patron par défaut).
   groupes_facturation: DIRECTION,
+  // 25.11.2026, lot 02 du panel : reprendre d'un autre établissement, pour
+  // qui en a deux au profil (l'utilisateur de ce test n'en a aucun).
+  reprendre_reglages: [],
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {
@@ -250,4 +253,22 @@ test('renvois : mêmes rôles qu\'avant, trouvés par la recherche, jamais des s
   assert.deepEqual(chercherRenvois(tout, 'masquées').map((r) => r.id), ['renvoi_planning_masques']);
   assert.deepEqual(chercherRenvois(tout, 'mode test').map((r) => r.id), ['renvoi_caisse_mode_test']);
   assert.deepEqual(chercherRenvois(tout, ''), []);
+});
+
+test("reprendre d'un autre établissement : visible à deux établissements, pour qui écrit une section reprenable", () => {
+  const ctx = (role, ids) => ({ user: { id: 'u', role, etablissementIds: ids }, permissions: getPermissionsForRole(role), etablissement: etab(), shellMode: 'ordinateur' });
+  const deux = ['etab-test', 'etab-autre'];
+  const voit = (c) => sectionsVisibles(c).some((s) => s.id === 'reprendre_reglages');
+  assert.equal(voit(ctx('patron', deux)), true, 'patron à deux établissements');
+  assert.equal(voit(ctx('cuisinier', deux)), false, 'cuisinier à deux établissements');
+  assert.equal(voit(ctx('patron', ['etab-test'])), false, 'patron à un seul');
+  assert.equal(voit(ctx('patron', ['etab-autre', 'etab-trois'])), false, 'établissement affiché hors du profil');
+  assert.equal(gardeReprise(ctx(null, deux)), false, 'sans rôle');
+  assert.equal(gardeReprise(null), false, 'sans contexte');
+  // Le responsable cuisine : les modules, pas les blocs de la maison.
+  const rc = sectionsReprenables(ctx('resp_cuisine', deux)).map((e) => e.section);
+  assert.ok(rc.includes('pertes') && rc.includes('kds'));
+  for (const id of ['horaires_fermetures', 'objectifs', 'planning_pointage', 'journal', 'demandes']) assert.ok(!rc.includes(id), id);
+  // Le patron n'ouvre pas le KDS par défaut.
+  assert.ok(!sectionsReprenables(ctx('patron', deux)).some((e) => e.section === 'kds'));
 });
