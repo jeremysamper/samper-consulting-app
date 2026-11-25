@@ -1509,8 +1509,15 @@ export function installLegacySupabase() {
     async deleteCarte(id) {
       // Les liaisons carte_plats / carte_fiches_salle sont supprimées en cascade.
       // Les plats, recettes et fiches restent intacts.
-      const { error } = await client.from('cartes').delete().eq('id', id);
+      // Un refus de la base sur une suppression ne lève rien (zéro ligne) :
+      // les lignes supprimées sont relues. Cas connu : une carte de boissons
+      // qui porte encore des boissons, que « Modifier » recettes seul ne
+      // supprime pas (migration 20261125_carte_boissons_suppression_carte).
+      const { data, error } = await client.from('cartes').delete().eq('id', id).select('id');
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('Vous n\'avez pas le droit de supprimer cette carte. Demandez à la direction.');
+      }
     },
 
     // Archive / restaure une carte. Update ciblé (pas d'upsert complet) :
