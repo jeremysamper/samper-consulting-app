@@ -1516,7 +1516,7 @@ export function installLegacySupabase() {
       const { data, error } = await client.from('cartes').delete().eq('id', id).select('id');
       if (error) throw error;
       if (!data || data.length === 0) {
-        throw new Error('Vous n\'avez pas le droit de supprimer cette carte. Demandez à la direction.');
+        throw new Error('Cette carte n\'existe plus, ou vous n\'avez pas le droit de la supprimer. Demandez à la direction.');
       }
     },
 
