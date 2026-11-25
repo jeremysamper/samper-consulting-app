@@ -130,17 +130,19 @@ export default function PreparerDemain({ etablissement, user, onClose, onCreee }
                 <>
                   <span>Quantités tirées des ventes de la Caisse, sur les 14 derniers jours.</span>{' '}
                   {ventes.joursComparables >= 2
-                    ? <span><span>Jours comparables trouvés :</span> <span data-no-translate="">{ventes.joursComparables}</span></span>
+                    ? <span style={st.insecable}><span>Jours comparables trouvés :</span> <span data-no-translate="">{ventes.joursComparables}</span></span>
                     : <span>Moins de deux jours comparables : la moyenne porte sur tous les jours vendus.</span>}
                 </>
               ) : ventes.source === 'pos' ? (
                 <>
                   <span>Quantités tirées de Ventes POS, sur les 14 derniers jours.</span>
-                  {ventes.nonRelies > 0 && <>{' '}<span><span>Articles de la caisse sans fiche reliée :</span> <span data-no-translate="">{ventes.nonRelies}</span></span></>}
+                  {ventes.nonRelies > 0 && <>{' '}<span style={st.insecable}><span>Articles de la caisse sans fiche reliée :</span> <span data-no-translate="">{ventes.nonRelies}</span></span></>}
                 </>
               ) : <span>Il n'y a pas encore de ventes à comparer. Seules les lignes du modèle sont proposées.</span>}
-          {proposition.facteur !== 1 && <> Ajustées à la prévision : <span data-no-translate="">{prevision.prevus}</span> couverts attendus contre <span data-no-translate="">{prevision.reference}</span> d'habitude.</>}
-        </span>
+          </span>
+        {proposition.facteur !== 1 && (
+          <span style={fs.remarque}>Ajustées à la prévision : <span data-no-translate="">{prevision.prevus}</span> couverts attendus contre <span data-no-translate="">{prevision.reference}</span> d'habitude.</span>
+        )}
         {ventes.error && !ventes.loading && (
           <button type="button" style={{ ...fs.secondaire, alignSelf: 'flex-start' }} onClick={ventes.reload}>Réessayer</button>
         )}
@@ -150,9 +152,9 @@ export default function PreparerDemain({ etablissement, user, onClose, onCreee }
               <span>Articles vendus sans fiche reliée :</span> <span data-no-translate="">{ventes.sansFiche.length}</span>
             </button>
             {sansFicheOuvert && (
-              <div style={st.liste}>
-                {ventes.sansFiche.map((a) => (
-                  <div key={a.platId} style={st.ligne}>
+              <div style={st.sansFiche}>
+                {ventes.sansFiche.map((a, i, tous) => (
+                  <div key={a.platId} style={i === tous.length - 1 ? { ...st.ligne, borderBottomColor: 'transparent' } : st.ligne}>
                     <span style={st.nom} data-no-translate="">{a.nom}</span>
                     <span style={st.qte} data-no-translate="">{a.qty}</span>
                   </div>
@@ -183,5 +185,7 @@ const st = {
   ligne: { display: 'flex', alignItems: 'center', gap: 12, minHeight: 40, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)' },
   nom: { flex: 1, minWidth: 0, fontSize: 'var(--t2)', color: 'var(--text)' },
   qte: { fontSize: 'var(--t2)', color: 'var(--text2)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap' },
+  insecable: { whiteSpace: 'nowrap' },
+  sansFiche: { display: 'flex', flexDirection: 'column', background: 'var(--piste)', borderRadius: 'var(--r)', padding: '2px 14px' },
   deplier: { alignSelf: 'flex-start', minHeight: 44, padding: '0 2px', background: 'transparent', borderWidth: 0, borderStyle: 'none', color: 'var(--lien)', fontSize: 'var(--t1)', fontFamily: 'var(--font)', textAlign: 'left', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 },
 };
