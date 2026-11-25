@@ -22,6 +22,7 @@ import { toutesLesPages } from '../../../utils/lirePages.js';
 import { dbService } from '../../../services/dbService.js';
 import { addDays, todayInTz, dowFromDateStr, formatDateLabel } from '../lib/date-utils.js';
 import { messageErreur } from '../../../utils/messageErreur.js';
+import { moyenneJourSemaine } from '../../mep/moyenneVentes.js';
 
 export function useMiseEnPlace(etablissement) {
   const [items, setItems]               = useState([]);
@@ -139,24 +140,7 @@ export function useMiseEnPlace(etablissement) {
         const recipeId = mappingByItem[posItemId];
         const sales   = salesByItem[posItemId] ?? [];
 
-        const sameDow = sales.filter((s) => s.dow === tomorrowDow);
-        let qty, reliable, occurrences;
-
-        if (sameDow.length >= 2) {
-          const total = sameDow.reduce((acc, s) => acc + s.qty, 0);
-          qty         = Math.ceil(total / sameDow.length);
-          reliable    = true;
-          occurrences = sameDow.length;
-        } else if (sales.length > 0) {
-          const total = sales.reduce((acc, s) => acc + s.qty, 0);
-          qty         = Math.ceil(total / sales.length);
-          reliable    = false;
-          occurrences = sales.length;
-        } else {
-          qty         = 0;
-          reliable    = false;
-          occurrences = 0;
-        }
+        const { qty, reliable, occurrences } = moyenneJourSemaine(sales, tomorrowDow);
 
         result.push({
           posItemId,
