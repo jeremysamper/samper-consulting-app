@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  construirePrevision, mesurerEffet, couvertsParService, jourSemaine,
+  construirePrevision, mesurerEffet, couvertsParService, jourSemaine, pensionParService,
   SEMAINES, SEMAINES_MIN, JOURS_MIN_PAR_CLASSE,
 } from './previsionCouverts.js';
 import {
@@ -295,4 +295,104 @@ test('temps du service : neige, pluie, soleil et temps sec', () => {
   assert.equal(classeDuJour(meteo, '2026-11-19'), 'precipitations');
   assert.equal(classeDuJour(meteo, '2026-11-21'), 'sec');
   assert.equal(classeDuJour(meteo, '2026-11-30'), null);
+});
+
+// ── Lot 06 du panel : hôtes en pension ─────────────────────────────────────
+const DEMAIN = zurichAjouterJours(AUJ, 1);
+const sejourBrut = (o = {}) => ({ id: 's1', statut: 'en_maison', pension: 'demi', arrivee: HIER, depart: DEMAIN, nb_adultes: 2, nb_enfants: 0, ...o });
+
+test('pension : demi-pension de 2, arrivée hier, départ demain', () => {
+  const t = pensionParService({ sejours: [sejourBrut()], liens: [], resas: [], aujourdhui: AUJ });
+  assert.equal(t.get(`${AUJ}|soir`), 2);
+  assert.equal(t.get(`${AUJ}|midi`) || 0, 0);
+  assert.equal(t.get(`${DEMAIN}|soir`) || 0, 0);
+});
+
+test('pension : complète de 1, midi et soir de chaque nuit du séjour', () => {
+  const depart = zurichAjouterJours(AUJ, 3);
+  const t = pensionParService({ sejours: [sejourBrut({ pension: 'complete', arrivee: AUJ, depart, nb_adultes: 1 })], liens: [], resas: [], aujourdhui: AUJ });
+  for (let i = 0; i < 3; i += 1) {
+    const d = zurichAjouterJours(AUJ, i);
+    assert.equal(t.get(`${d}|midi`), 1, d);
+    assert.equal(t.get(`${d}|soir`), 1, d);
+  }
+  assert.equal(t.get(`${depart}|midi`) || 0, 0);
+  assert.equal(t.size, 6);
+});
+
+test('pension : petit-déjeuner, aucune, annulé, no-show et parti ne comptent pas', () => {
+  const sejours = [
+    sejourBrut({ id: 'a', pension: 'petit_dejeuner' }),
+    sejourBrut({ id: 'b', pension: 'aucune' }),
+    sejourBrut({ id: 'c', statut: 'annule' }),
+    sejourBrut({ id: 'd', statut: 'no_show' }),
+    sejourBrut({ id: 'e', statut: 'parti' }),
+  ];
+  assert.equal(pensionParService({ sejours, liens: [], resas: [], aujourdhui: AUJ }).size, 0);
+});
+
+test('pension : séjour relié à une réservation du soir exclu ce soir-là seulement, enfants comptés', () => {
+  const s = sejourBrut({ id: 7, depart: zurichAjouterJours(AUJ, 2), nb_enfants: 1 });
+  const resas = [{ id: 42, date_service: AUJ, service: 'soir', nb_couverts: 3, statut: 'confirme' }];
+  const liens = [{ sejour_id: '7', type: 'reservation', cible_id: '42' }];
+  const t = pensionParService({ sejours: [s], liens, resas, aujourdhui: AUJ });
+  assert.equal(t.get(`${AUJ}|soir`) || 0, 0);
+  assert.equal(t.get(`${DEMAIN}|soir`), 3);
+  const annulee = pensionParService({ sejours: [s], liens, resas: [{ ...resas[0], statut: 'annule' }], aujourdhui: AUJ });
+  assert.equal(annulee.get(`${AUJ}|soir`), 3);
+  const autreType = pensionParService({ sejours: [s], liens: [{ ...liens[0], type: 'groupe' }], resas, aujourdhui: AUJ });
+  assert.equal(autreType.get(`${AUJ}|soir`), 3);
+});
+
+test('pension : une réservation de brunch reliée exclut le midi', () => {
+  const s = sejourBrut({ pension: 'complete', depart: zurichAjouterJours(AUJ, 2) });
+  const resas = [{ id: 'r1', date_service: AUJ, service: 'brunch', nb_couverts: 2, statut: 'demande' }];
+  const t = pensionParService({ sejours: [s], liens: [{ sejour_id: 's1', type: 'reservation', cible_id: 'r1' }], resas, aujourdhui: AUJ });
+  assert.equal(t.get(`${AUJ}|midi`) || 0, 0);
+  assert.equal(t.get(`${AUJ}|soir`), 2);
+  assert.equal(t.get(`${DEMAIN}|midi`), 2);
+});
+
+test('plancher : réservés et pension ensemble, jamais ajoutés à la moyenne', () => {
+  const resas = [
+    ...historique('2026-08-01', HIER, (d, s) => (s === 'soir' ? 30 : 0)),
+    { date_service: AUJ, service: 'soir', nb_couverts: 10, statut: 'confirme' },
+  ];
+  const base = { aujourdhui: AUJ, premiereDate: '2026-08-01', resas, etatMeteo: 'indisponible' };
+  const haut = construirePrevision({ ...base, pension: new Map([[`${AUJ}|soir`, 25]]) }).jours[0].services.soir;
+  assert.equal(haut.calcul, 30);
+  assert.equal(haut.valeur, 35);
+  assert.equal(haut.plancher, true);
+  assert.equal(haut.pension, 25);
+  const bas = construirePrevision({ ...base, pension: new Map([[`${AUJ}|soir`, 5]]) }).jours[0].services.soir;
+  assert.equal(bas.valeur, 30);
+  assert.equal(bas.plancher, false);
+  assert.equal(bas.pension, 5);
+});
+
+test("sans pension : même prévision qu'avant, au champ pension: 0 près", () => {
+  const resas = historique('2026-08-01', HIER, () => 12);
+  const base = { aujourdhui: AUJ, premiereDate: '2026-08-01', resas, etatMeteo: 'indisponible' };
+  const sans = construirePrevision(base);
+  assert.deepEqual(sans, construirePrevision({ ...base, pension: new Map() }));
+  for (const j of sans.jours) {
+    for (const svc of ['midi', 'soir']) {
+      const { pension, ...reste } = j.services[svc];
+      assert.equal(pension, 0);
+      assert.deepEqual(Object.keys(reste).sort(), ['calcul', 'effet', 'etat', 'moyenne', 'plancher', 'reserves', 'semaines', 'temps', 'valeur']);
+    }
+  }
+});
+
+test('service fermé et historique court : pas de valeur, la pension est portée', () => {
+  const pension = new Map([[`${AUJ}|soir`, 4], [`${AUJ}|midi`, 2]]);
+  const court = construirePrevision({ aujourdhui: AUJ, premiereDate: zurichAjouterJours(AUJ, -10), resas: [], etatMeteo: 'indisponible', pension });
+  assert.equal(court.jours[0].services.soir.etat, 'historique_court');
+  assert.equal(court.jours[0].services.soir.valeur, null);
+  assert.equal(court.jours[0].services.soir.pension, 4);
+  const fermetures = { joursFermes: [4], servicesFermes: {}, periodes: [] };   // jeudi
+  const ferme = construirePrevision({ aujourdhui: AUJ, premiereDate: '2026-08-01', resas: historique('2026-08-01', HIER, () => 9), etatMeteo: 'indisponible', fermetures, pension });
+  assert.equal(ferme.jours[0].services.midi.etat, 'ferme');
+  assert.equal(ferme.jours[0].services.midi.valeur, null);
+  assert.equal(ferme.jours[0].services.midi.pension, 2);
 });

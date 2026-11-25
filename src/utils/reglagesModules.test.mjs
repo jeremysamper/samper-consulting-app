@@ -79,3 +79,10 @@ test('réservation en ligne : jours fermés de la maison, plus les jours hérit�
   assert.ok(!enLigne.includes('2026-11-20'), 'un jour passé sort');
   assert.ok(enLigne.includes('2026-12-25'), 'une période fermée y est');
 });
+
+test('lot 06 : sources de la prévision, pension éteinte par défaut et sur toute valeur mal formée', () => {
+  for (const c of [null, {}, { sources: [] }, { sources: { pension: 'oui' } }, { sources: null }, { sources: { pension: 1 } }]) {
+    assert.deepEqual(lireReglagesModule('previsions', c), { sources: { pension: false } }, JSON.stringify(c));
+  }
+  assert.deepEqual(lireReglagesModule('previsions', { sources: { pension: true } }), { sources: { pension: true } });
+});

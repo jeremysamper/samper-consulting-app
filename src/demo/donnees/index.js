@@ -1,6 +1,7 @@
 // Assemble la base de démonstration : une table par clé, des lignes au format
 // de la base (snake_case), datées autour d'aujourd'hui.
-import { ETABLISSEMENT, EQUIPE, ETAB } from './base.js';
+import { ETABLISSEMENT, EQUIPE, ETAB, aujourdhui, instant } from './base.js';
+import { zurichAjouterJours } from '../../utils/zurichTime.js';
 import { FOURNISSEURS, PRODUITS, PRODUIT_FOURNISSEURS, PRODUIT_PRIX_HISTORIQUE } from './catalogue.js';
 import { RECETTES, PLATS, PLAT_RECETTES, CARTES, CARTE_PLATS, FICHES_SALLE, CARTE_FICHES_SALLE } from './cuisine.js';
 import {
@@ -67,6 +68,29 @@ export function creerBase(options = {}) {
     reglages_maison: [...base.reglages_maison, ...seconde.reglages_maison],
     objectifs_maison: [...base.objectifs_maison, ...seconde.objectifs_maison],
     reglages_modules: [...base.reglages_modules, ...seconde.reglages_modules],
+  };
+}
+
+// Lot 06 du panel : le séjour n° 6 (demi-pension, 2 personnes, du jour -1 au
+// jour +3) est relié à la première réservation du soir, ni annulée ni
+// no-show, d'aujourd'hui au jour +2 : ce soir-là, ses hôtes sont dans
+// « Réservés » et pas dans « En pension ». Les identifiants des réservations
+// changent chaque jour (graine du jour) : la réservation se cherche dans la
+// liste générée. Sans réservation qui convient, aucun lien.
+function hotelAvecLienDemo(hotel, reservations) {
+  const sejour = (hotel.sejours || []).find((s) => s.id === '00000000-0000-4000-8000-000000060606');
+  const debut = aujourdhui();
+  const fin = zurichAjouterJours(debut, 2);
+  const resa = [...(reservations || [])]
+    .filter((r) => r.service === 'soir' && r.statut !== 'annule' && r.statut !== 'no_show' && r.date_service >= debut && r.date_service <= fin)
+    .sort((a, b) => (a.date_service < b.date_service ? -1 : a.date_service > b.date_service ? 1 : 0))[0];
+  if (!sejour || !resa) return hotel;
+  return {
+    ...hotel,
+    sejour_liens: [{
+      id: '00000000-0000-4000-8000-000000066001', etablissement_id: sejour.etablissement_id, sejour_id: sejour.id,
+      type: 'reservation', cible_id: String(resa.id), created_by: 'demo-patron', created_at: instant(debut, '09:00'),
+    }],
   };
 }
 
@@ -185,7 +209,7 @@ function baseUneMaison() {
     scans_facture: [],
     ...caisse,
     ...pos,
-    ...genererHotel({ ticketsChambre }),
+    ...hotelAvecLienDemo(genererHotel({ ticketsChambre }), reservations),
     ...genererSpa(),
   };
 }

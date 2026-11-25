@@ -7114,4 +7114,15 @@ export const UI_GLOSSARY_ES = {
   "Le ticket n'a pas pu être porté sur la note. Réessayez.": "No se pudo cargar el ticket en la cuenta. Vuelva a intentarlo.",
   "La note n'a pas pu être vérifiée.": "No se pudo comprobar la cuenta.",
   "Ce ticket date de plus de 14 jours : ajoutez-le à la main sur la note.": "Este ticket tiene más de 14 días: añádalo a mano a la cuenta.",
+  // Lot 06 du panel : hôtes en pension dans la prévision des couverts.
+  "En pension": "Con media pensión o completa",
+  "Hôtes en pension, sans table réservée": "Huéspedes con pensión, sin mesa reservada",
+  "Les réservations et les hôtes en pension dépassent le calcul : ils font la prévision.": "Las reservas y los huéspedes con pensión superan el cálculo: ellos hacen la previsión.",
+  "Les hôtes en pension comptent dans la prévision. Source : les séjours de l'Hébergement.": "Los huéspedes con pensión cuentan en la previsión. Fuente: las estancias del Alojamiento.",
+  "Les séjours n'ont pas pu être lus : la prévision ne compte pas les hôtes en pension.": "No se pudieron leer las estancias: la previsión no cuenta a los huéspedes con pensión.",
+  "Compter les hôtes en pension": "Contar a los huéspedes con pensión",
+  "Les hôtes en demi-pension ou en pension complète comptent au dîner, et au déjeuner pour la pension complète. Allumez ce réglage si vous ne saisissez pas une réservation pour chaque hôte, ou si vous la reliez à son séjour.": "Los huéspedes con media pensión o pensión completa cuentan en la cena, y en el almuerzo con pensión completa. Active este ajuste si no registra una reserva para cada huésped, o si la vincula a su estancia.",
+  "Sources de la prévision": "Fuentes de la previsión",
+  "Réservations : prévision des couverts": "Reservas: previsión de cubiertos",
+  "Hôtes en pension comptés dans la prévision": "Huéspedes con pensión contados en la previsión",
 };

@@ -28,6 +28,7 @@ import { SERVICES_AFFICHES, serviceAffiche } from './statutsReservation.js';
 import { SEUIL_PRECIP_MM, classeDuJour, meteoDuService } from './meteo.js';
 import { zurichAjouterJours } from '../../utils/zurichTime.js';
 import { maisonFermee } from '../../utils/reglagesMaison.js';
+import { sejourMange } from '../hebergement/pension.js';
 
 export const JOURS_PREVUS = 7;
 export const SEMAINES = 8;        // semaines de la moyenne, par défaut
@@ -75,6 +76,49 @@ export function couvertsParService(resas, { realise }) {
     parCle.set(cle, (parCle.get(cle) || 0) + (Number(r.nb_couverts) || 0));
   }
   return parCle;
+}
+
+// Hôtes en pension par « date|service », sur les JOURS_PREVUS jours dès
+// aujourd'hui : le déjeuner compte au midi, le dîner au soir, le
+// petit-déjeuner nulle part. Lignes brutes de la base (sejours : statut,
+// pension, arrivee, depart, nb_adultes, nb_enfants ; sejour_liens :
+// sejour_id, type, cible_id). Un séjour relié à une réservation non annulée
+// et non no-show du même jour et du même service n'est pas compté : ses
+// couverts sont déjà dans « Réservés » (une demande en ligne à venir aussi,
+// comme dans couvertsParService).
+export function pensionParService({ sejours, liens, resas, aujourdhui }) {
+  const table = new Map();
+  const resaParId = new Map();
+  for (const r of resas || []) resaParId.set(String(r.id), r);
+  // Séjour -> clés « date|service » déjà couvertes par une réservation reliée.
+  const couvertes = new Map();
+  for (const l of liens || []) {
+    if (l.type !== 'reservation') continue;
+    const r = resaParId.get(String(l.cible_id));
+    if (!r || r.statut === 'annule' || r.statut === 'no_show') continue;
+    const svc = serviceAffiche(r.service);
+    if (!SERVICES_AFFICHES.includes(svc)) continue;
+    const sid = String(l.sejour_id);
+    if (!couvertes.has(sid)) couvertes.set(sid, new Set());
+    couvertes.get(sid).add(`${r.date_service}|${svc}`);
+  }
+  const repasDuService = { midi: 'dejeuner', soir: 'diner' };
+  for (let i = 0; i < JOURS_PREVUS; i += 1) {
+    const jour = zurichAjouterJours(aujourdhui, i);
+    for (const svc of SERVICES_AFFICHES) {
+      const repas = repasDuService[svc];
+      if (!repas) continue;
+      const cle = `${jour}|${svc}`;
+      let total = 0;
+      for (const s of sejours || []) {
+        if (!sejourMange(s, jour, repas)) continue;
+        if (couvertes.get(String(s.id))?.has(cle)) continue;
+        total += (Number(s.nb_adultes) || 0) + (Number(s.nb_enfants) || 0);
+      }
+      if (total > 0) table.set(cle, total);
+    }
+  }
+  return table;
 }
 
 // Moyenne des mêmes services : le même jour de la semaine, les semaines
@@ -154,7 +198,11 @@ export function mesurerEffet({ service, aujourdhui, premiereDate, realises, plui
 //   meteo        : sortie de lireMeteo quand etatMeteo vaut 'ok'
 //   fermetures   : celles de la maison (Réglages > Horaires et fermetures) ;
 //                  un service fermé n'a pas de prévision (etat 'ferme').
-export function construirePrevision({ aujourdhui, premiereDate, resas, meteo = null, etatMeteo, fermetures = null }) {
+//   pension      : sortie de pensionParService, ou null sans cette source.
+//                  Hôtes en pension et réservés font ensemble le plancher ;
+//                  la pension ne s'ajoute jamais à la moyenne (l'historique
+//                  contient peut-être déjà les hôtes placés en passage).
+export function construirePrevision({ aujourdhui, premiereDate, resas, meteo = null, etatMeteo, fermetures = null, pension = null }) {
   const liste = resas || [];
   const realises = couvertsParService(liste.filter((r) => r.date_service < aujourdhui), { realise: true });
   const reserves = couvertsParService(liste.filter((r) => r.date_service >= aujourdhui), { realise: false });
@@ -175,18 +223,19 @@ export function construirePrevision({ aujourdhui, premiereDate, resas, meteo = n
     for (const svc of SERVICES_AFFICHES) {
       const base = baseService({ jour, service: svc, aujourdhui, premiereDate, realises });
       const dejaReserves = reserves.get(`${jour}|${svc}`) || 0;
+      const enPension = (pension && pension.get(`${jour}|${svc}`)) || 0;
       const temps = meteoOk ? meteoDuService(meteoOk, jour, svc) : null;
       if (fermetures && maisonFermee(fermetures, jour, svc)) {
         services[svc] = {
           etat: 'ferme', semaines: base.semaines, moyenne: null,
-          reserves: dejaReserves, effet: null, calcul: null, valeur: null, plancher: false, temps,
+          reserves: dejaReserves, pension: enPension, effet: null, calcul: null, valeur: null, plancher: false, temps,
         };
         continue;
       }
       if (base.semaines < SEMAINES_MIN) {
         services[svc] = {
           etat: 'historique_court', semaines: base.semaines, moyenne: null,
-          reserves: dejaReserves, effet: null, calcul: null, valeur: null, plancher: false, temps,
+          reserves: dejaReserves, pension: enPension, effet: null, calcul: null, valeur: null, plancher: false, temps,
         };
         continue;
       }
@@ -197,11 +246,12 @@ export function construirePrevision({ aujourdhui, premiereDate, resas, meteo = n
         if (Math.abs(taux) >= EFFET_MIN) effet = { classe, taux };
       }
       const calcul = Math.round(base.moyenne * (1 + (effet ? effet.taux : 0)));
+      const certains = dejaReserves + enPension;
       services[svc] = {
         etat: 'prevision', semaines: base.semaines, moyenne: base.moyenne,
-        reserves: dejaReserves, effet, calcul,
-        valeur: Math.max(calcul, dejaReserves),
-        plancher: dejaReserves > calcul,
+        reserves: dejaReserves, pension: enPension, effet, calcul,
+        valeur: Math.max(calcul, certains),
+        plancher: certains > calcul,
         temps,
       };
     }

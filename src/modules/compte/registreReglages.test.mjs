@@ -103,6 +103,10 @@ const AVANT = {
   // 25.11.2026, lot 02 du panel : reprendre d'un autre établissement, pour
   // qui en a deux au profil (l'utilisateur de ce test n'en a aucun).
   reprendre_reglages: [],
+  // 25.11.2026, lot 06 du panel : sources de la prévision des couverts,
+  // direction de la maison qui ouvre Réservations, maison avec Hébergement
+  // (l'établissement de ce test a tous les modules).
+  previsions_couverts: ['consultant', 'patron', 'resp_cuisine'],
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {
@@ -271,4 +275,17 @@ test("reprendre d'un autre établissement : visible à deux établissements, pou
   for (const id of ['horaires_fermetures', 'objectifs', 'planning_pointage', 'journal', 'demandes']) assert.ok(!rc.includes(id), id);
   // Le patron n'ouvre pas le KDS par défaut.
   assert.ok(!sectionsReprenables(ctx('patron', deux)).some((e) => e.section === 'kds'));
+});
+
+test("lot 06 : la prévision des couverts se règle par la direction d'une maison avec Hébergement", () => {
+  const avecHotel = etab();
+  for (const role of ['patron', 'resp_cuisine']) {
+    assert.ok(visibles(role, { etablissement: avecHotel }).includes('previsions_couverts'), role);
+  }
+  for (const role of ['serveur', 'hote', undefined]) {
+    assert.equal(visibles(role, { etablissement: avecHotel }).includes('previsions_couverts'), false, String(role));
+  }
+  const sansHotel = etab(TOUS_LES_MODULES.filter((k) => k !== 'hebergement'));
+  assert.equal(visibles('consultant', { etablissement: sansHotel }).includes('previsions_couverts'), false, 'sans Hébergement');
+  assert.equal(visibles('consultant', { etablissement: etab(null) }).includes('previsions_couverts'), false, 'modulesActifs null');
 });

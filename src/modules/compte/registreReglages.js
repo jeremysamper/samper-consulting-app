@@ -255,6 +255,17 @@ export const SECTIONS = [
     garde: (ctx) => ouvreLeModule('previsions')(ctx) && peutGererReservations(ctx.user?.role),
     charger: () => import('../previsions/SectionPlanSalle.jsx'),
   },
+  // 25.11.2026, lot 06 du panel : sources de la prévision des couverts
+  // (reglages_modules, module previsions). Direction de la maison (RLS), qui
+  // ouvre Réservations, dans une maison avec Hébergement (sans séjours, la
+  // source ne ferait rien).
+  {
+    id: 'previsions_couverts', libelle: 'Réservations : prévision des couverts', onglet: 'Prévision des couverts', detail: 'Hôtes en pension comptés dans la prévision',
+    motsCles: 'prévision couverts pension demi-pension hôtes séjours hôtel', groupe: 'modules', portee: 'maison', module: 'previsions',
+    garde: (ctx) => ouvreLeModule('previsions')(ctx) && estDirectionModules(ctx.user?.role) && isPageActiveForEtab(ctx.etablissement, 'hebergement'),
+    charger: () => import('../previsions/SectionPrevisionCouverts.jsx'),
+    signaux: ['reglages_modules:previsions'],
+  },
   // Gestion de l'inventaire (14.11.2026) : la fenêtre « Gérer » de l'accueil du
   // module, avec sa garde (droit « Modifier » de l'Inventaire).
   {

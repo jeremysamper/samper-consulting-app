@@ -43,7 +43,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // ticket ne s'encaisse pas.
 // v15 (lot 05 du panel, 25.11.2026) : origine des lignes de note, deux tickets
 // payés « Chambre » (l'un porté sur une note, l'autre à porter).
-const VERSION_BASE = 'v15-' + aujourdhui();
+// v16 (lot 06 du panel, 25.11.2026) : sources de la prévision des couverts
+// (pension allumée) et un séjour en demi-pension relié à une réservation.
+const VERSION_BASE = 'v16-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.

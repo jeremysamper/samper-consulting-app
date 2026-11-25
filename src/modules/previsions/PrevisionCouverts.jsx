@@ -11,6 +11,9 @@ import {
 } from './previsionCouverts.js';
 import { chargerMeteo, npaDepuisAdresse } from './meteo.js';
 import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
+import { useReglagesModule } from '../../hooks/useReglagesModule.js';
+import { isPageActiveForEtab } from '../moduleConfig.js';
+import { pensionParService } from './previsionCouverts.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Prévision des couverts des 7 prochains jours, sous le planning des
@@ -24,6 +27,12 @@ import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
 //
 // Traduction du DOM : chaque nombre vit dans son propre nœud
 // data-no-translate, chaque libellé est une phrase fixe.
+//
+// Hôtes en pension (lot 06 du panel) : quand la direction allume la source
+// (Réglages, reglages_modules module previsions) et que la maison a
+// l'Hébergement, les séjours en demi-pension ou en pension complète comptent
+// dans le plancher. Lecture fermée aux dates, à la pension, au statut et aux
+// nombres de personnes : jamais un nom, une chambre ni un prix.
 // ═══════════════════════════════════════════════════════════════════════════
 
 const JOURS_PLURIEL = ['dimanches', 'lundis', 'mardis', 'mercredis', 'jeudis', 'vendredis', 'samedis'];
@@ -56,6 +65,47 @@ async function lireReservations(etabId, debut, fin) {
   }
 }
 
+// Séjours qui peuvent prendre un déjeuner ou un dîner sur la fenêtre, puis
+// leurs liens vers une réservation. Colonnes fermées (voir l'en-tête).
+async function lireSejoursPension(etabId, aujourdhui, fin) {
+  const sejours = [];
+  for (let de = 0; ; de += PAGE) {
+    const { data, error } = await supabase
+      .from('sejours')
+      .select('id, arrivee, depart, statut, pension, nb_adultes, nb_enfants')
+      .eq('etablissement_id', etabId)
+      .in('statut', ['prevu', 'en_maison'])
+      .in('pension', ['demi', 'complete', 'all_inclusive'])
+      .lte('arrivee', fin)
+      .gt('depart', aujourdhui)
+      .order('arrivee', { ascending: true })
+      .order('id', { ascending: true })
+      .range(de, de + PAGE - 1);
+    if (error) throw error;
+    sejours.push(...(data || []));
+    if (!data || data.length < PAGE) break;
+  }
+  const liens = [];
+  for (let i = 0; i < sejours.length; i += 100) {
+    const ids = sejours.slice(i, i + 100).map((s) => s.id);
+    for (let de = 0; ; de += PAGE) {
+      const { data, error } = await supabase
+        .from('sejour_liens')
+        .select('sejour_id, type, cible_id')
+        .eq('etablissement_id', etabId)
+        .eq('type', 'reservation')
+        .in('sejour_id', ids)
+        .order('sejour_id', { ascending: true })
+        .order('cible_id', { ascending: true })
+        .range(de, de + PAGE - 1);
+      if (error) throw error;
+      liens.push(...(data || []));
+      if (!data || data.length < PAGE) break;
+    }
+  }
+  return { sejours, liens };
+}
+
 async function lirePremiereDate(etabId) {
   const { data, error } = await supabase
     .from('reservations')
@@ -76,6 +126,15 @@ function usePrevisionCouverts(etablissement, refreshKey) {
   const [relecture, setRelecture] = useState(0);
   // Fermetures de la maison : un service fermé n'a pas de prévision.
   const maison = useReglagesMaison(etabId);
+  // Source « hôtes en pension » : allumée seulement si le réglage est lu et
+  // vrai, et si la maison a l'Hébergement. En lecture ou illisible : éteinte.
+  const reglagePrevision = useReglagesModule(etabId, 'previsions');
+  const pensionAllumee = Boolean(etabId)
+    && reglagePrevision.status === 'ready'
+    && reglagePrevision.reglages?.sources?.pension === true
+    && isPageActiveForEtab(etablissement, 'hebergement');
+  const [lecturePension, setLecturePension] = useState({ etat: 'eteinte', donnees: null });
+  const [relecturePension, setRelecturePension] = useState(0);
 
   useEffect(() => {
     if (!etabId) return undefined;
@@ -106,6 +165,31 @@ function usePrevisionCouverts(etablissement, refreshKey) {
     return () => { annule = true; };
   }, [npa, aujourdhui]);
 
+  useEffect(() => {
+    if (!pensionAllumee) { setLecturePension({ etat: 'eteinte', donnees: null }); return undefined; }
+    let annule = false;
+    const fin = zurichAjouterJours(aujourdhui, JOURS_PREVUS - 1);
+    // Des séjours déjà lus restent affichés pendant une relecture et si elle
+    // échoue ; seule une première lecture en échec le dit.
+    setLecturePension((cur) => (cur.etat === 'pret' ? cur : { etat: 'chargement', donnees: null }));
+    lireSejoursPension(etabId, aujourdhui, fin)
+      .then((d) => { if (!annule) setLecturePension({ etat: 'pret', donnees: d }); })
+      .catch((e) => {
+        console.error('[PrevisionCouverts] lecture des séjours', e);
+        if (!annule) setLecturePension((cur) => (cur.etat === 'pret' ? cur : { etat: 'erreur', donnees: null }));
+      });
+    return () => { annule = true; };
+  }, [pensionAllumee, etabId, aujourdhui, refreshKey, relecture, relecturePension]);
+
+  // Un séjour saisi ou relié ailleurs relit la pension ; abonnement posé
+  // seulement quand la source est allumée.
+  useEffect(() => {
+    const realtime = dbService.getBridge()?.realtime;
+    if (!pensionAllumee || !etabId || !realtime?.subscribeReload) return undefined;
+    const unsub = realtime.subscribeReload(['sejours', 'sejour_liens'], () => setRelecturePension((k) => k + 1));
+    return () => { unsub && unsub(); };
+  }, [pensionAllumee, etabId]);
+
   // Une réservation saisie sur un autre poste relève le plancher sans
   // recharger ; subscribeReload rejoue aussi la lecture au réveil.
   useEffect(() => {
@@ -115,14 +199,22 @@ function usePrevisionCouverts(etablissement, refreshKey) {
     return () => { unsub && unsub(); };
   }, [etabId]);
 
+  // Table de pension par service, seulement si les séjours sont lus.
+  const pension = useMemo(() => (donnees.etat === 'pret' && lecturePension.etat === 'pret' && lecturePension.donnees
+    ? pensionParService({ ...lecturePension.donnees, resas: donnees.resas, aujourdhui })
+    : null), [donnees, lecturePension, aujourdhui]);
+
   const prevision = useMemo(() => (donnees.etat === 'pret'
     ? construirePrevision({
       aujourdhui, premiereDate: donnees.premiereDate, resas: donnees.resas,
-      meteo: meteo.valeur, etatMeteo: meteo.etat, fermetures: maison.fermetures,
+      meteo: meteo.valeur, etatMeteo: meteo.etat, fermetures: maison.fermetures, pension,
     })
-    : null), [donnees, meteo, aujourdhui, maison.fermetures]);
+    : null), [donnees, meteo, aujourdhui, maison.fermetures, pension]);
 
-  return { donnees, prevision, relire: () => setRelecture((k) => k + 1) };
+  return {
+    donnees, prevision, etatPension: lecturePension.etat,
+    relire: () => setRelecture((k) => k + 1),
+  };
 }
 
 // ── Pièces d'affichage ──────────────────────────────────────────────────
@@ -163,12 +255,18 @@ function CelluleService({ cellule, svc }) {
         <span>Réservés</span>
         <span data-no-translate="" style={{ fontFamily: 'var(--font-num)', color: meta.couleur }}>{cellule.reserves}</span>
       </div>
+      {cellule.pension > 0 && (
+        <div style={{ ...texteDoux, display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+          <span>En pension</span>
+          <span data-no-translate="" style={{ fontFamily: 'var(--font-num)', color: meta.couleur }}>{cellule.pension}</span>
+        </div>
+      )}
       {cellule.temps && <div style={{ ...texteDoux, color: 'var(--text2)' }}>{cellule.temps.libelle}</div>}
     </div>
   );
 }
 
-function Composition({ jour, cellule, svc }) {
+function Composition({ jour, cellule, svc, pensionLue }) {
   const meta = SERVICE_META[svc];
   const libelleMoyenne = `Moyenne des ${JOURS_PLURIEL[jour.jourSemaine]} ${svc === 'midi' ? 'midi' : 'soir'}`;
   return (
@@ -185,9 +283,14 @@ function Composition({ jour, cellule, svc }) {
             />
           )}
           <Ligne libelle="Déjà réservés" valeur={cellule.reserves} />
+          {pensionLue && <Ligne libelle="Hôtes en pension, sans table réservée" valeur={cellule.pension} />}
           <Ligne libelle="Prévision" valeur={cellule.valeur} fort />
           {cellule.plancher && (
-            <div style={{ ...texteDoux, marginTop: 2 }}>Les réservations déjà prises dépassent le calcul : elles font la prévision.</div>
+            <div style={{ ...texteDoux, marginTop: 2 }}>
+              {cellule.pension > 0
+                ? 'Les réservations et les hôtes en pension dépassent le calcul : ils font la prévision.'
+                : 'Les réservations déjà prises dépassent le calcul : elles font la prévision.'}
+            </div>
           )}
         </>
       ) : cellule.etat === 'ferme' ? (
@@ -197,6 +300,7 @@ function Composition({ jour, cellule, svc }) {
           <div style={{ ...texteDoux, marginBottom: 2 }}>{`Pas de prévision : moins de ${SEMAINES_MIN} semaines comparables.`}</div>
           <Ligne libelle="Semaines comptées" valeur={cellule.semaines} />
           <Ligne libelle="Déjà réservés" valeur={cellule.reserves} />
+          {pensionLue && <Ligne libelle="Hôtes en pension, sans table réservée" valeur={cellule.pension} />}
         </>
       )}
       {cellule.temps && (
@@ -227,7 +331,7 @@ const RAISONS = {
   sans_mesures: 'effet de la météo non mesurable : aucune station de mesure MétéoSuisse à moins de 25 km.',
 };
 
-function Constats({ prevision }) {
+function Constats({ prevision, etatPension, relire }) {
   const { statut, semainesMax, etatMeteo, meteo, effets } = prevision;
   const lignes = [];
   if (statut === 'historique_court') {
@@ -272,13 +376,23 @@ function Constats({ prevision }) {
       );
     }
   }
+  if (etatPension === 'pret') {
+    lignes.push(<div key="p" style={texteCourant}>Les hôtes en pension comptent dans la prévision. Source : les séjours de l'Hébergement.</div>);
+  } else if (etatPension === 'erreur') {
+    lignes.push(
+      <div key="p" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <span style={texteCourant}>Les séjours n'ont pas pu être lus : la prévision ne compte pas les hôtes en pension.</span>
+        <Btn small onClick={relire}>Réessayer</Btn>
+      </div>,
+    );
+  }
   return <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>{lignes}</div>;
 }
 
 // ── Composant ───────────────────────────────────────────────────────────
 export default function PrevisionCouverts({ etablissement, refreshKey }) {
   const isMobile = useIsMobile();
-  const { donnees, prevision, relire } = usePrevisionCouverts(etablissement, refreshKey);
+  const { donnees, prevision, etatPension, relire } = usePrevisionCouverts(etablissement, refreshKey);
   const [ouvert, setOuvert] = useState(() => zurichToday());
   const colonnes = `104px repeat(${SERVICES_AFFICHES.length}, minmax(0, 1fr))`;
 
@@ -299,7 +413,7 @@ export default function PrevisionCouverts({ etablissement, refreshKey }) {
               <Btn small onClick={relire}>Réessayer</Btn>
             </div>
           )}
-          {prevision && <Constats prevision={prevision} />}
+          {prevision && <Constats prevision={prevision} etatPension={etatPension} relire={relire} />}
         </div>
 
         {/* Sans prévision (historique court), les jours restent : leurs
@@ -380,7 +494,7 @@ export default function PrevisionCouverts({ etablissement, refreshKey }) {
                     }}>
                       {!isMobile && <div style={texteDoux}>Le calcul</div>}
                       {SERVICES_AFFICHES.map((svc) => (
-                        <Composition key={svc} jour={jour} cellule={jour.services[svc]} svc={svc} />
+                        <Composition key={svc} jour={jour} cellule={jour.services[svc]} svc={svc} pensionLue={etatPension === 'pret'} />
                       ))}
                     </div>
                   )}

@@ -7064,4 +7064,15 @@ export const UI_GLOSSARY_DE = {
   "Le ticket n'a pas pu être porté sur la note. Réessayez.": "Der Beleg konnte nicht auf die Rechnung gebucht werden. Versuchen Sie es erneut.",
   "La note n'a pas pu être vérifiée.": "Die Rechnung konnte nicht geprüft werden.",
   "Ce ticket date de plus de 14 jours : ajoutez-le à la main sur la note.": "Dieser Beleg ist älter als 14 Tage: Tragen Sie ihn von Hand auf der Rechnung ein.",
+  // Lot 06 du panel : hôtes en pension dans la prévision des couverts.
+  "En pension": "In Halb- oder Vollpension",
+  "Hôtes en pension, sans table réservée": "Gäste mit Pension, ohne reservierten Tisch",
+  "Les réservations et les hôtes en pension dépassent le calcul : ils font la prévision.": "Reservierungen und Gäste mit Pension übersteigen die Berechnung: Sie bilden die Prognose.",
+  "Les hôtes en pension comptent dans la prévision. Source : les séjours de l'Hébergement.": "Gäste mit Pension zählen in der Prognose. Quelle: die Aufenthalte der Beherbergung.",
+  "Les séjours n'ont pas pu être lus : la prévision ne compte pas les hôtes en pension.": "Die Aufenthalte konnten nicht gelesen werden: Die Prognose zählt die Gäste mit Pension nicht.",
+  "Compter les hôtes en pension": "Gäste mit Pension zählen",
+  "Les hôtes en demi-pension ou en pension complète comptent au dîner, et au déjeuner pour la pension complète. Allumez ce réglage si vous ne saisissez pas une réservation pour chaque hôte, ou si vous la reliez à son séjour.": "Gäste mit Halb- oder Vollpension zählen beim Abendessen, bei Vollpension auch beim Mittagessen. Schalten Sie dies ein, wenn Sie nicht für jeden Gast eine Reservierung erfassen oder wenn Sie sie mit seinem Aufenthalt verknüpfen.",
+  "Sources de la prévision": "Quellen der Prognose",
+  "Réservations : prévision des couverts": "Reservierungen: Gedeckprognose",
+  "Hôtes en pension comptés dans la prévision": "Gäste mit Pension in der Prognose gezählt",
 };

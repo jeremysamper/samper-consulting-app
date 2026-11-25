@@ -97,6 +97,9 @@ export const REGLAGES_MODULES = [
       ],
     },
   },
+  // Lot 06 du panel (migration 20261125_panel_lot06_previsions_sources) : la
+  // prévision des couverts compte les hôtes en pension de la branche Hôtel.
+  { module: 'previsions', config: { sources: { pension: true } } },
 ].map((r) => ({ etablissement_id: ETAB, updated_at: LE, updated_by: 'demo-patron', ...r }));
 
 export const MEP_MODELES = [

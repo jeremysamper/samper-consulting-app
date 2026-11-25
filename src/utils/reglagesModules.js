@@ -16,7 +16,7 @@
 // Lot 6b : trois modules de la branche Hôtel (étages, demandes, repas),
 // migration 20261122_lot6b_reglages_hotel.
 // Lot 5 : Journal et Statistiques, migration 20261122_lot5_bureau.
-export const MODULES_REGLES = ['pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue', 'etages', 'demandes', 'repas', 'journal', 'statistiques'];
+export const MODULES_REGLES = ['pertes', 'groupes', 'mep', 'fiches_salle', 'kds', 'catalogue', 'etages', 'demandes', 'repas', 'journal', 'statistiques', 'previsions'];
 
 // ── Journal et Statistiques (lot 5) ──────────────────────────────────────────
 // Journal : vue regroupée (les lignes identiques qui se suivent en une seule)
@@ -277,6 +277,12 @@ export function lireReglagesModule(module, config) {
         vue: VUES_JOURNAL.some((v) => v.id === c.vue) ? c.vue : 'regroupee',
         export: FORMATS_EXPORT_JOURNAL.some((f) => f.id === c.export) ? c.export : 'csv',
       };
+    case 'previsions': {
+      // Sources de la prévision des couverts. Seule la pension existe ; la
+      // clé sources recevra les suivantes. Toute valeur mal formée : éteinte.
+      const sources = c.sources && typeof c.sources === 'object' && !Array.isArray(c.sources) ? c.sources : {};
+      return { sources: { pension: sources.pension === true } };
+    }
     case 'statistiques':
       return { vue_defaut: typeof c.vue_defaut === 'string' && IDENTIFIANT.test(c.vue_defaut) ? c.vue_defaut : null };
     default:

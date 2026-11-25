@@ -98,12 +98,16 @@ export const REPRENABLES = [
 
 // Sections de reglages_modules qui ne se reprennent pas : leurs listes
 // nomment des choses d'ici (postes des modèles de mise en place, unités des
-// produits, catégories de chambres, carte à prix du room service).
+// produits, catégories de chambres, carte à prix du room service). Les
+// sources de la prévision non plus (lot 06 du panel) : compter les hôtes en
+// pension dépend de la façon dont chaque maison saisit ses réservations, et
+// une copie aveugle doublerait ses couverts.
 export const NON_REPRISES = [
   { section: 'mep', module: 'mep' },
   { section: 'catalogue', module: 'catalogue' },
   { section: 'etages', module: 'etages' },
   { section: 'repas', module: 'repas' },
+  { section: 'previsions_couverts', module: 'previsions' },
 ];
 
 // Les établissements d'où reprendre : ceux du profil, sauf l'établissement

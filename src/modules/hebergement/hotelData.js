@@ -6,6 +6,7 @@ import { getDemoData } from '../../data/demoData.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { zurichAjouterJours, zurichDateHeure, zurichMinuitIso } from '../../utils/zurichTime.js';
 import { statsPeriode } from './serieHotel.js';
+import { pensionComprend, sejourMange } from './pension.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Données de la branche Hôtel (migration 20261028_hotel_h0) : chambres, séjours
@@ -832,14 +833,8 @@ export const REPAS = [
   { id: 'dejeuner', label: 'Déjeuner' },
   { id: 'diner', label: 'Dîner' },
 ];
-// Ce qu'une pension comprend : demi-pension = petit-déjeuner et dîner.
-export function pensionComprend(pension, repas) {
-  if (pension === 'aucune') return false;
-  if (repas === 'petit_dejeuner') return true;
-  if (pension === 'petit_dejeuner') return false;
-  if (pension === 'demi') return repas === 'diner';
-  return true;
-}
+// Ce qu'une pension comprend, et qui prend quel repas : pension.js (pur).
+export { pensionComprend };
 export function mapRoomService(r) {
   return {
     id: r.id, sejourId: r.sejour_id, chambreId: r.chambre_id || null,
@@ -859,14 +854,11 @@ export const useGroupesLegers = (etabId, options = {}) => useTableHotel('groupe_
 export const totalArticles = (articles) => Math.round(articles.reduce((n, a) => n + (Number(a.quantite) || 0) * (Number(a.prix) || 0), 0) * 100) / 100;
 export const commandeOuverte = (c) => c.statut === 'recue' || c.statut === 'en_cuisine';
 
-// Couverts d'un repas un jour donné : les séjours en maison (ou arrivant ce
-// jour) dont la pension comprend ce repas et qui dorment la nuit concernée :
-// petit-déjeuner du jour J = nuit J-1 (arrivée avant J, départ >= J) ;
-// déjeuner et dîner du jour J = présents la nuit J (arrivée <= J, départ > J).
+// Couverts d'un repas un jour donné : les séjours qui le prennent
+// (sejourMange, pension.js), par nom d'hôte.
 export function couvertsRepas(sejours, jour, repas) {
   return sejours
-    .filter((s) => (s.statut === 'en_maison' || s.statut === 'prevu') && pensionComprend(s.pension, repas))
-    .filter((s) => (repas === 'petit_dejeuner' ? s.arrivee < jour && s.depart >= jour : s.arrivee <= jour && s.depart > jour))
+    .filter((s) => sejourMange(s, jour, repas))
     .sort((a, b) => a.nomHote.localeCompare(b.nomHote, 'fr'));
 }
 export const libelleReservation = (r) => `${dateCourte(r.dateService)}${r.heure ? ` ${r.heure}` : ''}, ${r.nbCouverts} couv., ${r.nom}`;

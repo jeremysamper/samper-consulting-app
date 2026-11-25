@@ -7133,6 +7133,17 @@ export const UI_GLOSSARY = {
   "Le ticket n'a pas pu être porté sur la note. Réessayez.": "The ticket could not be added to the bill. Try again.",
   "La note n'a pas pu être vérifiée.": "The bill could not be checked.",
   "Ce ticket date de plus de 14 jours : ajoutez-le à la main sur la note.": "This ticket is more than 14 days old: add it to the bill by hand.",
+  // Lot 06 du panel : hôtes en pension dans la prévision des couverts.
+  "En pension": "Half or full board",
+  "Hôtes en pension, sans table réservée": "Guests on board, without a table booked",
+  "Les réservations et les hôtes en pension dépassent le calcul : ils font la prévision.": "Bookings and guests on board exceed the calculation: they make the forecast.",
+  "Les hôtes en pension comptent dans la prévision. Source : les séjours de l'Hébergement.": "Guests on board count in the forecast. Source: the stays in Accommodation.",
+  "Les séjours n'ont pas pu être lus : la prévision ne compte pas les hôtes en pension.": "The stays could not be read: the forecast does not count guests on board.",
+  "Compter les hôtes en pension": "Count guests on board",
+  "Les hôtes en demi-pension ou en pension complète comptent au dîner, et au déjeuner pour la pension complète. Allumez ce réglage si vous ne saisissez pas une réservation pour chaque hôte, ou si vous la reliez à son séjour.": "Guests on half board or full board count at dinner, and at lunch for full board. Turn this on if you do not enter a booking for each guest, or if you link it to their stay.",
+  "Sources de la prévision": "Forecast sources",
+  "Réservations : prévision des couverts": "Bookings: covers forecast",
+  "Hôtes en pension comptés dans la prévision": "Guests on board counted in the forecast",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
