@@ -49,6 +49,9 @@ export const s = {
   itemMeta: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
   qtyTag: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text)', background: 'var(--piste)', borderRadius: 'var(--r-full)', padding: '3px 9px', whiteSpace: 'nowrap' },
   aQualifier: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--warning-text)', background: 'var(--warning-bg)', borderRadius: 'var(--r-full)', padding: '2px 8px' },
+  // « Jeté » : la seule action de la ligne en plus de sa case (pilule de 44 px).
+  jeteBtn: { minHeight: 44, padding: '0 14px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)', borderRadius: 'var(--r-full)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', cursor: 'pointer', flexShrink: 0 },
+  jete: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', background: 'var(--piste)', borderRadius: 'var(--r-full)', padding: '2px 10px', flexShrink: 0 },
   itemDel: { background: 'none', border: 'none', color: 'var(--danger-strong)', fontSize: 'var(--t3)', cursor: 'pointer', flexShrink: 0, lineHeight: 1, padding: 4 },
 
   // Editeur : chaque bloc est un Panneau, le style ne pose que sa disposition.

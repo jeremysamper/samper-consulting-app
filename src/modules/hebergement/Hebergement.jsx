@@ -5,12 +5,13 @@ import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { Btn } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
-import { canManageModule } from '../../data/demoData.js';
+import { canManageModule, getPermissionsForRole } from '../../data/demoData.js';
+import { isPageActiveForEtab, peutOuvrirPage } from '../moduleConfig.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
   aVenir, arriveesDu, couvertsPetitDejeuner, departsDu, enMaison, libelleGroupe, libelleReservation, totauxNote, trierChambres,
   useChambres, useDemandes, useForfaits, useGroupesLegers, useHotes, useLignesSejour, useOccupants, useReglagesHotel, useResaClients, useReservationsLegeres,
-  useSejourLiens, useSejours, useSpaClients, useTarifs,
+  useActivites, useInscriptions, useSejourLiens, useSejours, useSpaClients, useTarifs,
 } from './hotelData.js';
 import { LigneSejour, Liste, PageHotel, ReperesHotel, Vide, h } from './hotelUi.jsx';
 import SejourForm from './SejourForm.jsx';
@@ -77,6 +78,11 @@ export default function Hebergement({ user, etablissement }) {
   const reglage = reglages.rows[0] || null;
   // Lot H5 : les forfaits, pour le choix sur le séjour.
   const forfaits = useForfaits(etabId);
+  // Lot 6b : les activités des prochains jours, pour inscrire un séjour en un
+  // toucher depuis sa fiche (si la maison a le module et la personne y a droit).
+  const avecActivites = isPageActiveForEtab(etablissement, 'activites') && peutOuvrirPage('activites', user, getPermissionsForRole(role));
+  const activites = useActivites(etabId, { actif: avecActivites });
+  const inscriptions = useInscriptions(etabId, { actif: avecActivites });
   // Lot H7 : réservations de table et groupes reliés au séjour.
   const liens = useSejourLiens(etabId);
   const reservations = useReservationsLegeres(etabId);
@@ -283,6 +289,7 @@ export default function Hebergement({ user, etablissement }) {
           tarifs={tarifs.rows}
           forfaits={forfaits.rows}
           restaurant={restaurantDe(fiche)}
+          activites={avecActivites ? { liste: activites.rows, inscriptions } : null}
           note={resumeNote(fiche)}
           onNote={peutGerer ? (s) => setNoteId(s.id) : null}
           onOccupants={peutGerer ? (s) => setOccupantsId(s.id) : null}

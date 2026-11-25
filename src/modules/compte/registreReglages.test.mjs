@@ -39,11 +39,15 @@ const AVANT = {
   planning_contrats: ['consultant', 'patron', 'resp_cuisine'],
   reservation_en_ligne: DIRECTION,
   comptabilite: DIRECTION,
-  haccp: ['consultant'],
+  // 22.11.2026, décision D1 du plan 15 : la direction de la maison.
+  haccp: ['consultant', 'patron', 'resp_cuisine'],
   spa_en_ligne: DIRECTION,
   hebergement_tarifs: DIRECTION,
   hebergement_chambres: DIRECTION,
   activites_forfaits: DIRECTION,
+  etages: DIRECTION,
+  demandes: DIRECTION,
+  repas: DIRECTION,
   passations_taches: ['consultant', 'patron', 'resp_cuisine', 'receptionniste', 'gouvernante'],
   technique_equipements: ['consultant', 'patron', 'gouvernante', 'technicien'],
   roles: ['consultant'],
@@ -53,7 +57,9 @@ const AVANT = {
   langue: ROLES,
   demarrage: ROLES,
   menu_gestes: ROLES,
-  notifications: ['consultant', 'patron', 'resp_cuisine', 'serveur', 'hote', 'receptionniste'],
+  // 22.11.2026 (plan 15, lot 2) : l'avis d'un nouveau message s'y règle
+  // aussi, pour qui ouvre les Messages (toute l'équipe par défaut).
+  notifications: ROLES,
   // Lot R3 : réglages sortis de leur écran de travail.
   spa_emails: DIRECTION,
   factures_textes: ['consultant'],
@@ -71,6 +77,29 @@ const AVANT = {
   // 18.11.2026 : seuil des hausses de prix fournisseur, réglage neuf, pour qui
   // voit les hausses (Factures & achats et droit « Régler les factures »).
   achats_hausses: DIRECTION,
+  // 22.11.2026, plan 15, lot 2 : chaque module a sa section. Réglages de
+  // reglages_modules : direction de la maison qui ouvre le module (RLS) ;
+  // KDS fermé au patron par défaut (le module l'est). Cartes : droit
+  // « Modifier » des recettes. Points : qui gère les points. Conditions de
+  // paiement et catégories de charges : comme les hausses de prix.
+  cartes: ['consultant', 'patron', 'resp_cuisine'],
+  pertes: ['consultant', 'patron', 'resp_cuisine'],
+  mep: ['consultant', 'patron', 'resp_cuisine'],
+  groupes: ['consultant', 'patron', 'resp_cuisine'],
+  sop: ['consultant', 'patron', 'resp_cuisine'],
+  fiches_salle: ['consultant', 'patron', 'resp_cuisine'],
+  catalogue: ['consultant', 'patron', 'resp_cuisine'],
+  kds: ['consultant', 'resp_cuisine'],
+  points: DIRECTION,
+  achats_paiement: DIRECTION,
+  achats_categories: DIRECTION,
+  // Plan 15, lot 5 : le journal, réglé par qui le lit (consultant, patron).
+  journal: DIRECTION,
+  // Statistiques : direction de la maison qui ouvre le module.
+  statistiques: ['consultant', 'patron', 'resp_cuisine'],
+  // 23.11.2026 : devis et factures des groupes, réglage neuf, pour qui a le
+  // droit « Devis et factures des groupes » (consultant et patron par défaut).
+  groupes_facturation: DIRECTION,
 };
 
 test('le registre est bien formé : ids uniques, groupes connus, une section à charger', () => {
@@ -198,7 +227,9 @@ test('recherche : libellé, mots-clés, nom du module, sans accents ; vide sans 
 // encore, pour les mêmes rôles qu'avant, et mène au module ; ils ne sont plus
 // des sections.
 const RENVOI_AVANT = {
-  renvoi_carte_accueil: ['consultant', 'patron', 'resp_cuisine'],
+  // 22.11.2026 : la carte d'accueil est une section (Cartes & Recettes) ; les
+  // menus types des groupes restent dans le module.
+  renvoi_groupes_menus: ['consultant', 'patron', 'resp_cuisine'],
   renvoi_planning_masques: DIRECTION,
   renvoi_caisse_mode_test: ['consultant', 'patron', 'resp_cuisine'],
 };

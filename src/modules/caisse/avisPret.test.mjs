@@ -85,15 +85,23 @@ test('réglages : la section Notifications s\'ouvre à qui ouvre la Caisse, mêm
   });
 });
 
-test('réglages : aucun droit ne change, qui n\'a ni Réservations ni Caisse n\'a toujours pas la section', () => {
-  avecDroits('cuisinier', {}, (permissions) => {
+// Plan 15, lot 2 (22.11.2026) : l'avis d'un nouveau message se règle aussi
+// dans cette section ; qui ouvre les Messages l'a donc.
+test('réglages : aucun droit ne change, qui n\'a ni Réservations, ni Caisse, ni Messages n\'a pas la section', () => {
+  avecDroits('cuisinier', { messages: false }, (permissions) => {
     assert.equal(sectionNotifications('cuisinier', permissions), false);
   });
-  avecDroits('serveur', { previsions: false, caisse: false }, (permissions) => {
+  avecDroits('serveur', { previsions: false, caisse: false, messages: false }, (permissions) => {
     assert.equal(sectionNotifications('serveur', permissions), false);
   });
-  avecDroits('serveur', { previsions: false }, (permissions) => {
+  avecDroits('serveur', { previsions: false, messages: false }, (permissions) => {
     const sansCaisse = etab(TOUS_LES_MODULES.filter((k) => k !== 'caisse'));
     assert.equal(sectionNotifications('serveur', permissions, sansCaisse), false, 'caisse non activée pour la maison');
+  });
+});
+
+test('réglages : qui ouvre les Messages a la section, pour l\'avis d\'un nouveau message', () => {
+  avecDroits('cuisinier', {}, (permissions) => {
+    assert.equal(sectionNotifications('cuisinier', permissions), true);
   });
 });

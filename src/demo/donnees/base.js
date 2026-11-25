@@ -6,7 +6,9 @@ export const ETAB = 'etab-demo';
 export const ETABLISSEMENT = {
   id: ETAB,
   nom: 'Brasserie Démo',
-  type: 'Brasserie',
+  // Hôtel-Restaurant (D4, lot 6a) : la carte « Aujourd'hui à l'hôtel » du tableau
+  // de bord ne s'affiche que pour un établissement de type hôtel.
+  type: 'Hôtel-Restaurant',
   adresse: 'Place des Mélèzes 1, 1950 Sion',
   tel: '027 000 00 00',
   email: 'contact@brasserie-demo.ch',
@@ -20,6 +22,8 @@ export const ETABLISSEMENT = {
     'planning', 'messages', 'comptabilite', 'recettes', 'inventaire', 'pertes', 'haccp', 'sop',
     'fiches_salle', 'documents', 'catalogue', 'previsions', 'caisse', 'groupes', 'commande', 'mep',
     'statistiques', 'kds', 'pos', 'boissons',
+    // Branche Hôtel et Spa (D4, lot 6a) : modules à activer, cochés ici.
+    'spa', 'hebergement', 'etages', 'demandes', 'activites', 'passations', 'repas', 'technique',
   ],
   created_at: '2026-01-05T08:00:00Z',
   updated_at: '2026-11-01T08:00:00Z',
@@ -51,6 +55,7 @@ export const EQUIPE = [
   p('demo-serv-2', 'Lucas', 'Meier', 'serveur', 'Serveur'),
   p('demo-serv-3', 'Léa', 'Fontaine', 'serveur', 'Barmaid'),
   p('demo-hote', 'Nina', 'Rossi', 'hote', 'Accueil'),
+  p('demo-spa', 'Maya', 'Lehmann', 'praticien_spa', 'Praticienne spa'),
 ];
 
 export const ROLES_DEMO = [
@@ -58,6 +63,9 @@ export const ROLES_DEMO = [
   { role: 'resp_cuisine', libelle: 'Responsable cuisine', userId: 'demo-chef' },
   { role: 'cuisinier', libelle: 'Cuisinier', userId: 'demo-cuisinier' },
   { role: 'serveur', libelle: 'Serveur', userId: 'demo-serveur' },
+  // Lot 6a : l'accueil voit l'hôtel et le spa, la praticienne voit le spa.
+  { role: 'hote', libelle: 'Réception', userId: 'demo-hote' },
+  { role: 'praticien_spa', libelle: 'Praticienne spa', userId: 'demo-spa' },
 ];
 
 // ── Dates ────────────────────────────────────────────────────────────────────

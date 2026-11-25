@@ -20,6 +20,7 @@ import EtiquetteRapideModal from '../haccp/EtiquetteRapideModal.jsx';
 import { fmtQte, fmtPortions, fmtFacteur, parseNombre, basePortionsDe, estRecalcule } from '../../utils/echelleRecette.js';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { BoutonActions, Fenetre } from '../../components/ui/Fenetres.jsx';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import { messageErreur } from '../../utils/messageErreur.js';
 import { Btn, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
@@ -40,6 +41,7 @@ import { confirmLegacy, getBrowserWindow } from '../../legacy/legacyApi.js';
 import { useShellMode, estTactile } from '../../hooks/useShellMode.js';
 import PhotoFiche from '../../components/fiches/PhotoFiche.jsx';
 import AllergenesFiche from '../../components/fiches/AllergenesFiche.jsx';
+import { allergenesProbablesNonDeclares } from '../../utils/allergenes.js';
 import { photoDeRecette } from '../../components/fiches/rangementFiches.js';
 import VitrineCarte, { clePlat } from './VitrineCarte.jsx';
 import VitrineFiches, { fichesTrouvees } from './VitrineFiches.jsx';
@@ -659,7 +661,11 @@ const RecetteDetail = ({ recette, photo = null, user, etablissement, onBack, can
         </div>
       </header>
 
-      <AllergenesFiche ids={recette.allergenesIds} variante="bandeau" />
+      <AllergenesFiche
+        ids={recette.allergenesIds}
+        variante="bandeau"
+        probables={allergenesProbablesNonDeclares((recette.ingredients || []).map((i) => i.nom), recette.allergenesIds)}
+      />
 
       <div className="fv-fiche-cols">
         <section className="fv-bloc" data-fiche-section="ingredients">
@@ -1263,7 +1269,7 @@ const ms = {
 // Cherche un terme (ex. « poivre », « gluten ») dans TOUTES les recettes de
 // l'établissement et liste précisément lesquelles le contiennent (ingrédient
 // matché + allergènes déclarés + plat(s) de rattachement).
-const QUICK_ALLERGENES = ['Gluten', 'Lactose', 'Œufs', 'Fruits à coque', 'Arachides', 'Soja', 'Sésame', 'Moutarde'];
+const QUICK_ALLERGENES = ['Gluten', 'Lait', 'Œufs', 'Fruits à coque', 'Arachides', 'Soja', 'Sésame', 'Moutarde'];
 
 const IngredientSearchModal = ({ recettes, recettesCachees = [], plats, onPick, onClose }) => {
   const [query, setQuery] = React.useState('');
@@ -1486,7 +1492,9 @@ const Recettes = ({ user, etablissement }) => {
   // seul état, partagé avec la section « Carte d'accueil » de la page des
   // réglages (carteAccueil.js) jusqu'au 18.11.2026 ; depuis, le bouton de la
   // carte est le seul endroit (la recherche des réglages y renvoie).
-  const { carteId: defaultCarteId, choisir: choisirCarteAccueil } = useCarteAccueil(etabId);
+  // Carte d'accueil : choisie dans Réglages > Cartes & Recettes ; l'écran la
+  // montre seulement (« Carte par défaut »).
+  const { carteId: defaultCarteId } = useCarteAccueil(etabId);
 
   // Écran du module : l'écran d'arrivée (la carte du moment, la recherche, les
   // actions et la gestion, sur place), et l'écran « Une étiquette », qui garde
@@ -1572,13 +1580,6 @@ const Recettes = ({ user, etablissement }) => {
     setTimeout(() => quandRetoursArrives(() => setSelectedRecette(null)), 0);
   }, []);
 
-  const toggleDefaultCarte = async (carteId) => {
-    const next = defaultCarteId === carteId ? null : carteId;
-    try {
-      await choisirCarteAccueil(next);
-      notifyLegacy(next ? 'Carte d\'accueil enregistrée' : 'Carte d\'accueil retirée', 'success');
-    } catch (e) { notifyLegacy('Enregistrement impossible. ' + messageErreur(e, 'recettes'), 'error'); }
-  };
 
   React.useEffect(() => {
     if (!legacySB) {
@@ -2060,8 +2061,9 @@ const Recettes = ({ user, etablissement }) => {
 
   // ─── Écran d'arrivée ──────────────────────────────────────────────────────
   // Tout sur un écran, sans accueil à tuiles : la recherche dans toutes les
-  // fiches, les actions (Nouvelle fiche, Allergènes, Exporter, Une étiquette),
-  // le menu « Gérer » (cartes et fiches, pour qui gère les cartes), les
+  // fiches, « Nouvelle fiche », un seul menu (« Gérer » pour qui gère les
+  // cartes, « Actions » sinon : Chiffrage, Allergènes, Exporter, Une étiquette,
+  // puis les cartes et les fiches), les
   // onglets de cartes et l'onglet Bibliothèque. Le module s'ouvre sur la carte
   // du moment : la carte d'accueil choisie, sinon la première ; sans aucune
   // carte, sur la bibliothèque. Une recherche montre la bibliothèque filtrée,
@@ -2084,7 +2086,6 @@ const Recettes = ({ user, etablissement }) => {
       ? [...selection.ids].filter(id => !montrees.has(id))
       : [...selection.ids, ...montrees]);
   };
-  const nbArchives = archivedCartes.length;
   const biblioVide = recettesEtab.length === 0 && recettesArchivees.length === 0 && (plats.length === 0 || dataStatus !== 'ready');
 
   return (
@@ -2098,40 +2099,41 @@ const Recettes = ({ user, etablissement }) => {
           <RechercheFiches value={search} onChange={setSearch} />
           {!selection.active && (
             <div className="module-actions rc-actions">
+              {/* Deux entrées (lot 3, tablette) : « Nouvelle fiche » et un seul
+                  menu. Chiffrage, Allergènes, Exporter et Une étiquette y
+                  passent, chacun avec sa garde d'avant ; qui ne gère pas les
+                  cartes y trouve les mêmes outils, sous le nom « Actions ». */}
               {canFiches && <Btn variant="primary" onClick={creerFiche}>Nouvelle fiche</Btn>}
-              {canChiffrer && <Btn onClick={() => { setFicheChiffrage(null); setEcran('chiffrage'); }} title="Coûts, prix de vente et marges des fiches et des plats">Chiffrage</Btn>}
-              <Btn onClick={() => setShowIngredientSearch(true)} title="Trouver dans quelles recettes un ingrédient ou allergène apparaît">Allergènes</Btn>
-              <Btn onClick={() => setShowExportModal(true)} title="Exporter une carte entière, des plats ou des recettes dans un seul PDF">Exporter</Btn>
-              {canEtiqueter && <Btn onClick={() => setEcran('etiquette')} title="DLC d'une préparation">Une étiquette</Btn>}
-              {canManageCartes && (
-                <BoutonActions
+              <BoutonActions
                   id="recettes-gerer"
-                  label="Gérer"
+                  label={canManageCartes ? 'Gérer' : 'Actions'}
                   style={rs.gererBtn}
-                  titre="Gérer les cartes et les fiches"
+                  titre={canManageCartes ? 'Gérer les cartes et les fiches' : 'Actions sur les fiches'}
                   sections={[
-                    { titre: 'Cartes', items: [
+                    { titre: canManageCartes ? 'Outils' : undefined, items: [
+                      canChiffrer && { titre: 'Chiffrage', detail: 'Coûts, prix de vente et marges des fiches et des plats', onClick: () => { setFicheChiffrage(null); setEcran('chiffrage'); } },
+                      { titre: 'Allergènes', detail: 'Trouver dans quelles recettes un ingrédient ou allergène apparaît', onClick: () => setShowIngredientSearch(true) },
+                      { titre: 'Exporter', detail: 'Exporter une carte entière, des plats ou des recettes dans un seul PDF', onClick: () => setShowExportModal(true) },
+                      canEtiqueter && { titre: 'Une étiquette', detail: "DLC d'une préparation", onClick: () => setEcran('etiquette') },
+                    ] },
+                    canManageCartes && { titre: 'Cartes', items: [
                       { titre: 'Ajouter une carte', detail: 'Un onglet de plus, à remplir de plats', onClick: () => barreCartesRef.current?.creer() },
                       activeCarte && {
                         titre: 'Modifier la carte',
                         detail: <><span data-no-translate="">{String(activeCarte.nom ?? '').trim() || '?'}</span><span>{isConsultant ? ' : nom, dates, archiver, cacher, supprimer' : ' : nom, dates, archiver, supprimer'}</span></>,
                         onClick: () => barreCartesRef.current?.modifier(activeCarte),
                       },
-                      cartes.length > 1 && { titre: 'Ordre des cartes', detail: "Changer l'ordre des onglets, de gauche à droite", onClick: () => barreCartesRef.current?.ordre() },
-                      nbArchives > 0 && {
-                        titre: 'Archives',
-                        detail: <><span data-no-translate="">{nbArchives}</span> <span>{nbArchives > 1 ? 'cartes archivées, à restaurer' : 'carte archivée, à restaurer'}</span></>,
-                        onClick: () => barreCartesRef.current?.archives(),
-                      },
                     ] },
-                    { titre: 'Fiches', items: [
+                    canManageCartes && { titre: 'Fiches', items: [
                       canFiches && { titre: 'Importer des fiches', detail: peutLireFichesParIA(user) ? 'Depuis une photo, un PDF ou le modèle Excel, rangées dans une carte' : 'Depuis le modèle Excel, une ou plusieurs à la fois, rangées dans une carte', onClick: () => setShowImport(true) },
                       canFiches && { titre: 'Sélectionner des fiches', detail: 'Pour les rattacher à des plats, les archiver ou les supprimer', onClick: entrerSelection },
                       isConsultant && { titre: 'Détecter les allergènes', detail: 'Analyse des ingrédients de chaque fiche, à vérifier ensuite', onClick: () => detectionRef.current?.lancer() },
                     ] },
-                  ]}
+                  ].filter(Boolean)}
                 />
-              )}
+              {/* Ordre des onglets, carte d'accueil, cartes cachées et
+                  archives : Réglages > Cartes & Recettes. */}
+              <BoutonRegler section="cartes" user={user} etablissement={etablissement} />
             </div>
           )}
         </div>
@@ -2222,16 +2224,8 @@ const Recettes = ({ user, etablissement }) => {
                 {canFiches && (
                   <button style={rs.printBtn} onClick={() => setPlatEdite({ carteId: activeCarte.id })}>Ajouter un plat</button>
                 )}
-                {canManageCartes && (
-                  <button
-                    style={{...rs.homeBtn, ...(defaultCarteId === activeCarte.id ? rs.homeBtnActive : {})}}
-                    onClick={() => toggleDefaultCarte(activeCarte.id)}
-                    title={defaultCarteId === activeCarte.id ? 'Carte par défaut : cliquer pour retirer' : 'Ouvrir cette carte par défaut à l\'arrivée sur le module'}
-                  >
-                    {defaultCarteId === activeCarte.id
-                      ? 'Carte par défaut'
-                      : (isMobile ? 'Par défaut' : 'Définir par défaut')}
-                  </button>
+                {defaultCarteId === activeCarte.id && (
+                  <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text2)' }}>Carte par défaut</span>
                 )}
                 {/* Une carte cachée n'est servie qu'au consultant : le badge dit
                     explicitement que la brigade ne la voit pas, sinon rien ne

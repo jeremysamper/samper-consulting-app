@@ -12,6 +12,9 @@ import { useMiseEnPlace } from '../hooks/useMiseEnPlace.js';
 import { PosEmptyState }  from '../components/PosEmptyState.jsx';
 import { PosExportButton } from '../components/PosExportButton.jsx';
 import { ArrowRight } from 'lucide-react';
+import { nomLisible } from '../lib/nomLisible.js';
+import { navigateToPage } from '../../../services/navigationService.js';
+import { Btn } from '../../../components/ui/index.jsx';
 
 const PRINT_ID = 'pos-print-mise-en-place';
 
@@ -52,7 +55,7 @@ function ReliableBadge({ reliable, occurrences }) {
 
 // ── Ligne de plat ─────────────────────────────────────────────────
 
-function ItemRow({ item }) {
+function ItemRow({ item, sansBadge = false }) {
   return (
     <div style={{
       display:       'flex',
@@ -75,7 +78,7 @@ function ItemRow({ item }) {
         textOverflow: 'ellipsis',
         whiteSpace:   'nowrap',
       }}>
-        {item.name}
+        {nomLisible(item.name)}
       </div>
 
       {/* Flèche : dessin seul, sans caractère dans le texte. */}
@@ -97,8 +100,8 @@ function ItemRow({ item }) {
         portion{item.qty !== 1 ? 's' : ''}
       </div>
 
-      {/* Badge */}
-      <ReliableBadge reliable={item.reliable} occurrences={item.occurrences} />
+      {/* Badge : retiré quand la mention vaut pour tous les plats (dite en tête). */}
+      {!sansBadge && <ReliableBadge reliable={item.reliable} occurrences={item.occurrences} />}
     </div>
   );
 }
@@ -124,9 +127,20 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
   }
 
   const mappedCount = items.length;
+  // Même historique court pour tous les plats : la mention est dite une fois
+  // en tête de la liste, pas répétée sur chaque ligne.
+  const courtCommun = items.every((i) => !i.reliable && i.occurrences === items[0].occurrences)
+    ? items[0].occurrences : null;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+      {/* La liste se prépare dans le module Mise en place (plan 15, lot 4) :
+          ces quantités y sont reprises, ajustées par la prévision. */}
+      <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 'var(--t2)', color: 'var(--text2)', flex: '1 1 240px' }}>Préparez la liste de demain dans la Mise en place : ces quantités y sont reprises.</span>
+        <Btn variant="ghost" onClick={() => navigateToPage('mep')}>Ouvrir la Mise en place</Btn>
+      </div>
 
       {/* Barre d'actions (hors impression) */}
       <div className="no-print" style={{
@@ -175,10 +189,16 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
           )}
         </div>
 
+        {courtCommun != null && (
+          <div data-pos-historique-court="" style={{ fontSize: 'var(--t2)', color: 'var(--warning-text)' }}>
+            <span>Historique court pour tous les plats :</span> <span data-no-translate>{courtCommun}</span> <span>{courtCommun > 1 ? 'jours de ventes' : 'jour de ventes'}</span>
+          </div>
+        )}
+
         {/* Liste des plats */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {items.map((item) => (
-            <ItemRow key={item.posItemId} item={item} />
+            <ItemRow key={item.posItemId} item={item} sansBadge={courtCommun != null} />
           ))}
         </div>
 
@@ -195,8 +215,11 @@ export default function MiseEnPlace({ etablissement, onNavigateToMapping }) {
             {onNavigateToMapping && (
               <button
                 onClick={onNavigateToMapping}
-                className="no-print"
+                className="no-print touch-target"
                 style={{
+                  display:      'inline-flex',
+                  alignItems:   'center',
+                  minHeight:    24,
                   marginLeft:   6,
                   background:   'none',
                   border:       'none',

@@ -89,7 +89,8 @@ export function Choix({ titre, detail, onClick, danger = false, actif = false, d
 // Bouton nommé qui ouvre une fenêtre de choix rangés par sections.
 // sections = [{ titre?, items: [{ titre, detail?, onClick, danger? } | null] }]
 // disabled : le bouton déclencheur reste visible mais inactif (export en cours).
-export function BoutonActions({ id, label, style, disabled = false, titre, sousTitre, sections }) {
+// ariaLabel : nom accessible quand le bouton ne porte qu'un picto.
+export function BoutonActions({ id, label, ariaLabel, style, disabled = false, titre, sousTitre, sections }) {
   const [ouvert, setOuvert] = React.useState(false);
   const fermer = React.useCallback(() => setOuvert(false), []);
   const visibles = sections
@@ -98,7 +99,7 @@ export function BoutonActions({ id, label, style, disabled = false, titre, sousT
   if (!visibles.length) return null;
   return (
     <>
-      <button type="button" style={style} disabled={disabled} onClick={() => setOuvert(true)} aria-haspopup="dialog" aria-expanded={ouvert}>
+      <button type="button" style={style} disabled={disabled} onClick={() => setOuvert(true)} aria-haspopup="dialog" aria-expanded={ouvert} aria-label={ariaLabel} title={ariaLabel}>
         {label}
       </button>
       {ouvert && (

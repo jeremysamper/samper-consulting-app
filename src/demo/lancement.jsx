@@ -7,6 +7,7 @@ import App from '../App.jsx';
 import { borneAuLancement } from '../modules/planning/borne/borneAppareil.js';
 import BandeauDemo from './BandeauDemo.jsx';
 import { installPreloadErrorRecovery } from '../utils/preloadErrorRecovery.js';
+import { installDefilementSouris } from '../utils/defilementSouris.js';
 import { installBrandPrintStyles } from '../design/installPrintStyles.js';
 import { appliquerPreferences } from '../services/preferencesAppareil.js';
 import { appliquerThemeInitial } from '../hooks/useTheme.js';
@@ -17,6 +18,7 @@ appliquerThemeInitial();
 appliquerPreferences();
 installPreloadErrorRecovery();
 installBrandPrintStyles();
+installDefilementSouris();
 
 class Garde extends React.Component {
   constructor(props) {

@@ -142,7 +142,7 @@ test('reperesDuJour : chiffres, détail en parties', () => {
     ['equipe', 'planning', 2, false, false],
   ]);
   assert.deepEqual(r[0].detail, [{ n: 42 }, { t: 'à midi' }, { t: ',' }, { n: 68 }, { t: 'le soir' }]);
-  assert.deepEqual(r[1].detail, [{ n: 14 }, { t: 'personnes à' }, { n: '19 h 30' }]);
+  assert.deepEqual(r[1].detail, [{ n: 14 }, { t: 'couverts à' }, { n: '19 h 30' }]);
   assert.equal(r[1].libelle, 'groupe aujourd\'hui');
   assert.deepEqual(r[2].detail, [{ n: 1 }, { t: 'absence' }]);
 });
@@ -246,4 +246,20 @@ test("pertes par semaine : tranches de sept jours du mois, jusqu'à la tranche d
   assert.deepEqual(pertesParSemaine(pertes, JOUR), { nombres: [2, 1, 0, 0, 2], total: 5, aValider: 2 });
   assert.deepEqual(pertesParSemaine(pertes, '2026-10-03'), { nombres: [1], total: 1, aValider: 2 });
   assert.deepEqual(pertesParSemaine([], '2026-10-15'), { nombres: [0, 0, 0], total: 0, aValider: 0 });
+});
+
+test('carte de l\'équipe : le service en cours, sinon le prochain, sinon le dernier', async () => {
+  const { serviceEnVue, phraseGroupe } = await import('./tableauLogique.js');
+  const jour = '2026-11-22';
+  const midiFini = { date: jour, debut: '11:00', fin: '14:30', pointageDebut: '10:58', pointageFin: '14:34' };
+  const soir = { date: jour, debut: '18:00', fin: '23:00' };
+  assert.equal(serviceEnVue([midiFini, soir], jour, 17 * 60), 'soir');
+  assert.equal(serviceEnVue([{ ...midiFini, pointageFin: null }, soir], jour, 12 * 60), 'midi');
+  // Un midi oublié au pointage ne retient pas la carte une fois l'horaire fini.
+  assert.equal(serviceEnVue([{ ...midiFini, pointageDebut: null, pointageFin: null }, soir], jour, 17 * 60), 'soir');
+  assert.equal(serviceEnVue([midiFini], jour, 20 * 60), 'midi');
+  assert.equal(serviceEnVue([], jour, 600), null);
+  // Groupes : le menu et les couverts, le client étant nommé à côté.
+  assert.equal(phraseGroupe({ typeGroupe: 'groupe', menuNumero: 1, nbPax: 18, heure: '19:00' }), 'menu 1, 18 couverts à 19 h');
+  assert.equal(phraseGroupe({ typeGroupe: 'mariage', menuNumero: 2, nbPax: 1 }), 'Mariage, menu 2, 1 couvert');
 });

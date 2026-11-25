@@ -3,7 +3,8 @@ import { supabase } from '../services/supabase.js';
 import { dbService } from '../services/dbService.js';
 import { addDays, isoDate, parseLocalDate } from '../utils/dateHelpers.js';
 import { zurichToday } from '../utils/zurichTime.js';
-import { JOURS_ANTICIPATION } from '../modules/groupes/typesGroupe.js';
+import { reglerGroupes, joursAnticipation } from '../modules/groupes/typesGroupe.js';
+import { useReglagesModule } from './useReglagesModule.js';
 
 // Fichier à part de useGroupes.js, volontairement : ce hook est importé par la
 // coque (AppLayout), donc embarqué dans le bundle de démarrage. Le garder avec
@@ -32,6 +33,10 @@ const RETRY_ALERTE_MS = 30000;
 
 export function useGroupesAlerte(etablissementId, { enabled = true } = {}) {
   const [count, setCount] = useState(0);
+  // Délai d'alerte de la maison (Réglages > Groupes), 14 jours sans réglage.
+  const { reglages } = useReglagesModule(enabled ? etablissementId : null, 'groupes');
+  if (enabled && etablissementId) reglerGroupes(reglages);
+  const delai = reglages.delai_alerte_jours;
 
   useEffect(() => {
     if (!etablissementId || !enabled) { setCount(0); return undefined; }
@@ -49,7 +54,7 @@ export function useGroupesAlerte(etablissementId, { enabled = true } = {}) {
     const compter = async () => {
       if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
       const debut = zurichToday();
-      const fin = isoDate(addDays(parseLocalDate(debut), JOURS_ANTICIPATION));
+      const fin = isoDate(addDays(parseLocalDate(debut), delai || joursAnticipation()));
       const { count: n, error } = await supabase
         .from(TABLE)
         .select('id', { count: 'exact' })
@@ -86,7 +91,7 @@ export function useGroupesAlerte(etablissementId, { enabled = true } = {}) {
       mounted = false;
       arreter();
     };
-  }, [etablissementId, enabled]);
+  }, [etablissementId, enabled, delai]);
 
   return count;
 }

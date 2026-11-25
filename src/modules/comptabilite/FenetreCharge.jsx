@@ -2,7 +2,7 @@ import React from 'react';
 import { Fenetre, st as fs } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { enregistrerCharge } from './comptaService.js';
-import { CATEGORIES_CHARGES, PERIODICITES, TAUX_CHARGES, TVA_PAR_CATEGORIE, libelleCategorie } from './chargesFixes.js';
+import { PERIODICITES, TAUX_CHARGES, TVA_PAR_CATEGORIE, categoriesCharges, libelleCategorie } from './chargesFixes.js';
 import { lireMontant, tauxTexte } from './comptaUi.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ export default function FenetreCharge({ etabId, charge, aujourdhui, onClose, onE
       )}
     >
       <Champ id="compta-charge-categorie" label="Catégorie">
-        <Puces nom="Catégorie" valeur={f.categorie} onChange={choisirCategorie} options={CATEGORIES_CHARGES.map(c => ({ v: c.id, label: c.label }))} />
+        <Puces nom="Catégorie" valeur={f.categorie} onChange={choisirCategorie} options={categoriesCharges().map(c => ({ v: c.id, label: c.label }))} />
       </Champ>
       <Champ id="compta-charge-libelle" label="Libellé">
         <input id="compta-charge-libelle" style={fs.champ} value={f.libelle} maxLength={120} onChange={e => set('libelle', e.target.value)} />

@@ -61,3 +61,15 @@ test('sept derniers jours : sept points jusqu\'à aujourd\'hui, leur somme est c
   assert.equal(points.reduce((s, p) => s + p.declarations, 0), fenetre.length);
   assert.deepEqual(septJoursPertes(pertes, ''), []);
 });
+
+test('affichage des pertes : date courte, unité accordée, période écrite', async () => {
+  const { datePerte, unitePerte, periodePertes } = await import('./calculPertes.js');
+  assert.equal(datePerte('2026-11-22', '2026-11-22'), '22.11');
+  assert.equal(datePerte('2025-11-22', '2026-11-22'), '22.11.2025');
+  assert.equal(unitePerte(6, 'portion'), 'portions');
+  assert.equal(unitePerte(1, 'portions'), 'portion');
+  assert.equal(unitePerte(0.5, 'l'), 'l');
+  assert.equal(periodePertes([{ date: '2026-11-08' }, { date: '2026-11-22' }]), 'novembre 2026');
+  assert.equal(periodePertes([{ date: '2026-10-01' }, { date: '2026-11-22' }]), 'du 1er octobre au 22 novembre 2026');
+  assert.equal(periodePertes([]), '');
+});

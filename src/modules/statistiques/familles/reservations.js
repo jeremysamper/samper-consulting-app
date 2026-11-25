@@ -23,9 +23,9 @@ const joursDe = (p, isos) => (p.parJourSemaine || []).filter((j) => isos.include
 const nf0 = new Intl.NumberFormat('fr-CH', { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat('fr-CH', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const absent = (v) => v === null || v === undefined || !Number.isFinite(v);
-const entier = (v) => (absent(v) ? 'n/a' : nf0.format(Math.round(v)));
-const decimal = (v) => (absent(v) ? 'n/a' : nf1.format(v));
-const pourCent = (v) => (absent(v) ? 'n/a' : `${nf0.format(v * 100)} %`);
+const entier = (v) => (absent(v) ? 'pas de chiffre' : nf0.format(Math.round(v)));
+const decimal = (v) => (absent(v) ? 'pas de chiffre' : nf1.format(v));
+const pourCent = (v) => (absent(v) ? 'pas de chiffre' : `${nf0.format(v * 100)} %`);
 const pl = (n, un, plusieurs) => (Math.abs(Math.round(n || 0)) > 1 ? plusieurs : un);
 const aideDe = (f) => (p) => (p?.chiffres ? f(p.chiffres) : null);
 

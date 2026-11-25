@@ -51,6 +51,28 @@ export function equipeParEtat(horaires, maintenant) {
   return comptes;
 }
 
+// Service d'un horaire : le type posé au planning, sinon l'heure de début
+// (avant 16 h, le midi). Même règle que le tableau de bord.
+export function serviceDeHoraire(s) {
+  if (s?.typeShift === 'midi' || s?.typeShift === 'soir') return s.typeShift;
+  const debut = enMinutes(s?.debut);
+  return debut == null || debut < 16 * 60 ? 'midi' : 'soir';
+}
+
+// Service dont parlent la carte et les chiffres de l'équipe du jour : celui en
+// cours (quelqu'un en poste, ou pas pointé alors que l'horaire court encore),
+// sinon le prochain, sinon le dernier. null sans horaire. « 7 pointés sur 7 »
+// (le midi) à côté de « 0 en poste, 7 attendus » (le soir) se contredisaient.
+export function serviceDuJour(horaires, maintenant) {
+  const tries = [...(horaires || [])].sort((a, b) => (a.debut || '').localeCompare(b.debut || ''));
+  if (!tries.length) return null;
+  const court = (s) => { const fin = enMinutes(s.fin); return fin == null || fin > maintenant; };
+  const enCours = tries.find((s) => (s.pointageDebut && !s.pointageFin) || (!s.pointageDebut && etatHoraire(s, maintenant) === 'en_retard' && court(s)));
+  if (enCours) return serviceDeHoraire(enCours);
+  const prochain = tries.find((s) => !s.pointageDebut && etatHoraire(s, maintenant) === 'attendu');
+  return serviceDeHoraire(prochain || tries[tries.length - 1]);
+}
+
 export function heuresPrevues(horaires) {
   const minutes = (horaires || []).reduce((t, s) => t + (dureeMinutes(s.debut, s.fin, s.pause) || 0), 0);
   return minutes / 60;

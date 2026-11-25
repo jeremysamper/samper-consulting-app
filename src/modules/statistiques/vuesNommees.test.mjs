@@ -39,3 +39,13 @@ test('lecture : une forme fausse est écartée ; à l\'ouverture, une mesure qu\
   const ouverte = nettoyerVue(vue(['a', 'cachee']), visibles, '2026-11-12');
   assert.deepEqual(ouverte.graphiques[0].mesures, ['a']);
 });
+
+test('comparaison à durée égale et vue par défaut sur les ventes de la maison', async () => {
+  const { bornesDeComparaison, vueParDefaut } = await import('./vueStatistiques.js');
+  // Ce mois au 22 : comparé au 1er au 22 du mois précédent.
+  assert.deepEqual(bornesDeComparaison({ debut: '2026-11-01', fin: '2026-11-30' }, 'precedente', '2026-11-22'), { debut: '2026-10-01', fin: '2026-10-22' });
+  // Mois clos : le mois précédent entier.
+  assert.deepEqual(bornesDeComparaison({ debut: '2026-10-01', fin: '2026-10-31' }, 'precedente', '2026-11-22'), { debut: '2026-09-01', fin: '2026-09-30' });
+  assert.equal(vueParDefaut([{ id: 'caisse.ca_ttc' }, { id: 'comptabilite.ca_ttc' }]).graphiques[0].mesures[0], 'comptabilite.ca_ttc');
+  assert.equal(vueParDefaut([{ id: 'caisse.ca_ttc' }]).graphiques[0].mesures[0], 'caisse.ca_ttc');
+});

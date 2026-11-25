@@ -1875,6 +1875,172 @@ export const pdfUtils = {
     }
   },
 
+  // ── Devis et factures des groupes ─────────────────────────────────────────
+  // payload : {
+  //   titre, numero, objet, meta,
+  //   emetteur: { nom, lignes: [texte], tva },  client: { nom, lignes: [texte] },
+  //   lignes: [{ libelle, detail, quantite, prixUnitaire, tvaTaux, montant }],
+  //   totaux: { total, parTaux: [{ taux, base, tva }] }, assujettiTva,
+  //   dejaPaye, reste, echeanceTexte, paiementTexte, conditions, mention, annuleeTexte }
+  // options.qrFacture : données validées (construireQrFacture) pour une facture
+  // à payer par virement ; le bloc va au bas de la dernière page, le contenu
+  // s'arrête au-dessus (QRB.haut moins une marge), sinon une page s'ajoute.
+  // options.retourBlob : rend le Blob au lieu d'enregistrer le fichier.
+  async exportDocumentGroupePdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined ? options.logoDataUrl : await this._resolveLogoDataUrl(etab);
+      const qr = await this._preparerQrFacture(options.qrFacture || null);
+      const doc = this._nouveauDocA4(jsPDF);
+      this._renderDocumentGroupe(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl, avecQr: !!qr });
+      if (qr) this._dessinerQrFacture(doc, qr);
+      if (options.retourBlob) return doc.output('blob');
+      doc.save(options.filename || 'document.pdf');
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportDocumentGroupePdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _renderDocumentGroupe(doc, payload, options = {}) {
+    const PAGE_W = 210, PAGE_H = 297, M = BRAND.page.marginMm;
+    const contentW = PAGE_W - 2 * M;
+    const LINE_H = 4.4;
+    const bodyBottom = PAGE_H - M;
+    const etabName = pdfSafeText((payload.emetteur?.nom || options.etablissement?.nom || '').toString());
+    const chf = (n) => {
+      const v = Number(n) || 0;
+      const [ent, dec] = Math.abs(v).toFixed(2).split('.');
+      return `${v < 0 ? '-' : ''}${ent.replace(/\B(?=(\d{3})+(?!\d))/g, "'")}.${dec}`;
+    };
+    const taux = (t) => (Number(t) ? `${String(Number(t)).replace('.', ',')} %` : 'hors TVA');
+    const drawHeader = () => this._enTeteDocument(doc, {
+      titre: pdfSafeText(String(payload.titre || '')),
+      sousTitre: pdfSafeText(String(payload.objet || '')),
+      meta: pdfSafeText(String(payload.meta || '')),
+      etablissement: etabName,
+      logoDataUrl: options.logoDataUrl || null,
+    });
+    let y = drawHeader();
+    const ensureSpace = (h) => { if (y + h > bodyBottom) { doc.addPage(); y = drawHeader(); } };
+
+    // Émetteur à gauche, client à droite.
+    const colW = (contentW - 10) / 2;
+    const bloc = (label, nom, lignes, x) => {
+      let yy = this._titreSection(doc, label, x, y, colW);
+      setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.primary);
+      doc.splitTextToSize(pdfSafeText(String(nom || '')), colW).forEach((t) => { doc.text(t, x, yy); yy += LINE_H; });
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell); doc.setTextColor(...PDF.ink);
+      (lignes || []).filter(Boolean).forEach((l) => {
+        doc.splitTextToSize(pdfSafeText(String(l)), colW).forEach((t) => { doc.text(t, x, yy); yy += LINE_H - 0.4; });
+      });
+      return yy;
+    };
+    const yEmetteur = bloc('Émetteur', payload.emetteur?.nom, payload.emetteur?.lignes, M);
+    const yClient = bloc('Client', payload.client?.nom, payload.client?.lignes, M + colW + 10);
+    y = Math.max(yEmetteur, yClient) + 6;
+
+    if (payload.annuleeTexte) {
+      setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.blockTitle); doc.setTextColor(...PDF.alert);
+      doc.text(pdfSafeText(String(payload.annuleeTexte)), M, y);
+      y += 7;
+    }
+
+    // Lignes.
+    const colLib = M + 2.5, colQte = M + contentW - 66, colPrix = M + contentW - 44, colTva = M + contentW - 27, colMont = M + contentW - 2.5;
+    ensureSpace(20);
+    const bande = () => this._bandeTableau(doc, [
+      { label: 'Désignation', x: colLib }, { label: 'Quantité', x: colQte, align: 'right' },
+      { label: 'Prix', x: colPrix, align: 'right' }, { label: 'TVA', x: colTva, align: 'right' },
+      { label: 'Montant', x: colMont, align: 'right' },
+    ], M, y - 4, contentW);
+    y = bande();
+    const lignes = Array.isArray(payload.lignes) ? payload.lignes : [];
+    if (!lignes.length) {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
+      doc.text('Aucune ligne.', colLib, y + 2);
+      y += 8;
+    }
+    lignes.forEach((l, index) => {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+      const libLignes = doc.splitTextToSize(pdfSafeText(String(l.libelle || '')), colQte - colLib - 20);
+      doc.setFontSize(BRAND.size.note);
+      const detLignes = l.detail ? doc.splitTextToSize(pdfSafeText(String(l.detail)), colQte - colLib - 20) : [];
+      const rowH = Math.max(7, libLignes.length * LINE_H + detLignes.length * 3.6 + 2.4);
+      if (y + rowH > bodyBottom) { doc.addPage(); y = drawHeader(); y = bande(); }
+      this._fondZebre(doc, index, M, y - 4, contentW, rowH);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+      libLignes.forEach((t, k) => doc.text(t, colLib, y + k * LINE_H));
+      if (detLignes.length) {
+        doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+        detLignes.forEach((t, k) => doc.text(t, colLib, y + libLignes.length * LINE_H + k * 3.6 - 0.6));
+        doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+      }
+      const qte = Number(l.quantite) || 0;
+      this._texteDroite(doc, Number.isInteger(qte) ? String(qte) : String(qte).replace('.', ','), colQte, y);
+      this._texteDroite(doc, chf(l.prixUnitaire), colPrix, y);
+      doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+      this._texteDroite(doc, payload.assujettiTva === false ? '' : taux(l.tvaTaux), colTva, y);
+      setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.primary);
+      this._texteDroite(doc, chf(l.montant), colMont, y);
+      this._filetInterne(doc, M, y + rowH - 4, M + contentW);
+      y += rowH;
+    });
+
+    // Totaux, TVA incluse par taux, déjà payé et reste.
+    const t = payload.totaux || { total: 0, parTaux: [] };
+    const lignesTotaux = [['Total TTC', t.total, true]];
+    if (Number(payload.dejaPaye)) {
+      lignesTotaux.push(['Déjà payé', -Math.abs(Number(payload.dejaPaye)), false]);
+      lignesTotaux.push(['Reste à payer', payload.reste, true]);
+    }
+    const tvaLignes = payload.assujettiTva === false
+      ? ['Non assujetti à la TVA.']
+      : (t.parTaux || []).filter((g) => Number(g.taux)).map((g) => `dont TVA ${taux(g.taux)} sur CHF ${chf(g.base)} : CHF ${chf(g.tva)}`);
+    ensureSpace(lignesTotaux.length * 7.5 + tvaLignes.length * 4 + 8);
+    y += 2;
+    lignesTotaux.forEach(([label, montant, fort]) => {
+      const h = 7.5;
+      if (fort) this._fondTotal(doc, M + contentW / 2, y - 4.5, contentW / 2, h);
+      setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.primary);
+      this._texteDroite(doc, label, colPrix, y, BRAND.charSpace.label);
+      setBrandFont(doc, 'voice'); doc.setFontSize(fort ? BRAND.size.amountLarge : BRAND.size.amount); doc.setTextColor(...PDF.primary);
+      this._texteDroite(doc, `CHF ${chf(montant)}`, colMont, y);
+      y += h;
+    });
+    setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+    tvaLignes.forEach((l) => { this._texteDroite(doc, pdfSafeText(l), colMont, y); y += 4; });
+    if (payload.emetteur?.tva && payload.assujettiTva !== false) {
+      this._texteDroite(doc, pdfSafeText(`Numéro TVA : ${payload.emetteur.tva}`), colMont, y);
+      y += 4;
+    }
+    y += 4;
+
+    // Textes : échéance et paiement, conditions, mention.
+    const paragraphe = (titre, texte) => {
+      if (!texte) return;
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+      const ls = doc.splitTextToSize(pdfSafeText(String(texte)), contentW);
+      ensureSpace(ls.length * LINE_H + (titre ? 9 : 2));
+      if (titre) y = this._titreSection(doc, titre, M, y, contentW);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+      ls.forEach((l) => { doc.text(l, M, y); y += LINE_H; });
+      y += 3;
+    };
+    paragraphe('', [payload.echeanceTexte, payload.paiementTexte].filter(Boolean).join('\n'));
+    paragraphe(payload.conditions ? 'Conditions' : '', payload.conditions);
+    paragraphe('', payload.mention);
+
+    // QR-facture : le contenu de la dernière page s'arrête au-dessus du bloc.
+    if (options.avecQr && y > QRB.haut - 6) {
+      doc.addPage();
+      drawHeader();
+    }
+  },
+
   // payload : { commune, chambre, arrivee, depart, accompagnants,
   //   occupants:[{ prenom, nom, dateNaissance, nationalite, domicileAdresse,
   //   domicileLocalite, domicilePays, pieceType, pieceNumero, arrivee, depart }] }

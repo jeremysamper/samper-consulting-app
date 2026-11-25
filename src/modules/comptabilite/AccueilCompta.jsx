@@ -1,6 +1,7 @@
 import React from 'react';
-import { Building2, CalendarRange, Coins, Landmark, Percent, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
+import { Building2, CalendarRange, Coins, FileSpreadsheet, Landmark, Percent, Receipt, Scale, TrendingUp, Users } from 'lucide-react';
 import { echeancier } from '../factures-achats/analysesAchats.js';
+import { estFacture } from '../inventaire/facturesLogic.js';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import BarrePeriode from './BarrePeriode.jsx';
 import CarteChiffre from './CarteChiffre.jsx';
@@ -8,7 +9,7 @@ import LigneManques from './LigneManques.jsx';
 import EtatAbsent from './EtatAbsent.jsx';
 import { Chf, pctTexte, pluriel } from './comptaUi.jsx';
 import { ecart, ventesComparables } from './syntheseCompta.js';
-import { libelleComparaison } from './periodesCompta.js';
+import { libelleComparaison, libellePeriode } from './periodesCompta.js';
 import { moyenneMensuelle } from './chargesFixes.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -18,6 +19,9 @@ import { moyenneMensuelle } from './chargesFixes.js';
 // la phrase qui dit ce que le module n'est pas. Une tuile hors droit n'est pas
 // rendue (Personnel : consultant et patron ; TVA, Banque et Trésorerie :
 // « Régler les factures »). Nombres et dates dans leurs propres nœuds.
+// Lot 3 (tablette) : chaque carte garde son chiffre et ce qui le qualifie
+// (ratio, chiffre incomplet, réserves) ; la comparaison, le prorata et la
+// méthode se déplient ensemble par « Voir le détail ».
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PIED = 'La comptabilité de l\'app prépare vos chiffres et vos pièces pour la fiduciaire. Elle ne tient pas les comptes et n\'établit ni le décompte TVA officiel ni les salaires.';
@@ -29,9 +33,16 @@ function Comparaison({ a, b, precedente, comparable = true }) {
   return <><span>{e}</span> <span>sur</span> <span>{libelleComparaison(precedente)}</span></>;
 }
 
+// Lot 5 : `cartes` = cartes choisies par la maison (null = les quatre) ;
+// `fiduciaire` = { pret, onExporter } pour la tuile « Pour la fiduciaire »
+// (classeur de la période affichée en une touche) ; `onManque` ouvre la
+// saisie d'un manque.
 export default function AccueilCompta({
-  barre, periode, precedente, aujourdhui, data, direction, peutEcrire, onOuvrir,
+  barre, periode, precedente, aujourdhui, data, direction, peutEcrire, onOuvrir, onManque, cartes = null, fiduciaire = null,
 }) {
+  const voit = (id) => !cartes || !cartes.length || cartes.includes(id);
+  const [detail, setDetail] = React.useState(false);
+  const avecDetail = (essentiel, plus) => (detail ? [...essentiel, ...plus] : essentiel);
   const s = data.synthese;
   const p = data.precedente;
   const { etats } = data;
@@ -39,19 +50,21 @@ export default function AccueilCompta({
   // dont les ventes sont connues (ventesComparables).
   const comparable = etats.couverture === 'ready' && ventesComparables(p?.ventes);
 
-  const caLignes = [
+  const caLignes = avecDetail([
     s.ca != null && (etats.couverture === 'ready' && s.ventes?.attendus
       ? <>hors TVA, <span>{s.ventes.avec}</span> <span>{pluriel(s.ventes.avec, 'jour sur', 'jours sur')}</span> <span>{s.ventes.attendus}</span></>
       : <>hors TVA</>),
-    s.ca != null && <Comparaison a={s.ca} b={p?.ca} precedente={precedente} comparable={comparable} />,
-  ];
-  const matiereLignes = [
+  ], [
+    s.ca != null && <Comparaison key="comparaison" a={s.ca} b={p?.ca} precedente={precedente} comparable={comparable} />,
+  ]);
+  const matiereLignes = avecDetail([
     s.ratios.matierePct != null && <><span>{pctTexte(s.ratios.matierePct)}</span> <span>du chiffre d'affaires</span></>,
     periode?.type === 'inventaire'
       ? (s.matiere.variationStock != null ? <>variation de stock comprise</> : <>pas d'inventaire au début ou à la fin</>)
-      : <>sans variation de stock</>,
-    s.matiere.ht != null && <Comparaison a={s.matiere.ht} b={p?.matiere.ht} precedente={precedente} />,
-  ];
+      : <>sans variation de stock, chiffre incomplet</>,
+  ], [
+    s.matiere.ht != null && <Comparaison key="comparaison" a={s.matiere.ht} b={p?.matiere.ht} precedente={precedente} />,
+  ]);
   // Coût du personnel : direction seulement ; « Pas encore activé » sans la
   // migration (salaires_estimes absente).
   const etatPersonnel = etats.personnel;
@@ -62,22 +75,26 @@ export default function AccueilCompta({
   const personnelLignes = !direction ? [<>réservé à la direction</>]
     : etatPersonnel === 'absente' ? [<>Pas encore activé</>]
       : personnelVide ? [personnelVide]
-        : [
+        : avecDetail([
           s.ratios.personnelPct != null && <><span>{pctTexte(s.ratios.personnelPct)}</span> <span>du chiffre d'affaires</span></>,
+        ], [
           <>estimé, charges sociales comprises</>,
           s.prorata && <><span>au prorata des jours écoulés,</span> <span>{s.prorata.ecoules}</span> <span>sur</span> <span>{s.prorata.total}</span></>,
           <Comparaison key="comparaison" a={s.personnel} b={p?.personnel} precedente={precedente} />,
-        ];
+        ]);
 
-  const resultatLignes = [
+  const resultatLignes = avecDetail([
     s.avantCharges
       ? <>avant charges fixes</>
       : <><span>après</span> <Chf v={s.charges} entier /> <span>de charges fixes</span></>,
     s.avantPersonnel && <span style={st.reserve}>avant personnel</span>,
     s.personnelPartiel && <span style={st.reserve}>personnel partiel</span>,
+  ], [
     s.prorata && <><span>au prorata des jours écoulés,</span> <span>{s.prorata.ecoules}</span> <span>sur</span> <span>{s.prorata.total}</span></>,
-    s.resultat != null && <Comparaison a={s.resultat} b={p?.resultat} precedente={precedente} comparable={comparable} />,
-  ];
+    s.resultat != null && <Comparaison key="comparaison" a={s.resultat} b={p?.resultat} precedente={precedente} comparable={comparable} />,
+  ]);
+  // Rien à déplier sans période précédente ni prorata (ni méthode du personnel).
+  const detailPossible = Boolean(precedente || s.prorata || (direction && etatPersonnel === 'ready' && !personnelVide));
 
   // ── Tuiles ──
   const absenteVentes = data.ventesJour.status === 'absente';
@@ -86,6 +103,10 @@ export default function AccueilCompta({
   const moyenne = moyenneMensuelle(data.charges.lignes, aujourdhui);
   const nCharges = data.charges.lignes.length;
   const tuiles = [
+    fiduciaire && periode && {
+      id: 'fiduciaire', libelle: 'Pour la fiduciaire', Icone: FileSpreadsheet, onClick: fiduciaire.pret ? fiduciaire.onExporter : undefined,
+      etat: fiduciaire.pret ? <><span>Excel de</span> <span>{libellePeriode(periode)}</span></> : <>Chargement…</>,
+    },
     {
       id: 'jour', libelle: 'Chiffre du jour', Icone: Coins, onClick: () => onOuvrir('jour'),
       etat: absenteVentes ? <>Pas encore activé</>
@@ -117,13 +138,17 @@ export default function AccueilCompta({
     peutEcrire && {
       id: 'tva', libelle: 'TVA', Icone: Percent, onClick: () => onOuvrir('tva'),
       etat: etats.tva !== 'ready' ? null : (() => {
-        const d = data.tva.decomptes[data.tva.defaut];
-        if (d.etat.due == null) return <span>{d.periode.libelle}</span>;
+        // Le trimestre en cours ; le précédent, tant qu'il reste à déclarer
+        // (échéance pas encore passée), est nommé à la suite.
+        const d = data.tva.decomptes[1];
+        const aDeclarer = data.tva.defaut === 0 ? data.tva.decomptes[0] : null;
+        const suite = aDeclarer ? <>, <span>{aDeclarer.periode.libelle}</span> <span>à déclarer</span></> : null;
+        if (d.etat.due == null) return <><span>{d.periode.libelle}</span>{suite}</>;
         // Trop peu de jours de ventes : ni montant ni « crédit » (tvaCompta).
-        if (!d.etat.ventesCompletes) return <><span>chiffre d'affaires incomplet pour le</span> <span>{d.periode.libelle}</span></>;
+        if (!d.etat.ventesCompletes) return <><span>chiffre d'affaires incomplet pour le</span> <span>{d.periode.libelle}</span>{suite}</>;
         return d.etat.due < 0
-          ? <><span>crédit de</span> <Chf v={-d.etat.due} /> <span>estimé pour le</span> <span>{d.periode.libelle}</span></>
-          : <><Chf v={d.etat.due} /> <span>estimés pour le</span> <span>{d.periode.libelle}</span></>;
+          ? <><span>crédit de</span> <Chf v={-d.etat.due} /> <span>estimé pour le</span> <span>{d.periode.libelle}</span>{suite}</>
+          : <><Chf v={d.etat.due} /> <span>estimés pour le</span> <span>{d.periode.libelle}</span>{suite}</>;
       })(),
     },
     peutEcrire && {
@@ -140,7 +165,7 @@ export default function AccueilCompta({
       etat: etats.achats !== 'ready' ? null : (() => {
         const { tranches, aRegler } = echeancier(data.docs, aujourdhui);
         const retard = tranches.find(t => t.id === 'retard')?.factures.length || 0;
-        if (!aRegler) return <>Toutes les factures sont réglées.</>;
+        if (!aRegler) return (data.docs || []).some(estFacture) ? <>Toutes les factures sont réglées.</> : <>Aucune facture enregistrée pour l'instant.</>;
         return <><span>{aRegler}</span> <span>{pluriel(aRegler, 'facture à régler,', 'factures à régler,')}</span> <span>{retard}</span> <span>en retard</span></>;
       })(),
     },
@@ -155,15 +180,15 @@ export default function AccueilCompta({
       {periode ? (
         <>
           <div className="compta-cartes" data-cartes="">
-            <CarteChiffre
+            {voit('ca') && <CarteChiffre
               id="ca" titre="Chiffre d'affaires" Icone={TrendingUp} etat={etats.ventes}
               valeur={<Chf v={s.ca} entier />} lignes={caLignes} onClick={() => onOuvrir('ventes')}
-            />
-            <CarteChiffre
+            />}
+            {voit('matiere') && <CarteChiffre
               id="matiere" titre="Coût matière" Icone={Receipt} etat={etats.matiere}
               valeur={<Chf v={s.matiere.ht} entier />} lignes={matiereLignes} onClick={() => onOuvrir('achats')}
-            />
-            {direction && etatPersonnel !== 'absente' ? (
+            />}
+            {!voit('personnel') ? null : direction && etatPersonnel !== 'absente' ? (
               <CarteChiffre
                 id="personnel" titre="Coût du personnel" Icone={Users} etat={etatPersonnel}
                 valeur={<Chf v={s.personnel} entier />} lignes={personnelLignes} onClick={() => onOuvrir('personnel')}
@@ -171,17 +196,22 @@ export default function AccueilCompta({
             ) : (
               <CarteChiffre
                 id="personnel" titre="Coût du personnel" Icone={Users}
-                valeur={<span style={{ color: 'var(--text2)' }}>n/a</span>}
-                lignes={personnelLignes}
+                valeur={<span style={{ color: 'var(--text2)' }}>{direction ? 'pas encore de chiffre' : 'réservé à la direction'}</span>}
+                lignes={direction ? personnelLignes : []}
               />
             )}
-            <CarteChiffre
+            {voit('resultat') && <CarteChiffre
               id="resultat" titre="Résultat estimé" Icone={Scale} etat={etats.resultat}
               valeur={<Chf v={s.resultat} entier />} lignes={resultatLignes} onClick={periode?.type === 'inventaire' ? () => onOuvrir('ensemble') : undefined}
               ton={s.resultat != null && s.resultat < 0 ? 'danger' : undefined}
-            />
+            />}
           </div>
-          <LigneManques manques={data.manquesVisibles} onOuvrir={onOuvrir} />
+          {detailPossible && (
+            <button type="button" className="touch-target" style={st.bascule} aria-expanded={detail} onClick={() => setDetail((v) => !v)} data-compta-detail="">
+              {detail ? 'Replier le détail' : 'Voir le détail'}
+            </button>
+          )}
+          <LigneManques manques={data.manquesVisibles} onOuvrir={onOuvrir} onManque={onManque} />
         </>
       ) : (
         <p style={st.phrase}>Aucun inventaire validé : la période d'inventaire commence au premier inventaire validé.</p>
@@ -196,6 +226,11 @@ export default function AccueilCompta({
 
 const st = {
   reserve: { color: 'var(--warning-text)' },
+  bascule: {
+    alignSelf: 'flex-start', minHeight: 'var(--controle)', padding: '0 16px', borderRadius: 'var(--r-full)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
+  },
   phrase: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)', lineHeight: 1.5 },
   pied: { margin: '4px 0 0', fontSize: 'var(--t1)', color: 'var(--text3)', lineHeight: 1.5, maxWidth: 640 },
 };

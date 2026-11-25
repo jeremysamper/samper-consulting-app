@@ -27,7 +27,7 @@ export default function ReperesGroupes({ reperes }) {
           Icone={CalendarRange}
           valeur={reperes.aVenir}
           libelle={reperes.aVenir > 1 ? 'groupes à venir' : 'groupe à venir'}
-          detail={<N>{reperes.pax} pax</N>}
+          detail={<><N>{reperes.pax}</N> <span>{reperes.pax > 1 ? 'couverts' : 'couvert'}</span></>}
         />
       ) : (
         <CarteRepere data-repere="a-venir" Icone={CalendarRange} texte="Aucun groupe à venir" />

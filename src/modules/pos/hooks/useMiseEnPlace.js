@@ -162,6 +162,7 @@ export function useMiseEnPlace(etablissement) {
           posItemId,
           name:       item?.name ?? posItemId,
           recipeName: recetteById[recipeId] ?? '-',
+          recipeId,
           qty,
           reliable,
           occurrences,

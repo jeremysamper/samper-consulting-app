@@ -1,5 +1,5 @@
 import React from 'react';
-import { ClipboardCheck, ClipboardList, ListChecks, ListPlus } from 'lucide-react';
+import { CalendarClock, ClipboardCheck, ClipboardList, ListChecks, ListPlus } from 'lucide-react';
 import { dbService } from '../../services/dbService.js';
 import { canManageModule } from '../../data/demoData.js';
 import { getBrowserWindow, notifyLegacy } from '../../legacy/legacyApi.js';
@@ -11,8 +11,10 @@ import { useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import MepDetail from './MepDetail.jsx';
 import MepEditor from './MepEditor.jsx';
+import PreparerDemain from './PreparerDemain.jsx';
 import { s, formatDateService } from './MiseEnPlace.styles.js';
 import { messageErreur } from '../../utils/messageErreur.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 
 // Lance `fn` une fois arrivé le retour d'historique d'une fenêtre refermée
 // (l'entrée en tête est encore la sienne), sinon tout de suite ; filet de
@@ -64,6 +66,7 @@ const MiseEnPlace = ({ user, etablissement }) => {
   const [search, setSearch] = React.useState('');
   const [activeId, setActiveId] = React.useState(null);
   const [editing, setEditing] = React.useState(null); // liste en cours d'edition (null = nouvelle)
+  const [demainOuvert, setDemainOuvert] = React.useState(false);
 
   const reload = React.useCallback(async () => {
     if (!legacySB) { setLoading(false); return; }
@@ -152,17 +155,21 @@ const MiseEnPlace = ({ user, etablissement }) => {
   }
 
   // ─── Vue liste des listes ───
+  // Une liste vide (« 0 / 0 préparation faite ») ne dit rien à qui ne peut pas
+  // la remplir : elle n'est montrée qu'à qui l'édite, avec « Préparer la liste ».
+  const listesVues = canEdit ? (listes || []) : (listes || []).filter(l => (l.itemsCount || 0) > 0);
   const q = search.trim().toLowerCase();
-  const filtered = (listes || []).filter(l => q === '' || (l.nom || '').toLowerCase().includes(q));
-  const duService = loading ? null : listeDuService(listes);
+  const filtered = listesVues.filter(l => q === '' || (l.nom || '').toLowerCase().includes(q));
+  const duService = loading ? null : listeDuService(listesVues);
   const tuiles = [
     { id: 'service', Icone: ClipboardCheck, libelle: 'Ma liste du service', etat: duService && <span data-no-translate>{duService.nom}</span>, visible: Boolean(duService), onClick: () => openDetail(duService.id) },
+    { id: 'demain', Icone: CalendarClock, libelle: 'Mise en place de demain', etat: <>selon les ventes et la prévision</>, visible: canEdit, onClick: () => setDemainOuvert(true) },
     { id: 'nouvelle', Icone: ListPlus, libelle: 'Nouvelle liste', etat: <>pour un service</>, visible: canEdit, onClick: openNew },
   ];
 
   // Repères : sur toutes les listes de l'établissement, comme la grille dessous.
-  const totalPreparations = (listes || []).reduce((n, l) => n + (l.itemsCount || 0), 0);
-  const aFaire = (listes || []).reduce((n, l) => n + Math.max(0, (l.itemsCount || 0) - (l.itemsFaits || 0)), 0);
+  const totalPreparations = listesVues.reduce((n, l) => n + (l.itemsCount || 0), 0);
+  const aFaire = listesVues.reduce((n, l) => n + Math.max(0, (l.itemsCount || 0) - (l.itemsFaits || 0)), 0);
 
   return (
     <div className="mep-page">
@@ -171,6 +178,8 @@ const MiseEnPlace = ({ user, etablissement }) => {
           <div style={s.sub}>Grosse production congelable et préparations urgentes non congelables</div>
           <div style={s.moduleActions} className="module-actions">
             <SearchToggle value={search} onChange={setSearch} placeholder="Rechercher une liste…" />
+            {/* Postes et modèles de liste : Réglages > Mise en place. */}
+            <BoutonRegler section="mep" user={user} etablissement={etablissement} />
           </div>
         </div>
 
@@ -178,7 +187,15 @@ const MiseEnPlace = ({ user, etablissement }) => {
           {/* Les autres tâches, en gros boutons au-dessus des listes ; « Nouvelle
               liste » remplace aussi l'appel de la liste vide (un seul bouton principal). */}
           {tuiles.some(t => t.visible) && <div className="mep-tuiles"><AccueilModule tuiles={tuiles} /></div>}
-          {!loading && listes.length > 0 && (
+          {demainOuvert && (
+            <PreparerDemain
+              etablissement={etablissement}
+              user={user}
+              onClose={() => setDemainOuvert(false)}
+              onCreee={(id) => { setDemainOuvert(false); reload(); openDetail(id); }}
+            />
+          )}
+          {!loading && listesVues.length > 0 && (
             <div className="mep-reperes" data-mep-reperes="">
               <CarteRepere
                 Icone={ListChecks}
@@ -186,7 +203,7 @@ const MiseEnPlace = ({ user, etablissement }) => {
                 libelle={aFaire > 1 ? 'préparations à faire' : 'préparation à faire'}
                 detail={<>sur <N>{totalPreparations}</N></>}
               />
-              <CarteRepere Icone={ClipboardList} valeur={listes.length} libelle={listes.length > 1 ? 'listes' : 'liste'} />
+              <CarteRepere Icone={ClipboardList} valeur={listesVues.length} libelle={listesVues.length > 1 ? 'listes' : 'liste'} />
             </div>
           )}
         </div>
@@ -207,9 +224,11 @@ const MiseEnPlace = ({ user, etablissement }) => {
                   <span style={s.listeTexte}>
                     <span style={s.listeNom}>{l.nom}</span>
                     <span style={s.listeDate}>{formatDateService(l.dateService)}</span>
-                    <span style={s.progressLabel}>{faits} / {total} préparation{total > 1 ? 's' : ''} faite{faits > 1 ? 's' : ''}</span>
+                    {total > 0
+                      ? <span style={s.progressLabel}>{faits} / {total} préparation{total > 1 ? 's' : ''} faite{faits > 1 ? 's' : ''}</span>
+                      : <span style={s.progressLabel}>Préparer la liste</span>}
                   </span>
-                  <Anneau part={total > 0 ? faits / total : 0} />
+                  {total > 0 && <Anneau part={faits / total} />}
                 </button>
               );
             })}

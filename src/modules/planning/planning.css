@@ -66,6 +66,9 @@
   .pl-page .ui-repere { padding: 14px 16px; }
   .pl-page .ui-repere-icone { display: inline-flex !important; }
   .pl-reperes { gap: 12px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* La carte de l'équipe rendue, le repère « pointés » ne l'est pas : deux
+     repères sur la rangée, sans trou. */
+  .pl-reperes:not(:has(> [data-repere="pointes"])) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 /* Tablette : les tuiles d'abord (« J'arrive » ou « Je pars » en tête), la
    carte à côté, les repères dessous. */

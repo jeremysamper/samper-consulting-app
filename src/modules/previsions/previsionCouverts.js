@@ -27,6 +27,7 @@
 import { SERVICES_AFFICHES, serviceAffiche } from './statutsReservation.js';
 import { SEUIL_PRECIP_MM, classeDuJour, meteoDuService } from './meteo.js';
 import { zurichAjouterJours } from '../../utils/zurichTime.js';
+import { maisonFermee } from '../../utils/reglagesMaison.js';
 
 export const JOURS_PREVUS = 7;
 export const SEMAINES = 8;        // semaines de la moyenne, par défaut
@@ -151,7 +152,9 @@ export function mesurerEffet({ service, aujourdhui, premiereDate, realises, plui
 //   premiereDate : date de la première réservation de l'établissement
 //   etatMeteo    : 'sans_localisation' | 'chargement' | 'indisponible' | 'ok'
 //   meteo        : sortie de lireMeteo quand etatMeteo vaut 'ok'
-export function construirePrevision({ aujourdhui, premiereDate, resas, meteo = null, etatMeteo }) {
+//   fermetures   : celles de la maison (Réglages > Horaires et fermetures) ;
+//                  un service fermé n'a pas de prévision (etat 'ferme').
+export function construirePrevision({ aujourdhui, premiereDate, resas, meteo = null, etatMeteo, fermetures = null }) {
   const liste = resas || [];
   const realises = couvertsParService(liste.filter((r) => r.date_service < aujourdhui), { realise: true });
   const reserves = couvertsParService(liste.filter((r) => r.date_service >= aujourdhui), { realise: false });
@@ -173,6 +176,13 @@ export function construirePrevision({ aujourdhui, premiereDate, resas, meteo = n
       const base = baseService({ jour, service: svc, aujourdhui, premiereDate, realises });
       const dejaReserves = reserves.get(`${jour}|${svc}`) || 0;
       const temps = meteoOk ? meteoDuService(meteoOk, jour, svc) : null;
+      if (fermetures && maisonFermee(fermetures, jour, svc)) {
+        services[svc] = {
+          etat: 'ferme', semaines: base.semaines, moyenne: null,
+          reserves: dejaReserves, effet: null, calcul: null, valeur: null, plancher: false, temps,
+        };
+        continue;
+      }
       if (base.semaines < SEMAINES_MIN) {
         services[svc] = {
           etat: 'historique_court', semaines: base.semaines, moyenne: null,

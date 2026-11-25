@@ -47,6 +47,9 @@ export function messageCompta(error, { salaires = false } = {}) {
 
 const nombre = (v) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
 const texte = (v) => (v == null ? null : String(v).trim() || null);
+// Les quatre cartes de l'accueil, dans l'ordre (lot 5 : la maison choisit
+// lesquelles s'affichent). Même liste que la contrainte de la base.
+export const CARTES_ACCUEIL = ['ca', 'matiere', 'personnel', 'resultat'];
 
 // ── Correspondances base / écran ──
 export const MAPPERS = {
@@ -67,6 +70,14 @@ export const MAPPERS = {
   compta_reglages: (r) => ({
     etablissementId: r.etablissement_id, methodeTva: r.methode_tva || 'effective', tauxTdfn: nombre(r.taux_tdfn),
     chargesSocialesPct: nombre(r.charges_sociales_pct) ?? 16, coutHoraireMoyen: nombre(r.cout_horaire_moyen),
+    // Lot 2 du plan 15 : délai de paiement par défaut et catégories de charges
+    // de la maison (vide = celles de l'app).
+    delaiPaiementJours: Number.isInteger(r.delai_paiement_jours) ? r.delai_paiement_jours : 30,
+    categoriesCharges: Array.isArray(r.categories_charges) ? r.categories_charges : [],
+    // Lot 5 du plan 15 : mois de début de l'exercice (1 = janvier, absent
+    // avant la migration) et cartes de l'accueil (null = les quatre).
+    exerciceDebutMois: Number.isInteger(r.exercice_debut_mois) && r.exercice_debut_mois >= 1 && r.exercice_debut_mois <= 12 ? r.exercice_debut_mois : 1,
+    cartesAccueil: Array.isArray(r.cartes_accueil) ? r.cartes_accueil.filter((c) => CARTES_ACCUEIL.includes(c)) : null,
   }),
   releves_bancaires: (r) => ({
     id: r.id, etablissementId: r.etablissement_id, format: r.format, nomFichier: r.nom_fichier || '', iban: r.iban || '',
@@ -83,7 +94,7 @@ export const MAPPERS = {
 };
 
 // Réglages par défaut tant qu'aucune ligne n'est enregistrée (D14, D16).
-export const REGLAGES_DEFAUT = { methodeTva: 'effective', tauxTdfn: null, chargesSocialesPct: 16, coutHoraireMoyen: null };
+export const REGLAGES_DEFAUT = { methodeTva: 'effective', tauxTdfn: null, chargesSocialesPct: 16, coutHoraireMoyen: null, exerciceDebutMois: 1, cartesAccueil: null };
 
 // ─── Lecture générique ───────────────────────────────────────────────────────
 // `cle` : la lecture repart de zéro quand elle change (établissement, période).
@@ -272,6 +283,25 @@ export async function enregistrerReglages(etabId, reglages, userId) {
     cout_horaire_moyen: nombre(reglages.coutHoraireMoyen),
     updated_by: userId,
   };
+  const maj = () => supabase.from('compta_reglages').update(colonnes).eq('etablissement_id', etabId).select('etablissement_id');
+  let { data, error } = await maj();
+  if (error) return { error: messageCompta(error) };
+  if (!data || !data.length) {
+    const ins = await supabase.from('compta_reglages').insert({ etablissement_id: etabId, ...colonnes });
+    if (ins.error && String(ins.error.code) === '23505') ({ error } = await maj());
+    else error = ins.error;
+    if (error) return { error: messageCompta(error) };
+  }
+  return { error: null };
+}
+
+// Lot 5 du plan 15 : l'exercice et les cartes de l'accueil, écrits à part du
+// formulaire des réglages (mêmes policies de compta_reglages). Seules les
+// colonnes passées changent.
+export async function enregistrerAffichageCompta(etabId, { exerciceDebutMois, cartesAccueil }, userId) {
+  const colonnes = { updated_by: userId };
+  if (exerciceDebutMois !== undefined) colonnes.exercice_debut_mois = exerciceDebutMois;
+  if (cartesAccueil !== undefined) colonnes.cartes_accueil = cartesAccueil;
   const maj = () => supabase.from('compta_reglages').update(colonnes).eq('etablissement_id', etabId).select('etablissement_id');
   let { data, error } = await maj();
   if (error) return { error: messageCompta(error) };

@@ -21,9 +21,17 @@ import { reperesGroupes } from './accueilGroupes.js';
 import MenusGroupe from './MenusGroupe.jsx';
 import { dateComplete } from './pdfGroupe.js';
 import {
-  NUMERO_COMPLEMENTS, STATUTS, groupesAAnticiper, libelleGroupe, metaStatut,
+  NUMERO_COMPLEMENTS, groupesAAnticiper, libelleGroupe, metaStatut, statutsActifs,
 } from './typesGroupe.js';
+import { useReglagesGroupes } from './useReglagesGroupes.js';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 import { chiffresGroupes } from './serieGroupes.js';
+import { BoutonActions, st as stFenetres } from '../../components/ui/Fenetres.jsx';
+import { useFacturationGroupes } from '../../hooks/useFacturationGroupes.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import FacturationGroupes, { telechargerCsv } from './facturation/FacturationGroupes.jsx';
+import FacturationDuGroupe from './facturation/FacturationDuGroupe.jsx';
+import FenetresFacturation, { useFenetresFacturation } from './facturation/FenetresFacturation.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GROUPES - calendrier des événements de groupe.
@@ -138,10 +146,15 @@ function useLargeur() {
 
 export default function Groupes({ user, etablissement }) {
   const etabId = etablissement?.id || null;
+  // Délai d'alerte, libellés des états et types proposés de la maison.
+  const { reglages: reglagesGroupes } = useReglagesGroupes(etabId);
   const canEdit = canManageModule(user?.role, 'groupes');
   const canEditMenus = canEdit && ROLES_MENUS.includes(user?.role);
   const canSupprimer = canEdit && ROLES_SUPPRESSION.includes(user?.role);
   const voirPrix = canEdit && ROLES_PRIX.includes(user?.role);
+  // Devis, factures et paiements : droit d'action factures_groupes (Rôles &
+  // accès, consultant et patron par défaut), vérifié en base par la RLS.
+  const voirFacturation = canManageModule(user?.role, 'factures_groupes');
 
   const aujourdhui = zurichToday();
   const [onglet, setOnglet] = useState('calendrier');
@@ -163,6 +176,8 @@ export default function Groupes({ user, etablissement }) {
     enregistrer: enregistrerMenu, enregistrerPlusieurs: enregistrerMenus, supprimer: supprimerMenu,
   } = useGroupeMenus(etabId);
   const cuisine = useCuisine(etabId);
+  const facturation = useFacturationGroupes(etabId, { actif: voirFacturation });
+  const fenetresFacturation = useFenetresFacturation();
   const [refCalendrier, largeurCalendrier] = useLargeur();
   const compact = largeurCalendrier > 0 && largeurCalendrier < LARGEUR_COMPACTE;
   const densite = compact ? 'compacte'
@@ -174,7 +189,7 @@ export default function Groupes({ user, etablissement }) {
   }, [vue.annee, vue.mois, assurerDepuis]);
 
   const actifs = useMemo(() => groupes.filter((g) => !g.annule), [groupes]);
-  const aAnticiper = useMemo(() => groupesAAnticiper(groupes, aujourdhui), [groupes, aujourdhui]);
+  const aAnticiper = useMemo(() => groupesAAnticiper(groupes, aujourdhui), [groupes, aujourdhui, reglagesGroupes.delai_alerte_jours]);
   // Repères de l'accueil (direction Galet, ReperesGroupes.jsx).
   const reperes = useMemo(() => reperesGroupes(groupes, aujourdhui), [groupes, aujourdhui]);
 
@@ -247,6 +262,23 @@ export default function Groupes({ user, etablissement }) {
     demandeFiche.current = null;
   }, [status, groupes, tourDemande, ouvrirFiche, assurerDepuis]);
 
+  // Contexte partagé des écrans de devis et de factures (onglet et fiche).
+  const { fermer: fermerFenetreFacturation } = fenetresFacturation;
+  const ctxFacturation = useMemo(() => ({
+    facturation,
+    reglages: facturation.reglages,
+    etablissement,
+    user,
+    aujourdhui,
+    groupes,
+    menus,
+    menuDe,
+    menusDuType,
+    canEditGroupes: canEdit,
+    creerGroupe: creer,
+    ouvrirGroupe: (g) => { fermerFenetreFacturation(); ouvrirFiche(g); },
+  }), [facturation, etablissement, user, aujourdhui, groupes, menus, menuDe, menusDuType, canEdit, creer, fermerFenetreFacturation, ouvrirFiche]);
+
   function tapJour(iso, duJour) {
     if (duJour.length === 1) { setFicheId(duJour[0].id); return; }
     if (duJour.length > 1) { setJourOuvert(iso); return; }
@@ -313,15 +345,38 @@ export default function Groupes({ user, etablissement }) {
         />
         <div className="module-actions">
           <SegmentedTabs
-            tabs={[{ id: 'calendrier', label: 'Calendrier' }, { id: 'menus', label: 'Menus' }]}
+            tabs={[
+              { id: 'calendrier', label: 'Calendrier' },
+              { id: 'menus', label: 'Menus' },
+              ...(voirFacturation ? [{ id: 'facturation', label: 'Devis et factures' }] : []),
+            ]}
             active={onglet}
             onChange={setOnglet}
           />
-          {canEdit && status !== 'absent' && (
-            <button type="button" onClick={() => setFormulaire({})} style={st.nouveau}>
+          {onglet === 'facturation' && voirFacturation && facturation.status === 'ready' && (
+            <>
+              {/* L'action principale avant « Plus » : au téléphone la rangée
+                  défile, la pilule sombre reste la plus proche. */}
+              <button type="button" className="touch-target" onClick={() => fenetresFacturation.ouvrirDevis({})} style={st.nouveau}>
+                Nouveau devis
+              </button>
+              <BoutonActions
+                id="groupes-facturation-plus" label="Plus" style={stFenetres.secondaire} titre="Devis et factures"
+                sections={[{ items: [
+                  { titre: 'Exporter pour la fiduciaire', detail: 'Factures, TVA par taux et paiements, en CSV', onClick: () => telechargerCsv(facturation, aujourdhui, etablissement?.nom) },
+                  ['consultant', 'patron'].includes(user?.role)
+                    ? { titre: 'Réglages de facturation', detail: 'Raison sociale, adresse, IBAN, TVA, délais, messages types', onClick: () => ouvrirCompte('groupes_facturation') }
+                    : null,
+                ] }]}
+              />
+            </>
+          )}
+          {onglet !== 'facturation' && canEdit && status !== 'absent' && (
+            <button type="button" className="touch-target" onClick={() => setFormulaire({})} style={st.nouveau}>
               Nouveau groupe
             </button>
           )}
+          <BoutonRegler section="groupes" user={user} etablissement={etablissement} />
         </div>
       </div>
 
@@ -374,7 +429,7 @@ export default function Groupes({ user, etablissement }) {
 
           {/* ── Légende : les trois états, rien d'autre ── */}
           <div style={st.legende}>
-            {STATUTS.map((sid) => {
+            {statutsActifs().map((sid) => {
               const m = metaStatut(sid);
               return (
                 <span key={sid} style={st.legendeItem}>
@@ -392,7 +447,7 @@ export default function Groupes({ user, etablissement }) {
           <div style={{ marginTop: 18 }}>
             <div style={st.titreListe}>
               {chiffresMois.groupes
-                ? `${chiffresMois.groupes} groupe${chiffresMois.groupes > 1 ? 's' : ''} en ${MOIS[vue.mois].toLowerCase()}, ${chiffresMois.convives} pax`
+                ? `${chiffresMois.groupes} groupe${chiffresMois.groupes > 1 ? 's' : ''} en ${MOIS[vue.mois].toLowerCase()}, ${chiffresMois.convives} couvert${chiffresMois.convives > 1 ? 's' : ''}`
                 : status === 'ready' ? `Aucun groupe en ${MOIS[vue.mois].toLowerCase()}.` : ''}
             </div>
             <div style={st.liste}>
@@ -439,6 +494,10 @@ export default function Groupes({ user, etablissement }) {
         />
       )}
 
+      {onglet === 'facturation' && voirFacturation && (
+        <FacturationGroupes ctx={ctxFacturation} fenetres={fenetresFacturation} />
+      )}
+
       {/* ── Jour portant plusieurs groupes : on choisit lequel ouvrir ── */}
       {jourOuvert && (
         <div
@@ -482,6 +541,11 @@ export default function Groupes({ user, etablissement }) {
           onSupprimer={canSupprimer ? supprimerDefinitivement : undefined}
           ongletInitial={ongletFiche}
           onClose={fermerFiche}
+          ongletSupplementaire={voirFacturation ? {
+            id: 'facturation',
+            label: 'Devis et factures',
+            rendu: () => <FacturationDuGroupe groupe={fiche} ctx={ctxFacturation} fenetres={fenetresFacturation} />,
+          } : null}
         />
       )}
 
@@ -497,6 +561,8 @@ export default function Groupes({ user, etablissement }) {
           onClose={() => setFormulaire(null)}
         />
       )}
+
+      {voirFacturation && <FenetresFacturation fenetres={fenetresFacturation} ctx={ctxFacturation} />}
     </section>
   );
 }
@@ -542,10 +608,10 @@ function CorpsLigneGroupe({ groupe, onClick, enRangee }) {
           textDecoration: groupe.annule ? 'line-through' : 'none',
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
-          {libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}, {groupe.nom}
+          {groupe.nom || libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}
         </span>
         <span style={{ display: 'block', fontSize: 12, color: 'var(--text2)' }}>
-          {groupe.nbPax} pax{groupe.heure ? `, ${groupe.heure}` : ''}
+          {groupe.nom ? `${libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}, ` : ''}{groupe.nbPax} couvert{groupe.nbPax > 1 ? 's' : ''}{groupe.heure ? `, ${groupe.heure}` : ''}
           {!groupe.menuNumero ? ', menu à définir' : ''}
           {groupe.menuNumero && !groupe.annule && choixEstVide(groupe.choix) ? ', choix à cocher' : ''}
           {groupe.allergenesIds.length || groupe.allergiesNote ? ', allergies' : ''}

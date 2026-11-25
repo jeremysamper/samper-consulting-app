@@ -266,3 +266,18 @@ html[data-theme="dark"] .spa {
    (elle se réduisait à un point à côté de « Nouveau client » sur téléphone). */
 .spa button > svg,
 .spa a > svg { flex-shrink: 0; }
+
+/* Lot 6b (plan 15/20) : au doigt, chaque commande du spa offre une cible de
+   44 px (onglets, flèches des jours, Planning et Liste, liens). La souris
+   garde les tailles du système du spa. Les créneaux de l'agenda grandissent
+   par le pas de l'agenda (AgendaSpa.jsx, 1,5 px par minute au doigt). */
+@media (pointer: coarse) {
+  .spa button,
+  .spa [role="tab"],
+  .spa a[href] {
+    min-height: 44px !important;
+  }
+  .spa .spa-fleche-jour {
+    min-width: 44px !important;
+  }
+}

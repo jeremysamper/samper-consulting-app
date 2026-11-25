@@ -30,6 +30,8 @@ export function reperesAchats(docs, aujourdhui) {
   const prochaine = ech.tranches.filter(x => x.id !== 'retard' && x.id !== 'sans')
     .flatMap(x => x.factures).map(f => f.dateEcheance).sort()[0] || null;
   return {
+    // Aucune facture enregistrée : rien n'est « réglé », l'écran le dit.
+    nbFactures: factures.length,
     aRegler: { n: t.aRegler.n, montant: arrondi(t.aRegler.montant), sansTTC },
     enRetard: { n: t.enRetard.n, montant: arrondi(t.enRetard.montant) },
     prochaine,

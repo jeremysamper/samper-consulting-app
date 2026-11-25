@@ -5,6 +5,10 @@ import { encadreStyle } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
 import { zurichToday } from '../../utils/zurichTime.js';
+import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
+import { maisonFermee } from '../../utils/reglagesMaison.js';
+import { ouvrirCompte } from '../../services/navigationService.js';
+import { joursFermesEnLigne } from './fermeturesEnLigne.js';
 import {
   COULEUR_DEFAUT, SLUG_OK, codeBouton, codeIntegre, lienGmail, lienMailto, lienReservation, messageWebmaster,
   useParametresEnLigne, versSlug,
@@ -59,7 +63,11 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
   const [form, setForm] = useState(null);
   const [enCours, setEnCours] = useState(false);
   const [jourFerme, setJourFerme] = useState('');
-  const [serviceFerme, setServiceFerme] = useState('jour');
+  const [serviceFerme, setServiceFerme] = useState('midi');
+  // Jours et périodes de fermeture : Réglages > Horaires et fermetures
+  // seulement (plan 15, lot 2). Ils sont recopiés dans jours_fermes, que lit
+  // la page publique.
+  const maison = useReglagesMaison(etabId || null);
   const [couleur, setCouleur] = useState(COULEUR_DEFAUT);
   const [qr, setQr] = useState(null);
   const slugForm = form?.slug || '';
@@ -139,7 +147,8 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
       if (incoherent) { notify('Une heure de fin est avant l\'heure de début : corrigez les horaires.', 'error'); return; }
       setEnCours(true);
       try {
-        const { error } = await enregistrer({ ...form, enLigneActif: activer });
+        const joursFermes = joursFermesEnLigne(maison.fermetures, joursHerites, aujourdhui);
+        const { error } = await enregistrer({ ...form, joursFermes, enLigneActif: activer });
         if (error) { notify(error, 'error'); return; }
         notify(activer && !publie ? 'Réservation en ligne ouverte.' : !activer && publie ? 'Réservation en ligne fermée.' : 'Réglages enregistrés.', 'success');
       } finally {
@@ -200,8 +209,11 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
     const servicesProposes = SERVICES.filter(([sid]) => sid === 'midi' || sid === 'soir'
       || Object.values(form.horaires || {}).some((j) => j?.[sid]?.de && j?.[sid]?.a));
     const rangService = (sid) => SERVICES.findIndex(([x]) => x === sid);
+    // Jours fermés posés ici avant le plan 15 : ils restent jusqu'à ce qu'on
+    // les retire. Les jours fermés de la maison n'y figurent pas.
+    const joursHerites = form.joursFermes.filter((d) => d >= aujourdhui && !maisonFermee(maison.fermetures, d));
     const fermetures = [
-      ...form.joursFermes.filter((d) => d >= aujourdhui).map((d) => ({ date: d, service: null })),
+      ...joursHerites.map((d) => ({ date: d, service: null })),
       ...Object.entries(form.servicesFermes || {}).filter(([d]) => d >= aujourdhui)
         .flatMap(([d, liste]) => (liste || []).map((service) => ({ date: d, service }))),
     ].sort((a, b) => a.date.localeCompare(b.date) || rangService(a.service) - rangService(b.service));
@@ -454,12 +466,14 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
 
             {/* ── Jours fermés ── */}
             <div style={s.carte}>
-              <div style={s.titre}>Jours de fermeture</div>
-              <div style={{ ...s.aide, marginTop: 0, marginBottom: 8 }}>Vacances, privatisation : toute la journée, ou seulement le midi ou le soir. Rien n'est alors proposé en ligne sur ce moment-là.</div>
+              <div style={s.titre}>Services fermés</div>
+              <div style={{ ...s.aide, marginTop: 0, marginBottom: 8 }}>Un midi ou un soir où rien n'est proposé en ligne. Les jours et les périodes de fermeture de la maison se règlent dans Horaires et fermetures : la réservation en ligne les suit.</div>
+              <div style={{ marginBottom: 10 }}>
+                <button type="button" onClick={() => ouvrirCompte('horaires_fermetures')} style={s.secondaire}>Ouvrir Horaires et fermetures</button>
+              </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <input type="date" aria-label="Jour de fermeture" min={aujourdhui} value={jourFerme} onChange={(e) => setJourFerme(e.target.value)} style={{ ...s.champ, width: 200, flex: '0 0 auto' }} />
                 <select aria-label="Moment fermé" value={serviceFerme} onChange={(e) => setServiceFerme(e.target.value)} style={{ ...s.champ, width: 'auto', flex: '0 0 auto' }}>
-                  <option value="jour">Toute la journée</option>
                   {servicesProposes.map(([sid, libelle]) => <option key={sid} value={sid}>{libelle} seulement</option>)}
                 </select>
                 <button type="button" onClick={ajouterJourFerme} disabled={!jourFerme} style={{ ...s.secondaire, opacity: jourFerme ? 1 : 0.55 }}>Ajouter</button>

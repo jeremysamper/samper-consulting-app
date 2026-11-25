@@ -4,7 +4,8 @@ import { st as ui } from './comptaUi.jsx';
 // ─────────────────────────────────────────────────────────────────────────────
 // « Pour des chiffres justes : 1 jour sans chiffre d'affaires, 1 facture sans
 // montant hors TVA, ... » : chaque manque est un lien vers l'écran qui le
-// corrige. Rien à signaler : la ligne n'est pas rendue.
+// corrige. Rien à signaler : la ligne n'est pas rendue. Lot 3 (tablette) :
+// une liste, un manque par ligne, chacun une cible de 44 px au doigt.
 // Le nombre vit dans son propre nœud, la phrase reste une clé du glossaire.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -27,25 +28,29 @@ export function TexteManque({ m }) {
   return <><span>{m.n}</span> <span>{m.n > 1 ? t[1] : t[0]}</span></>;
 }
 
-export default function LigneManques({ manques, onOuvrir }) {
+// onManque (lot 5) : le manque entier est passé, l'écran qui l'accueille
+// ouvre sa saisie ; sans lui, l'écran du manque (onOuvrir).
+export default function LigneManques({ manques, onOuvrir, onManque }) {
   if (!manques?.length) return null;
   return (
-    <p style={st.ligne} data-manques="">
-      <span style={st.titre}>Pour des chiffres justes :</span>{' '}
-      {manques.map((m, i) => (
-        <React.Fragment key={m.id}>
-          {i > 0 && ', '}
-          <button type="button" style={ui.lien} onClick={() => onOuvrir(m.ecran)} data-manque={m.id}>
-            <span><TexteManque m={m} /></span>
-          </button>
-        </React.Fragment>
-      ))}
-      .
-    </p>
+    <div style={st.bloc} data-manques="">
+      <p style={st.titre}>Pour des chiffres justes</p>
+      <ul style={st.liste}>
+        {manques.map((m) => (
+          <li key={m.id}>
+            <button type="button" className="touch-target" style={{ ...ui.lien, ...st.entree }} onClick={() => (onManque ? onManque(m) : onOuvrir(m.ecran))} data-manque={m.id}>
+              <span><TexteManque m={m} /></span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
 const st = {
-  ligne: { margin: 0, fontSize: 'var(--t2)', lineHeight: 1.7, color: 'var(--text2)' },
-  titre: { color: 'var(--warning-text)', fontWeight: 'var(--g2)' },
+  bloc: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 },
+  titre: { margin: 0, fontSize: 'var(--t2)', color: 'var(--warning-text)', fontWeight: 'var(--g2)' },
+  liste: { margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', fontSize: 'var(--t2)' },
+  entree: { textAlign: 'left' },
 };

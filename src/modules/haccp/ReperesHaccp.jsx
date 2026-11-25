@@ -25,7 +25,9 @@ import { joursEntre } from './haccpJour.js';
 // Au téléphone (haccp.css), seuls les relevés faits et les contrôles sont
 // rendus, sur une ligne : les deux autres sont dits par la carte « Maintenant »
 // (frigo à relever de nouveau), et la page ne s'allonge pas.
-// Sans chiffre à dire, la carte porte une phrase, jamais un gros zéro. Rien
+// Avec des relevés aujourd'hui, les deux cartes du milieu disent un chiffre,
+// zéro compris (« 0 relevé hors limite sur 5 »), plutôt qu'une phrase
+// rassurante : le zéro porte son ensemble. Sans relevé, une phrase. Rien
 // n'est rendu tant que la lecture n'a pas abouti, ni sans frigo réglé.
 // Nombres et noms dans leurs propres nœuds : la phrase autour reste une entrée
 // du glossaire. Crochets du banc : data-haccp-reperes, data-repere.
@@ -58,9 +60,15 @@ export default function ReperesHaccp({ etat, relevesDuJour = [], controles, dern
           ? <>{faits > 1 ? 'relevés faits sur' : 'relevé fait sur'} <N>{etat.totalJour}</N> prévus</>
           : <>sur <N>{etat.totalZones}</N> frigos et appareils relevés aujourd'hui</>}
       />
-      {horsPlage > 0 ? (
-        <CarteRepere data-repere="hors-plage" Icone={TriangleAlert} valeur={horsPlage} libelle="trop chaud ou trop froid" detail="aujourd'hui" />
-      ) : aucunAujourdhui && joursSans >= 2 ? (
+      {!aucunAujourdhui ? (
+        <CarteRepere
+          data-repere="hors-plage"
+          Icone={TriangleAlert}
+          valeur={horsPlage > 0 ? <span style={{ color: 'var(--danger-strong)' }}>{horsPlage}</span> : 0}
+          libelle={<>{horsPlage > 1 ? 'relevés hors limite sur' : 'relevé hors limite sur'} <N>{relevesDuJour.length}</N></>}
+          detail="aujourd'hui"
+        />
+      ) : joursSans >= 2 ? (
         <CarteRepere
           data-repere="hors-plage"
           Icone={TriangleAlert}
@@ -68,25 +76,21 @@ export default function ReperesHaccp({ etat, relevesDuJour = [], controles, dern
           libelle="jours sans relevé"
           detail={<>dernier relevé le <N>{dateCourte(dernierReleveJour)}</N></>}
         />
-      ) : aucunAujourdhui && !dernierReleveJour ? (
+      ) : !dernierReleveJour ? (
         <CarteRepere data-repere="hors-plage" Icone={TriangleAlert} texte="Aucun relevé enregistré pour l'instant" />
-      ) : aucunAujourdhui ? (
-        <CarteRepere data-repere="hors-plage" Icone={TriangleAlert} texte="Pas encore de relevé aujourd'hui" />
       ) : (
-        <CarteRepere data-repere="hors-plage" Icone={TriangleAlert} texte="Aucun relevé trop chaud ou trop froid aujourd'hui" />
+        <CarteRepere data-repere="hors-plage" Icone={TriangleAlert} texte="Pas encore de relevé aujourd'hui" />
       )}
       {aucunAujourdhui ? (
         <CarteRepere data-repere="a-revoir" Icone={RotateCcw} texte="Rien à vérifier tant qu'aucun relevé n'est fait" />
-      ) : aRevoir.length > 0 ? (
+      ) : (
         <CarteRepere
           data-repere="a-revoir"
           Icone={RotateCcw}
           valeur={aRevoir.length}
           libelle={aRevoir.length > 1 ? 'frigos à relever de nouveau' : 'frigo à relever de nouveau'}
-          detail={<N>{aRevoir.map(a => a.zone.nom).join(', ')}</N>}
+          detail={aRevoir.length ? <N>{aRevoir.map(a => a.zone.nom).join(', ')}</N> : <>sur <N>{etat.totalZones}</N> frigos et appareils</>}
         />
-      ) : (
-        <CarteRepere data-repere="a-revoir" Icone={RotateCcw} texte="Aucun frigo à relever de nouveau" />
       )}
       {controles && (controles.dus > 0 ? (
         <CarteRepere

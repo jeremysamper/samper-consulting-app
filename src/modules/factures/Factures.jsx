@@ -7,10 +7,7 @@ import { dbService } from '../../services/dbService.js';
 import { ouvrirCompte } from '../../services/navigationService.js';
 import { envoyerDocument, lireEtatEnvoi } from '../../services/envoiDocumentsService.js';
 import { signalerReglage, useReglageModifie } from '../../services/reglagesSignal.js';
-import {
-  DEFAULT_EMAIL_SUBJECT, DEFAULT_FACTURE_TEXTS, SIGNAL_NOTIFICATION, choisirClientTextes, factureTextsKey,
-  lireReglagesEmail, mergeFactureTexts,
-} from './reglagesFactures.js';
+import { DEFAULT_EMAIL_SUBJECT, DEFAULT_FACTURE_TEXTS, SIGNAL_NOTIFICATION, choisirClientTextes, factureTextsKey, lireReglagesEmail, mergeFactureTexts, delaiPaiement, derniereFactureKey, lireDerniereFacture } from './reglagesFactures.js';
 import { BRAND, WEB_TYPE } from '../../design/brandTokens.js';
 import {
   construireQrFacture, formaterIban, formaterReference, matriceQr,
@@ -179,7 +176,8 @@ const Factures = ({ user, etablissement }) => {
     // librement modifiable pour la facture en cours.
     const apply = (texts) => {
       setFactureTexts(texts);
-      setForm(prev => ({ ...prev, prestation: texts.prestationDefaut }));
+      // Lot 6b : l'échéance suit le délai de paiement du client.
+      setForm(prev => ({ ...prev, prestation: texts.prestationDefaut, dateEcheance: addDaysToDate(prev.dateFacturation, delaiPaiement(texts)) }));
     };
     if (legacySB?.db?.isUserSettingsCacheReady?.()) {
       apply(readFactureTextsSync(selectedEtabId));
@@ -454,6 +452,25 @@ const Factures = ({ user, etablissement }) => {
     };
   };
 
+  // Lot 6b : la dernière facture émise pour le client choisi, reprise en un
+  // toucher (user_settings, clé facture_derniere:<client>).
+  const derniere = lireDerniereFacture(legacySB?.db?.getUserSettingSync?.(derniereFactureKey(selectedEtabId || etabId)));
+  const retenirDerniereFacture = () => {
+    const valeur = {
+      numero: form.numero, date: form.dateFacturation, prestation: form.prestation, montant: String(form.montant),
+      devise: form.devise, htOuTtc: form.htOuTtc, referenceContratDevis: form.referenceContratDevis,
+    };
+    legacySB?.db?.setUserSetting?.(derniereFactureKey(selectedEtabId || etabId), valeur)
+      ?.catch?.((err) => console.warn('[Factures] dernière facture', err));
+  };
+  const reprendreDerniere = () => {
+    if (!derniere) return;
+    setForm(prev => ({
+      ...prev, prestation: derniere.prestation || prev.prestation, montant: derniere.montant, devise: derniere.devise,
+      htOuTtc: derniere.htOuTtc, referenceContratDevis: derniere.referenceContratDevis,
+    }));
+  };
+
   // ═══ Envoi direct par Brevo ═══
   // La fonction relit le PDF dans Documents par son identifiant : rien d'autre
   // que le texte du message ne part du navigateur. La fenêtre reste fermable
@@ -509,6 +526,7 @@ const Factures = ({ user, etablissement }) => {
         // On récupère le Blob généré pour le proposer en pièce jointe sans
         // repasser par un téléchargement depuis Documents.
         const { blob, doc } = await sendFactureToDocuments(fileName, qrFacture);
+        retenirDerniereFacture();
         setSavedToDocs(true);
         setTimeout(() => setSavedToDocs(false), 4000);
 
@@ -630,7 +648,7 @@ const Factures = ({ user, etablissement }) => {
     setForm({
       numero: generateFactureNumber(),
       dateFacturation: todayStr,
-      dateEcheance: addDaysToDate(todayStr, 11),
+      dateEcheance: addDaysToDate(todayStr, delaiPaiement(factureTexts)),
       destinataire: form.destinataire,
       prestation: factureTexts.prestationDefaut,
       referenceContratDevis: '',
@@ -731,6 +749,11 @@ const Factures = ({ user, etablissement }) => {
 
           <div style={fac.section}>
             <div style={fac.sectionTitle}>Détail de la prestation</div>
+            {derniere && !form.montant && (
+              <button type="button" style={{ ...fac.smallBtn, marginBottom: 12, minHeight: 44 }} onClick={reprendreDerniere}>
+                <span>Reprendre la dernière facture</span> <span data-no-translate>({derniere.numero ? `${derniere.numero}, ` : ''}{derniere.devise} {derniere.montant})</span>
+              </button>
+            )}
             <textarea
               style={{ ...fac.input, minHeight: 60, resize: 'vertical' }}
               value={form.prestation}

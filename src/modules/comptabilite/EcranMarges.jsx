@@ -27,7 +27,7 @@ const PHRASE = 'Même calcul que le Chiffrage de Cartes & Recettes : prix du cat
 const COULEURS = { succes: 'var(--success-text)', alerte: 'var(--warning-text)', danger: 'var(--danger-text)' };
 
 function FoodCost({ v }) {
-  if (v == null) return <span style={{ color: 'var(--text2)' }}>n/a</span>;
+  if (v == null) return <span style={{ color: 'var(--text2)' }}>pas encore de chiffre</span>;
   return <span style={{ fontFamily: 'var(--font-num)', color: COULEURS[niveauFoodCost(v)], fontWeight: 'var(--g2)' }}>{pctTexte(v)}</span>;
 }
 

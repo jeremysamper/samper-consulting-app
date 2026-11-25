@@ -13,6 +13,7 @@ import { formatDateLongue } from '../../utils/dateHelpers.js';
 import { ouvrirDocument, plume } from '../caisse/documentsCaisse.js';
 import { cadrage } from '../salle/planVue.js';
 import { hhmm, minutesDe } from '../salle/planTemps.js';
+import { libelleTagAllergene } from '../../utils/allergenes.js';
 
 const L = 842;           // A4 paysage, en points
 const H = 595;
@@ -20,7 +21,7 @@ const MARGE = 36;
 const parNumero = (a, b) => String(a.nom).localeCompare(String(b.nom), undefined, { numeric: true });
 const heureDe = (r) => hhmm(minutesDe(r.heure_arrivee) ?? 0);
 const allergies = (r) => (Array.isArray(r.reservation_tags) ? r.reservation_tags : [])
-  .filter((t) => t.type_tag === 'allergene' && t.valeur).map((t) => t.valeur);
+  .filter((t) => t.type_tag === 'allergene' && t.valeur).map((t) => libelleTagAllergene(t.valeur));
 const vivante = (r) => r.statut !== 'no_show' && r.statut !== 'annule' && r.statut !== 'refuse';
 // L'ellipse typographique n'est pas rendue par les polices de jsPDF.
 const couper = (doc, texte, largeur) => {

@@ -82,7 +82,77 @@ const heureDe = (iso) => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zu
 
 // ── Table des fonctions ─────────────────────────────────────────────────────
 
+// ── Marchandise (lot 4a) ─────────────────────────────────────────────────────
+// Même contrat que pertes_frequentes et recettes_relier_ingredients (migration
+// 20261122b_lot4a_commande_base).
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const arrondiA = (n, d) => Math.round(n * 10 ** d) / 10 ** d;
+
+function jourMoins(jours) {
+  const d = new Date(jourZurich() + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() - jours);
+  return d.toISOString().slice(0, 10);
+}
+
+function pertesFrequentes(ctx, a) {
+  const jours = Math.min(Math.max(Number(a.p_jours ?? 60) || 60, 1), 365);
+  const limite = Math.min(Math.max(Number(a.p_limite ?? 12) || 12, 1), 50);
+  const depuis = jourMoins(jours);
+  const groupes = new Map();
+  (ctx.db.pertes || [])
+    .filter((p) => p.etablissement_id === a.p_etablissement_id && p.date >= depuis && String(p.produit || '').trim())
+    .forEach((p) => {
+      const cle = p.produit_id ? 'p:' + p.produit_id : p.recette_id ? 'r:' + p.recette_id : 'n:' + String(p.produit).trim().toLowerCase();
+      const g = groupes.get(cle);
+      const plusRecente = !g || p.date > g.derniere.date || (p.date === g.derniere.date && String(p.created_at || '') > String(g.derniere.created_at || ''));
+      groupes.set(cle, { nb: (g?.nb || 0) + 1, derniere: plusRecente ? p : g.derniere });
+    });
+  return [...groupes.entries()]
+    .sort(([, x], [, y]) => (y.nb - x.nb) || (y.derniere.date > x.derniere.date ? 1 : y.derniere.date < x.derniere.date ? -1 : 0)
+      || String(x.derniere.produit).localeCompare(String(y.derniere.produit)))
+    .slice(0, limite)
+    .map(([cle, { nb, derniere: d }]) => ({
+      cle, produit_id: d.produit_id ?? null, recette_id: d.recette_id ?? null, produit: d.produit, categorie: d.categorie ?? null,
+      unite: d.unite ?? null, quantite: d.quantite ?? null, valeur_unit: d.valeur_unit ?? null, motif: d.motif ?? null, nb, derniere: d.date,
+    }));
+}
+
+function relierIngredients(ctx, a) {
+  const liens = a.p_liens;
+  if (!Array.isArray(liens) || liens.length > 5000) throw new ErreurRpc('Liens invalides.', '22023');
+  if (liens.some((e) => !e || typeof e !== 'object' || !e.recette_id || !e.ingredient_id
+    || (e.prix_unit != null && typeof e.prix_unit !== 'number') || (e.unite != null && typeof e.unite !== 'string'))) {
+    throw new ErreurRpc('Chaque lien donne recette_id et ingredient_id ; prix_unit est un nombre, unite un texte.', '22023');
+  }
+  const produit = (ctx.db.produits || []).find((p) => p.id === a.p_produit_id);
+  if (!produit) throw new ErreurRpc('Produit introuvable.', 'P0002');
+  const attendus = new Set(liens.map((e) => `${e.recette_id}|${e.ingredient_id}`)).size;
+  const parRecette = new Map();
+  liens.forEach((e) => {
+    if (!parRecette.has(e.recette_id)) parRecette.set(e.recette_id, new Map());
+    parRecette.get(e.recette_id).set(String(e.ingredient_id), e);
+  });
+  let relies = 0;
+  for (const r of ctx.db.recettes || []) {
+    const m = parRecette.get(r.id);
+    if (!m || r.etablissement_id !== produit.etablissement_id || !Array.isArray(r.ingredients)) continue;
+    let n = 0;
+    const ingredients = r.ingredients.map((x) => {
+      if (!x || typeof x !== 'object' || !m.has(String(x.id))) return x;
+      n += 1;
+      const l = m.get(String(x.id));
+      const { needsReview: _revoir, matchSuggestions: _suggestions, ...reste } = x;
+      return { ...reste, produitId: produit.id, ...(typeof l.prix_unit === 'number' ? { prixUnit: l.prix_unit } : {}), ...(typeof l.unite === 'string' ? { unite: l.unite } : {}) };
+    });
+    if (n) { ctx.maj('recettes', r, { ingredients, updated_at: maintenant() }); relies += n; }
+  }
+  return { relies, attendus };
+}
+
 const RPC = {
+  pertes_frequentes: pertesFrequentes,
+  recettes_relier_ingredients: relierIngredients,
   // Pointage : l'heure est celle de Zurich, comme la vraie fonction.
   pointer_arrivee(ctx, a) {
     const s = ctx.db.shifts.find((x) => x.id === (a.shift_id || a.p_shift_id));

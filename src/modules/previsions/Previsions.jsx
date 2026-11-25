@@ -18,6 +18,7 @@ import { zurichToday } from '../../utils/zurichTime.js';
 // Le champ de recherche reprend celui de Cartes & Recettes (.rc-recherche).
 import '../recettes/recettes.css';
 import './reservations.css';
+import BoutonRegler from '../../components/ui/BoutonRegler.jsx';
 
 // Tuile Le rapport (statistiques, lecture seule) : la direction, l'hôte et le
 // responsable cuisine (anticipation des couverts). Masqué pour le service, la
@@ -155,6 +156,9 @@ export default function Previsions({ user, etablissement }) {
               {canEdit && <Btn variant="primary" onClick={() => setShowForm(true)}>Je réserve une table</Btn>}
               <Btn onClick={() => setEcran('plan')} title="Le jour d'aujourd'hui sur le plan de salle">Organiser mes réservations</Btn>
               <Btn onClick={() => setEcran('clients')}>Les clients</Btn>
+              {/* Réservation en ligne, plan de salle : Réglages > Réservations
+                  (plan 15, lot 2), pour la direction. */}
+              <BoutonRegler section="reservation_en_ligne" user={user} etablissement={etablissement} />
             </div>
           </div>
         </div>

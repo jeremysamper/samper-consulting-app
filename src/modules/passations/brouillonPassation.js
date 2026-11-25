@@ -43,11 +43,59 @@ export function prochainService(jour, minutes) {
 // tachesRestantes : [titre] des tâches récurrentes du jour non cochées
 // reservations : [{ nb_couverts, est_groupe, nom, statut }] du prochain service
 // prochain     : { jour, service } ; aujourdhui : jour ISO
+// pole         : pôle de la passation (lot 6b) ; il choisit les rubriques.
+//                Sans pôle : les rubriques du restaurant, comme avant.
+// hotel        : { arriveesDemain, departsDemain, demandes: [{ titre, priorite }],
+//                  aFaire, horsService: ['304'], ordres: [{ titre, priorite }] }
 // → { texte, sections } (sections : nombre de rubriques écrites)
-export function brouillonPassation({ pertes = [], relevesHors = [], tachesRestantes = [], reservations = [], prochain = null, aujourdhui = null }) {
-  const lignes = [];
+export const RUBRIQUES_PAR_POLE = {
+  cuisine: ['pertes', 'releves', 'taches', 'reservations'],
+  restaurant: ['reservations', 'taches'],
+  reception: ['arrivees', 'demandes', 'taches'],
+  etages: ['chambres', 'arrivees', 'taches'],
+  technique: ['ordres', 'chambres', 'taches'],
+  spa: ['taches'],
+  direction: ['arrivees', 'demandes', 'ordres', 'pertes', 'releves', 'taches', 'reservations'],
+};
+const RUBRIQUES_SANS_POLE = ['pertes', 'releves', 'taches', 'reservations'];
+const URGENTES = new Set(['urgente', 'haute']);
 
-  const p = pertes.filter((x) => x && x.produit);
+export function brouillonPassation({ pertes = [], relevesHors = [], tachesRestantes = [], reservations = [], prochain = null, aujourdhui = null, pole = null, hotel = null }) {
+  const lignes = [];
+  const rubriques = RUBRIQUES_PAR_POLE[pole] || RUBRIQUES_SANS_POLE;
+  const ecrire = (rubrique, fn) => { if (rubriques.includes(rubrique)) fn(); };
+  const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
+
+  // Branche Hôtel (lot 6b) : arrivées et départs du lendemain, demandes
+  // ouvertes, chambres, ordres de travail. Une rubrique sans donnée lue
+  // (module absent, table refusée) ne s'écrit pas.
+  ecrire('arrivees', () => {
+    if (!hotel || hotel.arriveesDemain == null) return;
+    const a = hotel.arriveesDemain;
+    const d = hotel.departsDemain || 0;
+    if (!a && !d) { lignes.push('Demain : aucune arrivée ni aucun départ.'); return; }
+    lignes.push(`Demain : ${a ? pluriel(a, 'arrivée', 'arrivées') : 'aucune arrivée'} et ${d ? pluriel(d, 'départ', 'départs') : 'aucun départ'}.`);
+  });
+  ecrire('demandes', () => {
+    const ds = (hotel?.demandes || []).filter((x) => x && x.titre);
+    if (!ds.length) return;
+    const urgentes = ds.filter((x) => URGENTES.has(x.priorite)).map((x) => x.titre);
+    lignes.push(`${pluriel(ds.length, 'demande ouverte', 'demandes ouvertes')}${urgentes.length ? `, dont ${liste(urgentes.slice(0, 3))}` : ''}.`);
+  });
+  ecrire('chambres', () => {
+    if (!hotel) return;
+    if (hotel.aFaire) lignes.push(`${pluriel(hotel.aFaire, 'chambre reste', 'chambres restent')} à faire.`);
+    const hs = (hotel.horsService || []).filter(Boolean);
+    if (hs.length) lignes.push(`Hors service : ${hs.length > 1 ? 'chambres' : 'chambre'} ${liste(hs.slice(0, 6))}.`);
+  });
+  ecrire('ordres', () => {
+    const os = (hotel?.ordres || []).filter((x) => x && x.titre);
+    if (!os.length) return;
+    const urgents = os.filter((x) => URGENTES.has(x.priorite)).map((x) => x.titre);
+    lignes.push(`${pluriel(os.length, 'ordre de travail ouvert', 'ordres de travail ouverts')}${urgents.length ? `, dont ${liste(urgents.slice(0, 3))}` : ''}.`);
+  });
+
+  const p = rubriques.includes('pertes') ? pertes.filter((x) => x && x.produit) : [];
   if (p.length) {
     const items = p.slice(0, 6).map((x) => {
       const q = nombre(x.quantite);
@@ -58,17 +106,17 @@ export function brouillonPassation({ pertes = [], relevesHors = [], tachesRestan
     lignes.push(`Pertes du jour : ${liste(items)}${reste}.`);
   }
 
-  relevesHors.slice(0, 4).forEach((r) => {
+  (rubriques.includes('releves') ? relevesHors : []).slice(0, 4).forEach((r) => {
     const v = nombre(r.valeur);
     const valeur = v != null ? ` était à ${texteNombre(v)}${r.unite ? ` ${r.unite}` : ' °C'}` : ' était hors norme';
     const heure = r.heure ? ` à ${String(r.heure).slice(0, 5).replace(':', ' h ')}` : '';
     lignes.push(`${r.zoneNom || 'Un frigo'}${valeur}${heure}. Vérifiez-le au prochain relevé.`);
   });
 
-  const t = tachesRestantes.filter(Boolean);
+  const t = rubriques.includes('taches') ? tachesRestantes.filter(Boolean) : [];
   if (t.length) lignes.push(`Tâches non faites : ${liste(t.slice(0, 6))}${t.length > 6 ? `, et ${t.length - 6} autres` : ''}.`);
 
-  if (prochain) {
+  if (prochain && rubriques.includes('reservations')) {
     const resas = reservations.filter((r) => r && !STATUTS_ANNULES.has(String(r.statut || '').toLowerCase()));
     const quand = `${prochain.jour === aujourdhui ? 'Ce' : 'Demain'} ${NOMS_SERVICE[prochain.service] || prochain.service}`;
     if (resas.length) {

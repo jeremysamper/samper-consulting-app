@@ -5,6 +5,7 @@ import { useAchatsDocuments } from '../inventaire/useAchatsDocuments.js';
 import { lirePeriode, useContrats } from '../planning/contratsService.js';
 import { bornesMois } from '../planning/soldesHeures.js';
 import { REGLAGES_DEFAUT, lireToutesLesPages, useLecture, useTableCompta } from './comptaService.js';
+import { reglerCategoriesCharges } from './chargesFixes.js';
 import { ajouterJours, finEffective, periodeMois } from './periodesCompta.js';
 import { notesCouvrentJours, resumeVentes, ventesParJour } from './ventesCompta.js';
 import { synthese } from './syntheseCompta.js';
@@ -94,6 +95,7 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   // ── Tables neuves ──
   const reglagesLus = useTableCompta('compta_reglages', etabId, { actif, ordre: ['etablissement_id'] });
   const reglages = useMemo(() => ({ ...REGLAGES_DEFAUT, ...(reglagesLus.lignes[0] || {}) }), [reglagesLus.lignes]);
+  reglerCategoriesCharges(reglages.categoriesCharges);
   // Décompte de TVA précédent : le premier jour de vente dont l'écran TVA a besoin.
   const tvaPrecedente = periodeTva(aujourdhui, reglages.methodeTva, -1);
   const tvaCourante = periodeTva(aujourdhui, reglages.methodeTva, 0);

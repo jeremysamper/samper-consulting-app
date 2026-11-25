@@ -52,21 +52,26 @@ function PassationForm({ passation, pole, aujourdhui, passations, onClose, etabl
   const [enCours, setEnCours] = React.useState(false);
   const [brouillon, setBrouillon] = React.useState(passation ? null : { etat: 'chargement' });
   const etabId = etablissement?.id || null;
+  // Lot 6b : le brouillon suit le pôle choisi (rubriques et tâches du pôle).
+  // Changer de pôle le prépare à nouveau, tant que le texte n'a pas été touché.
+  const dernierTexte = React.useRef('');
   React.useEffect(() => {
     if (passation || !etabId) { setBrouillon(null); return undefined; }
     let vivant = true;
+    setBrouillon({ etat: 'chargement' });
     preparerPassation({
-      etabId, jour: aujourdhui, minutes: zurichNowMinutes(),
-      tachesRestantes: restantes.map((t) => t.titre).filter(Boolean),
+      etabId, jour: aujourdhui, minutes: zurichNowMinutes(), pole: f.pole,
+      tachesRestantes: restantes.filter((t) => !f.pole || t.pole === f.pole).map((t) => t.titre).filter(Boolean),
       avecReservations: isModuleActiveForEtab(etablissement, 'previsions'),
     }).then((b) => {
       if (!vivant) return;
-      setF((p) => (p.contenu.trim() ? p : { ...p, contenu: b.texte }));
+      setF((p) => (p.contenu.trim() && p.contenu !== dernierTexte.current ? p : { ...p, contenu: b.texte }));
+      dernierTexte.current = b.texte;
       setBrouillon({ etat: 'pret', sections: b.sections });
     }).catch(() => { if (vivant) setBrouillon(null); });
     return () => { vivant = false; };
-  // Préparé une fois, à l'ouverture de la fenêtre.
-  }, []);
+  // Préparé à l'ouverture, puis à chaque changement de pôle.
+  }, [f.pole]);
   const champ = (k) => (ev) => setF((p) => ({ ...p, [k]: ev.target.value }));
   const enregistrer = async () => {
     setErreur('');

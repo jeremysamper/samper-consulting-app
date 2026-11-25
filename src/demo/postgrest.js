@@ -335,7 +335,7 @@ export function erreurPg(status, message, code = 'P0001', details = null) {
  * Exécute une requête REST sur la base en mémoire.
  * @param {object} db         tables : { nom: [lignes] }
  * @param {object} req        { methode, table, params (URLSearchParams), entetes (Headers), corps }
- * @param {object} options    { defauts, clesPrimaires, avantLecture(table, lignes), apresEcriture(evt) }
+ * @param {object} options    { defauts, clesPrimaires, avantLecture(table, lignes), avantEcriture(type, table, ligne, avant), apresEcriture(evt) }
  * @returns {{status:number, corps:any, entetes:object}}
  */
 export function executer(db, req, options = {}) {
@@ -420,6 +420,8 @@ export function executer(db, req, options = {}) {
         return erreurPg(409, `duplicate key value violates unique constraint "${table}_pkey"`, '23505');
       }
       const ligne = avecDefauts(table, brut, options.defauts);
+      // Ce que les déclencheurs de la base posent (numéro, total, auteur).
+      options.avantEcriture?.('INSERT', table, ligne, null);
       db[table].push(ligne);
       options.apresEcriture?.({ type: 'INSERT', table, record: { ...ligne }, old_record: null });
       crees.push(ligne);
@@ -433,6 +435,7 @@ export function executer(db, req, options = {}) {
     for (const r of cibles) {
       const avant = { ...r };
       Object.assign(r, req.corps || {});
+      options.avantEcriture?.('UPDATE', table, r, avant);
       options.apresEcriture?.({ type: 'UPDATE', table, record: { ...r }, old_record: avant });
     }
     if (!representation && !objet) return json(204, null);

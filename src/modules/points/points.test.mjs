@@ -339,3 +339,18 @@ test('classement : exclus, non participants et comptes désactivés hors classem
   assert.equal(liste.length, 0);
   assert.deepEqual(hors.map((p) => p.userId), ['x', 'y', 'z']);
 });
+
+test('prochain cadeau à portée : le plus petit écart parmi les personnes qui gagnent des points', async () => {
+  const { prochainCadeau } = await import('./classement.js');
+  const soldes = [
+    { userId: 'a', prenom: 'Léa', solde: 45, participant: true },
+    { userId: 'b', prenom: 'Tom', solde: 110, participant: true, exclu: true },
+    { userId: 'c', prenom: 'Ana', solde: 90, participant: true },
+  ];
+  const cadeaux = [{ id: 'k1', nom: 'Cinéma', cout: 120, actif: true }, { id: 'k2', nom: 'Café', cout: 100, actif: false }];
+  const p = prochainCadeau(soldes, cadeaux);
+  assert.equal(p.cadeau.id, 'k1');
+  assert.equal(p.personne.userId, 'c');
+  assert.equal(p.ecart, 30);
+  assert.equal(prochainCadeau([], cadeaux), null);
+});

@@ -12,7 +12,7 @@
 // ═══════════════════════════════════════════════════════════════
 
 import {
-  creneauLePlusProche, heureEnMinutes, isReleveConforme, parseHaccpNumber, suiviDesTournees, trierCreneaux,
+  creneauDuJour, creneauLePlusProche, heureEnMinutes, isReleveConforme, parseHaccpNumber, suiviDesTournees, trierCreneaux,
 } from './HACCP.utils.js';
 import { ACTION_AUTRE, ACTIONS_CORRECTIVES } from './HACCP.constants.js';
 
@@ -65,7 +65,8 @@ export function etatDuJour({ creneaux, zones, releves, today, maintenant }) {
   };
   if (!zonesActives.length) return base;
 
-  const actifs = trierCreneaux((creneaux || []).filter(c => c.actif));
+  // Seules les tournées attendues aujourd'hui (jours du créneau) comptent.
+  const actifs = trierCreneaux((creneaux || []).filter(c => c.actif && creneauDuJour(c, today)));
   if (!actifs.length) {
     return { ...base, statut: zonesFaitesJour >= zonesActives.length ? 'a_jour' : 'a_faire' };
   }

@@ -10,6 +10,9 @@ import { useTeamPhones } from '../../hooks/useTeamPhones.js';
 import PhoneLink from '../../components/PhoneLink.jsx';
 import SegmentedTabs from '../../components/ui/SegmentedTabs.jsx';
 import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
+import { ouvrirCompte, ouvrirDossier } from '../../services/navigationService.js';
+import { DOSSIERS_MODULES, peutOuvrirDocuments, peutReglerVisibilite } from '../documents/gardesDocuments.js';
+import { peutOuvrirSection } from '../../components/ui/BoutonRegler.jsx';
 import { punchOnlineOrQueue } from '../../services/offline/punchSync.js';
 import { useResumeRefresh } from '../../hooks/useResumeRefresh.js';
 import { useAbsences } from '../../hooks/useAbsences.js';
@@ -39,7 +42,7 @@ import { messageErreur } from '../../utils/messageErreur.js';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import AccueilPlanning from './AccueilPlanning.jsx';
-import { equipeParEtat, heuresPrevues } from './accueilPlanning.js';
+import { equipeParEtat, heuresPrevues, serviceDeHoraire, serviceDuJour } from './accueilPlanning.js';
 import { envoyerHorsPlanning, horaireHorsPlanning, pointageDuJour } from './pointageDuJour.js';
 import { equipeDuPlanning, estDirectionPlanning, heuresContractuelles, peutEcrirePlanning } from './gardesPlanning.js';
 import MasquesModal from './MasquesModal.jsx';
@@ -52,6 +55,7 @@ import { calcHeures, periodeEnCours, soldePersonne } from './soldesHeures.js';
 import { analyserEquipe, cleCaseCcnt, constatsParCase, decaler as decalerCcnt, infractionsCreees, lundiDe as lundiCcnt } from './conformiteCcnt.js';
 import { ConfirmationCcnt, MarqueCcnt, PanneauCcnt } from './ConformiteCcnt.jsx';
 import { estDirection } from '../comptabilite/gardesCompta.js';
+import { readText, writeText } from '../../utils/storage.js';
 import { ecranOuvert } from '../statistiques/gardesStatistiques.js';
 
 // Coût du personnel (direction seulement) : chargé à la demande, la lecture de
@@ -179,7 +183,14 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // user_peut_gerer('planning')), comptes partagés = consultant et patron.
   const groupesEtab = usePlanningGroupes(etabId);
   const groupesActifs = groupesEtab.status === 'ready' && groupesEtab.groupes.length > 0;
-  const [groupeFiltre, setGroupeFiltre] = React.useState('tous'); // 'tous' | id de groupe | 'sans'
+  // 'tous' | id de groupe | 'sans' ; null tant que personne n'a choisi sur ce
+  // poste. La grille s'ouvre alors sur un groupe (lot 3, tablette) : celui de
+  // la personne, sinon le premier. Le choix est gardé sur l'appareil, par
+  // établissement.
+  const cleGroupe = `sc_planning_groupe_${etabId}`;
+  const [groupeFiltre, setGroupeFiltreBrut] = React.useState(() => readText(cleGroupe, '') || null);
+  React.useEffect(() => { setGroupeFiltreBrut(readText(cleGroupe, '') || null); }, [cleGroupe]);
+  const setGroupeFiltre = (id) => { setGroupeFiltreBrut(id); writeText(cleGroupe, id); };
   // Ce compte est-il un compte de pointage partagé (iPad du restaurant) ?
   const mesGroupesPoste = groupesEtab.postesParCompte.get(user.id) || null;
   const estComptePoste = !!mesGroupesPoste && mesGroupesPoste.size > 0;
@@ -258,8 +269,13 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const groupesProposes = activeTab === 'pointage' ? groupesPointage : groupesEtab.groupes;
   const aSansGroupe = groupesActifs && employees.some(e => !groupeDeId(e.id));
   const restreintPoste = activeTab === 'pointage' && groupesActifs && estComptePoste && !canWrite;
-  const filtreEffectif = groupeFiltre !== 'tous' && !groupesProposes.some(g => g.id === groupeFiltre) && groupeFiltre !== 'sans'
-    ? 'tous' : groupeFiltre;
+  const groupeParDefaut = activeTab === 'planning' && groupesActifs && groupesProposes.length > 1
+    ? (groupesProposes.find(g => g.id === groupeDeId(user.id)) || groupesProposes[0]).id
+    : 'tous';
+  const filtreEffectif = groupeFiltre == null
+    ? groupeParDefaut
+    : groupeFiltre !== 'tous' && !groupesProposes.some(g => g.id === groupeFiltre) && groupeFiltre !== 'sans'
+      ? 'tous' : groupeFiltre;
   const passeFiltre = (userId) => {
     if (!groupesActifs) return true;
     const gid = groupeDeId(userId);
@@ -1413,12 +1429,16 @@ const Planning = ({ user, etablissement, initialTab }) => {
   // celles que l'écran montre (un compte partagé ne voit que ses groupes).
   const duJour = planningVisible.filter(s => s.date === aujourdhuiZ
     && (!(groupesActifs && estComptePoste && !canWrite) || mesGroupesPoste.has(groupeDeId(s.userId))));
+  // Un seul service à la fois (celui en cours, sinon le prochain) : la carte
+  // et les chiffres de l'équipe parlent du même, nommé dans le titre.
+  const serviceEquipe = serviceDuJour(duJour, zurichNowMinutes());
+  const duService = serviceEquipe ? duJour.filter(s => serviceDeHoraire(s) === serviceEquipe) : duJour;
   const equipeDuJour = { pointes: new Set(duJour.filter(s => s.pointageDebut).map(s => s.userId)).size, total: new Set(duJour.map(s => s.userId)).size };
   const lundiZ = ajouterJoursIso(aujourdhuiZ, -((new Date(aujourdhuiZ + 'T12:00:00').getDay() + 6) % 7));
   const horairesSemaine = planningVisible.filter(s => s.date >= lundiZ && s.date <= ajouterJoursIso(lundiZ, 6)).length;
   // Repères et carte de l'accueil (direction Galet) : mêmes horaires que les
   // tuiles, absences du jour sous la garde de la grille (absencesVisibles).
-  const etatsEquipe = equipeParEtat(duJour, zurichNowMinutes());
+  const etatsEquipe = { ...equipeParEtat(duService, zurichNowMinutes()), service: serviceEquipe };
   const heuresSemaine = dureeLisible(heuresPrevues(planningVisible.filter(s => s.date >= lundiZ && s.date <= ajouterJoursIso(lundiZ, 6))));
   const absentsDuJour = absencesDuJour(absencesVisibles, aujourdhuiZ).map(a => nomDe(a.userId));
 
@@ -1445,6 +1465,17 @@ const Planning = ({ user, etablissement, initialTab }) => {
   const echangesRepris = echanges.statut === 'pret' ? echanges.echanges.filter(e => e.statut === 'repris') : [];
   const aTraiterVisible = canWrite && (absencesEtab.demandes.length > 0 || echangesRepris.length > 0);
   const choixAbsences = absencesEtab.status !== 'absent' && { titre: 'Absences', detail: 'Congés, formations et absences de l\'équipe.', onClick: () => setShowAbsences(true) };
+
+  // Modèles d'horaires, groupes, contrats et pointage : Réglages > Planning
+  // (plan 15, lot 2). « Gérer » y renvoie, pour qui ouvre ces sections.
+  const choixReglages = peutOuvrirSection('planning_modeles', { user, etablissement, shellMode: 'ordinateur' })
+    && { titre: 'Régler le planning', detail: "Modèles d'horaires, groupes, contrats et pointage, dans Réglages.", onClick: () => ouvrirCompte('planning_modeles') };
+
+  // Plan 15, lot 5 : les contrats de l'équipe, dans Documents (dossier
+  // Contrats, réservé à la direction) : consultant et patron qui ouvrent
+  // Documents.
+  const choixContrats = peutReglerVisibilite(user?.role) && peutOuvrirDocuments(user, etablissement, getPermissionsForRole(user?.role))
+    && { titre: 'Dossier des contrats', detail: "Les contrats et avenants de l'équipe, dans Documents.", onClick: () => ouvrirDossier(DOSSIERS_MODULES.contrats) };
 
   // Solde du mois de la personne connectée (Mes horaires) : du 1er à hier,
   // le 1er le mois précédent. Rien tant que contrats et absences ne sont pas lus.
@@ -1490,6 +1521,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
             choixAbsences,
             { titre: 'Dupliquer la semaine', onClick: () => setShowDupliquer(true) },
             canExport && { titre: 'Exporter', onClick: () => setExportOuvert(true) },
+            choixContrats,
+            choixReglages,
           ]}
           onPointer={pointerDepuisAccueil}
           onHoraires={() => setEcran('horaires')}
@@ -1507,9 +1540,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
         {activeTab === 'planning' ? (
           <>
             <div style={pls.weekNav}>
-              <button style={pls.navArrow} onClick={() => shiftWeek(-1)} title="Semaine précédente" aria-label="Semaine précédente">‹</button>
+              <button className="touch-target" style={pls.navArrow} onClick={() => shiftWeek(-1)} title="Semaine précédente" aria-label="Semaine précédente">‹</button>
               <span style={pls.weekLabel}>Semaine du {weekRangeLabel}</span>
-              <button style={pls.navArrow} onClick={() => shiftWeek(1)} title="Semaine suivante" aria-label="Semaine suivante">›</button>
+              <button className="touch-target" style={pls.navArrow} onClick={() => shiftWeek(1)} title="Semaine suivante" aria-label="Semaine suivante">›</button>
             </div>
             <button style={pls.smallBtn} onClick={goToCurrentWeek}>Aujourd'hui</button>
             <input type="date" aria-label="Semaine affichée" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} style={pls.datePicker} />
@@ -1552,6 +1585,9 @@ const Planning = ({ user, etablissement, initialTab }) => {
         {canExport && (
           <button style={pls.exportBtn} onClick={() => setExportOuvert(true)}>Exporter</button>
         )}
+        {/* « Gérer » à l'autre bout de la barre : séparé des actions qui
+            créent (Ajouter, Dupliquer), il ne se touche pas par erreur. */}
+        <span aria-hidden="true" style={{ flex: '1 1 0', minWidth: 0 }} />
         <BoutonActions
           id="planning-gerer"
           label="Gérer"
@@ -1561,6 +1597,8 @@ const Planning = ({ user, etablissement, initialTab }) => {
             canWrite && activeTab === 'planning' && { titre: 'Sélectionner plusieurs horaires', detail: 'Pour les supprimer ou les recopier ailleurs.', onClick: () => { setRemplissage(null); if (!selectionMode) toggleSelectionMode(); } },
             activeTab === 'planning' && choixAbsences,
             activeTab === 'planning' && estDirectionPlanning(user?.role) && masquesEtab.status !== 'absent' && { titre: 'Personnes masquées', detail: "Retirer quelqu'un de l'affichage du planning.", onClick: () => setShowMasques(true) },
+            choixContrats,
+            choixReglages,
           ] }]}
         />
       </div>

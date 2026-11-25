@@ -10,13 +10,17 @@ import { SOP_TEMPLATES } from '../../data/sopTemplates.js';
 export const PLANNING_GROUPES = [
   { id: '00000000-0000-4000-8000-0000000000c1', etablissement_id: ETAB, nom: 'Cuisine', famille: 'cuisine', ordre: 1, created_at: '2026-02-01T08:00:00Z' },
   { id: '00000000-0000-4000-8000-0000000000c2', etablissement_id: ETAB, nom: 'Salle', famille: 'salle', ordre: 2, created_at: '2026-02-01T08:00:00Z' },
+  // Lot 6a : groupe ajouté par la maison (sans famille de rôle) pour le spa.
+  { id: '00000000-0000-4000-8000-0000000000c3', etablissement_id: ETAB, nom: 'Spa', famille: null, ordre: 3, created_at: '2026-02-01T08:00:00Z' },
 ];
 const G_CUISINE = PLANNING_GROUPES[0].id;
 const G_SALLE = PLANNING_GROUPES[1].id;
+const G_SPA = PLANNING_GROUPES[2].id;
+const groupeDe = (role) => (role === 'praticien_spa' ? G_SPA : ['serveur', 'hote'].includes(role) ? G_SALLE : G_CUISINE);
 
 export const PLANNING_GROUPE_MEMBRES = EQUIPE
   .filter((u) => u.role !== 'patron')
-  .map((u) => ({ etablissement_id: ETAB, user_id: u.id, groupe_id: ['serveur', 'hote'].includes(u.role) ? G_SALLE : G_CUISINE, updated_at: '2026-02-01T08:00:00Z' }));
+  .map((u) => ({ etablissement_id: ETAB, user_id: u.id, groupe_id: groupeDe(u.role), updated_at: '2026-02-01T08:00:00Z' }));
 
 // Horaires types par personne : [jours de repos (0 = dimanche), segments].
 const RYTHMES = {
@@ -29,6 +33,7 @@ const RYTHMES = {
   'demo-serv-2': [[1, 3], [['11:00', '15:00'], ['18:00', '23:30']]],
   'demo-serv-3': [[1, 0], [['17:00', '00:30']]],
   'demo-hote': [[1, 6], [['10:30', '14:30'], ['17:30', '21:30']]],
+  'demo-spa': [[1, 2], [['09:30', '18:30']]],
 };
 
 export function genererShifts() {
@@ -111,8 +116,8 @@ export const HACCP_ZONES = [
 ].map((z) => ({ ...z, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-01T08:00:00Z' }));
 
 export const HACCP_CRENEAUX = [
-  { id: 'hc-matin', etablissement_id: ETAB, label: 'Ouverture', heure: '08:30:00', actif: true },
-  { id: 'hc-midi', etablissement_id: ETAB, label: 'Avant le service du soir', heure: '17:00:00', actif: true },
+  { id: 'hc-matin', etablissement_id: ETAB, label: 'Ouverture', heure: '08:30:00', actif: true, jours: [2, 3, 4, 5, 6, 7] },
+  { id: 'hc-midi', etablissement_id: ETAB, label: 'Avant le service du soir', heure: '17:00:00', actif: true, jours: [2, 3, 4, 5, 6, 7] },
 ].map((c) => ({ ...c, created_at: '2026-02-01T08:00:00Z', updated_at: '2026-02-01T08:00:00Z' }));
 
 export const HACCP_CTRL_TEMPLATES = [
@@ -329,19 +334,31 @@ export const SOPS = SOP_TEMPLATES.slice(0, 5).map((t, i) => ({
   source_template: null,
   ordre: i,
   actif: true,
+  // Lot 2 : la première procédure revient à l'ouverture, pour la cuisine.
+  roles_designes: i === 0 ? ['resp_cuisine', 'cuisinier'] : [],
+  rappel_actif: i === 0,
+  rappel_moment: i === 0 ? 'ouverture' : null,
+  rappel_heure: null,
+  rappel_jours: null,
   created_at: '2026-03-01T08:00:00Z',
   updated_at: '2026-03-01T08:00:00Z',
 }));
 
+// Lot 5 : les types sont ceux de la base ('folder', 'file' : l'écran ne
+// reconnaissait pas 'dossier' et 'fichier') ; le dossier HACCP porte le nom
+// qu'ouvre le module HACCP ; les contrats sont réservés à la direction
+// (roles_visibles vide).
 export const DOCUMENTS = [
-  { id: 'doc-dossier-hygiene', parent_id: null, type: 'dossier', nom: 'Hygiène et HACCP', storage_path: null, mime_type: null, taille: null },
-  { id: 'doc-dossier-rh', parent_id: null, type: 'dossier', nom: 'Équipe', storage_path: null, mime_type: null, taille: null },
-  { id: 'doc-dossier-fournisseurs', parent_id: null, type: 'dossier', nom: 'Fournisseurs', storage_path: null, mime_type: null, taille: null },
-  { id: 'doc-plan-nettoyage', parent_id: 'doc-dossier-hygiene', type: 'fichier', nom: 'Plan de nettoyage.pdf', storage_path: 'demo/plan-nettoyage.pdf', mime_type: 'application/pdf', taille: 184320 },
-  { id: 'doc-autocontrole', parent_id: 'doc-dossier-hygiene', type: 'fichier', nom: 'Concept d\'autocontrôle.pdf', storage_path: 'demo/autocontrole.pdf', mime_type: 'application/pdf', taille: 402112 },
-  { id: 'doc-reglement', parent_id: 'doc-dossier-rh', type: 'fichier', nom: 'Règlement du personnel.pdf', storage_path: 'demo/reglement.pdf', mime_type: 'application/pdf', taille: 251904 },
-  { id: 'doc-conditions', parent_id: 'doc-dossier-fournisseurs', type: 'fichier', nom: 'Conditions Primeurs du Rhône.pdf', storage_path: 'demo/conditions.pdf', mime_type: 'application/pdf', taille: 96256 },
-].map((d) => ({ ...d, etablissement_id: ETAB, uploaded_by: 'demo-patron', description: null, created_at: '2026-04-01T08:00:00Z', updated_at: '2026-04-01T08:00:00Z' }));
+  { id: 'doc-dossier-hygiene', parent_id: null, type: 'folder', nom: 'HACCP', storage_path: null, mime_type: null, taille: null },
+  { id: 'doc-dossier-rh', parent_id: null, type: 'folder', nom: 'Équipe', storage_path: null, mime_type: null, taille: null },
+  { id: 'doc-dossier-fournisseurs', parent_id: null, type: 'folder', nom: 'Fournisseurs', storage_path: null, mime_type: null, taille: null },
+  { id: 'doc-dossier-contrats', parent_id: null, type: 'folder', nom: 'Contrats', storage_path: null, mime_type: null, taille: null, roles_visibles: [] },
+  { id: 'doc-plan-nettoyage', parent_id: 'doc-dossier-hygiene', type: 'file', nom: 'Plan de nettoyage.pdf', storage_path: 'demo/plan-nettoyage.pdf', mime_type: 'application/pdf', taille: 184320 },
+  { id: 'doc-autocontrole', parent_id: 'doc-dossier-hygiene', type: 'file', nom: 'Concept d\'autocontrôle.pdf', storage_path: 'demo/autocontrole.pdf', mime_type: 'application/pdf', taille: 402112 },
+  { id: 'doc-reglement', parent_id: 'doc-dossier-rh', type: 'file', nom: 'Règlement du personnel.pdf', storage_path: 'demo/reglement.pdf', mime_type: 'application/pdf', taille: 251904 },
+  { id: 'doc-conditions', parent_id: 'doc-dossier-fournisseurs', type: 'file', nom: 'Conditions Primeurs du Rhône.pdf', storage_path: 'demo/conditions.pdf', mime_type: 'application/pdf', taille: 96256 },
+  { id: 'doc-contrat-ines', parent_id: 'doc-dossier-contrats', type: 'file', nom: 'Contrat Inès Garnier.pdf', storage_path: 'demo/contrat-ines.pdf', mime_type: 'application/pdf', taille: 128000 },
+].map((d) => ({ roles_visibles: null, ...d, etablissement_id: ETAB, uploaded_by: 'demo-patron', description: null, created_at: '2026-04-01T08:00:00Z', updated_at: '2026-04-01T08:00:00Z' }));
 
 // ── Messages ────────────────────────────────────────────────────────────────
 
@@ -443,7 +460,7 @@ export function genererPointsMouvements() {
 
 // ── Comptabilité ────────────────────────────────────────────────────────────
 
-export const COMPTA_REGLAGES = [{ etablissement_id: ETAB, methode_tva: 'effective', taux_tdfn: null, charges_sociales_pct: 16, cout_horaire_moyen: 32, updated_by: 'demo-patron', updated_at: '2026-03-01T08:00:00Z', seuil_hausse_prix_pct: 5 }];
+export const COMPTA_REGLAGES = [{ etablissement_id: ETAB, methode_tva: 'effective', taux_tdfn: null, charges_sociales_pct: 16, cout_horaire_moyen: 32, updated_by: 'demo-patron', updated_at: '2026-03-01T08:00:00Z', seuil_hausse_prix_pct: 5, delai_paiement_jours: 30, categories_charges: [] }];
 
 export const CHARGES_FIXES = [
   ['Loyer', 'loyer', 6500, 0, 'Gérance des Mélèzes'],
@@ -516,18 +533,28 @@ export const SALAIRES_ESTIMES = EQUIPE.filter((u) => u.role !== 'patron').map((u
 }));
 
 // Fiches dont la démo garde la trace dans le journal d'activité.
+// Lot 5 (plan 15) : sept modifications de suite du même inventaire, pour la
+// ligne regroupée « 7 modifications », et des champs changés sur les
+// recettes et produits. La vue journal_activite_semaine du front (semaine en
+// cours) lit les mêmes lignes (donnees/index.js).
 export function genererJournal() {
+  const inventaire = ['08:12', '08:15', '08:20', '08:24', '08:31', '08:36', '08:40']
+    .map((h) => ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'inventaires', 'UPDATE', 'Général', 0, h, ['lignes', 'updated_at']]);
   const lignes = [
-    ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'recettes', 'UPDATE', 'Sauce au poivre', -1, '15:20'],
-    ['demo-cuisinier', 'Inès Garnier', 'cuisinier', 'haccp', 'INSERT', 'Relevé Chambre froide positive', 0, '08:31'],
-    ['demo-patron', 'Claire Morel', 'patron', 'planning', 'UPDATE', 'Horaire de Lucas Meier', -1, '11:02'],
-    ['demo-hote', 'Nina Rossi', 'hote', 'reservations', 'INSERT', 'Réservation Bernard Élise', 0, '10:12'],
-    ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'pertes', 'UPDATE', 'Perte validée : Crème entière 35 %', 0, '09:15'],
+    ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'recettes', 'UPDATE', 'Sauce au poivre', -1, '15:20', ['etapes', 'ingredients', 'updated_at']],
+    ['demo-cuisinier', 'Inès Garnier', 'cuisinier', 'haccp', 'INSERT', 'Relevé Chambre froide positive', 0, '08:50', null],
+    ['demo-patron', 'Claire Morel', 'patron', 'planning', 'UPDATE', 'Horaire de Lucas Meier', -1, '11:02', null],
+    ['demo-hote', 'Nina Rossi', 'hote', 'reservations', 'INSERT', 'Réservation Bernard Élise', 0, '10:12', null],
+    ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'pertes', 'UPDATE', 'Perte validée : Crème entière 35 %', 0, '09:15', ['valide', 'valide_par']],
+    ...inventaire,
+    ['demo-patron', 'Claire Morel', 'patron', 'produits', 'UPDATE', 'Beurre de cuisine 82 %', 0, '11:40', ['prix_unitaire', 'fournisseur_id']],
+    ['demo-patron', 'Claire Morel', 'patron', 'recettes', 'INSERT', 'Tarte fine aux pommes', 0, '14:05', null],
+    ['demo-chef', 'Julien Lambert', 'resp_cuisine', 'produits', 'DELETE', 'Crème fraîche 25 % (ancien format)', 0, '16:22', null],
   ];
-  return lignes.map(([id, nom, role, module, op, libelle, d, h], i) => ({
+  return lignes.map(([id, nom, role, module, op, libelle, d, h, colonnes], i) => ({
     id: `00000000-0000-4000-8000-0000000004${String(i).padStart(2, '0')}`,
     created_at: instant(jour(d), h), etablissement_id: ETAB, acteur_id: id, acteur_nom: nom, acteur_role: role,
-    module, operation: op, ligne_id: null, libelle, colonnes_modifiees: null, avant: null, apres: null,
+    module, operation: op, ligne_id: null, libelle, colonnes_modifiees: colonnes, avant: null, apres: null,
   }));
 }
 

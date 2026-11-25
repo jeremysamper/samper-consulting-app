@@ -220,7 +220,13 @@ export function genererCaisse() {
     plat_formats: PLAT_FORMATS,
     caisse_categories: CAISSE_CATEGORIES,
     caisse_boutons: boutons,
-    caisse_reglages: [{ etablissement_id: ETAB, config: {}, updated_at: '2026-10-01T08:00:00Z' }],
+    // Coordonnées de la quittance : sans elles la caisse n'encaisse que des
+    // tickets de test. Numéro de TVA fictif, à la clé de contrôle juste.
+    caisse_reglages: [{
+      etablissement_id: ETAB,
+      config: { legal: { raison_sociale: 'Brasserie Démo SA', adresse: 'Place des Mélèzes 1', localite: '1950 Sion', numero_tva: 'CHE-123.456.788 TVA' } },
+      updated_at: '2026-10-01T08:00:00Z',
+    }],
     caisse_tickets: tickets,
     caisse_lignes: lignes,
     caisse_paiements: paiements,

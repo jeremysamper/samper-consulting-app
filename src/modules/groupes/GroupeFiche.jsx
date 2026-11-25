@@ -10,7 +10,7 @@ import {
   allergenesEnConflit, computeListeCourses, formatQuantiteCourses, payloadCoursesPdf,
 } from './listeCourses.js';
 import { dateComplete, enTeteCourses, payloadFicheGroupe } from './pdfGroupe.js';
-import { STATUTS, libelleGroupe, lignesParSection, metaStatut } from './typesGroupe.js';
+import { libelleGroupe, lignesParSection, metaStatut, statutsActifs } from './typesGroupe.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fiche d'un groupe : ce que la brigade lit, et l'endroit où elle dit qu'elle
@@ -37,6 +37,9 @@ export default function GroupeFiche({
   groupe, menu, complements = null, menus = [], menusStatus = 'ready', cuisine, etablissement,
   canEdit = false, voirPrix = false,
   onStatut, onEnregistrerChoix, onEdit, onAnnuler, onSupprimer, onClose, ongletInitial = 'fiche',
+  // Onglet ajouté par Groupes (« Devis et factures », droit factures_groupes) :
+  // { id, label, rendu() }.
+  ongletSupplementaire = null,
 }) {
   const [onglet, setOnglet] = useState(ongletInitial);
   const [statutEnCours, setStatutEnCours] = useState(false);
@@ -162,7 +165,7 @@ export default function GroupeFiche({
           <div style={{ minWidth: 0 }}>
             <div style={st.titre}>{libelleGroupe(groupe.typeGroupe, groupe.menuNumero)}, {groupe.nom}</div>
             <div style={st.sousTitre}>
-              {dateComplete(groupe.dateEvenement)}{groupe.heure ? ` à ${groupe.heure}` : ''}, {groupe.nbPax} pax
+              {dateComplete(groupe.dateEvenement)}{groupe.heure ? ` à ${groupe.heure}` : ''}, {groupe.nbPax} couvert{groupe.nbPax > 1 ? 's' : ''}
               {menu?.nom ? `, menu ${menu.nom}` : ''}
             </div>
           </div>
@@ -184,7 +187,7 @@ export default function GroupeFiche({
           {!groupe.annule && (
             <div>
               <div style={st.selecteur} role="radiogroup" aria-label="État de préparation">
-                {STATUTS.map((sid) => {
+                {statutsActifs(groupe.statut).map((sid) => {
                   const m = metaStatut(sid);
                   const actif = groupe.statut === sid;
                   return (
@@ -220,6 +223,7 @@ export default function GroupeFiche({
               { id: 'fiche', label: 'Fiche' },
               { id: 'choix', label: 'Choix du client' },
               { id: 'courses', label: 'Liste de courses' },
+              ...(ongletSupplementaire ? [{ id: ongletSupplementaire.id, label: ongletSupplementaire.label }] : []),
             ]}
             active={onglet}
             onChange={setOnglet}
@@ -370,6 +374,8 @@ export default function GroupeFiche({
               onSave={onEnregistrerChoix}
             />
           )}
+
+          {ongletSupplementaire && onglet === ongletSupplementaire.id && ongletSupplementaire.rendu()}
 
           {onglet === 'courses' && (
             <ListeCourses

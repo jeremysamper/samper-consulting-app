@@ -23,7 +23,17 @@ export const CATEGORIES_CHARGES = [
   { id: 'abonnements', label: 'Abonnements' },
   { id: 'autre', label: 'Autre' },
 ];
-export const libelleCategorie = (id) => CATEGORIES_CHARGES.find(c => c.id === id)?.label || 'Autre';
+// Catégories de la maison (Réglages > Factures & achats, compta_reglages.
+// categories_charges) : une liste non vide est la liste complète de la maison.
+// Posées par useCompta à chaque rendu ; sans réglage, celles de l'app. Une
+// charge dont la catégorie n'est plus dans la liste garde son libellé d'app.
+let categoriesMaison = null;
+export function reglerCategoriesCharges(liste) {
+  categoriesMaison = Array.isArray(liste) && liste.length ? liste : null;
+}
+export const categoriesCharges = () => categoriesMaison || CATEGORIES_CHARGES;
+export const libelleCategorie = (id) => (categoriesMaison || []).find(c => c.id === id)?.label
+  || CATEGORIES_CHARGES.find(c => c.id === id)?.label || 'Autre';
 
 export const PERIODICITES = [
   { id: 'mensuelle', label: 'Mensuelle', mois: 1, par: 'par mois' },

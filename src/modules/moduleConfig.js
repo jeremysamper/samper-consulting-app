@@ -177,6 +177,13 @@ export const droitsAction = [
   //   aussi « Modifier » du module. Vérifié en base depuis le lot C
   //   (boissons_peut_modifier, mêmes rôles par défaut : les tenir en phase).
   { id: 'carte_boissons', module: 'boissons', label: 'Modifier la carte des boissons et ses prix', defaultRoles: ['consultant', 'patron'], requiertGerer: true },
+  //   factures_groupes : devis, factures et paiements des groupes (onglet
+  //   « Devis et factures » de Groupes). Vérifié en base par la RLS des tables
+  //   groupe_devis, groupe_factures, groupe_paiements et la lecture de
+  //   facturation_reglages (user_peut_gerer, migration 20261123), mêmes rôles
+  //   par défaut : les tenir en phase. L'identité de facturation (IBAN) ne
+  //   s'écrit que par le consultant et le patron, case ou non.
+  { id: 'factures_groupes', module: 'groupes', label: 'Devis et factures des groupes', defaultRoles: ['consultant', 'patron'] },
 ];
 
 // Rôles par défaut du droit « gérer » d'un module ou d'un droit d'action
