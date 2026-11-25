@@ -50,6 +50,7 @@ import './recettes.css';
 // Import de fiches (Gérer > Importer des fiches) : chargé à l'ouverture
 // seulement, avec le lecteur Excel qu'il appelle.
 const ImportLauncher = React.lazy(() => import('./import/ImportLauncher.jsx'));
+const CartePourClient = React.lazy(() => import('./CartePourClient.jsx'));
 // Chiffrage (droit d'action « chiffrage ») : chargé à l'ouverture de son
 // écran seulement, la brigade ne reçoit jamais ce code.
 const Chiffrage = React.lazy(() => import('./chiffrage/Chiffrage.jsx'));
@@ -1485,6 +1486,7 @@ const Recettes = ({ user, etablissement }) => {
   const [dataStatus, setDataStatus] = React.useState(() => (legacySB ? 'loading' : 'ready'));
   const reloadDataRef = React.useRef(null);
   const [showExportModal, setShowExportModal] = React.useState(false);
+  const [showCarteClient, setShowCarteClient] = React.useState(false);
   const [showIngredientSearch, setShowIngredientSearch] = React.useState(false);
   const [showImport, setShowImport] = React.useState(false);
   // Carte d'accueil = préférence utilisateur par établissement (user_settings,
@@ -1975,6 +1977,18 @@ const Recettes = ({ user, etablissement }) => {
           onClose={() => setShowExportModal(false)}
         />
       )}
+      {showCarteClient && activeCarte && (
+        <React.Suspense fallback={null}>
+          <CartePourClient
+            carte={activeCarte}
+            plats={platsCarte}
+            recettesActives={recettesActives}
+            etablissement={etablissement}
+            pret={dataStatus === 'ready' && cartesStatus === 'ready'}
+            onClose={() => setShowCarteClient(false)}
+          />
+        </React.Suspense>
+      )}
       {showIngredientSearch && (
         <IngredientSearchModal
           recettes={recettesEtab}
@@ -2114,6 +2128,7 @@ const Recettes = ({ user, etablissement }) => {
                       canChiffrer && { titre: 'Chiffrage', detail: 'Coûts, prix de vente et marges des fiches et des plats', onClick: () => { setFicheChiffrage(null); setEcran('chiffrage'); } },
                       { titre: 'Allergènes', detail: 'Trouver dans quelles recettes un ingrédient ou allergène apparaît', onClick: () => setShowIngredientSearch(true) },
                       { titre: 'Exporter', detail: 'Exporter une carte entière, des plats ou des recettes dans un seul PDF', onClick: () => setShowExportModal(true) },
+                      canManageCartes && activeCarte && { titre: 'Imprimer pour le client', detail: 'La carte pour la table ou le tableau des allergènes, en PDF', onClick: () => setShowCarteClient(true) },
                       canEtiqueter && { titre: 'Une étiquette', detail: "DLC d'une préparation", onClick: () => setEcran('etiquette') },
                     ] },
                     canManageCartes && { titre: 'Cartes', items: [

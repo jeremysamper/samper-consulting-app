@@ -2567,6 +2567,351 @@ export const pdfUtils = {
   },
 
   // ═══════════════════════════════════════════════════════════════
+  // CARTE POUR LA TABLE - document pour le client (jsPDF natif, vectoriel)
+  // ───────────────────────────────────────────────────────────────
+  // Les plats de la carte par categorie, dans l'ordre de service : nom a
+  // gauche, prix aligne a droite sur la meme ligne de base, description en
+  // italique, allergenes en toutes lettres. Un plat n'est jamais coupe entre
+  // deux pages, un titre de categorie ne reste jamais seul en bas de page.
+  // Aucun pied de page ni folio (DA des exports).
+  // payload : src/modules/recettes/carteClient.js (payloadCarteTable).
+  // options : { etablissement, autoPrint, filename, logoDataUrl }
+  // ═══════════════════════════════════════════════════════════════
+  async exportCarteTablePdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined
+        ? options.logoDataUrl
+        : await this._resolveLogoDataUrl(etab);
+      const doc = this._nouveauDocA4(jsPDF);
+      this._renderCarteTable(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
+      if (options.autoPrint) {
+        doc.autoPrint();
+        const win = getBrowserWindow();
+        const url = doc.output('bloburl');
+        if (win) win.open(url, '_blank'); else doc.save(options.filename || 'carte.pdf');
+      } else {
+        doc.save(options.filename || 'carte.pdf');
+      }
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportCarteTablePdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  // Tableau des allergenes de la carte : A4 paysage, une colonne par
+  // allergene du referentiel. Piece de controle qui se feuillette : folio.
+  // payload : carteClient.js (payloadAllergenesCarte).
+  async exportAllergenesCartePdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined
+        ? options.logoDataUrl
+        : await this._resolveLogoDataUrl(etab);
+      const doc = this._nouveauDocA4(jsPDF, 'landscape');
+      this._renderAllergenesCarte(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
+      if (options.autoPrint) {
+        doc.autoPrint();
+        const win = getBrowserWindow();
+        const url = doc.output('bloburl');
+        if (win) win.open(url, '_blank'); else doc.save(options.filename || 'allergenes.pdf');
+      } else {
+        doc.save(options.filename || 'allergenes.pdf');
+      }
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportAllergenesCartePdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _renderCarteTable(doc, payload, options = {}) {
+    const MM_PER_PT = 0.3528;
+    const PAGE_W = doc.internal.pageSize.getWidth();
+    const PAGE_H = doc.internal.pageSize.getHeight();
+    const M = BRAND.page.marginMm;
+    const contentW = PAGE_W - 2 * M;
+    const bodyBottom = PAGE_H - M;
+    // Document remis au client : jamais le nom du cabinet en repli.
+    const etabName = pdfSafeText((options.etablissement?.nom || '').toString());
+    const logoDataUrl = options.logoDataUrl || null;
+    const titre = pdfSafeText((payload.titre || '').toString().trim());
+    const meta = pdfSafeText((payload.meta || '').toString().trim());
+    const sections = (Array.isArray(payload.sections) ? payload.sections : [])
+      .map((s) => ({
+        label: pdfSafeText(String(s?.label || '')),
+        plats: (Array.isArray(s?.plats) ? s.plats : [])
+          .map((p) => ({
+            nom: pdfSafeText(String(p?.nom || '').trim()),
+            prix: pdfSafeText(String(p?.prix || '').trim()),
+            description: pdfSafeText(String(p?.description || '').trim()),
+            allergenes: pdfSafeText(String(p?.allergenes || '').trim()),
+          }))
+          .filter((p) => p.nom),
+      }))
+      .filter((s) => s.plats.length);
+    const mentions = (Array.isArray(payload.mentions) ? payload.mentions : [])
+      .map((m) => pdfSafeText(String(m || '').trim())).filter(Boolean);
+
+    const drawHeader = () => this._enTeteDocument(doc, { titre, meta, etablissement: etabName, logoDataUrl });
+    let y = drawHeader();
+    const ensureSpace = (h) => {
+      if (y + h > bodyBottom) { doc.addPage(); y = drawHeader(); }
+    };
+
+    const xTexte = M + 3.2;
+    const corpsNom = BRAND.size.amountLarge;
+    const pasNom = corpsNom * MM_PER_PT * 1.3;
+    const pasDesc = BRAND.size.body * MM_PER_PT * 1.4;
+    const pasAll = BRAND.size.note * MM_PER_PT * 1.45;
+    // Colonne du prix : la largeur du montant le plus long de la carte, pour
+    // que tous les noms se replient au meme endroit.
+    setBrandFont(doc, 'voice'); doc.setFontSize(corpsNom);
+    const largeurPrix = Math.max(0, ...sections.flatMap((s) => s.plats.map((p) => (p.prix ? doc.getTextWidth(p.prix) : 0))));
+    const largeurNom = contentW - 3.2 - (largeurPrix ? largeurPrix + 6 : 0);
+    const largeurCorps = contentW - 3.2;
+
+    const mesurer = (p) => {
+      setBrandFont(doc, 'voice'); doc.setFontSize(corpsNom);
+      const nom = doc.splitTextToSize(p.nom, largeurNom);
+      setBrandFont(doc, 'voiceItalic'); doc.setFontSize(BRAND.size.body);
+      const desc = p.description ? doc.splitTextToSize(p.description, largeurCorps) : [];
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note);
+      const all = p.allergenes ? doc.splitTextToSize(p.allergenes, largeurCorps) : [];
+      const h = nom.length * pasNom + desc.length * pasDesc + (all.length ? all.length * pasAll + 0.8 : 0) + 4.2;
+      return { ...p, lignesNom: nom, lignesDesc: desc, lignesAll: all, h };
+    };
+
+    const hauteurTitre = 9;
+    sections.forEach((section, index) => {
+      const plats = section.plats.map(mesurer);
+      if (index > 0) y += 3;
+      // Le titre et son premier plat se reservent ensemble.
+      ensureSpace(hauteurTitre + plats[0].h);
+      y = this._titreBloc(doc, section.label, M, y + 2, contentW) + 1.5;
+      plats.forEach((p) => {
+        ensureSpace(p.h);
+        setBrandFont(doc, 'voice'); doc.setFontSize(corpsNom); doc.setTextColor(...PDF.primary);
+        const baseNom = y;
+        p.lignesNom.forEach((ligne) => { doc.text(ligne, xTexte, y); y += pasNom; });
+        if (p.prix) {
+          setBrandFont(doc, 'voice'); doc.setFontSize(corpsNom); doc.setTextColor(...PDF.ink);
+          this._texteDroite(doc, p.prix, PAGE_W - M, baseNom);
+        }
+        if (p.lignesDesc.length) {
+          setBrandFont(doc, 'voiceItalic'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
+          p.lignesDesc.forEach((ligne) => { doc.text(ligne, xTexte, y - 0.6); y += pasDesc; });
+        }
+        if (p.lignesAll.length) {
+          y += 0.8;
+          setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.ink);
+          p.lignesAll.forEach((ligne) => { doc.text(ligne, xTexte, y - 0.6); y += pasAll; });
+        }
+        y += 4.2;
+      });
+    });
+
+    if (mentions.length) {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+      const lignes = mentions.flatMap((m) => doc.splitTextToSize(m, contentW));
+      const pas = BRAND.size.body * MM_PER_PT * 1.45;
+      ensureSpace(6 + lignes.length * pas);
+      y += 2;
+      this._filetInterne(doc, M, y, PAGE_W - M);
+      y += 6;
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
+      lignes.forEach((ligne) => { doc.text(ligne, M, y); y += pas; });
+    }
+  },
+
+  _renderAllergenesCarte(doc, payload, options = {}) {
+    const MM_PER_PT = 0.3528;
+    const PAGE_W = doc.internal.pageSize.getWidth();
+    const PAGE_H = doc.internal.pageSize.getHeight();
+    const M = BRAND.page.marginMm;
+    const contentW = PAGE_W - 2 * M;
+    // Le folio se pose a 10 mm du bord, sous la marge basse.
+    const bodyBottom = PAGE_H - M;
+    const etabName = pdfSafeText((options.etablissement?.nom || '').toString());
+    const logoDataUrl = options.logoDataUrl || null;
+    const titre = pdfSafeText((payload.titre || '').toString().trim());
+    const sousTitre = pdfSafeText((payload.sousTitre || '').toString().trim());
+    const meta = pdfSafeText((payload.meta || '').toString().trim());
+    const colonnes = (Array.isArray(payload.colonnes) ? payload.colonnes : [])
+      .map((c) => ({ id: c?.id, label: pdfSafeText(String(c?.label || '')) }));
+    const avecAutres = colonnes.some((c) => c.id === 'autres');
+    const nbAllergenes = colonnes.filter((c) => c.id !== 'autres').length;
+    const sections = (Array.isArray(payload.sections) ? payload.sections : [])
+      .map((s) => ({
+        label: pdfSafeText(String(s?.label || '')),
+        lignes: (Array.isArray(s?.lignes) ? s.lignes : [])
+          .map((l) => ({
+            nom: pdfSafeText(String(l?.nom || '').trim()),
+            sansFiche: !!l?.sansFiche,
+            mention: pdfSafeText(String(l?.mention || '').trim()),
+            marques: Array.isArray(l?.marques) ? l.marques : [],
+            autres: pdfSafeText(String(l?.autres || '').trim()),
+          }))
+          .filter((l) => l.nom),
+      }))
+      .filter((s) => s.lignes.length);
+    const legende = (Array.isArray(payload.legende) ? payload.legende : [])
+      .map((t) => pdfSafeText(String(t || '').trim())).filter(Boolean);
+
+    // ---- Colonnes ----
+    // Chaque colonne d'allergene prend la largeur de son plus long mot (aucun
+    // mot coupe en deux dans la bande), le reste se partage a parts egales.
+    // Si les mots ne tiennent pas au corps des etiquettes, le corps de la
+    // bande descend, le meme pour toutes les colonnes.
+    const largeurNom = 54;
+    const largeurAutres = avecAutres ? 32 : 0;
+    const dispo = contentW - largeurNom - largeurAutres;
+    const libellesCol = colonnes.filter((c) => c.id !== 'autres').map((c) => c.label);
+    setBrandFont(doc, 'label');
+    let corpsBande = BRAND.size.sectionLabel;
+    let minimas = [];
+    for (;;) {
+      doc.setFontSize(corpsBande);
+      minimas = libellesCol.map((t) => Math.max(0, ...t.split(/\s+/).map((m) => doc.getTextWidth(m))) + 2.4);
+      if (minimas.reduce((a, b) => a + b, 0) <= dispo || corpsBande <= 5.6) break;
+      corpsBande -= 0.2;
+    }
+    const surplus = Math.max(0, dispo - minimas.reduce((a, b) => a + b, 0)) / Math.max(1, nbAllergenes);
+    const largeursCol = minimas.map((w) => w + surplus);
+    const departs = largeursCol.reduce((acc, w) => { acc.push(acc[acc.length - 1] + w); return acc; }, [M + largeurNom]);
+    const xCol = (i) => departs[i];
+    const largeurDe = (i) => largeursCol[i];
+    const xAutres = departs[nbAllergenes];
+    const pasLigne = BRAND.size.cell * MM_PER_PT * 1.4;
+
+    // Bande d'en-tete sur deux lignes de texte (« Fruits à coque ») : memes
+    // jetons que _bandeTableau, libelles centres dans leur colonne.
+    const pasBande = corpsBande * MM_PER_PT * 1.25;
+    const hBande = 2 * pasBande + 3.6;
+    const coupe = (texte, largeur) => {
+      let lignes = doc.splitTextToSize(texte, largeur);
+      if (lignes.length > 2) lignes = [lignes[0], lignes.slice(1).join(' ')];
+      return lignes.map((l) => {
+        let s = l;
+        while (s.length > 3 && doc.getTextWidth(s) > largeur) s = s.slice(0, -4) + '...';
+        return s;
+      });
+    };
+    const drawBande = () => {
+      doc.setFillColor(...PDF.primary);
+      doc.rect(M, y, contentW, hBande, 'F');
+      setBrandFont(doc, 'label'); doc.setFontSize(corpsBande); doc.setTextColor(...PDF.white);
+      const poser = (lignes, cx, centrer) => {
+        const haut = y + hBande / 2 - ((lignes.length - 1) * pasBande) / 2 + corpsBande * MM_PER_PT * 0.36;
+        lignes.forEach((l, k) => {
+          if (centrer) this._texteCentre(doc, l, cx, haut + k * pasBande, BRAND.charSpace.label);
+          else doc.text(l, cx, haut + k * pasBande, { charSpace: BRAND.charSpace.label });
+        });
+      };
+      poser(['Plat'], M + 2, false);
+      colonnes.forEach((c, i) => {
+        if (c.id === 'autres') poser(coupe(c.label, largeurAutres - 3), xAutres + 2, false);
+        else poser(coupe(c.label, largeurDe(i) - 1.2), xCol(i) + largeurDe(i) / 2, true);
+      });
+      y += hBande;
+    };
+
+    const drawHeader = () => {
+      y = this._enTeteDocument(doc, { titre, sousTitre, meta, etablissement: etabName, logoDataUrl }) - 4;
+      drawBande();
+    };
+    let y = 0;
+    drawHeader();
+    const ensureSpace = (h) => {
+      if (y + h > bodyBottom) { doc.addPage(); drawHeader(); }
+    };
+
+    const mesurer = (l) => {
+      setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.cell + 0.8);
+      let nom = doc.splitTextToSize(l.nom, largeurNom - 4);
+      if (nom.length > 2) {
+        let second = nom.slice(1).join(' ');
+        while (second.length > 3 && doc.getTextWidth(second + '...') > largeurNom - 4) second = second.slice(0, -1);
+        nom = [nom[0], second.trimEnd() + '...'];
+      }
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell);
+      const autres = avecAutres && l.autres ? doc.splitTextToSize(l.autres, largeurAutres - 3) : [];
+      const n = Math.max(nom.length, autres.length, 1);
+      return { ...l, lignesNom: nom, lignesAutres: autres, h: n * pasLigne + 2.6 };
+    };
+
+    const hCategorie = 6.6;
+    let rang = 0;
+    sections.forEach((section) => {
+      const lignes = section.lignes.map(mesurer);
+      // Sous-ligne de categorie : jamais seule en bas de page.
+      ensureSpace(hCategorie + lignes[0].h);
+      setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.blockTitle); doc.setTextColor(...PDF.primary);
+      doc.text(section.label, M + 2, y + 4.6);
+      y += hCategorie;
+      this._filetInterne(doc, M, y - 0.6, PAGE_W - M);
+      rang = 0;
+      lignes.forEach((l) => {
+        ensureSpace(l.h);
+        this._fondZebre(doc, rang, M, y, contentW, l.h);
+        const base = y + 1.3 + BRAND.size.cell * MM_PER_PT;
+        setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.cell + 0.8); doc.setTextColor(...PDF.ink);
+        l.lignesNom.forEach((t, k) => doc.text(t, M + 2, base + k * pasLigne));
+        if (l.sansFiche) {
+          setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell); doc.setTextColor(...PDF.ink);
+          doc.text(l.mention, xCol(0) + 2, base);
+        } else {
+          // Marque : un carre plein, lisible en noir et blanc.
+          const cote = 2.6;
+          const cy = y + l.h / 2;
+          doc.setFillColor(...PDF.primary);
+          l.marques.slice(0, nbAllergenes).forEach((m, i) => {
+            if (m) doc.rect(xCol(i) + largeurDe(i) / 2 - cote / 2, cy - cote / 2, cote, cote, 'F');
+          });
+          if (l.lignesAutres.length) {
+            setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell); doc.setTextColor(...PDF.ink);
+            l.lignesAutres.forEach((t, k) => doc.text(t, xAutres + 2, base + k * pasLigne));
+          }
+        }
+        // Filets de colonne, hors mention d'un plat sans fiche.
+        doc.setDrawColor(...PDF.ruleLight); doc.setLineWidth(RULE.hair);
+        if (!l.sansFiche) {
+          for (let i = 0; i <= nbAllergenes; i += 1) doc.line(xCol(i), y, xCol(i), y + l.h);
+        } else {
+          doc.line(xCol(0), y, xCol(0), y + l.h);
+          if (avecAutres) doc.line(xAutres, y, xAutres, y + l.h);
+        }
+        y += l.h;
+        this._filetInterne(doc, M, y, PAGE_W - M);
+        rang += 1;
+      });
+      y += 1.5;
+    });
+
+    if (legende.length) {
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note);
+      const pas = BRAND.size.note * MM_PER_PT * 1.5;
+      const lignes = legende.flatMap((t) => doc.splitTextToSize(t, contentW));
+      // La legende suit le tableau ; sur une page neuve elle ne garde pas la bande.
+      if (y + 5 + lignes.length * pas > bodyBottom) {
+        doc.addPage();
+        y = this._enTeteDocument(doc, { titre, sousTitre, meta, etablissement: etabName, logoDataUrl });
+      } else {
+        y += 5;
+      }
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+      lignes.forEach((t) => { doc.text(t, M, y); y += pas; });
+    }
+
+    this._folio(doc);
+  },
+
+  // ═══════════════════════════════════════════════════════════════
   // REGISTRE HACCP - relevés de température (jsPDF natif, vectoriel)
   // Journalier ou mensuel : le payload arrive déjà groupé par jour.
   // Généré en vectoriel (pas de capture html2canvas) : lignes jamais

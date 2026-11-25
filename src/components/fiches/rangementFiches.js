@@ -9,6 +9,7 @@
 // ─────────────────────────────────────────────────────────────
 import { normalizeSearch } from '../../utils/searchText.js';
 import { grouperParCategorie } from '../../utils/categoriesPlat.js';
+import { partitionAllergenes, sortAllergenes } from '../../utils/allergenes.js';
 
 // Catégories de préparations techniques : sauces, fonds, bases, garnitures,
 // préparations. Ce ne sont pas des plats servis au client : elles ne donnent
@@ -98,6 +99,25 @@ export function allergenesDeFicheSalle(fiche, plats, recettes) {
   const lues = (plat.recettes || []).map((pr) => parId.get(pr.recetteId)).filter(Boolean);
   if (!lues.length) return propres;
   return [...new Set([...lues.flatMap((r) => r.allergenesIds || []), ...propres])];
+}
+
+// Allergènes d'un plat : SOURCE UNIQUE de la vitrine de la carte et des
+// documents pour le client (carte pour la table, tableau des allergènes).
+// Les recettes passées sont les recettes actives, cachées comprises : cacher
+// une préparation ne retire jamais un allergène d'un plat servi. Le calcul
+// s'arrête aux recettes liées au plat (plat_recettes est une liste plate).
+// Rend :
+//   recettes  : les recettes actives trouvées pour le plat ;
+//   valeurs   : l'union dédoublonnée de leurs allergenesIds, telle quelle ;
+//   ids       : les valeurs du référentiel, dans son ordre ;
+//   libres    : les valeurs hors référentiel, gardées telles quelles ;
+//   sansFiche : aucune recette active trouvée (allergènes inconnus).
+export function allergenesDuPlat(plat, recettesActives) {
+  const parId = indexParId(recettesActives);
+  const recettes = (plat?.recettes || []).map((pr) => parId.get(pr?.recetteId)).filter(Boolean);
+  const valeurs = [...new Set(recettes.flatMap((r) => r.allergenesIds || []))];
+  const { valides, inconnus } = partitionAllergenes(valeurs);
+  return { recettes, valeurs, ids: sortAllergenes(valides), libres: inconnus, sansFiche: recettes.length === 0 };
 }
 
 // a commence par b, au mot près (« tarte aux pruneaux maison » commence par

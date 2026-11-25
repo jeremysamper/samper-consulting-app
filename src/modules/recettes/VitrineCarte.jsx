@@ -2,7 +2,7 @@ import React from 'react';
 import { Clock } from 'lucide-react';
 import VignetteFiche from '../../components/fiches/VignetteFiche.jsx';
 import SectionFiches, { GrilleFiches } from '../../components/fiches/SectionFiches.jsx';
-import { recettesOuvrablesDuPlat } from '../../components/fiches/rangementFiches.js';
+import { recettesOuvrablesDuPlat, allergenesDuPlat } from '../../components/fiches/rangementFiches.js';
 import { categorieDuPlat } from '../../utils/categoriesPlat.js';
 
 // ─── VitrineCarte : les plats de la carte du moment, en vignettes ───────────
@@ -34,8 +34,7 @@ export default function VitrineCarte({
 
   const vignette = (plat) => {
     const ouvrables = recettesOuvrablesDuPlat(plat, visiblesParId);
-    const toutes = (plat.recettes || []).map((pr) => activesParId.get(pr.recetteId)).filter(Boolean);
-    const allergenes = [...new Set(toutes.flatMap((r) => r.allergenesIds || []))];
+    const { recettes: toutes, valeurs: allergenes } = allergenesDuPlat(plat, activesParId);
     // Temps le plus long des recettes du plat.
     const tempsMax = Math.max(0, ...toutes.map((r) => Number(r.tempsTotal) || 0));
     const premiere = ouvrables[0] || null;

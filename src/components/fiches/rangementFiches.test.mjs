@@ -4,8 +4,9 @@ import assert from 'node:assert/strict';
 import {
   estCategorieTechnique, recettesOuvrablesDuPlat, platsDeRecette,
   photoDeRecette, photoDeFicheSalle, platsACompleter,
-  platsAEcrire, sectionsDeFiches, SECTION_PREPARATIONS,
+  platsAEcrire, sectionsDeFiches, SECTION_PREPARATIONS, allergenesDuPlat,
 } from './rangementFiches.js';
+import { ALLERGENES } from '../../utils/allergenes.js';
 
 const rec = (id, nom, categorie, patch) => ({ id, nom, categorie, statut: 'validée', masquee: false, photoUrl: null, ...patch });
 const lien = (recetteId, ordre, role = 'composant') => ({ recetteId, ordre, role });
@@ -125,4 +126,53 @@ test('allergènes d\'une fiche salle : les recettes du plat du même nom, plus l
   const recettes = [{ id: 'r1', allergenesIds: ['lactose'] }, { id: 'r2', allergenesIds: ['sulfites'], masquee: true }];
   assert.deepEqual(allergenesDeFicheSalle({ nom: 'Risotto aux Cèpes', allergenes: ['celeri'] }, plats, recettes).sort(), ['celeri', 'lactose', 'sulfites']);
   assert.deepEqual(allergenesDeFicheSalle({ nom: 'Autre plat', allergenes: ['gluten'] }, plats, recettes), ['gluten']);
+});
+
+// ─── allergenesDuPlat : source unique de la vitrine et des documents client ───
+const idA = ALLERGENES[0].id; // premier du référentiel
+const idB = ALLERGENES[1].id;
+const idC = ALLERGENES[2].id;
+const rA = rec('ra', 'Sauce', 'Sauces', { allergenesIds: [idC, idA] });
+const rB = rec('rb', 'Base', 'Plats', { allergenesIds: [idA, idB, 'trace de céleri'] });
+const rCachee = rec('rc', 'Cachée', 'Bases', { masquee: true, allergenesIds: [idB] });
+const rVide = rec('rv', 'Sans allergène', 'Plats', { allergenesIds: [] });
+
+test('allergenesDuPlat : union sans doublon, ordre du référentiel dans ids', () => {
+  const a = allergenesDuPlat(plat('p', 'P', [lien('ra', 0), lien('rb', 1)]), [rA, rB]);
+  assert.deepEqual(a.ids, [idA, idB, idC]);
+  assert.equal(new Set(a.valeurs).size, a.valeurs.length);
+  assert.deepEqual([...a.valeurs].sort(), [idA, idB, idC, 'trace de céleri'].sort());
+  assert.equal(a.sansFiche, false);
+});
+
+test('allergenesDuPlat : une recette cachée compte, une archivée absente de la liste non', () => {
+  const a = allergenesDuPlat(plat('p', 'P', [lien('rc', 0), lien('r-archivee', 1)]), [rCachee]);
+  assert.deepEqual(a.ids, [idB]);
+  assert.equal(a.recettes.length, 1);
+});
+
+test('allergenesDuPlat : valeur libre rangée dans libres et gardée dans valeurs', () => {
+  const a = allergenesDuPlat(plat('p', 'P', [lien('rb', 0)]), [rB]);
+  assert.deepEqual(a.libres, ['trace de céleri']);
+  assert.ok(a.valeurs.includes('trace de céleri'));
+  assert.ok(!a.ids.includes('trace de céleri'));
+});
+
+test('allergenesDuPlat : sans lien ou liens hors liste, sansFiche vrai', () => {
+  assert.equal(allergenesDuPlat(plat('p', 'P', []), [rA]).sansFiche, true);
+  assert.equal(allergenesDuPlat(plat('p', 'P', undefined), [rA]).sansFiche, true);
+  assert.equal(allergenesDuPlat(plat('p', 'P', [lien('inconnue', 0)]), [rA]).sansFiche, true);
+});
+
+test('allergenesDuPlat : fiche sans allergène, sansFiche faux et ids vide', () => {
+  const a = allergenesDuPlat(plat('p', 'P', [lien('rv', 0)]), [rVide]);
+  assert.equal(a.sansFiche, false);
+  assert.deepEqual(a.ids, []);
+  assert.deepEqual(a.libres, []);
+});
+
+test('allergenesDuPlat : même résultat avec une liste et avec une Map', () => {
+  const p = plat('p', 'P', [lien('ra', 0), lien('rb', 1), lien('rc', 2)]);
+  const liste = [rA, rB, rCachee];
+  assert.deepEqual(allergenesDuPlat(p, liste), allergenesDuPlat(p, new Map(liste.map((r) => [r.id, r]))));
 });

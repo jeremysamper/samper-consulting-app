@@ -7073,6 +7073,21 @@ export const UI_GLOSSARY = {
   "Non réglé": "Not set",
   "L'établissement affiché a changé. Cette section n'a pas été écrite.": "The displayed establishment has changed. This section was not written.",
   "Aucun autre établissement à proposer.": "No other establishment to offer.",
+  // Imprimer pour le client (Cartes & Recettes, lot 03 du panel)
+  "Imprimer pour le client": "Print for guests",
+  "La carte pour la table ou le tableau des allergènes, en PDF": "The menu for the table or the allergen chart, as a PDF",
+  "Carte pour la table": "Menu for the table",
+  "Allergènes de la carte": "Menu allergens",
+  "Les plats, leur description, leur prix et leurs allergènes.": "The dishes, their description, their price and their allergens.",
+  "Un tableau des plats par allergène, en paysage.": "A chart of dishes by allergen, in landscape.",
+  "Afficher les prix": "Show prices",
+  "Choisissez au moins une catégorie.": "Choose at least one category.",
+  "Les plats ne sont pas encore chargés. Réessayez dans un instant.": "The dishes are not loaded yet. Try again in a moment.",
+  "plats retenus": "dishes selected",
+  "plat retenu": "dish selected",
+  "Ces plats n'ont pas de fiche. Leurs allergènes ne sont pas connus : le document le dira.": "These dishes have no recipe sheet. Their allergens are not known: the document will say so.",
+  "Ces plats seront imprimés sans prix. Le prix d'un plat se saisit dans le Chiffrage.": "These dishes will be printed without a price. A dish price is entered in Costing.",
+  "Le PDF n'a pas pu être créé. Réessayez.": "The PDF could not be created. Try again.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
