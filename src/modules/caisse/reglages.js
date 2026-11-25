@@ -36,6 +36,11 @@ import { lireSupplements } from './supplements.js';
 //   arrondi_especes : false = les espèces se règlent au centime (v7). Absente
 //                     ou autre valeur = arrondi aux 5 centimes sur la part
 //                     payée en espèces. La base lit la même clé.
+//   especes_hors_ligne : true = sans réseau, un ticket ouvert s'encaisse en
+//                     espèces et la vente est gardée sur l'appareil jusqu'au
+//                     retour du réseau (lot 07 du panel, horsLigne.js). Absente
+//                     ou autre valeur = la caisse n'encaisse pas hors ligne.
+//                     Garde d'écran : la base ne lit pas cette clé.
 //   fin_journee     : 'HH:MM', l'heure où finit le jour d'exploitation (v7,
 //                     04:00 par défaut, de 00:00 à 11:59). La base lit la même
 //                     clé pour dater les tickets et les clôtures.
@@ -70,6 +75,7 @@ export const REGLAGES_DEFAUT = {
   cartes_ids: [],
   tests_en_cuisine: false,
   arrondi_especes: true,
+  especes_hors_ligne: false,
   fin_journee: '04:00',
   bascule_service: '15:00',
   legal: { raison_sociale: '', adresse: '', localite: '', numero_tva: '' },
@@ -176,6 +182,7 @@ export function fusionnerReglages(config) {
     cartes_ids: listeTextes(c.cartes_ids, 80, 60) || [],
     tests_en_cuisine: c.tests_en_cuisine === true,
     arrondi_especes: c.arrondi_especes !== false,
+    especes_hors_ligne: c.especes_hors_ligne === true,
     fin_journee: heureBornee(c.fin_journee, '00:00', '11:59', REGLAGES_DEFAUT.fin_journee),
     bascule_service: heureBornee(c.bascule_service, '10:00', '19:00', REGLAGES_DEFAUT.bascule_service),
     legal: {

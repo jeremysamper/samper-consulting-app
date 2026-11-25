@@ -2,6 +2,7 @@ import { supabase } from './supabase.js';
 import { messageTpe } from '../modules/caisse/tpe/ecranTpe.js';
 import { listTransactionsTicket } from './caisseTpeService.js';
 import { MESSAGES_BONS_CADEAUX } from '../modules/caisse/bonsCadeaux/codeBon.js';
+import { isNetworkError } from './offline/offlineNet.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Caisse v1 : tickets, lignes, paiements (migration 20261105_caisse_v1).
@@ -94,6 +95,9 @@ const MESSAGES_RPC = {
   "caisse: le numero de retrait ne s'ecrit pas depuis l'ecran": 'Le numéro de retrait se pose au premier envoi en cuisine.',
   "caisse: le retrait d'un ticket clos ne se modifie plus": "Ce ticket est clos : le nom et l'heure ne se changent plus.",
   'caisse: un numero de retrait pose ne change plus': 'Le numéro de retrait ne change plus.',
+  // Lot 07 du panel : espèces gardées sans réseau, rejouées au retour.
+  'caisse: hors ligne, especes seulement': "Sans réseau, seules les espèces se gardent sur l'appareil.",
+  'caisse: hors ligne, pas de ticket de test': "Un ticket de test ne s'encaisse pas hors ligne.",
 };
 
 // v9 : les refus qui parlent d'un terminal de paiement sont dits par
@@ -688,8 +692,50 @@ export async function encaisserTicket(ticketId, paiements, aEmporter = null) {
     })),
     p_a_emporter: aEmporter,
   });
-  if (error) return { data: null, error: mapError(error, "L'encaissement a échoué. Réessayez.") };
+  // reseau : l'appel n'a pas atteint la base (pas de code). L'écran passe
+  // alors en « sans réseau » (lot 07) ; rien n'est mis en file sans un geste.
+  if (error) return { data: null, error: mapError(error, "L'encaissement a échoué. Réessayez."), reseau: isNetworkError(error) };
   return { data, error: null };
+}
+
+// Rejeu d'une vente en espèces gardée sans réseau (lot 07 du panel). La RPC
+// appelle caisse_encaisser telle quelle et journalise le rejeu ; elle est
+// idempotente par clientUuid. Rend l'erreur BRUTE (code compris) : le rejeu
+// (caisseSync) doit distinguer le réseau d'un refus de la caisse.
+//   data : { statut: 'rejoue' | 'deja_encaisse' | 'refuse', numero, annee,
+//            motif, doublon, ... }
+export async function encaisserHorsLigne({ clientUuid, etablissementId, ticketId, paiements, aEmporter, gesteAt, poste }) {
+  try {
+    const { data, error } = await supabase.rpc('caisse_encaisser_hors_ligne', {
+      p_client_uuid: clientUuid,
+      p_etablissement_id: etablissementId,
+      p_ticket_id: ticketId,
+      p_paiements: (paiements || []).map((p) => ({
+        moyen: p.moyen,
+        libelle: p.libelle || null,
+        montant: p.montant,
+        recu: p.recu == null || p.recu === '' ? null : p.recu,
+        pourboire: p.pourboire || 0,
+      })),
+      p_a_emporter: Boolean(aEmporter),
+      p_geste_at: gesteAt,
+      p_poste: poste || null,
+    });
+    return { data: error ? null : data, error: error || null };
+  } catch (err) {
+    // fetch qui lève au lieu de rendre une erreur : réseau, sans code.
+    return { data: null, error: { message: String(err?.message || err), code: '' } };
+  }
+}
+
+// Le motif d'un refus de la base, dit en clair (carte des ventes en attente).
+export function messageRefus(motif) {
+  const brut = String(motif || '');
+  if (MESSAGES_RPC[brut]) return MESSAGES_RPC[brut];
+  if (/^caisse: ticket \w+ fige$/.test(brut)) return 'Ce ticket est clos : il ne se corrige plus.';
+  if (/^caisse: les paiements ne font pas le total/.test(brut)) return 'Les paiements ne font pas le total du ticket.';
+  if (/^caisse: /.test(brut) && REFUS_TERMINAL.test(brut)) return messageTpe(brut);
+  return brut.replace(/^caisse: /, '') || 'La caisse a refusé cette vente.';
 }
 
 // Remise ou offert, avec motif (consultant, patron, resp_cuisine).

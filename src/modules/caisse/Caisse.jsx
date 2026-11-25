@@ -25,6 +25,9 @@ import BonsCadeaux from './bonsCadeaux/BonsCadeaux.jsx';
 import { bonEnAttente, oublierBonEnAttente } from './bonsCadeaux/bonEnAttente.js';
 import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
 import { peutHabillerCaisse } from './gardesCaisse.js';
+import { ticketsHorsFile } from './horsLigne.js';
+import VentesEnAttente from './VentesEnAttente.jsx';
+import { listEncaissementsAppareil, subscribePendingEncaissements } from '../../services/offline/caisseSync.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { articlesDeCaisse, cartesEtArticlesEnVente, fusionnerReglages, manquesLegaux } from './reglages.js';
 import ListeManques from './ListeManques.jsx';
@@ -109,7 +112,17 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     repris: ['tickets', 'sans_ticket'],
   });
 
-  const [tickets, setTickets] = React.useState([]);
+  // Tickets ouverts tels que lus en base ; `tickets`, plus bas, en retire ceux
+  // dont la vente attend son envoi sur cet appareil (lot 07 du panel).
+  const [ticketsLus, setTickets] = React.useState([]);
+  // Ventes en espèces gardées sur cet appareil pour cet établissement, tous
+  // états. Lue dans la file IndexedDB, jamais dans la base.
+  const fileAppareil = React.useSyncExternalStore(subscribePendingEncaissements, listEncaissementsAppareil, listEncaissementsAppareil);
+  const ventesGardees = React.useMemo(() => fileAppareil.filter((e) => e.etablissementId === etabId), [fileAppareil, etabId]);
+  // Le filtre s'applique à l'affichage, pas à la lecture : une lecture en
+  // échec garde la liste connue, un ticket en attente d'envoi ne se rouvre
+  // pas et ne s'encaisse pas deux fois sur cet appareil.
+  const tickets = React.useMemo(() => ticketsHorsFile(ticketsLus, ventesGardees), [ticketsLus, ventesGardees]);
   const [erreurTickets, setErreurTickets] = React.useState(null);
   const [tables, setTables] = React.useState([]);
   const [salles, setSalles] = React.useState([]);
@@ -324,6 +337,16 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   }, [etabId]);
 
   React.useEffect(() => { rechargerTickets(); }, [rechargerTickets]);
+  // Une vente gardée vient d'être rejouée, refusée ou écartée : les tickets
+  // ouverts et l'état du jour ont pu changer en base.
+  const signatureFile = ventesGardees.map((e) => e.clientUuid + ':' + e.etat).join('|');
+  const signatureVue = React.useRef(signatureFile);
+  React.useEffect(() => {
+    if (signatureVue.current === signatureFile) return;
+    signatureVue.current = signatureFile;
+    rechargerTickets();
+    rechargerJournee();
+  }, [signatureFile, rechargerTickets, rechargerJournee]);
   React.useEffect(() => { rechargerReservations(); }, [rechargerReservations, legacyVersion]);
   React.useEffect(() => { rechargerBoutons(); }, [rechargerBoutons, legacyVersion]);
   React.useEffect(() => { rechargerReglages(); }, [rechargerReglages, legacyVersion]);
@@ -955,7 +978,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   if (ecran === 'cloture' && !modeTest && peutHabiller) {
     return (
       <EcranTache titre="Clôture de caisse" etat="Vérifier, compter les espèces, figer" onRetour={retourAccueil}>
-        <Cloture etablissementId={etabId} onDocument={pdfCloture} onChange={rechargerJournee} terminaux={terminaux} />
+        <Cloture etablissementId={etabId} onDocument={pdfCloture} onChange={rechargerJournee} terminaux={terminaux} ventesGardees={ventesGardees.length} />
       </EcranTache>
     );
   }
@@ -966,6 +989,13 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       <>
       {bandeauTest}
       <EcranTache titre={modeTest ? 'Tickets de test ouverts' : 'Tickets ouverts'} onRetour={retourAccueil}>
+        {!modeTest && (
+          <VentesEnAttente
+            file={ventesGardees}
+            peutEcarter={peutHabiller}
+            nomTable={(id) => tables.find((x) => x.id === id)?.nom || null}
+          />
+        )}
         {!tickets.length && <p style={st.vide}>Aucun ticket ouvert.</p>}
         {tickets.length > 0 && (
         <div className="caisse-liste" data-cadre="" style={st.listeTickets}>
@@ -1057,6 +1087,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         terminaux={terminaux}
         role={user?.role}
         hebergementActif={isModuleActiveForEtab(etablissement, 'hebergement')}
+        userId={user?.id || null}
+        poste={poste}
       />
     );
   }

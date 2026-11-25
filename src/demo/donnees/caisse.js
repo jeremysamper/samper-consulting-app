@@ -253,12 +253,15 @@ export function genererCaisse() {
     // tickets de test. Numéro de TVA fictif, à la clé de contrôle juste.
     caisse_reglages: [{
       etablissement_id: ETAB,
-      config: { legal: { raison_sociale: 'Brasserie Démo SA', adresse: 'Place des Mélèzes 1', localite: '1950 Sion', numero_tva: 'CHE-123.456.788 TVA' } },
+      // especes_hors_ligne (lot 07 du panel) : allumé pour que le parcours
+      // « espèces sans réseau » soit visible dans la démo.
+      config: { especes_hors_ligne: true, legal: { raison_sociale: 'Brasserie Démo SA', adresse: 'Place des Mélèzes 1', localite: '1950 Sion', numero_tva: 'CHE-123.456.788 TVA' } },
       updated_at: '2026-10-01T08:00:00Z',
     }],
     caisse_tickets: tickets,
     caisse_lignes: lignes,
     caisse_paiements: paiements,
+    caisse_encaissements_hors_ligne: [],
     caisse_clotures: clotures,
     caisse_tests_journal: [],
     caisse_bons_cadeaux: [],

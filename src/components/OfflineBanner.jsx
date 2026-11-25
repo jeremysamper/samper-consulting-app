@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getPendingPunchCount, subscribePendingPunches } from '../services/offline/punchSync.js';
 import { getPendingSaisieCount, subscribePendingSaisies } from '../services/offline/inventaireSync.js';
+import { getPendingEncaissementCount, subscribePendingEncaissements } from '../services/offline/caisseSync.js';
 import { applyPwaUpdate, isPwaUpdateReady, subscribePwaUpdate } from '../pwa/registerPwa.js';
 import UpdatePrompt from './UpdatePrompt.jsx';
 
@@ -26,13 +27,15 @@ export default function OfflineBanner() {
   const online = useOnlineStatus();
   const pending = useSyncExternalStore(subscribePendingPunches, getPendingPunchCount, () => 0);
   const saisies = useSyncExternalStore(subscribePendingSaisies, getPendingSaisieCount, () => 0);
+  const ventes = useSyncExternalStore(subscribePendingEncaissements, getPendingEncaissementCount, () => 0);
   const updateReady = useSyncExternalStore(subscribePwaUpdate, isPwaUpdateReady, () => false);
 
   const punchLabel = `${pending} pointage${pending > 1 ? 's' : ''} en attente de synchronisation`;
   const saisieLabel = `${saisies} quantité${saisies > 1 ? 's' : ''} d'inventaire en attente de synchronisation`;
-  // Les deux files coexistent : on annonce ce qui attend réellement plutôt
+  const venteLabel = `${ventes} vente${ventes > 1 ? 's' : ''} en espèces en attente d'envoi`;
+  // Les files coexistent : on annonce ce qui attend réellement plutôt
   // qu'un compteur agrégé, qui ne dirait pas à qui s'adresser en cas de blocage.
-  const enAttente = [pending > 0 ? punchLabel : null, saisies > 0 ? saisieLabel : null].filter(Boolean).join(', ');
+  const enAttente = [pending > 0 ? punchLabel : null, saisies > 0 ? saisieLabel : null, ventes > 0 ? venteLabel : null].filter(Boolean).join(', ');
 
   if (!online) {
     return (

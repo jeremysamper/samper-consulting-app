@@ -16,6 +16,9 @@ import ListeManques from './ListeManques.jsx';
 import ChoixSejour from '../hebergement/ChoixSejour.jsx';
 import { LIBELLE_CHAMBRE, boutonChambreVisible } from './noteChambre.js';
 import { porterTicketSurNote } from '../../services/noteChambreService.js';
+import { peutEncaisserHorsLigne, elementDeFile } from './horsLigne.js';
+import { queueEncaissement } from '../../services/offline/caisseSync.js';
+import { generateUuid } from '../../services/offline/offlineNet.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Encaissement (v7) : une feuille, le total en grand, les moyens en gros
@@ -66,6 +69,14 @@ import { porterTicketSurNote } from '../../services/noteChambreService.js';
 // sejourId et chambreNumero restent à l'écran (encaisserTicket ne les envoie
 // pas). Le ticket encaissé, un second appel le porte sur la note du séjour ;
 // son échec ne défait rien, la réception le rattrape depuis Hébergement.
+//
+// Espèces sans réseau (lot 07 du panel, 25.11.2026) : quand la maison a allumé
+// le réglage, l'état « sans réseau » (navigateur hors ligne, ou envoi qui vient
+// d'échouer par le réseau) ne laisse que les espèces. La vente validée est
+// gardée sur l'appareil (caisseSync) sous le même verrou que l'envoi en
+// ligne, et l'écran de fin dit « Vente gardée sur cet appareil » : ni numéro,
+// ni quittance, la base les posera au rejeu. Réglage éteint, l'écran est celui
+// d'avant, mot pour mot. Les règles sont dans horsLigne.js.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -100,6 +111,7 @@ function useEnLigne() {
 export default function Encaissement({
   ticket, reglages, peutRemiser = false, modeTest = false, onEncaisse, onEnvoi, onQuittance, onClose, reload,
   terminaux = [], role = null, boutons = {}, categories = [], articles = [], hebergementActif = false,
+  userId = null, poste = null,
 }) {
   const lignes = React.useMemo(() => ticket?.lignes || [], [ticket]);
   const total = totalLignes(lignes);
@@ -108,7 +120,16 @@ export default function Encaissement({
   // maison : sa quittance doit les porter (LTVA art. 26). Le ticket de test
   // passe, et des réglages pas encore lus ne bloquent rien.
   const manquesLegal = ticket?.test || reglages.reglagesLus === false ? [] : manquesLegaux(reglages.legal);
-  const peutPayer = enLigne && manquesLegal.length === 0;
+  // Un envoi en ligne qui vient d'échouer par le réseau (Wi-Fi sans Internet) :
+  // pour une maison au réglage allumé, l'écran passe en « sans réseau ».
+  const [echecReseau, setEchecReseau] = React.useState(false);
+  React.useEffect(() => {
+    const revenu = () => setEchecReseau(false);
+    window.addEventListener('online', revenu);
+    return () => window.removeEventListener('online', revenu);
+  }, []);
+  const reglageHorsLigne = reglages.especes_hors_ligne === true;
+  const sansReseau = !enLigne || (reglageHorsLigne && echecReseau);
 
   const [aEmporter, setAEmporter] = React.useState(Boolean(ticket?.a_emporter));
   const [poses, setPoses] = React.useState([]); // paiements déjà posés (paiement en plusieurs moyens)
@@ -119,6 +140,7 @@ export default function Encaissement({
   const [remiseOuverte, setRemiseOuverte] = React.useState(false);
   const [enCours, setEnCours] = React.useState(false);
   const [fait, setFait] = React.useState(null); // réponse de la base après encaissement
+  const [garde, setGarde] = React.useState(null); // vente gardée sur l'appareil, sans réseau (lot 07)
   const [client, setClient] = React.useState({ nom: '', adresse: '' });
   const [feuilleBon, setFeuilleBon] = React.useState(false);
   const [feuilleChambre, setFeuilleChambre] = React.useState(false);
@@ -168,10 +190,15 @@ export default function Encaissement({
     setLectureTpe('lue');
   }, [aDesTerminaux, ticket?.id, terminaux, libelleCarte]);
   React.useEffect(() => { chargerTpe(true); }, [chargerTpe]);
-  const tpePret = lectureTpe === 'sans' || lectureTpe === 'lue';
+  // Sans réseau, le verdict de horsLigne.js décide seul du parcours des
+  // espèces : il remplace la lecture du terminal, qui échoue sans réseau.
+  const verdictHorsLigne = peutEncaisserHorsLigne({ reglages, ticket, paiements: poses, terminaux, lectureTpe, paiementEnRoute });
+  const horsLigne = sansReseau && verdictHorsLigne.ok;
+  const peutPayer = (sansReseau ? horsLigne : true) && manquesLegal.length === 0;
+  const tpePret = horsLigne || lectureTpe === 'sans' || lectureTpe === 'lue';
   React.useEffect(() => { terminalOuvert.current = Boolean(feuille) || feuilleBon || feuilleChambre; }, [feuille, feuilleBon, feuilleChambre]);
 
-  const fermer = React.useCallback(() => { if (fait) onEncaisse?.(fait); else onClose(); }, [fait, onEncaisse, onClose]);
+  const fermer = React.useCallback(() => { if (fait || garde) onEncaisse?.(fait); else onClose(); }, [fait, garde, onEncaisse, onClose]);
   // v9 : tant que la feuille du terminal est ouverte, Échap ne ferme pas
   // l'encaissement derrière elle.
   const terminalOuvert = React.useRef(false);
@@ -221,19 +248,56 @@ export default function Encaissement({
   async function envoyer(paiements) {
     if (verrou.current) return;
     if (manquesLegal.length) { notify('Coordonnées légales de la maison incomplètes : le ticket reste ouvert.', 'error'); return; }
+    if (sansReseau && reglageHorsLigne) { garder(paiements); return; }
     verrou.current = true;
     setEnCours(true);
     // Avant l'appel : le temps réel peut retirer le ticket de la liste des
     // tickets ouverts avant la réponse, la caisse garde donc son image.
     onEnvoi?.(ticket);
     try {
-      const { data, error } = await caisse.encaisserTicket(ticket.id, paiements, aEmporter);
-      if (error) { onEnvoi?.(null); notify(error, 'error'); reload?.(); return; }
+      const { data, error, reseau } = await caisse.encaisserTicket(ticket.id, paiements, aEmporter);
+      if (error) {
+        onEnvoi?.(null); notify(error, 'error');
+        // Échec par le réseau, réglage allumé : l'écran passe en « sans
+        // réseau ». Rien ne part en file sans un second geste.
+        if (reseau && reglageHorsLigne) setEchecReseau(true); else reload?.();
+        return;
+      }
       setFait(data);
       notify(modeTest ? 'Ticket de test encaissé' : 'Ticket encaissé', 'success');
       // Lire l'argument, pas `poses` : le paiement qui solde n'y passe pas.
       const surChambre = (paiements || []).find((p) => p.sejourId);
       if (surChambre && !ticket.test) porterSurChambre(surChambre.sejourId, surChambre.chambreNumero);
+    } finally {
+      verrou.current = false;
+      setEnCours(false);
+    }
+  }
+
+  // Sans réseau : la vente est gardée sur l'appareil, sous le même verrou que
+  // l'envoi en ligne (un double toucher ne met qu'un élément en file). Rien
+  // n'est encaissé si l'écriture échoue : le ticket reste ouvert.
+  async function garder(paiements) {
+    if (verrou.current) return;
+    const verdict = peutEncaisserHorsLigne({ reglages, ticket, paiements, terminaux, lectureTpe, paiementEnRoute });
+    const controle = preparerPaiements({ total, paiements, arrondiEspeces: reglages.arrondi_especes });
+    if (!verdict.ok || !controle.complet || !userId) {
+      notify(verdict.raison || "La vente n'a pas pu être gardée sur cet appareil. Le ticket reste ouvert.", 'error');
+      return;
+    }
+    verrou.current = true;
+    setEnCours(true);
+    onEnvoi?.(ticket);
+    try {
+      const element = elementDeFile({
+        clientUuid: generateUuid(), ticket, paiements, aEmporter, controle, userId, poste, gesteAt: new Date().toISOString(),
+      });
+      await queueEncaissement(element);
+      setGarde(element);
+    } catch (err) {
+      console.error('[caisse] vente hors ligne non gardée', err);
+      onEnvoi?.(null);
+      notify("La vente n'a pas pu être gardée sur cet appareil. Le ticket reste ouvert.", 'error');
     } finally {
       verrou.current = false;
       setEnCours(false);
@@ -262,6 +326,7 @@ export default function Encaissement({
   // le ticket s'encaisse ; sinon le paiement se pose et le reste diminue.
   function toucherMoyen(m, { aLaMain = false } = {}) {
     if (!peutPayer || enCours || !tpePret || (part <= 0 && total > 0)) return;
+    if (horsLigne && m.cle !== 'especes') return;
     if (m.cle === 'especes') { setEspeces(m); setRecu(''); return; }
     const libelle = reglages.perso?.moyens_paiement ? m.libelle : null;
     // v9 : la carte part sur le terminal relié, s'il y en a un pour ce ticket.
@@ -354,6 +419,38 @@ export default function Encaissement({
 
   const enAttente = lignes.filter((l) => l.statut === 'en_attente').length;
 
+  // ── Sans réseau : la vente est gardée, sans numéro ni quittance ──
+  if (garde) {
+    const a = garde.apercu;
+    return (
+      <div className="modal-sheet-overlay" data-fenetre="" style={st.overlay}>
+        <div className="modal-sheet" role="region" aria-label="Vente gardée sur cet appareil" style={st.feuille} data-caisse-garde="">
+          <div style={st.titre}>Vente gardée sur cet appareil</div>
+          <div style={st.grand}>
+            <span style={st.grandLibelle}>Total</span>
+            <span style={st.grandValeur}><span>{chf(a.total)}</span> <span style={st.devise}>CHF</span></span>
+          </div>
+          {Number(a.rendu) > 0 && (
+            <div style={{ ...st.grand, ...st.rendu }} data-cadre="">
+              <span style={st.grandLibelle}>À rendre</span>
+              <span style={st.grandValeur}><span>{chf(a.rendu)}</span> <span style={st.devise}>CHF</span></span>
+            </div>
+          )}
+          {Number(a.arrondi) !== 0 && (
+            <p style={st.aide}><span>Arrondi aux 5 centimes :</span> <span style={st.num}>{chf(a.arrondi)}</span> <span>CHF</span></p>
+          )}
+          {Number(a.pourboire) > 0 && (
+            <p style={st.aide}><span>Pourboire, à part du total :</span> <span style={st.num}>{chf(a.pourboire)}</span> <span>CHF</span></p>
+          )}
+          <p style={st.ligneInfo}>La quittance numérotée sera disponible quand le réseau reviendra.</p>
+          <div style={st.pied}>
+            <Btn variant="primary" onClick={fermer} style={st.btnAction}>Terminer</Btn>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // ── Après l'encaissement : numéro, rendu, quittance ──
   if (fait) {
     const numero = numeroTicket(fait);
@@ -429,10 +526,25 @@ export default function Encaissement({
           <Btn variant="ghost" onClick={onClose} style={st.btn44}>Revenir au ticket</Btn>
         </div>
 
-        {!enLigne && (
+        {sansReseau && (!reglageHorsLigne || (!horsLigne && !verdictHorsLigne.raison)) && (
           <div style={st.horsLigne} data-cadre="" role="alert">
             <WifiOff size={20} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
             <span>Pas de réseau : la caisse n'encaisse pas hors ligne. Le ticket reste ouvert, encaissez dès que le réseau revient.</span>
+          </div>
+        )}
+        {sansReseau && reglageHorsLigne && (horsLigne || verdictHorsLigne.raison) && (
+          <div style={st.horsLigne} data-cadre="" role="alert" data-caisse-sans-reseau={horsLigne ? 'especes' : 'ferme'}>
+            <WifiOff size={20} strokeWidth={1.75} aria-hidden="true" style={{ flexShrink: 0 }} />
+            <span style={st.alerteTexte}>
+              {horsLigne
+                ? "Pas de réseau : seules les espèces s'encaissent. La vente est gardée sur cet appareil et reçoit son numéro quand le réseau revient."
+                : verdictHorsLigne.raison}
+            </span>
+            {/* Réseau présent mais resté muet : le navigateur ne dira pas son
+                retour, la personne peut retenter l'envoi en ligne. */}
+            {enLigne && echecReseau && (
+              <Btn variant="ghost" disabled={enCours} onClick={() => setEchecReseau(false)} style={st.btn44}>Réessayer en ligne</Btn>
+            )}
           </div>
         )}
         {manquesLegal.length > 0 && (
@@ -582,7 +694,7 @@ export default function Encaissement({
                   <span style={st.num}>{chf(t.tva)}</span>
                 </div>
               ))}
-              <Btn variant={aEmporter ? 'primary' : 'ghost'} onClick={() => setAEmporter((v) => !v)} style={st.btnEmporter} ariaLabel="À emporter">
+              <Btn variant={aEmporter ? 'primary' : 'ghost'} disabled={horsLigne} onClick={() => setAEmporter((v) => !v)} style={st.btnEmporter} ariaLabel="À emporter">
                 <ShoppingBag size={20} strokeWidth={1.75} aria-hidden="true" />
                 <span>{aEmporter ? 'À emporter : oui' : 'À emporter'}</span>
               </Btn>
@@ -633,7 +745,7 @@ export default function Encaissement({
                 <span style={st.grandLibelle}>Reste à payer</span>
                 <span style={st.grandValeur} data-caisse-reste=""><span>{chf(reste)}</span> <span style={st.devise}>CHF</span></span>
               </div>
-              {lectureTpe === 'echec' && (
+              {lectureTpe === 'echec' && !horsLigne && (
                 <div style={st.horsLigne} data-cadre="" role="alert">
                   <span style={st.alerteTexte}>Les paiements par carte de ce ticket n'ont pas pu être lus. Encaisser sans les relire pourrait oublier une carte déjà acceptée.</span>
                   <Btn variant="primary" onClick={() => { setLectureTpe('lecture'); chargerTpe(true); }} style={st.btn44}>Réessayer</Btn>
@@ -656,6 +768,7 @@ export default function Encaissement({
               {peutRemiser ? (
                 <Btn
                   variant={remiseOuverte ? 'primary' : 'ghost'}
+                  disabled={horsLigne}
                   onClick={() => {
                     setRemiseOuverte((v) => !v);
                     requestAnimationFrame(() => carteGauche.current?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' }));
@@ -705,15 +818,15 @@ export default function Encaissement({
                   {mode === 'plat' && rienAPayer && <p style={st.aide}>Cochez au moins un plat.</p>}
                   <div style={st.moyens} data-caisse-moyens="">
                     {reglages.moyens_paiement.map((m, i) => (
-                      <Btn key={m.cle + i} variant="primary" disabled={enCours || !peutPayer || !tpePret || rienAPayer || (m.cle === 'carte' && Boolean(terminal) && Boolean(paiementEnRoute))} onClick={() => toucherMoyen(m)} style={st.btnMoyen}>
+                      <Btn key={m.cle + i} variant="primary" disabled={enCours || !peutPayer || !tpePret || rienAPayer || (horsLigne && m.cle !== 'especes') || (m.cle === 'carte' && Boolean(terminal) && Boolean(paiementEnRoute))} onClick={() => toucherMoyen(m)} style={st.btnMoyen}>
                         {reglages.perso?.moyens_paiement ? <span data-no-translate>{m.libelle}</span> : m.libelle}
                       </Btn>
                     ))}
-                    <Btn variant="ghost" disabled={enCours || !peutPayer || !tpePret || rienAPayer} onClick={() => setFeuilleBon(true)} style={st.btnMoyen}>
+                    <Btn variant="ghost" disabled={enCours || !peutPayer || !tpePret || rienAPayer || horsLigne} onClick={() => setFeuilleBon(true)} style={st.btnMoyen}>
                       Bon cadeau
                     </Btn>
                     {boutonChambreVisible({ hebergementActif, test: ticket.test, poses }) && (
-                      <Btn variant="ghost" disabled={enCours || !peutPayer || !tpePret || rienAPayer} onClick={() => setFeuilleChambre(true)} style={st.btnMoyen} data-caisse-sur-chambre="">
+                      <Btn variant="ghost" disabled={enCours || !peutPayer || !tpePret || rienAPayer || horsLigne} onClick={() => setFeuilleChambre(true)} style={st.btnMoyen} data-caisse-sur-chambre="">
                         Sur la chambre
                       </Btn>
                     )}
@@ -731,7 +844,7 @@ export default function Encaissement({
                             <span data-no-translate>{t.nom}</span>
                           </Btn>
                         ))}
-                        <Btn variant="ghost" disabled={enCours || !peutPayer || !tpePret || rienAPayer} onClick={() => toucherMoyen({ cle: 'carte', libelle: libelleCarte }, { aLaMain: true })} style={st.btn44}>Carte, terminal non relié</Btn>
+                        <Btn variant="ghost" disabled={enCours || !peutPayer || !tpePret || rienAPayer || horsLigne} onClick={() => toucherMoyen({ cle: 'carte', libelle: libelleCarte }, { aLaMain: true })} style={st.btn44}>Carte, terminal non relié</Btn>
                       </div>
                     </div>
                   )}

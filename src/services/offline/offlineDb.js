@@ -16,11 +16,12 @@
 // ─────────────────────────────────────────────────────────────
 
 const DB_NAME = 'samper-offline';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const STORES = {
   PUNCH: 'punch-queue',
   INVENTAIRE: 'inventaire-queue',
+  CAISSE: 'caisse-queue',
 };
 
 let dbPromise = null;
@@ -56,6 +57,11 @@ function openDb() {
         // saisies : seule la dernière quantité comptée a un sens.
         if (!db.objectStoreNames.contains(STORES.INVENTAIRE)) {
           db.createObjectStore(STORES.INVENTAIRE, { keyPath: 'cle' });
+        }
+        // caisse-queue (v3, lot 07 du panel) : ventes en espèces gardées sans
+        // réseau. Clé = clientUuid, la clé d'idempotence du rejeu.
+        if (!db.objectStoreNames.contains(STORES.CAISSE)) {
+          db.createObjectStore(STORES.CAISSE, { keyPath: 'clientUuid' });
         }
       };
       request.onsuccess = () => {

@@ -45,7 +45,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // payés « Chambre » (l'un porté sur une note, l'autre à porter).
 // v16 (lot 06 du panel, 25.11.2026) : sources de la prévision des couverts
 // (pension allumée) et un séjour en demi-pension relié à une réservation.
-const VERSION_BASE = 'v16-' + aujourdhui();
+// v17 (lot 07 du panel, 25.11.2026) : réglage « espèces sans réseau » allumé
+// et journal des rejeux (caisse_encaissements_hors_ligne).
+const VERSION_BASE = 'v17-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.

@@ -853,6 +853,13 @@ function SectionTva({ rangement, reglages, regler, ecrire, idReel }) {
       </div>
       <p style={st.aide}>L'arrondi ne porte que sur la part payée en espèces. L'écart est enregistré à part sur chaque ticket et repris dans la clôture.</p>
 
+      <div style={st.sousTitre}>Encaisser en espèces sans réseau</div>
+      <div style={st.rang} data-reglage-especes-hors-ligne="">
+        <Btn variant={reglages.especes_hors_ligne ? 'ghost' : 'primary'} onClick={() => regler({ especes_hors_ligne: null })} style={st.btnChoix}>Non</Btn>
+        <Btn variant={reglages.especes_hors_ligne ? 'primary' : 'ghost'} onClick={() => regler({ especes_hors_ligne: true })} style={st.btnChoix}>Oui</Btn>
+      </div>
+      <p style={st.aide}>Sans réseau, une vente payée en espèces est gardée sur l'appareil. Elle reçoit son numéro quand le réseau revient. La carte et le bon cadeau restent refusés.</p>
+
       <div style={st.sousTitre}>La journée de caisse finit à</div>
       <div style={st.rang}>
         {HEURES_FIN_JOURNEE.map((h) => (

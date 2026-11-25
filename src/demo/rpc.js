@@ -509,6 +509,47 @@ const RPC = {
     ctx.db.caisse_lignes.filter((l) => l.ticket_id === t.id && l.statut === 'en_attente').forEach((l) => ctx.maj('caisse_lignes', l, { statut: 'envoye', envoye_at: maintenant() }));
     return { ticket_id: t.id, test: Boolean(t.test), numero: t.numero, annee: t.annee, jour_exploitation: t.jour_exploitation, total, rendu: Math.round(rendu * 100) / 100, arrondi: Math.round((totalArrondi - total) * 100) / 100, pourboire };
   },
+  // Lot 07 du panel : rejeu d'une vente en espèces gardée sans réseau. Mêmes
+  // statuts que la base (rejoue, deja_encaisse, refuse), idempotent par
+  // p_client_uuid ; le journal vit dans caisse_encaissements_hors_ligne.
+  caisse_encaisser_hors_ligne(ctx, a) {
+    if (!ctx.uid || !a.p_client_uuid || !a.p_geste_at || !peutCaisseDemo(ctx)) throw new ErreurRpc('caisse: acces refuse', '42501');
+    const journal = ctx.db.caisse_encaissements_hors_ligne || (ctx.db.caisse_encaissements_hors_ligne = []);
+    const deja = journal.find((j) => j.client_uuid === a.p_client_uuid);
+    if (deja) {
+      if (deja.par !== ctx.uid || deja.etablissement_id !== a.p_etablissement_id) throw new ErreurRpc('caisse: acces refuse', '42501');
+      return { ...deja.reponse, doublon: true };
+    }
+    const paiements = Array.isArray(a.p_paiements) ? a.p_paiements : [];
+    if (paiements.length < 1 || paiements.length > 8 || paiements.some((p) => p?.moyen !== 'especes' || 'tpe' in p || 'bon_cadeau' in p)) {
+      throw new ErreurRpc('caisse: hors ligne, especes seulement');
+    }
+    const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id && x.etablissement_id === a.p_etablissement_id);
+    const noter = (statut, reponse, motif = null) => {
+      journal.push({
+        client_uuid: a.p_client_uuid, etablissement_id: a.p_etablissement_id, ticket_id: t ? t.id : null, statut, motif,
+        montant: Math.round(paiements.reduce((s, p) => s + (Number(p.montant) || 0), 0) * 100) / 100,
+        geste_at: a.p_geste_at < maintenant() ? a.p_geste_at : maintenant(), rejoue_at: maintenant(),
+        par: ctx.uid, poste: a.p_poste ? String(a.p_poste).slice(0, 60) : null, reponse,
+      });
+      return reponse;
+    };
+    const refus = (motif) => noter('refuse', { statut: 'refuse', motif, ticket_id: t ? t.id : null }, motif);
+    if (!t) return refus('caisse: ticket introuvable');
+    if (t.test) return refus('caisse: hors ligne, pas de ticket de test');
+    if (t.statut === 'encaisse') return noter('deja_encaisse', { statut: 'deja_encaisse', ticket_id: t.id, numero: t.numero, annee: t.annee });
+    // Le sous-bloc de la base défait tout ce que caisse_encaisser a commencé :
+    // ici, les paiements posés avant le refus sont retirés.
+    const avant = ctx.db.caisse_paiements.length;
+    try {
+      const rep = RPC.caisse_encaisser(ctx, { p_ticket_id: t.id, p_paiements: paiements, p_a_emporter: a.p_a_emporter });
+      return noter('rejoue', { ...rep, statut: 'rejoue', geste_at: a.p_geste_at });
+    } catch (e) {
+      if (!(e instanceof ErreurRpc) || !String(e.message).startsWith('caisse:')) throw e;
+      ctx.db.caisse_paiements.length = avant;
+      return refus(e.message);
+    }
+  },
   caisse_annuler_ticket(ctx, a) {
     const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id);
     if (!t) throw new ErreurRpc('caisse: ticket introuvable');

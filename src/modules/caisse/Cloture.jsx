@@ -24,6 +24,11 @@ import { ecartBouclement, estSimule } from './tpe/ecranTpe.js';
 // s'affiche après, comme pour les espèces. Ce total est enregistré à part
 // (caisse_tpe_bouclements) : la clôture figée et sa chaîne ne bougent pas.
 // Sans terminal relié, l'écran est celui de la v7.
+//
+// Espèces sans réseau (lot 07 du panel) : tant que cet appareil garde une
+// vente en espèces (en attente, refusée ou déjà encaissée), l'étape 1 le dit
+// et « Compter les espèces » est éteint. C'est une garde d'écran, par
+// appareil : la base ne connaît pas la file d'un autre appareil.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -33,7 +38,7 @@ const nombre = (v) => {
   return String(v ?? '').trim() !== '' && Number.isFinite(n) && n >= 0 ? n : null;
 };
 
-export default function Cloture({ etablissementId, onDocument, onChange, terminaux = [] }) {
+export default function Cloture({ etablissementId, onDocument, onChange, terminaux = [], ventesGardees = 0 }) {
   const [etat, setEtat] = React.useState(null);
   const [erreur, setErreur] = React.useState(null);
   const [clotures, setClotures] = React.useState([]);
@@ -153,8 +158,17 @@ export default function Cloture({ etablissementId, onDocument, onChange, termina
                   <p style={st.aide}>Une clôture ne se modifie pas. Pour corriger un comptage, vous pouvez enregistrer une clôture complémentaire, avec un motif.</p>
                 </div>
               )}
+              {ventesGardees > 0 && (
+                <div style={st.alerte} data-cloture-ventes-gardees="">
+                  <p style={st.ligneForte}>
+                    <span style={st.num}>{ventesGardees}</span>{' '}
+                    <span>{ventesGardees > 1 ? 'ventes en espèces attendent sur cet appareil.' : 'vente en espèces attend sur cet appareil.'}</span>
+                  </p>
+                  <p style={st.aide}>{ventesGardees > 1 ? 'La clôture se fait quand elles sont envoyées ou écartées.' : 'La clôture se fait quand elle est envoyée ou écartée.'}</p>
+                </div>
+              )}
               <div style={st.pied}>
-                <Btn variant="primary" onClick={() => setEtape(2)} style={st.btnAction}>{complementaire ? 'Corriger le comptage' : 'Compter les espèces'}</Btn>
+                <Btn variant="primary" disabled={ventesGardees > 0} onClick={() => setEtape(2)} style={st.btnAction}>{complementaire ? 'Corriger le comptage' : 'Compter les espèces'}</Btn>
               </div>
             </div>
           )}
