@@ -114,8 +114,12 @@ export const manageableModules = [
   { id: 'points', label: 'Points & boutique' },
   // boissons (22.11.2026) : « gérer » = ajouter, modifier et retirer les
   // boissons, leurs formats et les cartes de boissons, avec le droit d'action
-  // carte_boissons. La base ne vérifie que l'établissement (plats, cartes,
-  // carte_plats, plat_formats) : garde de présentation.
+  // carte_boissons. La base lit les mêmes cases depuis le lot C
+  // (boissons_peut_modifier, migration 20261123_carte_boissons_droits) :
+  // seule voie pour les formats et pour créer une carte de boissons ; sur une
+  // carte de boissons, ses liens et ses plats, les droits des écrans qui les
+  // écrivent aujourd'hui (recettes, fiches, chiffrage) restent acceptés
+  // jusqu'au lot D.
   { id: 'boissons', label: 'Carte des boissons' },
 ];
 
@@ -151,12 +155,15 @@ export const defaultManageRoles = ['consultant', 'patron'];
 //   (migration 20261007), avec les mêmes rôles par défaut : les tenir en phase.
 //   fiches : créer, modifier et dupliquer les fiches et les plats dans
 //   Cartes & Recettes. Demande aussi « Modifier » du module (requiertGerer).
-//   Garde de présentation seulement : recettes, plats, plat_recettes et
+//   Garde de présentation pour les mets : recettes, plats, plat_recettes et
 //   carte_plats ne vérifient en base que l'établissement (user_can_access_etab).
+//   Pour les boissons, la base lit recettes et fiches comme droit hérité
+//   (migration 20261123_carte_boissons_droits, retiré au lot D).
 //   chiffrage : l'écran Chiffrage de Cartes & Recettes (coûts, prix de vente,
 //   food cost, marges), venu des Outils consultant le 18.11.2026 pour que la
 //   direction et la comptabilité chiffrent seules. Sans « Modifier » : on peut
-//   chiffrer sans toucher aux fiches. Garde de présentation, comme « fiches ».
+//   chiffrer sans toucher aux fiches. Garde de présentation pour les mets ;
+//   la base l'accepte pour réécrire un plat de boissons (lot C, durable).
 export const droitsAction = [
   { id: 'factures_achat', module: 'inventaire', label: 'Régler les factures', defaultRoles: ['consultant', 'patron'] },
   { id: 'fiches', module: 'recettes', label: 'Créer et modifier les fiches', defaultRoles: ['consultant', 'patron'], requiertGerer: true },
@@ -167,7 +174,8 @@ export const droitsAction = [
   { id: 'inspection', module: 'etages', label: 'Inspecter les chambres', defaultRoles: ['consultant', 'patron', 'gouvernante'], requiertGerer: true },
   //   carte_boissons : ajouter et modifier les boissons, leurs formats, leurs
   //   prix et les cartes de boissons (Carte des boissons, 22.11.2026). Demande
-  //   aussi « Modifier » du module. Garde de présentation, comme « fiches ».
+  //   aussi « Modifier » du module. Vérifié en base depuis le lot C
+  //   (boissons_peut_modifier, mêmes rôles par défaut : les tenir en phase).
   { id: 'carte_boissons', module: 'boissons', label: 'Modifier la carte des boissons et ses prix', defaultRoles: ['consultant', 'patron'], requiertGerer: true },
 ];
 
