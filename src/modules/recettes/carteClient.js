@@ -35,11 +35,12 @@ export const LEGENDE_TABLEAU = [
   'Document établi d\'après les fiches recettes. Pour toute allergie ou intolérance, adressez-vous à notre équipe.',
 ];
 
-// Montant sur deux décimales, point décimal (« 46.00 »), groupes de milliers
-// séparés par une espace. Écrit à la main : le format « fr-CH » de l'Intl
-// diffère selon le moteur (virgule sous Node, point dans le navigateur), et un
-// document imprimé doit sortir identique partout. Prix nul, absent ou
-// négatif : chaîne vide (le plat s'imprime sans montant, jamais « 0.00 »).
+// Montant sur deux décimales, point décimal (« 46.00 », l'usage des cartes
+// suisses), groupes de milliers séparés par une espace. Écrit à la main :
+// l'Intl « fr-CH » rend une virgule décimale (Node 22 et Chromium, vérifié le
+// 25.11.2026), et un format qui dépend des données ICU du moteur ne sort pas
+// forcément identique partout. Prix nul, absent ou négatif : chaîne vide (le
+// plat s'imprime sans montant, jamais « 0.00 »).
 export function prixCarte(n) {
   const v = Number(n);
   if (n == null || n === '' || !Number.isFinite(v) || v <= 0) return '';
