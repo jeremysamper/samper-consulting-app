@@ -449,7 +449,7 @@ const Chiffrage = ({ user, etablissement, ficheInitiale = null, onModifierFiche 
   // Cartes non archivées, par useCartes comme le reste du module : la carte
   // cachée n'y est servie qu'au consultant (filtrage à la source, jamais
   // refait ici). Les archivées gardent leurs liaisons en base.
-  const { cartes: cartesActivesLocal, archivedCartes } = useCartes(etabId, { role: user?.role });
+  const { cartes: cartesActivesLocal, archivedCartes } = useCartes(etabId, { role: user?.role, genre: 'tous' });
   // Plats visibles : hors consultant, un plat rangé seulement sur des cartes
   // que useCartes ne sert pas (cartes cachées) ne paraît pas, pas même dans
   // « Non classés ». Un plat sans carte, ou sur une carte archivée, reste.

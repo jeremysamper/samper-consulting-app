@@ -12,6 +12,9 @@ import { makeSearchMatcher } from '../../utils/searchText.js';
 import { zurichDateHeure, zurichToday } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
 import FicheLigne from './FicheLigne.jsx';
+import QuiRetire from './QuiRetire.jsx';
+import Interrupteur from '../roles/Interrupteur.jsx';
+import { reperesRetrait } from './retrait.js';
 import BoutonFiche from './BoutonFiche.jsx';
 import CorrigerClient from './CorrigerClient.jsx';
 import Encaissement from './Encaissement.jsx';
@@ -26,6 +29,7 @@ import { useLargeur } from './mesures.js';
 import { enRupture, libelleCompteRupture, produitsEnRupture } from './rupture.js';
 import { peutMettreEnRupture } from './gardesCaisse.js';
 import { estPret } from './PlanTables.jsx';
+import { libelleAvecFormat, ligneNueDuFormat, optionFormat, prixAffiche } from '../../utils/formatsBoisson.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // L'écran de prise de commande d'un ticket, en plein écran (21.11.2026, à la
@@ -63,7 +67,9 @@ import { estPret } from './PlanTables.jsx';
 // commande dit le nom, les couverts et les allergies du client ; « Corriger »
 // ouvre la feuille des corrections du service (nom, couverts, arrivé,
 // no-show, autre réservation), toutes par la RPC caisse_corriger_reservation.
-// Une vente directe reste anonyme : pas de bandeau.
+// Une vente directe (lot 01 du panel) porte son propre bandeau : le nom de
+// qui retire la commande, le numéro de retrait, l'heure promise,
+// l'interrupteur « À emporter » et « Modifier » (feuille QuiRetire).
 // Quand la maison vend plus d'une carte, le menu propose la carte affichée ;
 // il s'ouvre sur « Toutes les cartes » et le choix tient le temps du ticket.
 //
@@ -83,6 +89,12 @@ import { estPret } from './PlanTables.jsx';
 // suite » les libère par la RPC caisse_reclamer_suite. Quand la cuisine marque
 // un plat fait, la ligne porte « Prêt ». En mode test, le ticket n'a ni client
 // ni réservation : le bandeau le dit et « Corriger » n'existe pas.
+//
+// Carte des boissons (22.11.2026) : une boisson vendue en plusieurs formats
+// (1 dl, 50 cl, 75 cl) garde une seule case ; le toucher ouvre « Choisir le
+// format », puis la ligne s'écrit au prix du format, avec l'option format et le
+// libellé « Nom, 1 dl » (la base relit le prix du format). Une boisson à un
+// seul format part sans question. La règle « même plat = +1 » compte le format.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -140,6 +152,9 @@ export default function TicketEcran({
   // Plat touché qui contient un allergène signalé par la table : { plat,
   // allergenes } ; la fenêtre « Attention allergène » demande de confirmer.
   const [alerteAllergene, setAlerteAllergene] = React.useState(null);
+  // Boisson touchée qui se vend en plusieurs formats : la fenêtre « Choisir le
+  // format » est ouverte pour elle.
+  const [choixFormat, setChoixFormat] = React.useState(null);
   // Rupture (L2) : produit dont la feuille de l'appui long est ouverte, liste
   // des produits en rupture, et écriture en cours (verrou immédiat en ref).
   const [produitAppui, setProduitAppui] = React.useState(null);
@@ -148,6 +163,51 @@ export default function TicketEcran({
   const verrouRupture = React.useRef(false);
   const appuiLong = React.useRef({ timer: null, declenche: false });
   const minuterieFeuille = React.useRef(null);
+
+  // Lot 01 : retrait d'une vente directe. La ligne rendue par la dernière
+  // écriture réussie (montrée tant que la liste relue ne l'a pas rattrapée),
+  // la position demandée de l'interrupteur pendant son écriture, et la feuille
+  // « Modifier » du nom et de l'heure.
+  const [ligneRetrait, setLigneRetrait] = React.useState(null);
+  const [emporterAttente, setEmporterAttente] = React.useState(null);
+  const verrouEmporter = React.useRef(false);
+  const [retraitOuvert, setRetraitOuvert] = React.useState(false);
+  const ticketVu = (ligneRetrait && ligneRetrait.id === ticket.id
+    && String(ligneRetrait.updated_at || '') > String(ticket.updated_at || ''))
+    ? {
+      ...ticket,
+      a_emporter: ligneRetrait.a_emporter,
+      retrait_nom: ligneRetrait.retrait_nom,
+      retrait_heure: ligneRetrait.retrait_heure,
+      retrait_numero: ligneRetrait.retrait_numero ?? ticket.retrait_numero,
+    }
+    : ticket;
+  const reperes = reperesRetrait(emporterAttente == null ? ticketVu : { ...ticketVu, a_emporter: emporterAttente });
+
+  async function basculerEmporter() {
+    if (verrouEmporter.current) return;
+    verrouEmporter.current = true;
+    const voulu = !ticketVu.a_emporter;
+    setEmporterAttente(voulu);
+    try {
+      const { data, error } = await caisse.majTicket(ticket.id, { a_emporter: voulu });
+      if (erreur(error)) return;
+      setLigneRetrait(data);
+      await reload();
+    } finally {
+      verrouEmporter.current = false;
+      setEmporterAttente(null);
+    }
+  }
+
+  async function enregistrerRetrait({ nom, heure }) {
+    const { data, error } = await caisse.majTicket(ticket.id, { retrait_nom: nom, retrait_heure: heure });
+    if (error) return { error };
+    setLigneRetrait(data);
+    setRetraitOuvert(false);
+    await reload();
+    return {};
+  }
 
   const racineRef = React.useRef(null);
   const largeur = useLargeur(racineRef);
@@ -291,26 +351,38 @@ export default function TicketEcran({
     return [...serveur.values()];
   }
 
-  function ajouterArticle(plat) {
+  // format : celui choisi pour une boisson, ou null (plat sans format).
+  function ajouterArticle(plat, format = null) {
     const mode = modeActif;
-    const tache = fileAjouts.current.then(() => ajouterUn(plat, mode));
+    const tache = fileAjouts.current.then(() => ajouterUn(plat, mode, format));
     fileAjouts.current = tache.catch(() => {});
     return tache;
   }
 
-  async function ajouterUn(plat, mode) {
-    // Même plat, même mode, sans note ni paramètre, pas encore envoyé : +1
-    // (une ligne paramétrée reste la sienne, on n'y empile pas un couvert).
-    // Le libellé compte aussi : un supplément choisi (« Supplément alcool
-    // (Kirsch) ») ne reçoit pas le supplément nu touché dans la grille.
+  // Une boisson à plusieurs formats demande le format ; à un seul, elle part
+  // dans ce format ; sans format, comme tout plat.
+  function poserArticle(plat) {
+    const formats = plat.formats || [];
+    if (formats.length > 1) { setChoixFormat(plat); return; }
+    ajouterArticle(plat, formats[0] || null);
+  }
+
+  async function ajouterUn(plat, mode, format) {
+    // Même plat, même mode, même format, sans note ni paramètre, pas encore
+    // envoyé : +1 (une ligne paramétrée reste la sienne, on n'y empile pas un
+    // couvert). Le libellé compte aussi : un supplément choisi (« Supplément
+    // alcool (Kirsch) ») ne reçoit pas le supplément nu touché dans la grille.
+    const libelle = libelleAvecFormat(plat.nom, format?.libelle);
     const existante = lignesConnues().find((l) =>
       l.statut === 'en_attente' && l.plat_id === plat.id && l.suite === mode
-      && l.libelle === plat.nom && !l.note && !(l.options || []).length);
+      && l.libelle === libelle && ligneNueDuFormat(l, format));
     const { data, error } = existante
       ? await caisse.majLigne(existante.id, { quantite: Number(existante.quantite) + 1 })
       : await caisse.ajouterLigne({
-        ticketId: ticket.id, platId: plat.id, libelle: plat.nom,
-        prixUnitaire: plat.prixVente ?? 0, suite: mode,
+        ticketId: ticket.id, platId: plat.id, libelle,
+        // Le prix affiché tout de suite ; la base pose celui du format, lu chez elle.
+        prixUnitaire: format ? format.prix : (plat.prixVente ?? 0), suite: mode,
+        options: format ? [optionFormat(format)] : null,
       });
     if (erreur(error)) return;
     retenirEcrite(data);
@@ -522,12 +594,24 @@ export default function TicketEcran({
     }
     const conflits = conflitsDe(plat);
     if (conflits.length) { setAlerteAllergene({ plat, allergenes: conflits }); return; }
-    ajouterArticle(plat);
+    poserArticle(plat);
   }
   const dense = reglages.grille === 'dense';
   const minCase = tablette ? (dense ? 112 : 136) : (dense ? 84 : 104);
   const styleGrille = { ...st.grille, gridTemplateColumns: `repeat(auto-fill, minmax(${minCase}px, 1fr))` };
   const heureOuverture = zurichDateHeure(ticket.created_at).heure;
+
+  // Prix d'une case : celui du plat, le prix de son format unique, ou « dès »
+  // le plus petit prix de ses formats (chaque nombre dans son nœud).
+  function prixCase(a) {
+    const { prix, des } = prixAffiche(a);
+    return (
+      <span style={st.casePrix} data-caisse-prix="">
+        {des && <><span>dès</span>{' '}</>}
+        <span data-no-translate>{chf(prix)}</span>
+      </span>
+    );
+  }
 
   // ── Une case de la grille ──
   function caseProduit(a, categorie) {
@@ -593,7 +677,7 @@ export default function TicketEcran({
           )}
           {rupture
             ? <span style={st.caseRuptureMot} data-cadre="" data-caisse-rupture-mot="">Rupture</span>
-            : <span style={st.casePrix}>{chf(a.prixVente)}</span>}
+            : prixCase(a)}
         </span>
       </button>
     );
@@ -737,7 +821,30 @@ export default function TicketEcran({
             </div>
           </div>
         )}
-        {/* Qui est à la table (v5). Vente directe : anonyme, pas de bandeau. */}
+        {/* Vente directe (lot 01) : qui retire, l'heure promise, à emporter. */}
+        {!modeTest && !ticket.table_id && (
+          <div style={{ ...st.bandeauClient, flexWrap: 'wrap' }} data-caisse-client="retrait">
+            <div style={{ ...st.bandeauCorps, flexBasis: 140 }}>
+              {reperes.nom
+                ? <span style={st.bandeauNom} data-no-translate>{reperes.nom}</span>
+                : <span style={st.bandeauNom}>Vente directe</span>}
+              <span style={st.bandeauDetail}>
+                {reperes.numero != null && (
+                  <span data-retrait-numero="" style={st.nowrap}><span>Retrait n°</span> <span style={st.num}>{reperes.numero}</span></span>
+                )}
+                {reperes.heure
+                  ? <span style={st.nowrap}><span>Heure promise</span> <span style={st.num}>{reperes.heure}</span></span>
+                  : <span>Dès que possible</span>}
+              </span>
+            </div>
+            <span style={st.bandeauInter}>
+              <span style={st.bandeauDetail}>À emporter</span>
+              <Interrupteur checked={reperes.aEmporter} onChange={basculerEmporter} label="À emporter" />
+            </span>
+            <Btn variant="ghost" onClick={() => setRetraitOuvert(true)} style={st.btn44}>Modifier</Btn>
+          </div>
+        )}
+        {/* Qui est à la table (v5). */}
         {!modeTest && ticket.table_id && (
           <div style={st.bandeauClient} data-caisse-client={ticket.qui || 'inconnu'}>
             <div style={st.bandeauCorps}>
@@ -1196,7 +1303,7 @@ export default function TicketEcran({
       {/* Encaissement (v7) : la feuille prépare, la base encaisse et numérote. */}
       {paiementOuvert && (
         <Encaissement
-          ticket={ticket}
+          ticket={ticketVu}
           reglages={reglages}
           peutRemiser={peutHabiller}
           modeTest={modeTest}
@@ -1261,7 +1368,7 @@ export default function TicketEcran({
               <button
                 type="button"
                 style={fen.primaire}
-                onClick={() => { const { plat } = alerteAllergene; setAlerteAllergene(null); ajouterArticle(plat); }}
+                onClick={() => { const { plat } = alerteAllergene; setAlerteAllergene(null); poserArticle(plat); }}
               >
                 Ajouter quand même
               </button>
@@ -1281,6 +1388,35 @@ export default function TicketEcran({
           </div>
         </Fenetre>
       )}
+      {/* Boisson à plusieurs formats : un toucher par format, la ligne part
+          dans le mode actif. */}
+      {choixFormat && (
+        <Fenetre
+          id="caisse-choix-format"
+          titre="Choisir le format"
+          onClose={() => setChoixFormat(null)}
+          largeur={420}
+        >
+          <div style={fen.titre} data-no-translate>{boutons[choixFormat.id]?.nom_court || choixFormat.nom}</div>
+          <div style={st.formatsListe} data-caisse-formats="">
+            {(choixFormat.formats || []).map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                style={st.formatChoix}
+                data-caisse-format={f.libelle}
+                onClick={() => { const plat = choixFormat; setChoixFormat(null); ajouterArticle(plat, f); }}
+              >
+                <span style={st.formatLibelle} data-no-translate>{f.libelle}</span>
+                <span style={st.formatPrix} data-no-translate>{chf(f.prix)}</span>
+              </button>
+            ))}
+          </div>
+        </Fenetre>
+      )}
+      {retraitOuvert && !modeTest && !ticket.table_id && (
+        <QuiRetire ticket={ticketVu} onOuvrir={enregistrerRetrait} onClose={() => setRetraitOuvert(false)} />
+      )}
       {corrigerOuvert && (
         <CorrigerClient
           reservation={reservation}
@@ -1297,6 +1433,15 @@ export default function TicketEcran({
 }
 
 const st = {
+  // Fenêtre « Choisir le format » : une ligne par format, au doigt.
+  formatsListe: { display: 'flex', flexDirection: 'column' },
+  formatChoix: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, width: '100%', minHeight: 56,
+    padding: '10px 4px', background: 'transparent', borderWidth: 0, borderBottomWidth: 1, borderStyle: 'solid',
+    borderColor: 'var(--rule-soft)', borderRadius: 0, cursor: 'pointer', fontFamily: 'var(--font)', color: 'var(--text)', textAlign: 'left',
+  },
+  formatLibelle: { fontSize: 'var(--t3)', fontWeight: 'var(--g2)' },
+  formatPrix: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t3)' },
   // L'écran entier, posé sur la coque (portail dans body).
   plein: {
     position: 'fixed', inset: 0, zIndex: 900, display: 'flex', flexDirection: 'column', minWidth: 0,
@@ -1444,6 +1589,8 @@ const st = {
     background: 'var(--piste)', borderRadius: 'var(--r)',
   },
   bandeauCorps: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
+  nowrap: { whiteSpace: 'nowrap' },
+  bandeauInter: { display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 },
   bandeauNom: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', lineHeight: 1.2, overflowWrap: 'anywhere' },
   bandeauDetail: { display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: 'var(--t1)', color: 'var(--text2)' },
   bandeauAllergies: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--warning-text)', lineHeight: 1.3, overflowWrap: 'anywhere' },

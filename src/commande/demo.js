@@ -1,4 +1,4 @@
-import { BOISSONS, CAISSE_CATEGORIES, PLAT_FORMATS } from '../demo/donnees/caisse.js';
+import { BOISSONS, CAISSE_CATEGORIES, PLAT_FORMATS, VINS_CARTE } from '../demo/donnees/caisse.js';
 import { ETABLISSEMENT } from '../demo/donnees/base.js';
 import { SALLE_TABLES } from '../demo/donnees/salle.js';
 import { LIMITES, prenomPropre, tablePropre } from './regles.js';
@@ -37,7 +37,7 @@ export function carteDemo() {
     ouvert: true,
     plages: [],
     categories: boissons ? [{ id: boissons.id, nom: boissons.nom }] : [],
-    produits: BOISSONS.map((b) => ({
+    produits: [...BOISSONS, ...VINS_CARTE].map((b) => ({
       id: b.id, nom: b.nom, prix: prixAffiche(b), categorie_id: boissons?.id, photo: null, formats: formatsDe(b.id),
     })),
   };
@@ -59,7 +59,7 @@ export async function envoiDemo({ table, auBar, prenom, lignes }) {
   if (!auBar && !SALLE_TABLES_NOMS.includes(tablePropre(table).toLowerCase())) return { erreur: 'table' };
   const p = prenomPropre(prenom);
   if (p.length < 1 || p.length > LIMITES.prenom) return { erreur: 'prenom' };
-  const plats = new Map(BOISSONS.map((b) => [b.id, b]));
+  const plats = new Map([...BOISSONS, ...VINS_CARTE].map((b) => [b.id, b]));
   const liste = (lignes || []).filter((l) => Number(l.quantite) > 0);
   if (liste.some((l) => !plats.has(l.plat_id))) return { erreur: 'produit', produits: [] };
   const sansFormat = new Set();

@@ -14,7 +14,7 @@ import {
   PROFILE_CONTACTS, POINTS_REGLAGES, POINTS_CADEAUX, genererPointsMouvements, COMPTA_REGLAGES, CHARGES_FIXES,
   genererAchats, genererVentesJour, SALAIRES_ESTIMES, genererJournal,
 } from './operations.js';
-import { genererCaisse } from './caisse.js';
+import { genererCaisse, CARTE_VINS, CARTE_VINS_PLATS } from './caisse.js';
 import { REGLAGES_MODULES, MEP_MODELES, CANAUX_MESSAGES } from './reglages.js';
 import { genererPos } from './pos.js';
 import {
@@ -24,6 +24,7 @@ import { genererHotel } from './hotel.js';
 import { genererSpa } from './spa.js';
 import { genererFacturation } from './facturation.js';
 import { empreinteDemo } from '../rpc.js';
+import { ETABLISSEMENT_2, ETAB_2, reglagesSecondeMaison } from './secondeMaison.js';
 import { alertesCuisine, commandesCadeaux, executionsDuJour, fichesEnBrouillon, procedures } from './bureau.js';
 
 // Codes de pointage de la brigade de démo (borne, lot L6) : Inès 4826,
@@ -52,7 +53,24 @@ function reglagesUtilisateurs() {
   ]);
 }
 
-export function creerBase() {
+// options.maisons === 2 (lot 02 du panel, ?maisons=2) : la base d'une maison,
+// plus une seconde maison fictive au profil de toute l'équipe, avec ses
+// réglages. Sans l'option, la base est celle d'avant, octet pour octet.
+export function creerBase(options = {}) {
+  const base = baseUneMaison();
+  if (options.maisons !== 2) return base;
+  const seconde = reglagesSecondeMaison();
+  return {
+    ...base,
+    etablissements: [...base.etablissements, ETABLISSEMENT_2],
+    profiles: base.profiles.map((u) => ({ ...u, etablissement_ids: [...u.etablissement_ids, ETAB_2] })),
+    reglages_maison: [...base.reglages_maison, ...seconde.reglages_maison],
+    objectifs_maison: [...base.objectifs_maison, ...seconde.objectifs_maison],
+    reglages_modules: [...base.reglages_modules, ...seconde.reglages_modules],
+  };
+}
+
+function baseUneMaison() {
   const { reservations, tags, liens } = genererReservations();
   const { releves, controles } = genererHaccp();
   const { plats_boissons: boissons, ...caisse } = genererCaisse();
@@ -76,8 +94,8 @@ export function creerBase() {
     recettes: ingredientsARelier(RECETTES),
     plats: [...PLATS, ...boissons],
     plat_recettes: PLAT_RECETTES,
-    cartes: CARTES,
-    carte_plats: CARTE_PLATS,
+    cartes: [...CARTES, CARTE_VINS],
+    carte_plats: [...CARTE_PLATS, ...CARTE_VINS_PLATS],
     // Lot 5 : deux fiches en brouillon, à publier en un geste.
     fiches_salle: fichesEnBrouillon(FICHES_SALLE),
     carte_fiches_salle: CARTE_FICHES_SALLE,

@@ -21,7 +21,7 @@ export const ETABLISSEMENT = {
   modules_actifs: [
     'planning', 'messages', 'comptabilite', 'recettes', 'inventaire', 'pertes', 'haccp', 'sop',
     'fiches_salle', 'documents', 'catalogue', 'previsions', 'caisse', 'groupes', 'commande', 'mep',
-    'statistiques', 'kds', 'pos',
+    'statistiques', 'kds', 'pos', 'boissons',
     // Branche Hôtel et Spa (D4, lot 6a) : modules à activer, cochés ici.
     'spa', 'hebergement', 'etages', 'demandes', 'activites', 'passations', 'repas', 'technique',
   ],

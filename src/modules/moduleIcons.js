@@ -1,7 +1,7 @@
 import {
   BedDouble, BookOpen, Gift, BrushCleaning, ChartLine, Croissant, NotebookPen, Ticket, CalendarCheck, CalendarClock, CircleQuestionMark, ConciergeBell, CookingPot, Flower2, FolderOpen,
   LayoutDashboard, LayoutGrid, ListChecks, MessageSquare, Monitor, Package, Receipt, ReceiptSwissFranc, ScrollText,
-  ShieldCheck, ShoppingCart, Tags, Trash2, Users, Utensils, Wallet, Wrench,
+  ShieldCheck, ShoppingCart, Tags, Trash2, Users, Utensils, Wallet, Wine, Wrench,
 } from 'lucide-react';
 
 // Pictogramme au trait (lucide) de chaque module, pour les gros boutons de la
@@ -29,6 +29,7 @@ const ICONES = {
   commande: ShoppingCart,
   mep: CookingPot,
   pos: Receipt,
+  boissons: Wine,
   kds: Monitor,
   spa: Flower2,
   // Branche Hôtel (lot H0).

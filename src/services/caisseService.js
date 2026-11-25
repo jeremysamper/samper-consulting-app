@@ -34,6 +34,11 @@ const MESSAGES_RPC = {
   // Bons cadeaux : le paiement par bon passe par caisse_encaisser.
   ...MESSAGES_BONS_CADEAUX,
   'caisse: acces refuse': "Vous n'avez pas les droits pour cette action.",
+  // Formats de vente (Carte des boissons, migration 20261122).
+  'caisse: format inconnu pour ce plat': "Ce format n'existe plus pour ce produit. Rechargez la caisse et choisissez de nouveau.",
+  'caisse: ce produit se vend dans un format': 'Ce produit se vend dans un format. Touchez sa case et choisissez le format.',
+  'caisse: une ligne porte un seul format': 'Une ligne ne porte qu\'un seul format.',
+  "caisse: le format d'une ligne ne change pas (retirer la ligne et la reposer)": 'Le format ne se change pas sur une ligne. Retirez la ligne et ajoutez le bon format.',
   'caisse: table inconnue pour cet etablissement': 'Cette table ne fait plus partie du plan de salle.',
   'caisse: reservation introuvable': 'Réservation introuvable.',
   "caisse: reservation d'un autre jour": "Cette réservation n'est pas du jour.",
@@ -84,6 +89,11 @@ const MESSAGES_RPC = {
   'caisse: comptage des especes invalide': 'Comptage des espèces invalide.',
   'caisse: motif invalide (3 a 300 caracteres)': 'Motif trop court ou trop long.',
   'caisse: plat inconnu pour cet etablissement': "Ce produit n'est plus à la carte de la maison.",
+  // Lot 01 du panel : vente à emporter et commande d'avance.
+  'caisse: heure de retrait invalide': "Cette heure de retrait n'est pas valable. Choisissez une heure d'aujourd'hui.",
+  "caisse: le numero de retrait ne s'ecrit pas depuis l'ecran": 'Le numéro de retrait se pose au premier envoi en cuisine.',
+  "caisse: le retrait d'un ticket clos ne se modifie plus": "Ce ticket est clos : le nom et l'heure ne se changent plus.",
+  'caisse: un numero de retrait pose ne change plus': 'Le numéro de retrait ne change plus.',
 };
 
 // v9 : les refus qui parlent d'un terminal de paiement sont dits par
@@ -135,6 +145,40 @@ export async function creerTicket(etablissementId, tableId) {
     .single();
   if (error) return { data: null, error: mapError(error) };
   return { data, error: null };
+}
+
+// ── Vente à emporter et commande d'avance (lot 01 du panel) ──
+// Ouvre un ticket sans table au nom de qui retire la commande, avec l'heure
+// promise et le mode à emporter. Une insertion directe, comme creerTicket :
+// les policies de l'établissement s'appliquent, aucune colonne réservée n'est
+// écrite. Idempotente au double toucher : la feuille tire ticketId à son
+// ouverture ; si l'insertion rend 23505 (second toucher, réponse perdue), le
+// ticket se relit par cet id et ne se rend que s'il est du même
+// établissement, sans table et encore ouvert. Sinon : l'erreur ordinaire.
+export async function creerVenteDirecte({ etablissementId, ticketId, nom = null, heure = null, aEmporter = false }) {
+  const { data, error } = await supabase
+    .from('caisse_tickets')
+    .insert({
+      id: ticketId,
+      etablissement_id: etablissementId,
+      table_id: null,
+      retrait_nom: nom || null,
+      retrait_heure: heure || null,
+      a_emporter: Boolean(aEmporter),
+    })
+    .select()
+    .single();
+  if (!error) return { data, error: null };
+  if (String(error.code || '') === '23505' && ticketId) {
+    const relu = await supabase.from('caisse_tickets').select('*').eq('id', ticketId).maybeSingle();
+    const t = relu.data;
+    if (!relu.error && t && t.etablissement_id === etablissementId && !t.table_id && t.statut === 'ouvert') {
+      return { data: t, error: null };
+    }
+    // nouvelId : l'identifiant est pris, la feuille en tire un neuf.
+    return { data: null, error: "Le ticket n'a pas pu être ouvert. Réessayez.", nouvelId: true };
+  }
+  return { data: null, error: mapError(error) };
 }
 
 // ── Qui est à la table (v5, migration 20261110_caisse_v5) ──
@@ -342,6 +386,9 @@ export async function ajouterLigne(ligne) {
       prix_unitaire: ligne.prixUnitaire ?? 0,
       suite: ligne.suite ?? 1,
       note: ligne.note || null,
+      // Format de vente (Carte des boissons) : la base en lit le prix et le
+      // libellé. Sans options, la colonne garde son défaut.
+      ...(Array.isArray(ligne.options) && ligne.options.length ? { options: ligne.options } : {}),
     })
     .select()
     .single();

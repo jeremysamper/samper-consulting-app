@@ -715,3 +715,58 @@ test('bons cadeaux : une feuille dans l\'export et dans le dossier, une règle e
   assert.equal(feuillesRapport(sans).some((x) => x.id === 'bons'), false);
   assert.match(texteLisezMoi({ rapport: sans, etablissement: 'Maison', date: new Date('2026-11-19T10:00:00Z') }), /Deux points ne sont pas confirmés/);
 });
+
+const optFormat = (id, valeur) => [{ type: 'format', id, valeur }];
+
+test('plats vendus : une boisson vendue dans deux formats donne deux lignes (Carte des boissons)', () => {
+  const donnees = jeuEssai();
+  const vins = donnees.lignes.filter((l) => l.plat_id === 'vin');
+  assert.equal(vins.length, 2);
+  Object.assign(vins[0], { libelle: 'Vin de la maison, 1 dl', options: optFormat('f-1dl', '1 dl') });
+  Object.assign(vins[1], { libelle: 'Vin de la maison, 50 cl', options: optFormat('f-50cl', '50 cl') });
+  const r = rapportCaisse(donnees, DEUX_JOURS);
+  assert.equal(produit(r, 'Vin de la maison'), undefined);
+  assert.equal(produit(r, 'Vin de la maison, 1 dl').qte, 1);
+  assert.equal(produit(r, 'Vin de la maison, 50 cl').qte, 1);
+  assert.notEqual(produit(r, 'Vin de la maison, 1 dl').cle, produit(r, 'Vin de la maison, 50 cl').cle);
+  // Le total des plats vendus ne bouge pas.
+  assert.equal(somme(r.plats.lignes, (l) => l.ttc), somme(rapportCaisse(jeuEssai(), DEUX_JOURS).plats.lignes, (l) => l.ttc));
+});
+
+test('plats vendus : un format sans volume (Verre) se lit à part, par son id (lot C)', () => {
+  const donnees = jeuEssai();
+  const vins = donnees.lignes.filter((l) => l.plat_id === 'vin');
+  Object.assign(vins[0], { libelle: 'Vin de la maison, Verre', options: optFormat('f-verre', 'Verre') });
+  const r = rapportCaisse(donnees, DEUX_JOURS);
+  assert.equal(produit(r, 'Vin de la maison, Verre').qte, 1);
+  assert.equal(produit(r, 'Vin de la maison').qte, 1);
+  assert.notEqual(produit(r, 'Vin de la maison, Verre').cle, produit(r, 'Vin de la maison').cle);
+});
+
+test('plats vendus : un format renommé garde une seule ligne, une autre option ne sépare rien (lot C)', () => {
+  const donnees = jeuEssai();
+  const vins = donnees.lignes.filter((l) => l.plat_id === 'vin');
+  Object.assign(vins[0], { libelle: 'Vin de la maison, 1 dl', options: optFormat('f-1dl', '1 dl') });
+  Object.assign(vins[1], { libelle: 'Vin de la maison, verre de 1 dl', options: optFormat('f-1dl', 'verre de 1 dl') });
+  const cafes = donnees.lignes.filter((l) => l.plat_id === 'cafe');
+  cafes[0].options = [{ type: 'sans', valeur: 'sucre' }];
+  const r = rapportCaisse(donnees, DEUX_JOURS);
+  assert.equal(r.plats.lignes.filter((l) => l.platId === 'vin').length, 1);
+  assert.equal(produit(r, 'Vin de la maison, 1 dl').qte, 2);
+  assert.equal(r.plats.lignes.filter((l) => l.platId === 'cafe').length, 1);
+});
+
+test('plats vendus : une lecture sans la clé options retombe sur le libellé (lot C)', () => {
+  const donnees = jeuEssai();
+  donnees.lignes.forEach((l) => { delete l.options; });
+  const vins = donnees.lignes.filter((l) => l.plat_id === 'vin');
+  vins[0].libelle = 'Vin de la maison, 1 dl';
+  vins[1].libelle = 'Vin de la maison, 50 cl';
+  const r = rapportCaisse(donnees, DEUX_JOURS);
+  assert.equal(produit(r, 'Vin de la maison, 1 dl').qte, 1);
+  assert.equal(produit(r, 'Vin de la maison, 50 cl').qte, 1);
+  // Avec options vides, le libellé seul ne sépare plus : la base dit le format.
+  const avec = jeuEssai();
+  avec.lignes.filter((l) => l.plat_id === 'vin').forEach((l, i) => { l.libelle = i ? 'Vin de la maison, 50 cl' : 'Vin de la maison, 1 dl'; });
+  assert.equal(rapportCaisse(avec, DEUX_JOURS).plats.lignes.filter((l) => l.platId === 'vin').length, 1);
+});

@@ -46,6 +46,8 @@ const loadPrevisions = () => import('./previsions/Previsions.jsx');
 const loadVentesPos = () => import('./pos/VentesPos.jsx');
 // Caisse v1 : prise de commande en salle, bons vers le KDS, ventes directes.
 const loadCaisse = () => import('./caisse/Caisse.jsx');
+// Carte des boissons (22.11.2026) : cartes de boissons, formats et prix.
+const loadBoissons = () => import('./boissons/CarteBoissons.jsx');
 const loadSOP = () => import('./sop/SOP.jsx');
 const loadSpa = () => import('./spa/Spa.jsx');
 // Branche Hôtel (lot H0) : modules « à activer » des établissements hôteliers.
@@ -90,6 +92,7 @@ const Roles = lazy(loadRoles);
 const Previsions = lazy(loadPrevisions);
 const VentesPos = lazy(loadVentesPos);
 const Caisse = lazy(loadCaisse);
+const CarteBoissons = lazy(loadBoissons);
 const SOP = lazy(loadSOP);
 const Spa = lazy(loadSpa);
 const Hebergement = lazy(loadHebergement);
@@ -423,6 +426,13 @@ export default function LegacyModuleHost({
       // et serveur ; réglable ensuite par rôle et par personne.
       return peutOuvrirPage('caisse', user, permissions)
         ? wrap('Caisse', <Caisse user={user} etablissement={etablissement} legacyVersion={legacyVersion} />)
+        : accessDenied;
+    }
+    case 'boissons': {
+      // Ouverte sauf droit retiré ; les défauts du code la donnent à
+      // consultant, patron, resp_cuisine, serveur et hote.
+      return peutOuvrirPage('boissons', user, permissions)
+        ? wrap('Carte des boissons', <CarteBoissons user={user} etablissement={etablissement} legacyVersion={legacyVersion} />)
         : accessDenied;
     }
     case 'pos': {

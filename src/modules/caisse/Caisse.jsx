@@ -15,6 +15,8 @@ import * as tpe from '../../services/caisseTpeService.js';
 import PlanTables, { etatTicket } from './PlanTables.jsx';
 import TicketEcran from './TicketEcran.jsx';
 import QuiEstLa from './QuiEstLa.jsx';
+import QuiRetire, { ReperesRetrait } from './QuiRetire.jsx';
+import { reperesRetrait } from './retrait.js';
 import BandeauTest from './BandeauTest.jsx';
 import InvitationAvisPret from './InvitationAvisPret.jsx';
 import Historique from './Historique.jsx';
@@ -24,8 +26,10 @@ import { bonEnAttente, oublierBonEnAttente } from './bonsCadeaux/bonEnAttente.js
 import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
 import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
-import { cartesEtArticlesEnVente, fusionnerReglages, manquesLegaux } from './reglages.js';
+import { articlesDeCaisse, cartesEtArticlesEnVente, fusionnerReglages, manquesLegaux } from './reglages.js';
 import ListeManques from './ListeManques.jsx';
+import { listFormats } from '../../services/formatsService.js';
+import { formatsParPlat } from '../../utils/formatsBoisson.js';
 import { useMaintenant } from './mesures.js';
 import { useCommandesQr } from './commandeQr/useCommandesQr.js';
 import BandeauCommandesQr from './commandeQr/BandeauCommandesQr.jsx';
@@ -117,12 +121,23 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // le réglage « Cartes en vente » (voir plus bas).
   const [plats, setPlats] = React.useState([]);
   const [cartesLues, setCartesLues] = React.useState([]);
+  // Formats de vente des boissons (plat_id -> formats), en temps réel : un prix
+  // de format changé dans la Carte des boissons arrive sur tous les postes.
+  const [formats, setFormats] = React.useState(() => new Map());
+  const rechargerFormats = React.useCallback(async () => {
+    if (!etabId) return;
+    const { data, error } = await listFormats(etabId);
+    // Lecture en échec : les formats connus restent.
+    if (!error) setFormats(formatsParPlat(data));
+  }, [etabId]);
   // Allergènes des fiches (recette_id -> ids), pour l'alerte à la commande.
   const [allergenesFiches, setAllergenesFiches] = React.useState(() => new Map());
   // Réservations d'aujourd'hui et de la veille (v5), et la table dont la
   // feuille « Qui est à cette table ? » est ouverte.
   const [reservations, setReservations] = React.useState([]);
   const [quiTable, setQuiTable] = React.useState(null);
+  // Feuille « Qui retire la commande ? » d'une vente directe (lot 01).
+  const [quiRetire, setQuiRetire] = React.useState(false);
   const [ouverture, setOuverture] = React.useState(false);
   const verrouOuverture = React.useRef(false);
   const [statutEnCours, setStatutEnCours] = React.useState(null);
@@ -180,15 +195,18 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   React.useEffect(() => { rechargerTerminaux(); }, [rechargerTerminaux, legacyVersion]);
   React.useEffect(() => {
     setCategories([]); setConfig({}); setConfigLue(false);
-    setReservations([]); setQuiTable(null); setPlats([]); setCartesLues([]);
+    setReservations([]); setQuiTable(null); setPlats([]); setCartesLues([]); setFormats(new Map());
     setTickets([]); setCleTest(lireModeTest(etabId)); setProposerVider(false);
     setTerminaux([]);
   }, [etabId]);
   // Cartes en vente et articles vendables : fermé par défaut (une carte
   // archivée ou cachée ne vend jamais), sans réglage tout vend comme avant.
+  // Chaque article porte ses formats et dit s'il vient d'une carte de boissons.
   const { cartesEnVente, articles } = React.useMemo(
-    () => cartesEtArticlesEnVente({ plats, cartes: cartesLues, cartesIds: reglages.cartes_ids }),
-    [plats, cartesLues, reglages.cartes_ids],
+    () => cartesEtArticlesEnVente({
+      plats: articlesDeCaisse({ plats, cartes: cartesLues, formats }), cartes: cartesLues, cartesIds: reglages.cartes_ids,
+    }),
+    [plats, cartesLues, formats, reglages.cartes_ids],
   );
   const rechargerReglages = React.useCallback(async () => {
     if (!etabId) return;
@@ -308,6 +326,12 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   React.useEffect(() => { rechargerReservations(); }, [rechargerReservations, legacyVersion]);
   React.useEffect(() => { rechargerBoutons(); }, [rechargerBoutons, legacyVersion]);
   React.useEffect(() => { rechargerReglages(); }, [rechargerReglages, legacyVersion]);
+  React.useEffect(() => { rechargerFormats(); }, [rechargerFormats, legacyVersion]);
+  React.useEffect(() => {
+    const rt = dbService.getRealtime();
+    if (!rt?.subscribeReload || !etabId) return undefined;
+    return rt.subscribeReload(['plat_formats'], rechargerFormats);
+  }, [etabId, rechargerFormats]);
 
   // Realtime : un autre iPad qui vend, la direction qui annule.
   React.useEffect(() => {
@@ -638,11 +662,37 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       setEcran('ticket');
       return;
     }
-    const { data, error } = await caisse.creerTicket(etabId, null);
-    if (error) { notify(error, 'error'); return; }
-    await rechargerTickets();
+    // Lot 01 : hors mode test, la feuille « Qui retire la commande ? ».
+    setQuiRetire(true);
+  }
+
+  // Ticket ouvert depuis la feuille : la ligne rendue par l'écriture entre
+  // dans la liste connue avant la relecture, pour qu'une relecture en échec
+  // (qui garde la liste d'avant) ne referme pas l'écran sur un ticket absent.
+  async function ouvrirTicketDirect(data) {
+    setTickets((liste) => (liste.some((t) => t.id === data.id) ? liste : [...liste, { ...data, lignes: data.lignes || [] }]));
+    setQuiRetire(false);
     setTicketId(data.id);
     setEcran('ticket');
+    await rechargerTickets();
+  }
+
+  // « Continuer sans nom » : le ticket nu d'avant (creerTicket).
+  async function venteSansNom() {
+    const { data, error } = await caisse.creerTicket(etabId, null);
+    if (error) return { error };
+    await ouvrirTicketDirect(data);
+    return {};
+  }
+
+  // « Ouvrir le ticket » : nom, heure promise et mode à emporter.
+  async function venteNommee({ ticketId: id, nom, heure, aEmporter }) {
+    const { data, error, nouvelId } = await caisse.creerVenteDirecte({
+      etablissementId: etabId, ticketId: id, nom, heure, aEmporter,
+    });
+    if (error) return { error, nouvelId };
+    await ouvrirTicketDirect(data);
+    return {};
   }
 
   function nomTable(t) {
@@ -807,6 +857,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             onClose={() => setQuiTable(null)}
           />
         )}
+        {quiRetire && !modeTest && (
+          <QuiRetire onOuvrir={venteNommee} onSansNom={venteSansNom} onClose={() => setQuiRetire(false)} />
+        )}
       </>
     );
   }
@@ -918,12 +971,20 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           {tickets.map((t) => {
             const nom = nomTable(t);
             const e = etatTicket(t, maintenant);
+            // Lot 01 : un ticket sans table dit son numéro de retrait, le nom,
+            // l'heure promise et « À emporter » ; sans rien, « Direct ».
+            const rep = t.table_id ? null : reperesRetrait(t);
             return (
               <button key={t.id} type="button" style={st.ticketRow} onClick={() => { setTicketId(t.id); setEcran('ticket'); }}>
                 <span style={st.ticketTable}>
-                  {nom ? <span data-no-translate>{nom}</span> : <span>Direct</span>}
+                  {nom ? <span data-no-translate>{nom}</span> : (rep?.numero != null
+                    ? <span data-retrait-numero=""><span>Retrait n°</span> <span style={st.num}>{rep.numero}</span></span>
+                    : <span>Direct</span>)}
                 </span>
                 <span style={st.ticketInfos}>
+                  {rep && !rep.vide && (
+                    <ReperesRetrait reperes={{ ...rep, numero: null }} style={st.ticketClient} />
+                  )}
                   {nomsTables[t.table_id] && !nomsTables[t.table_id].attendu && (
                     <span style={st.ticketClient} data-no-translate>{nomsTables[t.table_id].nom}</span>
                   )}
@@ -965,7 +1026,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     return (
       <TicketEcran
         key={ticket.id}
-        titre={nom ? <><span>Table</span> <span data-no-translate>{nom}</span></> : <span>Vente directe</span>}
+        titre={nom ? <><span>Table</span> <span data-no-translate>{nom}</span></> : (
+          reperesRetrait(ticket).vide ? <span>Vente directe</span> : <ReperesRetrait reperes={reperesRetrait(ticket)} sansNumero="Vente directe" />
+        )}
         onRetour={retourAccueil}
         bandeau={bandeauTest}
         ticket={ticket}

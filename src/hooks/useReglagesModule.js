@@ -44,6 +44,30 @@ async function lire(etabId, module, { force = false } = {}) {
   return p;
 }
 
+// Écrit les clés changées sur la config d'avant (les autres clés de la ligne
+// sont gardées). Hors du crochet pour la reprise d'un autre établissement
+// (lot 02 du panel), qui écrit par le même chemin : même requête, mêmes
+// messages, même cache. Le crochet passe la config de son cache, la reprise
+// celle qu'elle vient de relire.
+export async function ecrireConfigModule(etabId, module, changes, configAvant) {
+  if (!etabId) return { error: 'Aucun établissement choisi.' };
+  const config = fusionnerConfig(configAvant, changes);
+  const { data, error } = await supabase.from('reglages_modules')
+    .upsert({ etablissement_id: etabId, module, config }, { onConflict: 'etablissement_id,module' })
+    .select('config').single();
+  if (error) {
+    console.error('[reglages_modules] écriture', module, error);
+    return {
+      error: String(error.code) === '42501'
+        ? 'Ce réglage est réservé à la direction de la maison.'
+        : "L'enregistrement a échoué. Réessayez.",
+    };
+  }
+  const r = { config: data?.config ?? config, status: 'ready', at: Date.now() };
+  cache.set(`${etabId}:${module}`, r);
+  return { error: null, config: r.config };
+}
+
 export function useReglagesModule(etabId, module) {
   const depart = etabId ? cache.get(`${etabId}:${module}`) : null;
   const [etat, setEtat] = useState(() => ({
@@ -72,23 +96,9 @@ export function useReglagesModule(etabId, module) {
 
   // Écrit les clés changées ; les autres clés de la ligne sont gardées.
   const enregistrer = useCallback(async (changes) => {
-    if (!etabId) return { error: 'Aucun établissement choisi.' };
-    const config = fusionnerConfig(cache.get(`${etabId}:${module}`)?.config ?? etat.config, changes);
-    const { data, error } = await supabase.from('reglages_modules')
-      .upsert({ etablissement_id: etabId, module, config }, { onConflict: 'etablissement_id,module' })
-      .select('config').single();
-    if (error) {
-      console.error('[reglages_modules] écriture', module, error);
-      return {
-        error: String(error.code) === '42501'
-          ? 'Ce réglage est réservé à la direction de la maison.'
-          : "L'enregistrement a échoué. Réessayez.",
-      };
-    }
-    const r = { config: data?.config ?? config, status: 'ready', at: Date.now() };
-    cache.set(`${etabId}:${module}`, r);
-    setEtat({ config: r.config, status: 'ready' });
-    return { error: null };
+    const r = await ecrireConfigModule(etabId, module, changes, cache.get(`${etabId}:${module}`)?.config ?? etat.config);
+    if (!r.error) setEtat({ config: r.config, status: 'ready' });
+    return { error: r.error };
   }, [etabId, module, etat.config]);
 
   const reglages = useMemo(() => lireReglagesModule(module, etat.config), [module, etat.config]);

@@ -50,6 +50,27 @@ async function lire(etabId, { force = false } = {}) {
   return p;
 }
 
+// Écrit un bloc (fermetures, pointage, objectifs), déjà sous sa forme
+// lisible ; les autres blocs de la ligne ne sont pas touchés. Hors du crochet
+// pour la reprise d'un autre établissement (lot 02 du panel), qui écrit par le
+// même chemin : même requête, mêmes messages, même cache.
+export async function ecrireBlocMaison(etabId, bloc, valeur) {
+  if (!etabId || !COLONNES[bloc]) return { error: 'Réglage inconnu.' };
+  const { data, error } = await supabase.from(TABLES[bloc])
+    .upsert({ etablissement_id: etabId, [COLONNES[bloc]]: versBase[bloc](valeur) }, { onConflict: 'etablissement_id' })
+    .select().single();
+  if (error) {
+    console.error('[reglages_maison] écriture', error);
+    return { error: error.code === '42501' ? "Ce réglage est réservé à la direction." : "L'enregistrement a échoué. Réessayez." };
+  }
+  // Seul le bloc écrit change : le reste de la ligne connue est gardé.
+  const avant = cache.get(etabId)?.ligne || {};
+  const ligne = { ...avant, [COLONNES[bloc]]: data?.[COLONNES[bloc]] };
+  cache.set(etabId, { ligne, status: 'ready', at: Date.now() });
+  retenirReglesPointage(etabId, normaliserPointage(ligne.pointage));
+  return { error: null, ligne };
+}
+
 export function useReglagesMaison(etabId) {
   const depart = etabId ? cache.get(etabId) : null;
   const [etat, setEtat] = useState(() => ({
@@ -76,24 +97,10 @@ export function useReglagesMaison(etabId) {
 
   useReglageModifie('reglages_maison', () => recharger(true));
 
-  // Écrit un bloc (fermetures, pointage, objectifs), déjà sous sa
-  // forme lisible ; les autres blocs de la ligne ne sont pas touchés.
   const enregistrer = useCallback(async (bloc, valeur) => {
-    if (!etabId || !COLONNES[bloc]) return { error: 'Réglage inconnu.' };
-    const { data, error } = await supabase.from(TABLES[bloc])
-      .upsert({ etablissement_id: etabId, [COLONNES[bloc]]: versBase[bloc](valeur) }, { onConflict: 'etablissement_id' })
-      .select().single();
-    if (error) {
-      console.error('[reglages_maison] écriture', error);
-      return { error: error.code === '42501' ? "Ce réglage est réservé à la direction." : "L'enregistrement a échoué. Réessayez." };
-    }
-    // Seul le bloc écrit change : le reste de la ligne connue est gardé.
-    const avant = cache.get(etabId)?.ligne || {};
-    const ligne = { ...avant, [COLONNES[bloc]]: data?.[COLONNES[bloc]] };
-    cache.set(etabId, { ligne, status: 'ready', at: Date.now() });
-    retenirReglesPointage(etabId, normaliserPointage(ligne.pointage));
-    setEtat({ ligne, status: 'ready' });
-    return { error: null };
+    const r = await ecrireBlocMaison(etabId, bloc, valeur);
+    if (!r.error) setEtat({ ligne: r.ligne, status: 'ready' });
+    return { error: r.error };
   }, [etabId]);
 
   // Objets stables tant que la ligne ne change pas : un écran peut les mettre

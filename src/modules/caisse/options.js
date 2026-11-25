@@ -5,8 +5,11 @@
 
 export const CUISSONS = ['bleu', 'saignant', 'à point', 'bien cuit'];
 
+// Le format de vente (type 'format', Carte des boissons) est déjà dans le
+// libellé de la ligne (« Fendant, 1 dl ») : il ne se répète pas dessous,
+// comme au KDS (caisse_modifiers_kds).
 export function libelleOption(o) {
-  if (!o || !o.valeur) return '';
+  if (!o || !o.valeur || o.type === 'format') return '';
   if (o.type === 'sans') return 'sans ' + o.valeur;
   if (o.type === 'message' && o.cible === 'bar') return 'bar : ' + o.valeur;
   return o.valeur;

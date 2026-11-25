@@ -101,3 +101,19 @@ export function zurichDateHeure(iso) {
   const p = partiesZurich(new Date(iso));
   return { jour: `${p.year}-${p.month}-${p.day}`, date: `${p.day}.${p.month}.${p.year}`, heure: `${p.hour}:${p.minute}` };
 }
+
+// Instant (ISO UTC) d'une heure HH:MM de Zurich, un jour YYYY-MM-DD donné.
+// Même méthode que zurichMinuitIso : deux passes absorbent l'heure d'été.
+// Rend null pour une heure mal formée.
+export function zurichInstantIso(dateStr, hhmm) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(hhmm || '').trim());
+  if (!m || Number(m[1]) > 23 || Number(m[2]) > 59) return null;
+  const [y, mo, d] = dateStr.split('-').map(Number);
+  const cible = Date.UTC(y, mo - 1, d, Number(m[1]), Number(m[2]));
+  let t = cible;
+  for (let i = 0; i < 2; i += 1) {
+    const p = partiesZurich(new Date(t));
+    t += cible - Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+  }
+  return new Date(t).toISOString();
+}

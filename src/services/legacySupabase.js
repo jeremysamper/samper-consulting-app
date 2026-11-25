@@ -1481,7 +1481,9 @@ export function installLegacySupabase() {
         .sort((a, b) => (a.ordre ?? 0) - (b.ordre ?? 0));
     },
 
-    async upsertCarte(carte) {
+    // creation : vrai pour une carte neuve (addCarte). Seule une création
+    // envoie le genre (voir plus bas).
+    async upsertCarte(carte, { creation = false } = {}) {
       const payload = {
         id: carte.id || ('carte-' + Date.now()),
         etablissement_id: carte.etablissementId,
@@ -1496,6 +1498,15 @@ export function installLegacySupabase() {
         // Sans clé, l'upsert préserve la valeur en base (même contrat que
         // `archive`) : renommer une carte ne la renvoie pas en tête.
         ...(Number.isFinite(carte.ordre) ? { ordre: carte.ordre } : {}),
+        // Genre (Carte des boissons, migration 20261122) : envoyé seulement à
+        // la création d'une carte de boissons. Sans clé, l'upsert garde la
+        // valeur en base : renommer une carte ne change jamais son genre.
+        // La garde du lot C (20261123_carte_boissons_droits) l'exige : un
+        // upsert vérifie la policy d'insertion sur la ligne proposée, et créer
+        // une carte de boissons demande le droit boissons. Un renommage qui
+        // renverrait le genre serait refusé à qui gère les cartes par
+        // « Modifier » recettes (Fiches salle).
+        ...(creation && carte.genre === 'boissons' ? { genre: 'boissons' } : {}),
       };
       const { data, error } = await client.from('cartes').upsert(payload).select().single();
       if (error) throw error;
@@ -1505,8 +1516,15 @@ export function installLegacySupabase() {
     async deleteCarte(id) {
       // Les liaisons carte_plats / carte_fiches_salle sont supprimées en cascade.
       // Les plats, recettes et fiches restent intacts.
-      const { error } = await client.from('cartes').delete().eq('id', id);
+      // Un refus de la base sur une suppression ne lève rien (zéro ligne) :
+      // les lignes supprimées sont relues. Cas connu : une carte de boissons
+      // qui porte encore des boissons, que « Modifier » recettes seul ne
+      // supprime pas (migration 20261125_carte_boissons_suppression_carte).
+      const { data, error } = await client.from('cartes').delete().eq('id', id).select('id');
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('Cette carte n\'existe plus, ou vous n\'avez pas le droit de la supprimer. Demandez à la direction.');
+      }
     },
 
     // Archive / restaure une carte. Update ciblé (pas d'upsert complet) :
@@ -1617,6 +1635,9 @@ export function installLegacySupabase() {
         // donc `false` : tant que la migration n'est pas appliquée toutes les
         // cartes restent visibles. Jamais renvoyée par upsertCarte.
         masquee: row.masquee === true,
+        // Carte de mets (Cartes & Recettes) ou de boissons (Carte des boissons).
+        // Colonne absente ou valeur inconnue : 'mets'.
+        genre: row.genre === 'boissons' ? 'boissons' : 'mets',
         // Rang d'affichage : clé exposée UNIQUEMENT si la colonne existe, pour
         // qu'un upsert issu d'un objet carte (renommage, sync de plats) ne
         // tente pas de l'écrire tant que la migration 20260805 n'est pas

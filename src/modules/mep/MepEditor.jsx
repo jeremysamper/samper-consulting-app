@@ -22,7 +22,7 @@ const MepEditor = ({ liste, user, etablissement, onClose }) => {
 
   // Rôle transmis : le sélecteur de carte ne propose pas les cartes cachées
   // (elles ne sont servies qu'au consultant).
-  const { cartes } = useCartes(etabId, { role: user?.role });
+  const { cartes } = useCartes(etabId, { role: user?.role, genre: 'tous' });
   const [nom, setNom] = React.useState(liste?.nom || '');
   const [dateService, setDateService] = React.useState(liste?.dateService ? String(liste.dateService).slice(0, 10) : '');
   const [recettes, setRecettes] = React.useState([]);

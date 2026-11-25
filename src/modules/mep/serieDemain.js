@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Liste « Mise en place de demain » (plan 15, lot 4), fonction pure :
-// les lignes du modèle choisi, puis les plats vendus (Ventes POS, moyenne du
-// même jour de semaine), regroupés par fiche et ajustés par la prévision des
+// les lignes du modèle choisi, puis les plats vendus (Caisse native, ou Ventes
+// POS sans vente à la Caisse ; moyenne du même jour de semaine), regroupés par fiche et ajustés par la prévision des
 // couverts (prévus contre référence, borné de 0,5 à 2). Une fiche déjà dans le
 // modèle prend la plus grande des deux quantités (le modèle dit le minimum).
 // ─────────────────────────────────────────────────────────────────────────────

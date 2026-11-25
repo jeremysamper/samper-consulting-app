@@ -3,7 +3,7 @@ import { supabase } from '../../services/supabase.js';
 import { notify } from '../../components/toast/index.js';
 import { Fenetre, st as fs } from '../../components/ui/Fenetres.jsx';
 import { useReglagesModule } from '../../hooks/useReglagesModule.js';
-import { useMiseEnPlace } from '../pos/hooks/useMiseEnPlace.js';
+import { useVentesDemain } from './useVentesDemain.js';
 import { zurichAjouterJours, zurichToday } from '../../utils/zurichTime.js';
 import { listeDemain } from './serieDemain.js';
 
@@ -12,8 +12,12 @@ import { listeDemain } from './serieDemain.js';
 // entre dans le module. On choisit le poste et, s'il y en a, un modèle de
 // liste du poste (Réglages > Mise en place) ; l'app propose les lignes du
 // modèle plus les plats vendus le même jour de semaine (moyenne des 14 derniers
-// jours, Ventes POS), ajustés par la prévision des couverts de demain. Chaque
-// ligne garde la quantité proposée (quantite_suggeree) à côté de la retenue.
+// jours), ajustés par la prévision des couverts de demain. Les ventes viennent
+// de la Caisse native dès qu'elle en porte (jours finis, J-14 à J-1), sinon de
+// Ventes POS (useVentesDemain) ; la source est écrite dans base_calcul
+// (source_ventes). Une lecture en échec le dit et laisse créer la liste du
+// modèle. Chaque ligne garde la quantité proposée (quantite_suggeree) à côté
+// de la retenue.
 // Écriture : mêmes droits que les listes (consultant, resp_cuisine, cuisinier).
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -22,7 +26,8 @@ export default function PreparerDemain({ etablissement, user, onClose, onCreee }
   const demain = zurichAjouterJours(zurichToday(), 1);
   const { reglages } = useReglagesModule(etabId, 'mep');
   const postes = reglages?.postes || [];
-  const pos = useMiseEnPlace(etablissement);
+  const ventes = useVentesDemain(etablissement);
+  const [sansFicheOuvert, setSansFicheOuvert] = React.useState(false);
   const [modeles, setModeles] = React.useState([]);
   const [prevision, setPrevision] = React.useState({ prevus: null, reference: null });
   const [poste, setPoste] = React.useState('');
@@ -57,7 +62,7 @@ export default function PreparerDemain({ etablissement, user, onClose, onCreee }
   const modele = modelesDuPoste.find((m) => m.id === modeleId) || null;
   const [y, mo, d] = demain.split('-').map(Number);
   const jourSemaine = new Date(Date.UTC(y, mo - 1, d)).getUTCDay() || 7;
-  const proposition = listeDemain({ modele, ventes: pos.items, prevision, jourSemaine });
+  const proposition = listeDemain({ modele, ventes: ventes.items, prevision, jourSemaine });
 
   const creer = async () => {
     if (enCours || proposition.lignes.length === 0) return;
@@ -67,7 +72,7 @@ export default function PreparerDemain({ etablissement, user, onClose, onCreee }
       const { data: liste, error } = await supabase.from('mep_listes').insert({
         etablissement_id: etabId, nom, date_service: demain, created_by: user?.id || null,
         poste: poste || null, modele_id: modele?.id || null, origine: 'prevision',
-        base_calcul: { jours_ventes: 14, jour_semaine: proposition.jourSemaine, couverts_prevus: prevision.prevus, couverts_reference: prevision.reference },
+        base_calcul: { jours_ventes: 14, jour_semaine: proposition.jourSemaine, couverts_prevus: prevision.prevus, couverts_reference: prevision.reference, source_ventes: ventes.source || null },
       }).select().single();
       if (error) throw error;
       const items = proposition.lignes.map((l, i) => ({
@@ -118,12 +123,46 @@ export default function PreparerDemain({ etablissement, user, onClose, onCreee }
         </label>
       )}
       <div style={fs.section}>
-        <span style={fs.remarque}>
-          {pos.loading ? 'Lecture des ventes…' : pos.items.length
-            ? <>Quantités tirées des ventes des 14 derniers jours, le même jour de la semaine.</>
-            : <>Aucune vente reliée à une fiche : seules les lignes du modèle sont proposées.</>}
-          {proposition.facteur !== 1 && <> Ajustées à la prévision : <span data-no-translate="">{prevision.prevus}</span> couverts attendus contre <span data-no-translate="">{prevision.reference}</span> d'habitude.</>}
-        </span>
+        <span style={fs.remarque} data-mep-source={ventes.source || (ventes.error ? 'erreur' : 'aucune')}>
+          {ventes.loading ? <span>Lecture des ventes…</span>
+            : ventes.error ? <span>Les ventes n'ont pas pu être lues. Seules les lignes du modèle sont proposées.</span>
+              : ventes.source === 'caisse' ? (
+                <>
+                  <span>Quantités tirées des ventes de la Caisse, sur les 14 derniers jours.</span>{' '}
+                  {ventes.joursComparables >= 2
+                    ? <span style={st.insecable}><span>Jours comparables trouvés :</span> <span data-no-translate="">{ventes.joursComparables}</span></span>
+                    : <span>Moins de deux jours comparables : la moyenne porte sur tous les jours vendus.</span>}
+                </>
+              ) : ventes.source === 'pos' ? (
+                <>
+                  <span>Quantités tirées de Ventes POS, sur les 14 derniers jours.</span>
+                  {ventes.nonRelies > 0 && <>{' '}<span style={st.insecable}><span>Articles de la caisse sans fiche reliée :</span> <span data-no-translate="">{ventes.nonRelies}</span></span></>}
+                </>
+              ) : <span>Il n'y a pas encore de ventes à comparer. Seules les lignes du modèle sont proposées.</span>}
+          </span>
+        {proposition.facteur !== 1 && (
+          <span style={fs.remarque}>Ajustées à la prévision : <span data-no-translate="">{prevision.prevus}</span> couverts attendus contre <span data-no-translate="">{prevision.reference}</span> d'habitude.</span>
+        )}
+        {ventes.error && !ventes.loading && (
+          <button type="button" style={{ ...fs.secondaire, alignSelf: 'flex-start' }} onClick={ventes.reload}>Réessayer</button>
+        )}
+        {ventes.source === 'caisse' && ventes.sansFiche.length > 0 && (
+          <>
+            <button type="button" style={st.deplier} aria-expanded={sansFicheOuvert} onClick={() => setSansFicheOuvert((v) => !v)}>
+              <span>Articles vendus sans fiche reliée :</span> <span data-no-translate="">{ventes.sansFiche.length}</span>
+            </button>
+            {sansFicheOuvert && (
+              <div style={st.sansFiche}>
+                {ventes.sansFiche.map((a, i, tous) => (
+                  <div key={a.platId} style={i === tous.length - 1 ? { ...st.ligne, borderBottomColor: 'transparent' } : st.ligne}>
+                    <span style={st.nom} data-no-translate="">{a.nom}</span>
+                    <span style={st.qte} data-no-translate="">{a.qty}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
         {proposition.lignes.length === 0 ? (
           <span style={fs.remarque}>Rien à proposer pour demain. Choisissez un modèle, ou créez une liste à la main.</span>
         ) : (
@@ -146,4 +185,7 @@ const st = {
   ligne: { display: 'flex', alignItems: 'center', gap: 12, minHeight: 40, borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)' },
   nom: { flex: 1, minWidth: 0, fontSize: 'var(--t2)', color: 'var(--text)' },
   qte: { fontSize: 'var(--t2)', color: 'var(--text2)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap' },
+  insecable: { whiteSpace: 'nowrap' },
+  sansFiche: { display: 'flex', flexDirection: 'column', background: 'var(--piste)', borderRadius: 'var(--r)', padding: '2px 14px' },
+  deplier: { alignSelf: 'flex-start', minHeight: 44, padding: '0 2px', background: 'transparent', borderWidth: 0, borderStyle: 'none', color: 'var(--lien)', fontSize: 'var(--t1)', fontFamily: 'var(--font)', textAlign: 'left', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 3 },
 };

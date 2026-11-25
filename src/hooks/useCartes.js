@@ -23,6 +23,15 @@ import { messageErreur } from '../utils/messageErreur.js';
 // Masquer n'est pas archiver : la carte reste vivante et éditable pour le
 // consultant, elle disparaît simplement de la vue de la brigade.
 //
+// Genre (colonne `cartes.genre`, migration 20261122) : une carte de mets vit
+// dans Cartes & Recettes, une carte de boissons dans la Carte des boissons.
+// `useCartes(etabId)` ne sert que les cartes de mets (fail-closed pour Cartes &
+// Recettes, où aucune boisson ni aucun prix de boisson n'entre) ; `genre:
+// 'boissons'` sert la Carte des boissons, `genre: 'tous'` les modules qui lisent
+// les deux (Commande, Fiches salle, Mise en place, Chiffrage). `idsBoissons` dit
+// quelles cartes sont des cartes de boissons, archivées et cachées comprises :
+// Cartes & Recettes en tire les plats à écarter.
+//
 // L'ordre des onglets (colonne `cartes.ordre`, migration 20260805) est une
 // donnée d'établissement partagée par toute la brigade, pas une préférence
 // utilisateur : `reorderCartes` l'écrit pour tout le monde. Tant que la
@@ -43,7 +52,9 @@ import { messageErreur } from '../utils/messageErreur.js';
 const RETRY_MIN_MS = 4000;
 const RETRY_MAX_MS = 30000;
 
-export function useCartes(etabId, { role } = {}) {
+const genreDe = (c) => (c?.genre === 'boissons' ? 'boissons' : 'mets');
+
+export function useCartes(etabId, { role, genre = 'mets' } = {}) {
   const legacySB = dbService.getBridge();
   const voitCartesMasquees = role === 'consultant';
   const demoData = getDemoData();
@@ -111,9 +122,17 @@ export function useCartes(etabId, { role } = {}) {
 
   // Cartes cachées : retirées des DEUX listes pour les non-consultants, sinon
   // une carte masquée puis archivée réapparaîtrait dans la modale « Archives ».
+  const duGenre = React.useMemo(
+    () => (genre === 'tous' ? allCartes : allCartes.filter(c => genreDe(c) === genre)),
+    [allCartes, genre],
+  );
   const visibles = React.useMemo(
-    () => (voitCartesMasquees ? allCartes : allCartes.filter(c => c.masquee !== true)),
-    [allCartes, voitCartesMasquees],
+    () => (voitCartesMasquees ? duGenre : duGenre.filter(c => c.masquee !== true)),
+    [duGenre, voitCartesMasquees],
+  );
+  const idsBoissons = React.useMemo(
+    () => new Set(allCartes.filter(c => genreDe(c) === 'boissons').map(c => c.id)),
+    [allCartes],
   );
   const cartes = React.useMemo(() => visibles.filter(c => !c.archive), [visibles]);
   const archivedCartes = React.useMemo(() => visibles.filter(c => c.archive === true), [visibles]);
@@ -140,10 +159,12 @@ export function useCartes(etabId, { role } = {}) {
       plats: [],
       // Une carte créée se pose à DROITE des existantes, jamais devant elles.
       ...(ordre !== undefined ? { ordre } : {}),
+      // Créée depuis la Carte des boissons : une carte de boissons.
+      ...(genre === 'boissons' ? { genre: 'boissons' } : {}),
     };
     if (legacySB) {
       try {
-        const saved = await legacySB.db.upsertCarte(carte);
+        const saved = await legacySB.db.upsertCarte(carte, { creation: true });
         setAllCartes(prev => (prev.some(c => c.id === saved.id) ? prev : [...prev, saved]));
         // L'écriture a abouti : la liste à l'écran est de nouveau fiable, même
         // si la dernière lecture avait échoué (réseau revenu entre-temps).
@@ -157,7 +178,7 @@ export function useCartes(etabId, { role } = {}) {
     writeLegacyStorage('sc_cartes', all);
     setAllCartes(prev => [...prev, carte]);
     return carte;
-  }, [etabId, legacySB, demoData, prochainOrdre]);
+  }, [etabId, legacySB, demoData, prochainOrdre, genre]);
 
   // Renomme / met à jour les dates d'une carte existante.
   const renameCarte = React.useCallback(async (id, patch) => {
@@ -282,5 +303,5 @@ export function useCartes(etabId, { role } = {}) {
     setAllCartes(prev => prev.filter(c => c.id !== id));
   }, [legacySB, demoData]);
 
-  return { cartes, archivedCartes, status, reload, addCarte, renameCarte, archiveCarte, masquerCarte, deleteCarte, reorderCartes };
+  return { cartes, archivedCartes, idsBoissons, status, reload, addCarte, renameCarte, archiveCarte, masquerCarte, deleteCarte, reorderCartes };
 }

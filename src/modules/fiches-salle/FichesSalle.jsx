@@ -214,7 +214,7 @@ const FichesSalle = ({ user, etablissement }) => {
   const ALL_TAB = '__all__';
   // Rôle transmis au hook : une carte cachée depuis « Cartes & Recettes »
   // disparaît aussi des onglets d'ici pour tout le monde sauf le consultant.
-  const { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId, { role: user.role });
+  const { cartes, archivedCartes, addCarte, renameCarte, archiveCarte, deleteCarte } = useCartes(etabId, { role: user.role, genre: 'tous' });
   const [activeCarteTab, setActiveCarteTab] = React.useState(ALL_TAB);
 
   const canEdit = canManageModule(user.role, 'fiches_salle');

@@ -73,7 +73,7 @@ const Commande = ({ user, etablissement }) => {
   const [ouverts, setOuverts] = React.useState({});
 
   // Cartes : source unique, cartes cachées filtrées selon le rôle.
-  const { cartes, status: cartesStatus } = useCartes(etabId, { role: user?.role });
+  const { cartes, status: cartesStatus } = useCartes(etabId, { role: user?.role, genre: 'tous' });
   // Fiches : plats, recettes et catalogue, lus pour tous les rôles du module.
   const [fiches, setFiches] = React.useState({ status: 'loading', plats: [], recettes: [], catalogue: [] });
   const [essaiFiches, setEssaiFiches] = React.useState(0);

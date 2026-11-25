@@ -22,25 +22,28 @@ export const roles = {
 // points (14.11.2026) : ouvert à tous ; l'entrée n'apparaît pour un employé
 // que si le système est allumé pour l'établissement et qu'il y participe
 // (entreeMenuVisible, src/modules/points/bareme.js).
+// boissons (22.11.2026, Carte des boissons) : consultant, patron, resp_cuisine,
+// serveur et hote par défaut ; une clé absente de la table permissions prend
+// ce défaut. Modifier la carte demande en plus le droit d'action carte_boissons.
 export const defaultPermissions = {
-  consultant:   { caisse: true,  dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: true,  faq: true,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: true, hebergement: true, etages: true , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: true, statistiques: true, points: true },
-  patron:       { caisse: true,  dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: false, messages: true, groupes: true, spa: true, journal: true, hebergement: true, etages: true , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: true, statistiques: true, points: true },
-  resp_cuisine: { caisse: true,  dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false, hebergement: true, etages: false , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: true, points: true },
-  cuisinier:    { caisse: false, dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false, hebergement: false, etages: false , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: false, points: true },
-  serveur:      { caisse: true,  dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false, hebergement: false, etages: false , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: false, points: true },
-  hote:         { caisse: false, dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false, hebergement: true, etages: true , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: true, points: true },
+  consultant:   { caisse: true, boissons: true,  dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: true,  faq: true,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: true, hebergement: true, etages: true , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: true, statistiques: true, points: true },
+  patron:       { caisse: true, boissons: true,  dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: false, messages: true, groupes: true, spa: true, journal: true, hebergement: true, etages: true , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: true, statistiques: true, points: true },
+  resp_cuisine: { caisse: true, boissons: true,  dashboard: true,  planning: true,  recettes: true,  inventaire: true,  pertes: true,  haccp: true,  sop: true,  fiches_salle: true,  documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: true,  pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false, hebergement: true, etages: false , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: true, points: true },
+  cuisinier:    { caisse: false, boissons: false, dashboard: true,  planning: true,  recettes: true,  inventaire: false, pertes: true,  haccp: true,  sop: true,  fiches_salle: false, documents: true,  catalogue: true,  consultant_tools: false, faq: false,  previsions: false, pos: true,  commande: true, mep: true,  kds: true,  messages: true, groupes: true, spa: true, journal: false, hebergement: false, etages: false , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: false, points: true },
+  serveur:      { caisse: true, boissons: true,  dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: true,  documents: true,  catalogue: false, consultant_tools: false, faq: false,  previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false, hebergement: false, etages: false , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: false, points: true },
+  hote:         { caisse: false, boissons: true, dashboard: false, planning: false, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: true, mep: false, kds: false, messages: true, groupes: true, spa: true, journal: false, hebergement: true, etages: true , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: true, points: true },
   // Praticien(ne) spa : les soins en cabine. Spa & clients, son planning et la
   // messagerie ; rien de la cuisine ni de la salle.
-  praticien_spa: { caisse: false, dashboard: false, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: true, journal: false, hebergement: false, etages: false , demandes: false, activites: false, passations: false, repas: false, technique: false, comptabilite: false, statistiques: false, points: true },
+  praticien_spa: { caisse: false, boissons: false, dashboard: false, planning: true, recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: true, journal: false, hebergement: false, etages: false , demandes: false, activites: false, passations: false, repas: false, technique: false, comptabilite: false, statistiques: false, points: true },
   // Rôles hôtel (lot H1). La réception tient les séjours, les réservations de
   // table et les groupes ; la gouvernante et les femmes et valets de chambre
   // tiennent les étages (la gouvernante lit aussi les séjours pour préparer
   // les arrivées) ; la technique lit les étages (chambres hors service) en
   // attendant son module (lot H8).
-  receptionniste:   { caisse: false, dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: false, mep: false, kds: false, messages: true, groupes: true,  spa: false, journal: false, hebergement: true,  etages: true , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: false, points: true },
-  gouvernante:      { caisse: false, dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: true,  etages: true , demandes: true, activites: false, passations: true, repas: false, technique: true, comptabilite: false, statistiques: false, points: true },
-  femme_de_chambre: { caisse: false, dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true , demandes: true, activites: false, passations: true, repas: false, technique: true, comptabilite: false, statistiques: false, points: true },
-  technicien:       { caisse: false, dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true , demandes: true, activites: false, passations: true, repas: false, technique: true, comptabilite: false, statistiques: false, points: true },
+  receptionniste:   { caisse: false, boissons: false, dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: false, mep: false, kds: false, messages: true, groupes: true,  spa: false, journal: false, hebergement: true,  etages: true , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: false, points: true },
+  gouvernante:      { caisse: false, boissons: false, dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: true,  etages: true , demandes: true, activites: false, passations: true, repas: false, technique: true, comptabilite: false, statistiques: false, points: true },
+  femme_de_chambre: { caisse: false, boissons: false, dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true , demandes: true, activites: false, passations: true, repas: false, technique: true, comptabilite: false, statistiques: false, points: true },
+  technicien:       { caisse: false, boissons: false, dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: false, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true , demandes: true, activites: false, passations: true, repas: false, technique: true, comptabilite: false, statistiques: false, points: true },
 };
 
 // Modules dont le droit « gérer » (modifier + supprimer) est configurable
@@ -109,6 +112,15 @@ export const manageableModules = [
   // La base lit la même case (user_peut_gerer('points', …), migration
   // 20261114_points_boutique) : consultant et patron par défaut.
   { id: 'points', label: 'Points & boutique' },
+  // boissons (22.11.2026) : « gérer » = ajouter, modifier et retirer les
+  // boissons, leurs formats et les cartes de boissons, avec le droit d'action
+  // carte_boissons. La base lit les mêmes cases depuis le lot C
+  // (boissons_peut_modifier, migration 20261123_carte_boissons_droits) :
+  // seule voie pour les formats et pour créer une carte de boissons ; sur une
+  // carte de boissons, ses liens et ses plats, les droits des écrans qui les
+  // écrivent aujourd'hui (recettes, fiches, chiffrage) restent acceptés
+  // jusqu'au lot D.
+  { id: 'boissons', label: 'Carte des boissons' },
 ];
 
 // Rôles que la BASE laisse écrire dans un module (RLS fondée sur le rôle, relevée
@@ -143,12 +155,15 @@ export const defaultManageRoles = ['consultant', 'patron'];
 //   (migration 20261007), avec les mêmes rôles par défaut : les tenir en phase.
 //   fiches : créer, modifier et dupliquer les fiches et les plats dans
 //   Cartes & Recettes. Demande aussi « Modifier » du module (requiertGerer).
-//   Garde de présentation seulement : recettes, plats, plat_recettes et
+//   Garde de présentation pour les mets : recettes, plats, plat_recettes et
 //   carte_plats ne vérifient en base que l'établissement (user_can_access_etab).
+//   Pour les boissons, la base lit recettes et fiches comme droit hérité
+//   (migration 20261123_carte_boissons_droits, retiré au lot D).
 //   chiffrage : l'écran Chiffrage de Cartes & Recettes (coûts, prix de vente,
 //   food cost, marges), venu des Outils consultant le 18.11.2026 pour que la
 //   direction et la comptabilité chiffrent seules. Sans « Modifier » : on peut
-//   chiffrer sans toucher aux fiches. Garde de présentation, comme « fiches ».
+//   chiffrer sans toucher aux fiches. Garde de présentation pour les mets ;
+//   la base l'accepte pour réécrire un plat de boissons (lot C, durable).
 export const droitsAction = [
   { id: 'factures_achat', module: 'inventaire', label: 'Régler les factures', defaultRoles: ['consultant', 'patron'] },
   { id: 'fiches', module: 'recettes', label: 'Créer et modifier les fiches', defaultRoles: ['consultant', 'patron'], requiertGerer: true },
@@ -157,6 +172,11 @@ export const droitsAction = [
   //   en base par le déclencheur chambres_garde_colonnes (migration
   //   20261028_hotel_h1), mêmes rôles par défaut : les tenir en phase.
   { id: 'inspection', module: 'etages', label: 'Inspecter les chambres', defaultRoles: ['consultant', 'patron', 'gouvernante'], requiertGerer: true },
+  //   carte_boissons : ajouter et modifier les boissons, leurs formats, leurs
+  //   prix et les cartes de boissons (Carte des boissons, 22.11.2026). Demande
+  //   aussi « Modifier » du module. Vérifié en base depuis le lot C
+  //   (boissons_peut_modifier, mêmes rôles par défaut : les tenir en phase).
+  { id: 'carte_boissons', module: 'boissons', label: 'Modifier la carte des boissons et ses prix', defaultRoles: ['consultant', 'patron'], requiertGerer: true },
   //   factures_groupes : devis, factures et paiements des groupes (onglet
   //   « Devis et factures » de Groupes). Vérifié en base par la RLS des tables
   //   groupe_devis, groupe_factures, groupe_paiements et la lecture de
@@ -222,6 +242,11 @@ export const tousLesNavItems = [
   // Caisse v1 (05.11.2026) : prise de commande par table, bons vers le KDS,
   // ventes directes. Coexiste avec l'intégration Lightspeed (pos / kds).
   { id: 'caisse', label: 'Caisse', mobileLabel: 'Caisse', icon: '◫', group: 'Salle', permKey: 'caisse' },
+  // Carte des boissons (22.11.2026) : les cartes de boissons, leurs boissons,
+  // leurs formats et leurs prix, vendus par la Caisse. Juste après la Caisse :
+  // mesuré le 22.11.2026, le rail défile déjà à 1024 et 1440 px et la Caisse y
+  // est sous le pli, l'entrée ne pousse donc aucune entrée visible.
+  { id: 'boissons', label: 'Carte des boissons', mobileLabel: 'Boissons', icon: '◍', group: 'Salle', permKey: 'boissons' },
   { id: 'groupes', label: 'Groupes', icon: '▤', group: 'Cuisine', permKey: 'groupes' },
   { id: 'commande', label: 'Commande', mobileLabel: 'Commande', icon: '◰', group: 'Cuisine', permKey: 'commande' },
   { id: 'mep', label: 'Mise en place', mobileLabel: 'Mise en place', icon: '◲', group: 'Cuisine', permKey: 'mep' },

@@ -50,6 +50,7 @@ import './recettes.css';
 // Import de fiches (Gérer > Importer des fiches) : chargé à l'ouverture
 // seulement, avec le lecteur Excel qu'il appelle.
 const ImportLauncher = React.lazy(() => import('./import/ImportLauncher.jsx'));
+const CartePourClient = React.lazy(() => import('./CartePourClient.jsx'));
 // Chiffrage (droit d'action « chiffrage ») : chargé à l'ouverture de son
 // écran seulement, la brigade ne reçoit jamais ce code.
 const Chiffrage = React.lazy(() => import('./chiffrage/Chiffrage.jsx'));
@@ -1461,17 +1462,31 @@ const Recettes = ({ user, etablissement }) => {
   // « réellement aucune carte » : au réveil d'une tablette la lecture peut
   // repartir en 401 et il ne faut surtout pas annoncer un établissement vide.
   // Le rôle est passé au hook : les cartes cachées ne sont servies qu'au consultant.
-  const { cartes, archivedCartes, status: cartesStatus, reload: reloadCartes,
+  // Cartes de mets seulement : les cartes de boissons vivent dans la Carte des
+  // boissons (genre 'boissons'), avec leurs prix, et n'entrent pas ici.
+  const { cartes, archivedCartes, idsBoissons, status: cartesStatus, reload: reloadCartes,
           addCarte, renameCarte, archiveCarte, masquerCarte, deleteCarte,
           reorderCartes } = useCartes(etabId, { role: user.role });
 
   // Chargement Supabase + Realtime (fallback localStorage si pas configuré)
   const [recettes, setRecettes] = React.useState([]);
-  const [plats, setPlats] = React.useState([]);
+  const [platsLus, setPlats] = React.useState([]);
+  // Une boisson rangée seulement sur des cartes de boissons sort de tout le
+  // module (vitrines, bibliothèque, « Hors carte », plats à compléter,
+  // exports) : sinon chaque bouteille sans fiche tomberait en « Hors carte ».
+  // Un plat sans carte reste, un plat aussi posé sur une carte de mets reste.
+  // Les fiches des cocktails restent dans la bibliothèque (recettes non filtrées).
+  const plats = React.useMemo(
+    () => (idsBoissons.size
+      ? platsLus.filter(p => !((p.carteIds || []).length && (p.carteIds || []).every(id => idsBoissons.has(id))))
+      : platsLus),
+    [platsLus, idsBoissons],
+  );
   // Même contrat que cartesStatus, pour les recettes et les plats.
   const [dataStatus, setDataStatus] = React.useState(() => (legacySB ? 'loading' : 'ready'));
   const reloadDataRef = React.useRef(null);
   const [showExportModal, setShowExportModal] = React.useState(false);
+  const [showCarteClient, setShowCarteClient] = React.useState(false);
   const [showIngredientSearch, setShowIngredientSearch] = React.useState(false);
   const [showImport, setShowImport] = React.useState(false);
   // Carte d'accueil = préférence utilisateur par établissement (user_settings,
@@ -1962,6 +1977,18 @@ const Recettes = ({ user, etablissement }) => {
           onClose={() => setShowExportModal(false)}
         />
       )}
+      {showCarteClient && activeCarte && (
+        <React.Suspense fallback={null}>
+          <CartePourClient
+            carte={activeCarte}
+            plats={platsCarte}
+            recettesActives={recettesActives}
+            etablissement={etablissement}
+            pret={dataStatus === 'ready' && cartesStatus === 'ready'}
+            onClose={() => setShowCarteClient(false)}
+          />
+        </React.Suspense>
+      )}
       {showIngredientSearch && (
         <IngredientSearchModal
           recettes={recettesEtab}
@@ -2101,6 +2128,7 @@ const Recettes = ({ user, etablissement }) => {
                       canChiffrer && { titre: 'Chiffrage', detail: 'Coûts, prix de vente et marges des fiches et des plats', onClick: () => { setFicheChiffrage(null); setEcran('chiffrage'); } },
                       { titre: 'Allergènes', detail: 'Trouver dans quelles recettes un ingrédient ou allergène apparaît', onClick: () => setShowIngredientSearch(true) },
                       { titre: 'Exporter', detail: 'Exporter une carte entière, des plats ou des recettes dans un seul PDF', onClick: () => setShowExportModal(true) },
+                      canManageCartes && activeCarte && { titre: 'Imprimer pour le client', detail: 'La carte pour la table ou le tableau des allergènes, en PDF', onClick: () => setShowCarteClient(true) },
                       canEtiqueter && { titre: 'Une étiquette', detail: "DLC d'une préparation", onClick: () => setEcran('etiquette') },
                     ] },
                     canManageCartes && { titre: 'Cartes', items: [

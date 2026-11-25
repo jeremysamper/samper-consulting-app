@@ -42,6 +42,11 @@ const CLE_ROLE = PREFIXE + 'role';
 // v14 (23.11.2026) : coordonnées légales de la caisse ; sans elles, un vrai
 // ticket ne s'encaisse pas.
 const VERSION_BASE = 'v14-' + aujourdhui();
+// Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
+// un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
+// relise pas la base à une maison, et l'inverse.
+let optionsBase = {};
+const versionBase = () => VERSION_BASE + (optionsBase.maisons === 2 ? '-m2' : '');
 
 // ── Rôle et session ──────────────────────────────────────────────────────────
 
@@ -114,17 +119,17 @@ function chargerBase() {
     const brut = STOCKAGE.getItem(CLE_BASE);
     if (brut) {
       const lu = JSON.parse(brut);
-      if (lu?.version === VERSION_BASE && lu.tables) return lu.tables;
+      if (lu?.version === versionBase() && lu.tables) return lu.tables;
     }
   } catch { /* base illisible : on repart du jeu de départ */ }
-  return creerBase();
+  return creerBase(optionsBase);
 }
 
 function sauverPlusTard() {
   clearTimeout(minuterieSauvegarde);
   minuterieSauvegarde = setTimeout(() => {
     try {
-      STOCKAGE.setItem(CLE_BASE, JSON.stringify({ version: VERSION_BASE, tables: db }));
+      STOCKAGE.setItem(CLE_BASE, JSON.stringify({ version: versionBase(), tables: db }));
     } catch (e) {
       console.warn('[Démo] La base ne tient plus dans le stockage de l\'onglet ; elle reste en mémoire.', e);
     }
@@ -150,7 +155,7 @@ const DEFAUTS = {
   haccp_releves: {},
   documents: { roles_visibles: null },
   private_messages: { read_at: null, sender_id: () => sessionUid },
-  caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid },
+  caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid, retrait_nom: null, retrait_heure: null, retrait_numero: null },
   caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false },
   inventaires: { statut: 'en cours', valeur_totale: 0, lignes: [], nom: 'Général' },
   absences: { motif: 'conge', statut: 'acceptee', created_by: () => sessionUid },
@@ -611,7 +616,8 @@ async function servir(url, input, init) {
 
 // ── Installation ────────────────────────────────────────────────────────────
 
-export function installerFauxSupabase() {
+export function installerFauxSupabase(options = {}) {
+  optionsBase = options.maisons === 2 ? { maisons: 2 } : {};
   db = chargerBase();
   const role = roleCourant();
   sessionUid = ROLES_DEMO.find((r) => r.role === role)?.userId || 'demo-patron';
