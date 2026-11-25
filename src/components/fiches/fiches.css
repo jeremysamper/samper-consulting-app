@@ -878,6 +878,7 @@
   box-shadow: inset 0 0 0 1px var(--rule-soft), var(--sh);
 }
 .fv-vignette .fv-ouvrir { border-radius: var(--r); }
+.fv-vignette .fv-action { border-radius: var(--r-bouton); }
 .fv-vignette .fv-cadre-photo {
   border-radius: var(--r);
   box-shadow: none;

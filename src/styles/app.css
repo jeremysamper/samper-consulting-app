@@ -90,6 +90,10 @@
   --r: 10px;
   --r-lg: calc(var(--r) + var(--retrait-carte));
   --r-xl: calc(var(--r) + var(--retrait-fenetre));
+  /* Un bouton posé dans une carte ou une fenêtre prend le rayon intérieur :
+     il n'est plus une pilule. Une piste qui serre des boutons vaut ce rayon
+     plus son retrait. */
+  --r-bouton: var(--r);
   --r-full: 999px;
 
   /* ─── Échelle d'élévation (teintée pétrole-ardoise, jamais noir pur) ──
@@ -1096,7 +1100,7 @@ html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45;
   background: transparent;
   border: 1px solid transparent;
   /* Une piste qui serre des pilules est une pilule. */
-  border-radius: var(--r-full);
+  border-radius: calc(var(--r-bouton) + 3px);
   overflow-x: auto;
   max-width: 100%;
   /* Permet à la barre de rétrécir (donc de coulisser) même imbriquée dans un
@@ -1137,7 +1141,7 @@ html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45;
   font-size: 13px;
   font-weight: 500;
   line-height: 1.2;
-  border-radius: var(--r-full);
+  border-radius: var(--r-bouton);
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s, color 0.15s, box-shadow 0.15s;
@@ -1240,7 +1244,7 @@ html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45;
 .module-toolbar > button,
 .module-toolbar > label {
   min-height: 38px;
-  border-radius: var(--r-full) !important;
+  border-radius: var(--r-bouton) !important;
   font-size: 13px !important;
   font-weight: 500;
   line-height: 1.2;
@@ -1295,7 +1299,7 @@ html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45;
   height: 36px;
   flex: 0 0 auto;
   border: 1px solid var(--btn-bord);
-  border-radius: 50%;
+  border-radius: var(--r-bouton);
   background: var(--btn-fond);
   color: var(--text2);
   cursor: pointer;
@@ -1318,7 +1322,7 @@ html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45;
   min-width: 0;
   max-width: 320px;
   border: 1px solid var(--champ-bord);
-  border-radius: var(--r-full);
+  border-radius: var(--r-bouton);
   background: var(--surface);
   color: var(--text2);
 }
@@ -1982,7 +1986,7 @@ html[data-theme="dark"] button:not(:disabled):active {
    cercle. */
 .app-bar-btn {
   padding: 2px !important;
-  border-radius: 50% !important;
+  border-radius: var(--r-bouton) !important;
   background-clip: content-box !important;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -2009,7 +2013,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   padding: 0 12px 0 14px;
   flex-shrink: 0;
   border: none;
-  border-radius: var(--r-full);
+  border-radius: var(--r-bouton);
   background: var(--surface);
   color: var(--text3);
   font-family: var(--font);
@@ -2302,7 +2306,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   margin: 6px 2px 2px;
   padding: 9px 10px;
   border: 1px dashed var(--btn-bord);
-  border-radius: var(--r-full);
+  border-radius: var(--r-bouton);
   background: transparent;
   color: var(--text);
   font-family: var(--font);
@@ -2389,7 +2393,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   flex: 1 1 100%;
   padding: 9px 12px;
   border: none;
-  border-radius: var(--r-full);
+  border-radius: var(--r-bouton);
   background: var(--accent);
   color: var(--on-accent);
   font-family: var(--font);
@@ -2401,7 +2405,7 @@ html[data-theme="dark"] button:not(:disabled):active {
   flex: 1 1 0;
   padding: 7px 8px;
   border: 1px solid var(--btn-bord);
-  border-radius: var(--r-full);
+  border-radius: var(--r-bouton);
   background: var(--btn-fond);
   color: var(--btn-texte);
   font-family: var(--font);
@@ -2605,7 +2609,7 @@ button:is([style*="border: 1px solid var(--border)"], [style*="border-color: var
 .ui-btn--ghost {
   background: var(--btn-fond) !important;
   border-color: transparent !important;
-  border-radius: var(--r-full) !important;
+  border-radius: var(--r-bouton) !important;
   box-shadow: inset 0 0 0 1px var(--btn-bord) !important;
   color: var(--btn-texte) !important;
   font-weight: var(--g2) !important;
@@ -2659,7 +2663,7 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   font-weight: 600;
   color: var(--text);
   background: var(--surface2);
-  border-radius: var(--r-full);
+  border-radius: var(--r-bouton);
 }
 /* Un mode inactif a le contour du bouton secondaire (--surface2 vaut la
    surface, il n'aurait plus de limite). */
@@ -2670,7 +2674,7 @@ div[style*="border: 1px dashed var(--border)"]:not([data-cadre]) {
   background: var(--accent) !important;
   color: var(--on-accent) !important;
   box-shadow: none !important;
-  border-radius: var(--r-full) !important;
+  border-radius: var(--r-bouton) !important;
 }
 .caisse-onglets { flex-shrink: 0; }
 .caisse-onglets .segmented-tab { min-height: 44px; padding: 8px 14px; font-size: 14px; }
@@ -2838,3 +2842,16 @@ span:is([style*="border-radius: 6px"], [style*="border-radius: 7px"], [style*="b
 .segmented-tab.is-active .fv-onglet-nombre { opacity: 1; }
 [style*="background: var(--surface); opacity: 0.6;"]:not(.pdf-render-root *) { opacity: 0.66 !important; }
 [style*="transition: background 0.12s; opacity: 0.5;"]:not(.pdf-render-root *) { opacity: 0.56 !important; }
+
+/* Rayons liés : boutons. Un bouton écrit en pilule ou en cercle dans un
+   module prend le rayon intérieur (--r-bouton), pour suivre la carte ou la
+   fenêtre qui le contient. Restent ronds : interrupteurs, cases, boutons
+   radio et curseurs. Une piste en pilule qui serre des boutons vaut leur
+   rayon plus son retrait. Un export garde ses formes. */
+:is(button, a, [role="button"], [role="tab"]):is(.ui-btn, .ui-fleche, [style*="border-radius: var(--r-full)"], [style*="border-radius: 999px"], [style*="border-radius: 9999px"], [style*="border-radius: 50%"]):not([role="switch"], [role="checkbox"], [role="radio"], [role="slider"], .pdf-render-root *) {
+  border-radius: var(--r-bouton) !important;
+}
+:is(div, nav, ul)[role="tablist"]:is([style*="border-radius: var(--r-full)"], [style*="border-radius: 999px"]):not(.pdf-render-root *),
+:is(div, nav, ul):is([style*="border-radius: var(--r-full)"], [style*="border-radius: 999px"]):has(> button):not(.pdf-render-root *) {
+  border-radius: calc(var(--r-bouton) + 4px) !important;
+}

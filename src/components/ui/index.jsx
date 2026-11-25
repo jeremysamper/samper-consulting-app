@@ -117,7 +117,7 @@ export function Btn({
         borderWidth: 1,
         borderStyle: 'solid',
         /* Tous les boutons sont des pilules ; les hauteurs ne changent pas. */
-        borderRadius: 'var(--r-full)',
+        borderRadius: 'var(--r-bouton)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'var(--font)',
         fontSize: small ? 12 : 13,
