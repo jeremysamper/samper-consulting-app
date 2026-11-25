@@ -2687,15 +2687,24 @@ export const pdfUtils = {
       return { ...p, lignesNom: nom, lignesDesc: desc, lignesAll: all, h };
     };
 
+    // Mentions de fin : mesurees d'avance, elles partent avec le dernier plat
+    // plutot que seules sur une page neuve.
+    setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
+    const pasMention = BRAND.size.body * MM_PER_PT * 1.45;
+    const lignesMentions = mentions.flatMap((m) => doc.splitTextToSize(m, contentW));
+    const hauteurFin = lignesMentions.length ? 8 + lignesMentions.length * pasMention : 0;
+
     const hauteurTitre = 9;
     sections.forEach((section, index) => {
       const plats = section.plats.map(mesurer);
+      const derniereSection = index === sections.length - 1;
+      const reserve = (i) => plats[i].h + (derniereSection && i === plats.length - 1 ? hauteurFin : 0);
       if (index > 0) y += 3;
       // Le titre et son premier plat se reservent ensemble.
-      ensureSpace(hauteurTitre + plats[0].h);
+      ensureSpace(hauteurTitre + reserve(0));
       y = this._titreBloc(doc, section.label, M, y + 2, contentW) + 1.5;
-      plats.forEach((p) => {
-        ensureSpace(p.h);
+      plats.forEach((p, i) => {
+        ensureSpace(reserve(i));
         setBrandFont(doc, 'voice'); doc.setFontSize(corpsNom); doc.setTextColor(...PDF.primary);
         const baseNom = y;
         p.lignesNom.forEach((ligne) => { doc.text(ligne, xTexte, y); y += pasNom; });
@@ -2716,16 +2725,13 @@ export const pdfUtils = {
       });
     });
 
-    if (mentions.length) {
-      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body);
-      const lignes = mentions.flatMap((m) => doc.splitTextToSize(m, contentW));
-      const pas = BRAND.size.body * MM_PER_PT * 1.45;
-      ensureSpace(6 + lignes.length * pas);
+    if (lignesMentions.length) {
+      ensureSpace(hauteurFin);
       y += 2;
       this._filetInterne(doc, M, y, PAGE_W - M);
       y += 6;
       setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.stone);
-      lignes.forEach((ligne) => { doc.text(ligne, M, y); y += pas; });
+      lignesMentions.forEach((ligne) => { doc.text(ligne, M, y); y += pasMention; });
     }
   },
 
@@ -2842,22 +2848,31 @@ export const pdfUtils = {
       setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.cell);
       const autres = avecAutres && l.autres ? doc.splitTextToSize(l.autres, largeurAutres - 3) : [];
       const n = Math.max(nom.length, autres.length, 1);
-      return { ...l, lignesNom: nom, lignesAutres: autres, h: n * pasLigne + 2.6 };
+      return { ...l, lignesNom: nom, lignesAutres: autres, h: n * pasLigne + 2.3 };
     };
 
-    const hCategorie = 6.6;
+    // Legende : mesuree d'avance, elle part avec la derniere ligne plutot que
+    // seule sur une page neuve.
+    setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note);
+    const pasLegende = BRAND.size.note * MM_PER_PT * 1.5;
+    const lignesLegende = legende.flatMap((t) => doc.splitTextToSize(t, contentW));
+    const hauteurFin = lignesLegende.length ? 5 + lignesLegende.length * pasLegende : 0;
+
+    const hCategorie = 6.2;
     let rang = 0;
-    sections.forEach((section) => {
+    sections.forEach((section, index) => {
       const lignes = section.lignes.map(mesurer);
+      const derniereSection = index === sections.length - 1;
+      const reserve = (i) => lignes[i].h + (derniereSection && i === lignes.length - 1 ? hauteurFin : 0);
       // Sous-ligne de categorie : jamais seule en bas de page.
-      ensureSpace(hCategorie + lignes[0].h);
+      ensureSpace(hCategorie + reserve(0));
       setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.blockTitle); doc.setTextColor(...PDF.primary);
       doc.text(section.label, M + 2, y + 4.6);
       y += hCategorie;
       this._filetInterne(doc, M, y - 0.6, PAGE_W - M);
       rang = 0;
-      lignes.forEach((l) => {
-        ensureSpace(l.h);
+      lignes.forEach((l, i) => {
+        ensureSpace(reserve(i));
         this._fondZebre(doc, rang, M, y, contentW, l.h);
         const base = y + 1.3 + BRAND.size.cell * MM_PER_PT;
         setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.cell + 0.8); doc.setTextColor(...PDF.ink);
@@ -2893,19 +2908,12 @@ export const pdfUtils = {
       y += 1.5;
     });
 
-    if (legende.length) {
-      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note);
-      const pas = BRAND.size.note * MM_PER_PT * 1.5;
-      const lignes = legende.flatMap((t) => doc.splitTextToSize(t, contentW));
-      // La legende suit le tableau ; sur une page neuve elle ne garde pas la bande.
-      if (y + 5 + lignes.length * pas > bodyBottom) {
-        doc.addPage();
-        y = this._enTeteDocument(doc, { titre, sousTitre, meta, etablissement: etabName, logoDataUrl });
-      } else {
-        y += 5;
-      }
+    if (lignesLegende.length) {
+      // Tableau vide (aucune ligne) : rien a reserver, la legende suit l'en-tete.
+      if (y + hauteurFin > bodyBottom) { doc.addPage(); drawHeader(); }
+      y += 5;
       setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
-      lignes.forEach((t) => { doc.text(t, M, y); y += pas; });
+      lignesLegende.forEach((t) => { doc.text(t, M, y); y += pasLegende; });
     }
 
     this._folio(doc);
