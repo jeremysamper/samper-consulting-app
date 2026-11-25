@@ -6972,4 +6972,14 @@ export const UI_GLOSSARY_DE = {
   "ligne reliée": "Zeile verknüpft",
   "Relier": "Verknüpfen",
   "Le client n'a pas encore choisi son menu. Les besoins viendront avec son choix.": "Der Kunde hat sein Menü noch nicht gewählt. Der Bedarf kommt mit seiner Wahl.",
+  // Lot 01 du panel : vente à emporter et commande d'avance.
+  "Qui retire la commande ?": "Wer holt die Bestellung ab?",
+  "Dès que possible": "So bald wie möglich",
+  "Heure promise": "Zugesagte Uhrzeit",
+  "Heure de retrait": "Abholzeit",
+  "Retrait n°": "Abholung Nr.",
+  "Ouvrir le ticket": "Bon öffnen",
+  "Continuer sans nom": "Ohne Namen fortfahren",
+  "Choisissez une heure à venir.": "Wählen Sie eine Uhrzeit, die noch bevorsteht.",
+  "Prénom ou nom": "Vorname oder Name",
 };

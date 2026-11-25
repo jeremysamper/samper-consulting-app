@@ -109,6 +109,13 @@ function dessinerQuittance(doc, p, { ticket, maison, client }) {
     ticket.couverts ? nb(ticket.couverts, 'couvert', 'couverts') : null,
   ].filter(Boolean).join(', '));
   if (ticket.a_emporter) p.texte('Vente à emporter', { gras: true });
+  // Lot 01 : le numéro de retrait en gros et le nom, pour un ticket sans
+  // table seulement ; jamais sur une quittance de test.
+  if (!ticket.test && !ticket.table_id) {
+    if (ticket.retrait_numero != null) p.texte(`Retrait n° ${ticket.retrait_numero}`, { taille: 13, gras: true, saut: 16 });
+    const nomRetrait = String(ticket.retrait_nom || '').trim();
+    if (nomRetrait) p.texte(nomRetrait);
+  }
   if (client?.nom || client?.adresse) {
     p.espace(4);
     p.texte('Client', { gris: true, taille: 8 });

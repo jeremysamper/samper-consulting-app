@@ -15,6 +15,8 @@ import * as tpe from '../../services/caisseTpeService.js';
 import PlanTables, { etatTicket } from './PlanTables.jsx';
 import TicketEcran from './TicketEcran.jsx';
 import QuiEstLa from './QuiEstLa.jsx';
+import QuiRetire, { ReperesRetrait } from './QuiRetire.jsx';
+import { reperesRetrait } from './retrait.js';
 import BandeauTest from './BandeauTest.jsx';
 import InvitationAvisPret from './InvitationAvisPret.jsx';
 import Historique from './Historique.jsx';
@@ -134,6 +136,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // feuille « Qui est à cette table ? » est ouverte.
   const [reservations, setReservations] = React.useState([]);
   const [quiTable, setQuiTable] = React.useState(null);
+  // Feuille « Qui retire la commande ? » d'une vente directe (lot 01).
+  const [quiRetire, setQuiRetire] = React.useState(false);
   const [ouverture, setOuverture] = React.useState(false);
   const verrouOuverture = React.useRef(false);
   const [statutEnCours, setStatutEnCours] = React.useState(null);
@@ -658,11 +662,37 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       setEcran('ticket');
       return;
     }
-    const { data, error } = await caisse.creerTicket(etabId, null);
-    if (error) { notify(error, 'error'); return; }
-    await rechargerTickets();
+    // Lot 01 : hors mode test, la feuille « Qui retire la commande ? ».
+    setQuiRetire(true);
+  }
+
+  // Ticket ouvert depuis la feuille : la ligne rendue par l'écriture entre
+  // dans la liste connue avant la relecture, pour qu'une relecture en échec
+  // (qui garde la liste d'avant) ne referme pas l'écran sur un ticket absent.
+  async function ouvrirTicketDirect(data) {
+    setTickets((liste) => (liste.some((t) => t.id === data.id) ? liste : [...liste, { ...data, lignes: data.lignes || [] }]));
+    setQuiRetire(false);
     setTicketId(data.id);
     setEcran('ticket');
+    await rechargerTickets();
+  }
+
+  // « Continuer sans nom » : le ticket nu d'avant (creerTicket).
+  async function venteSansNom() {
+    const { data, error } = await caisse.creerTicket(etabId, null);
+    if (error) return { error };
+    await ouvrirTicketDirect(data);
+    return {};
+  }
+
+  // « Ouvrir le ticket » : nom, heure promise et mode à emporter.
+  async function venteNommee({ ticketId: id, nom, heure, aEmporter }) {
+    const { data, error, nouvelId } = await caisse.creerVenteDirecte({
+      etablissementId: etabId, ticketId: id, nom, heure, aEmporter,
+    });
+    if (error) return { error, nouvelId };
+    await ouvrirTicketDirect(data);
+    return {};
   }
 
   function nomTable(t) {
@@ -827,6 +857,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             onClose={() => setQuiTable(null)}
           />
         )}
+        {quiRetire && !modeTest && (
+          <QuiRetire onOuvrir={venteNommee} onSansNom={venteSansNom} onClose={() => setQuiRetire(false)} />
+        )}
       </>
     );
   }
@@ -938,12 +971,20 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
           {tickets.map((t) => {
             const nom = nomTable(t);
             const e = etatTicket(t, maintenant);
+            // Lot 01 : un ticket sans table dit son numéro de retrait, le nom,
+            // l'heure promise et « À emporter » ; sans rien, « Direct ».
+            const rep = t.table_id ? null : reperesRetrait(t);
             return (
               <button key={t.id} type="button" style={st.ticketRow} onClick={() => { setTicketId(t.id); setEcran('ticket'); }}>
                 <span style={st.ticketTable}>
-                  {nom ? <span data-no-translate>{nom}</span> : <span>Direct</span>}
+                  {nom ? <span data-no-translate>{nom}</span> : (rep?.numero != null
+                    ? <span data-retrait-numero=""><span>Retrait n°</span> <span style={st.num}>{rep.numero}</span></span>
+                    : <span>Direct</span>)}
                 </span>
                 <span style={st.ticketInfos}>
+                  {rep && !rep.vide && (
+                    <ReperesRetrait reperes={{ ...rep, numero: null }} style={st.ticketClient} />
+                  )}
                   {nomsTables[t.table_id] && !nomsTables[t.table_id].attendu && (
                     <span style={st.ticketClient} data-no-translate>{nomsTables[t.table_id].nom}</span>
                   )}
@@ -985,7 +1026,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     return (
       <TicketEcran
         key={ticket.id}
-        titre={nom ? <><span>Table</span> <span data-no-translate>{nom}</span></> : <span>Vente directe</span>}
+        titre={nom ? <><span>Table</span> <span data-no-translate>{nom}</span></> : (
+          reperesRetrait(ticket).vide ? <span>Vente directe</span> : <ReperesRetrait reperes={reperesRetrait(ticket)} sansNumero="Vente directe" />
+        )}
         onRetour={retourAccueil}
         bandeau={bandeauTest}
         ticket={ticket}

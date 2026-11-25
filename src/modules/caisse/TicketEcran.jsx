@@ -12,6 +12,9 @@ import { makeSearchMatcher } from '../../utils/searchText.js';
 import { zurichDateHeure, zurichToday } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
 import FicheLigne from './FicheLigne.jsx';
+import QuiRetire from './QuiRetire.jsx';
+import Interrupteur from '../roles/Interrupteur.jsx';
+import { reperesRetrait } from './retrait.js';
 import BoutonFiche from './BoutonFiche.jsx';
 import CorrigerClient from './CorrigerClient.jsx';
 import Encaissement from './Encaissement.jsx';
@@ -64,7 +67,9 @@ import { libelleAvecFormat, ligneNueDuFormat, optionFormat, prixAffiche } from '
 // commande dit le nom, les couverts et les allergies du client ; « Corriger »
 // ouvre la feuille des corrections du service (nom, couverts, arrivé,
 // no-show, autre réservation), toutes par la RPC caisse_corriger_reservation.
-// Une vente directe reste anonyme : pas de bandeau.
+// Une vente directe (lot 01 du panel) porte son propre bandeau : le nom de
+// qui retire la commande, le numéro de retrait, l'heure promise,
+// l'interrupteur « À emporter » et « Modifier » (feuille QuiRetire).
 // Quand la maison vend plus d'une carte, le menu propose la carte affichée ;
 // il s'ouvre sur « Toutes les cartes » et le choix tient le temps du ticket.
 //
@@ -158,6 +163,51 @@ export default function TicketEcran({
   const verrouRupture = React.useRef(false);
   const appuiLong = React.useRef({ timer: null, declenche: false });
   const minuterieFeuille = React.useRef(null);
+
+  // Lot 01 : retrait d'une vente directe. La ligne rendue par la dernière
+  // écriture réussie (montrée tant que la liste relue ne l'a pas rattrapée),
+  // la position demandée de l'interrupteur pendant son écriture, et la feuille
+  // « Modifier » du nom et de l'heure.
+  const [ligneRetrait, setLigneRetrait] = React.useState(null);
+  const [emporterAttente, setEmporterAttente] = React.useState(null);
+  const verrouEmporter = React.useRef(false);
+  const [retraitOuvert, setRetraitOuvert] = React.useState(false);
+  const ticketVu = (ligneRetrait && ligneRetrait.id === ticket.id
+    && String(ligneRetrait.updated_at || '') > String(ticket.updated_at || ''))
+    ? {
+      ...ticket,
+      a_emporter: ligneRetrait.a_emporter,
+      retrait_nom: ligneRetrait.retrait_nom,
+      retrait_heure: ligneRetrait.retrait_heure,
+      retrait_numero: ligneRetrait.retrait_numero ?? ticket.retrait_numero,
+    }
+    : ticket;
+  const reperes = reperesRetrait(emporterAttente == null ? ticketVu : { ...ticketVu, a_emporter: emporterAttente });
+
+  async function basculerEmporter() {
+    if (verrouEmporter.current) return;
+    verrouEmporter.current = true;
+    const voulu = !ticketVu.a_emporter;
+    setEmporterAttente(voulu);
+    try {
+      const { data, error } = await caisse.majTicket(ticket.id, { a_emporter: voulu });
+      if (erreur(error)) return;
+      setLigneRetrait(data);
+      await reload();
+    } finally {
+      verrouEmporter.current = false;
+      setEmporterAttente(null);
+    }
+  }
+
+  async function enregistrerRetrait({ nom, heure }) {
+    const { data, error } = await caisse.majTicket(ticket.id, { retrait_nom: nom, retrait_heure: heure });
+    if (error) return { error };
+    setLigneRetrait(data);
+    setRetraitOuvert(false);
+    await reload();
+    return {};
+  }
 
   const racineRef = React.useRef(null);
   const largeur = useLargeur(racineRef);
@@ -771,7 +821,30 @@ export default function TicketEcran({
             </div>
           </div>
         )}
-        {/* Qui est à la table (v5). Vente directe : anonyme, pas de bandeau. */}
+        {/* Vente directe (lot 01) : qui retire, l'heure promise, à emporter. */}
+        {!modeTest && !ticket.table_id && (
+          <div style={st.bandeauClient} data-caisse-client="retrait">
+            <div style={st.bandeauCorps}>
+              {reperes.nom
+                ? <span style={st.bandeauNom} data-no-translate>{reperes.nom}</span>
+                : <span style={st.bandeauNom}>Vente directe</span>}
+              <span style={st.bandeauDetail}>
+                {reperes.numero != null && (
+                  <span data-retrait-numero=""><span>Retrait n°</span> <span style={st.num}>{reperes.numero}</span></span>
+                )}
+                {reperes.heure
+                  ? <span><span>Heure promise</span> <span style={st.num}>{reperes.heure}</span></span>
+                  : <span>Dès que possible</span>}
+              </span>
+            </div>
+            <span style={st.bandeauInter}>
+              <span style={st.bandeauDetail}>À emporter</span>
+              <Interrupteur checked={reperes.aEmporter} onChange={basculerEmporter} label="À emporter" />
+            </span>
+            <Btn variant="ghost" onClick={() => setRetraitOuvert(true)} style={st.btn44}>Modifier</Btn>
+          </div>
+        )}
+        {/* Qui est à la table (v5). */}
         {!modeTest && ticket.table_id && (
           <div style={st.bandeauClient} data-caisse-client={ticket.qui || 'inconnu'}>
             <div style={st.bandeauCorps}>
@@ -1230,7 +1303,7 @@ export default function TicketEcran({
       {/* Encaissement (v7) : la feuille prépare, la base encaisse et numérote. */}
       {paiementOuvert && (
         <Encaissement
-          ticket={ticket}
+          ticket={ticketVu}
           reglages={reglages}
           peutRemiser={peutHabiller}
           modeTest={modeTest}
@@ -1340,6 +1413,9 @@ export default function TicketEcran({
             ))}
           </div>
         </Fenetre>
+      )}
+      {retraitOuvert && !modeTest && !ticket.table_id && (
+        <QuiRetire ticket={ticketVu} onOuvrir={enregistrerRetrait} onClose={() => setRetraitOuvert(false)} />
       )}
       {corrigerOuvert && (
         <CorrigerClient
@@ -1513,6 +1589,7 @@ const st = {
     background: 'var(--piste)', borderRadius: 'var(--r)',
   },
   bandeauCorps: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
+  bandeauInter: { display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 },
   bandeauNom: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', lineHeight: 1.2, overflowWrap: 'anywhere' },
   bandeauDetail: { display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: 'var(--t1)', color: 'var(--text2)' },
   bandeauAllergies: { fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--warning-text)', lineHeight: 1.3, overflowWrap: 'anywhere' },

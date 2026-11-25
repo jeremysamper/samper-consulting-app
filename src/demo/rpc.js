@@ -8,6 +8,22 @@ const heureZurich = () => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Z
 const jourZurich = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const maintenant = () => new Date().toISOString();
 
+// Lot 01 : compteur des numéros de retrait, en mémoire, par établissement et
+// par jour de Zurich. Il ne repart jamais sous le plus grand numéro déjà posé
+// aujourd'hui (la base de démo survit à un rechargement, la mémoire non).
+const retraitsJour = new Map();
+function retraitSuivant(ctx, etab) {
+  const jour = jourZurich();
+  const cle = `${etab}|${jour}`;
+  const dejaPoses = ctx.db.caisse_tickets
+    .filter((x) => x.etablissement_id === etab && x.retrait_numero != null
+      && new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' }).format(new Date(x.created_at)) === jour)
+    .reduce((m, x) => Math.max(m, Number(x.retrait_numero)), 0);
+  const n = Math.max(retraitsJour.get(cle) || 0, dejaPoses) + 1;
+  retraitsJour.set(cle, n);
+  return n;
+}
+
 export class ErreurRpc extends Error {
   constructor(message, code = 'P0001') { super(message); this.code = code; }
 }
@@ -411,6 +427,13 @@ const RPC = {
   },
   caisse_envoyer_bon(ctx, a) {
     const lignes = ctx.db.caisse_lignes.filter((l) => l.ticket_id === a.p_ticket_id && Number(l.suite) === Number(a.p_suite) && l.statut === 'en_attente');
+    // Lot 01 : au premier envoi d'un ticket sans table, hors test et hors
+    // commande par QR, le numéro de retrait du jour (caisse_bon_interne).
+    const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id);
+    if (lignes.length && t && !t.table_id && !t.test && t.retrait_numero == null
+      && !String(t.note || '').startsWith('Commande QR de')) {
+      ctx.maj('caisse_tickets', t, { retrait_numero: retraitSuivant(ctx, t.etablissement_id) });
+    }
     lignes.forEach((l) => ctx.maj('caisse_lignes', l, { statut: 'envoye', envoye_at: maintenant(), envoye_par: ctx.uid }));
     return { envoyees: lignes.length, suite: a.p_suite };
   },

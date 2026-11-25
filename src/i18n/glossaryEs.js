@@ -7022,4 +7022,14 @@ export const UI_GLOSSARY_ES = {
   "ligne reliée": "línea vinculada",
   "Relier": "Vincular",
   "Le client n'a pas encore choisi son menu. Les besoins viendront avec son choix.": "El cliente aún no ha elegido su menú. Las necesidades llegarán con su elección.",
+  // Lot 01 du panel : vente à emporter et commande d'avance.
+  "Qui retire la commande ?": "¿Quién recoge el pedido?",
+  "Dès que possible": "Lo antes posible",
+  "Heure promise": "Hora prometida",
+  "Heure de retrait": "Hora de recogida",
+  "Retrait n°": "Recogida n.º",
+  "Ouvrir le ticket": "Abrir el ticket",
+  "Continuer sans nom": "Continuar sin nombre",
+  "Choisissez une heure à venir.": "Elija una hora que aún no haya pasado.",
+  "Prénom ou nom": "Nombre o apellido",
 };

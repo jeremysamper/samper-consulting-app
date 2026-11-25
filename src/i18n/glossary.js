@@ -7041,6 +7041,16 @@ export const UI_GLOSSARY = {
   "ligne reliée": "line linked",
   "Relier": "Link",
   "Le client n'a pas encore choisi son menu. Les besoins viendront avec son choix.": "The client has not chosen the menu yet. The needs will come with the choice.",
+  // Lot 01 du panel : vente à emporter et commande d'avance.
+  "Qui retire la commande ?": "Who is picking up the order?",
+  "Dès que possible": "As soon as possible",
+  "Heure promise": "Promised time",
+  "Heure de retrait": "Pickup time",
+  "Retrait n°": "Pickup no.",
+  "Ouvrir le ticket": "Open the ticket",
+  "Continuer sans nom": "Continue without a name",
+  "Choisissez une heure à venir.": "Choose a time that is still ahead.",
+  "Prénom ou nom": "First name or last name",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

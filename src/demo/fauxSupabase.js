@@ -150,7 +150,7 @@ const DEFAUTS = {
   haccp_releves: {},
   documents: { roles_visibles: null },
   private_messages: { read_at: null, sender_id: () => sessionUid },
-  caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid },
+  caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid, retrait_nom: null, retrait_heure: null, retrait_numero: null },
   caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false },
   inventaires: { statut: 'en cours', valeur_totale: 0, lignes: [], nom: 'Général' },
   absences: { motif: 'conge', statut: 'acceptee', created_by: () => sessionUid },

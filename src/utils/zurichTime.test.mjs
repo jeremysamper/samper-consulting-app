@@ -15,3 +15,15 @@ test('heure de Zurich : hiver, été, et les deux passages de 2026', () => {
   assert.equal(zurichDateHeure('2026-11-11T23:30:00Z').jour, '2026-11-12');
   for (let i = 0; i < 200; i += 1) assert.equal(zurichDateHeure('2026-01-15T11:30:00Z').heure, '12:30');
 });
+
+test('instant d\'une heure de Zurich : hiver, été, heure mal formée', async () => {
+  const { zurichInstantIso } = await import('./zurichTime.js');
+  assert.equal(zurichInstantIso('2026-01-15', '12:30'), '2026-01-15T11:30:00.000Z');
+  assert.equal(zurichInstantIso('2026-07-15', '12:30'), '2026-07-15T10:30:00.000Z');
+  assert.equal(zurichInstantIso('2026-10-25', '12:00'), '2026-10-25T11:00:00.000Z');
+  assert.equal(zurichInstantIso('2026-03-29', '12:00'), '2026-03-29T10:00:00.000Z');
+  assert.equal(zurichInstantIso('2026-11-25', '00:10'), '2026-11-24T23:10:00.000Z');
+  assert.equal(zurichInstantIso('2026-11-25', '24:00'), null);
+  assert.equal(zurichInstantIso('2026-11-25', ''), null);
+  assert.equal(zurichInstantIso('2026-11-25', '12h30'), null);
+});
