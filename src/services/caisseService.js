@@ -94,6 +94,26 @@ const MESSAGES_RPC = {
   "caisse: le numero de retrait ne s'ecrit pas depuis l'ecran": 'Le numéro de retrait se pose au premier envoi en cuisine.',
   "caisse: le retrait d'un ticket clos ne se modifie plus": "Ce ticket est clos : le nom et l'heure ne se changent plus.",
   'caisse: un numero de retrait pose ne change plus': 'Le numéro de retrait ne change plus.',
+  // Lot 09 du panel : formules à prix fixe.
+  'caisse: connexion requise': 'Votre session a expiré. Reconnectez-vous.',
+  'caisse: formule incomplete': 'Cette formule est incomplète. Choisissez un produit par étape.',
+  'caisse: groupe de formule deja pris': 'Cette formule est déjà posée sur un autre ticket. Rouvrez la feuille et réessayez.',
+  "caisse: le ticket n'est pas ouvert": "Ce ticket n'est plus ouvert.",
+  'caisse: formule indisponible': "Cette formule n'est plus proposée. Rechargez la caisse.",
+  'caisse: un produit par etape': 'Choisissez un produit par étape.',
+  "caisse: produit hors de l'etape": "Ce produit ne fait plus partie de cette étape. Rechargez la caisse.",
+  'caisse: produit indisponible': "Ce produit n'est plus en vente.",
+  'caisse: produit en rupture': 'Ce produit est en rupture. Choisissez-en un autre.',
+  'caisse: une formule se pose par sa fonction': 'Une formule se pose depuis sa case, en une fois.',
+  "caisse: une ligne de formule se retire avec sa formule": 'Une ligne de formule se retire avec toute sa formule.',
+  "caisse: la quantite d'une ligne de formule ne change pas": "La quantité d'une ligne de formule ne change pas.",
+  'caisse: ticket fige, lignes comprises': 'Ce ticket est clos : il ne se corrige plus.',
+  'caisse: ligne deja envoyee (retrait par la direction seulement)': 'Une ligne est déjà partie en cuisine. Seule la direction peut retirer cette formule.',
+  'caisse: une formule porte de 1 a 6 etapes': 'Une formule compte de une à six étapes.',
+  "caisse: le nom d'une etape compte de 1 a 30 caracteres": "Le nom d'une étape compte de 1 à 30 caractères.",
+  "caisse: le mode d'une etape va de 1 a 9": "Le mode d'envoi d'une étape n'est pas valable.",
+  'caisse: une etape propose de 1 a 40 produits': 'Une étape propose de 1 à 40 produits.',
+  "caisse: produit d'etape illisible": "Un produit de l'étape est illisible. Cochez-le de nouveau.",
 };
 
 // v9 : les refus qui parlent d'un terminal de paiement sont dits par
@@ -585,6 +605,72 @@ export async function saveReglages(etablissementId, config) {
   if (error) return { error: mapError(error, "Les réglages n'ont pas pu être enregistrés.") };
   if (!data?.length) return { error: MESSAGES['42501'] };
   return { error: null };
+}
+
+// ── Formules à prix fixe (lot 09 du panel, migration 20261125_panel_lot09) ──
+// Lecture des formules de la maison, archivées comprises (les réglages les
+// listent à part), rangées par date de création.
+export async function listFormules(etablissementId) {
+  const { data, error } = await supabase
+    .from('caisse_formules')
+    .select('*')
+    .eq('etablissement_id', etablissementId)
+    .order('created_at', { ascending: true });
+  if (error) return { data: null, error: mapError(error, 'Formules illisibles. Réessayez.') };
+  return { data: data || [], error: null };
+}
+
+// Insertion (sans id) ou mise à jour (avec id). L'écran n'envoie que nom,
+// prix, étapes, actif et archivee, plus l'établissement à la création :
+// l'auteur et les dates sont posés par la base. Une écriture que la RLS
+// refuse rend zéro ligne : on la dit comme un refus.
+export async function enregistrerFormule(formule) {
+  const corps = {
+    nom: formule.nom,
+    prix: formule.prix,
+    etapes: formule.etapes,
+    actif: formule.actif !== false,
+    archivee: formule.archivee === true,
+  };
+  const requete = formule.id
+    ? supabase.from('caisse_formules').update(corps).eq('id', formule.id)
+    : supabase.from('caisse_formules').insert({ ...corps, etablissement_id: formule.etablissementId });
+  const { data, error } = await requete.select('*');
+  if (error) return { data: null, error: mapError(error, "La formule n'a pas pu être enregistrée.") };
+  if (!data?.length) return { data: null, error: MESSAGES['42501'] };
+  return { data: data[0], error: null };
+}
+
+export async function archiverFormule(id) {
+  const { data, error } = await supabase
+    .from('caisse_formules')
+    .update({ archivee: true })
+    .eq('id', id)
+    .select('id');
+  if (error) return { error: mapError(error, "La formule n'a pas pu être archivée.") };
+  if (!data?.length) return { error: MESSAGES['42501'] };
+  return { error: null };
+}
+
+// Pose d'une formule : UNE RPC. L'écran n'envoie que des identifiants ; la
+// base répartit le prix et pose une ligne par étape. Idempotente par groupe :
+// un double toucher ne pose qu'une formule. Rend { groupe, lignes, total }.
+export async function poserFormule({ ticketId, formuleId, choix, groupe }) {
+  const { data, error } = await supabase.rpc('caisse_poser_formule', {
+    p_ticket_id: ticketId, p_formule_id: formuleId, p_choix: choix, p_groupe: groupe,
+  });
+  if (error) return { data: null, error: mapError(error, "La formule n'a pas pu être ajoutée. Réessayez.") };
+  return { data, error: null };
+}
+
+// Retrait de toutes les lignes d'une formule. Rend le nombre retiré (0 au
+// second appel).
+export async function retirerFormule({ ticketId, groupe }) {
+  const { data, error } = await supabase.rpc('caisse_retirer_formule', {
+    p_ticket_id: ticketId, p_groupe: groupe,
+  });
+  if (error) return { data: null, error: mapError(error, "La formule n'a pas pu être retirée. Réessayez.") };
+  return { data, error: null };
 }
 
 // Envoi du bon : UNE RPC, idempotente au double tap (le second appel trouve
