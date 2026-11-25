@@ -823,17 +823,17 @@ export default function TicketEcran({
         )}
         {/* Vente directe (lot 01) : qui retire, l'heure promise, à emporter. */}
         {!modeTest && !ticket.table_id && (
-          <div style={st.bandeauClient} data-caisse-client="retrait">
-            <div style={st.bandeauCorps}>
+          <div style={{ ...st.bandeauClient, flexWrap: 'wrap' }} data-caisse-client="retrait">
+            <div style={{ ...st.bandeauCorps, flexBasis: 140 }}>
               {reperes.nom
                 ? <span style={st.bandeauNom} data-no-translate>{reperes.nom}</span>
                 : <span style={st.bandeauNom}>Vente directe</span>}
               <span style={st.bandeauDetail}>
                 {reperes.numero != null && (
-                  <span data-retrait-numero=""><span>Retrait n°</span> <span style={st.num}>{reperes.numero}</span></span>
+                  <span data-retrait-numero="" style={st.nowrap}><span>Retrait n°</span> <span style={st.num}>{reperes.numero}</span></span>
                 )}
                 {reperes.heure
-                  ? <span><span>Heure promise</span> <span style={st.num}>{reperes.heure}</span></span>
+                  ? <span style={st.nowrap}><span>Heure promise</span> <span style={st.num}>{reperes.heure}</span></span>
                   : <span>Dès que possible</span>}
               </span>
             </div>
@@ -1589,6 +1589,7 @@ const st = {
     background: 'var(--piste)', borderRadius: 'var(--r)',
   },
   bandeauCorps: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
+  nowrap: { whiteSpace: 'nowrap' },
   bandeauInter: { display: 'inline-flex', alignItems: 'center', gap: 2, flexShrink: 0 },
   bandeauNom: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', lineHeight: 1.2, overflowWrap: 'anywhere' },
   bandeauDetail: { display: 'flex', flexWrap: 'wrap', gap: '2px 10px', fontSize: 'var(--t1)', color: 'var(--text2)' },
