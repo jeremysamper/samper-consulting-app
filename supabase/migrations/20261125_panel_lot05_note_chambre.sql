@@ -58,7 +58,9 @@ begin
       -- Seul created_by peut changer : le « on delete set null » de la
       -- suppression d'un profil passe par un UPDATE (hotel_h4_coherence, qui
       -- passe avant, garde created_by immuable pour un appel de l'API).
-      if (to_jsonb(new) - 'created_by') is distinct from (to_jsonb(old) - 'created_by') then
+      -- montant est une colonne générée : nulle dans NEW avant l'écriture, elle
+      -- suit quantite et prix_unitaire, qui restent comparés.
+      if (to_jsonb(new) - 'created_by' - 'montant') is distinct from (to_jsonb(old) - 'created_by' - 'montant') then
         raise exception 'note: une ligne venue de la Caisse ne se modifie pas'
           using errcode = '42501';
       end if;
