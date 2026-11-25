@@ -1,6 +1,11 @@
 -- Rollback du lot 01 du panel (20261125_panel_lot01_caisse_retrait.sql).
 -- À jouer après le retour du front d'avant, jamais avant : le front du lot
 -- écrit retrait_nom, retrait_heure et a_emporter à l'ouverture.
+-- À jouer hors service, après la fin de la journée d'exploitation : le compteur
+-- du jour part avec la table, et une migration rejouée le même jour repartirait
+-- à 1, sur des numéros déjà donnés au comptoir.
+begin;
+
 -- 1. caisse_bon_interne de la v6, mot pour mot (identique à la production le
 --    25.11.2026, avant le lot).
 create or replace function public.caisse_bon_interne(p_ticket_id uuid, p_suite int, p_appel text)
@@ -174,3 +179,5 @@ drop table if exists public.caisse_retraits_jour;
 alter table public.caisse_tickets drop column if exists retrait_numero;
 alter table public.caisse_tickets drop column if exists retrait_heure;
 alter table public.caisse_tickets drop column if exists retrait_nom;
+
+commit;

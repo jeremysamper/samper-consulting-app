@@ -28,15 +28,18 @@ alter table public.caisse_tickets add column if not exists retrait_numero int;
 
 do $$
 begin
-  if not exists (select 1 from pg_constraint where conname = 'caisse_tickets_retrait_nom_longueur') then
+  if not exists (select 1 from pg_constraint where conname = 'caisse_tickets_retrait_nom_longueur'
+                 and conrelid = 'public.caisse_tickets'::regclass) then
     alter table public.caisse_tickets add constraint caisse_tickets_retrait_nom_longueur
       check (retrait_nom is null or char_length(retrait_nom) between 1 and 120);
   end if;
-  if not exists (select 1 from pg_constraint where conname = 'caisse_tickets_retrait_numero_positif') then
+  if not exists (select 1 from pg_constraint where conname = 'caisse_tickets_retrait_numero_positif'
+                 and conrelid = 'public.caisse_tickets'::regclass) then
     alter table public.caisse_tickets add constraint caisse_tickets_retrait_numero_positif
       check (retrait_numero is null or retrait_numero >= 1);
   end if;
-  if not exists (select 1 from pg_constraint where conname = 'caisse_tickets_retrait_numero_hors_test') then
+  if not exists (select 1 from pg_constraint where conname = 'caisse_tickets_retrait_numero_hors_test'
+                 and conrelid = 'public.caisse_tickets'::regclass) then
     alter table public.caisse_tickets add constraint caisse_tickets_retrait_numero_hors_test
       check (retrait_numero is null or not test);
   end if;
@@ -83,7 +86,7 @@ begin
 end;
 $$;
 
-revoke all on function public.caisse_retrait_suivant(text) from public, anon, authenticated;
+revoke all on function public.caisse_retrait_suivant(text) from public, anon, authenticated, service_role;
 
 -- ----------------------------------------------------------------------------
 -- 4. Libellé du bon d'un ticket de retrait. Même règle que libelleRetrait
@@ -112,7 +115,7 @@ as $$
   end;
 $$;
 
-revoke all on function public.caisse_libelle_retrait(boolean, int, text, boolean, timestamptz) from public, anon, authenticated;
+revoke all on function public.caisse_libelle_retrait(boolean, int, text, boolean, timestamptz) from public, anon, authenticated, service_role;
 
 -- ----------------------------------------------------------------------------
 -- 5. Garde des colonnes du retrait (déclencheur à part, gardes d'avant
@@ -180,7 +183,7 @@ begin
 end;
 $$;
 
-revoke all on function public.caisse_ticket_garde_retrait() from public, anon, authenticated;
+revoke all on function public.caisse_ticket_garde_retrait() from public, anon, authenticated, service_role;
 
 drop trigger if exists trg_caisse_ticket_garde_retrait on public.caisse_tickets;
 create trigger trg_caisse_ticket_garde_retrait
@@ -242,9 +245,14 @@ begin
   end if;
 
   -- Lot 01 : numéro de retrait du jour, au premier envoi d'un ticket sans
-  -- table, hors test, qui n'est pas né de la commande par QR.
+  -- table, hors test, qui n'est pas né de la commande par QR. Un ticket qui a
+  -- déjà un bon (ouvert avant la migration, ou table retirée par le plan de
+  -- salle après un envoi) garde son libellé d'avant.
   if v_ticket.table_id is null and not v_ticket.test and v_ticket.retrait_numero is null
-     and coalesce(v_ticket.note, '') not like 'Commande QR de%' then
+     and coalesce(v_ticket.note, '') not like 'Commande QR de%'
+     and not exists (select 1 from public.kds_orders o
+                      where o.etablissement_id = v_ticket.etablissement_id
+                        and o.ls_check_uuid like 'caisse:' || p_ticket_id || ':%') then
     update public.caisse_tickets
        set retrait_numero = public.caisse_retrait_suivant(v_ticket.etablissement_id)
      where id = p_ticket_id
