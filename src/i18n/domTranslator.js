@@ -1,6 +1,6 @@
 // ════════════════════════════════════════════════════════════════
 // Moteur de traduction à la volée du DOM (modes « Original », « English »,
-// « Español », « Deutsch »).
+// « Español », « Deutsch », « Italiano »).
 //
 // Principe, identique aux widgets de traduction des sites web : on ne réécrit
 // AUCUN module. Le moteur traduit le DOM rendu et se remet à jour à chaque
@@ -8,12 +8,13 @@
 //
 // Trois niveaux, du moins cher au plus cher, chacun tenu PAR LANGUE :
 //   1. glossaire statique  → instantané, hors-ligne, gratuit (glossary.js,
-//                            glossaryEs.js, glossaryDe.js chargés à la demande)
+//                            glossaryEs.js, glossaryDe.js, glossaryIt.js
+//                            chargés à la demande)
 //   2. cache localStorage  → instantané, hors-ligne, gratuit (déjà traduit ici)
 //   3. edge function IA    → une seule fois par phrase, puis mis en cache
 //
 // La source est TOUJOURS le français d'origine : passer d'English à Español
-// restaure d'abord le français, puis retraduit ; de même vers Deutsch. On ne
+// restaure d'abord le français, puis retraduit ; de même vers Deutsch et Italiano. On ne
 // traduit jamais une traduction.
 //
 // FLUIDITÉ - deux règles qui gouvernent tout ce fichier :
@@ -29,7 +30,7 @@
 //     donc jamais le français pour du contenu déjà connu - plus de clignotement.
 //     Seul l'appel IA (contenu jamais rencontré) reste différé, par nature.
 //
-// GLOSSAIRE À LA DEMANDE. Les tables espagnole et allemande arrivent par
+// GLOSSAIRE À LA DEMANDE. Les tables espagnole, allemande et italienne arrivent par
 // import() (glossary.js, loadGlossary). Tant que celle de la langue demandée
 // n'est pas là, rien ne change : l'écran et le moteur restent dans la langue
 // en cours, sans balayage ni appel IA dans la nouvelle. Puis tout bascule dans
@@ -49,14 +50,15 @@ import { DO_NOT_TRANSLATE, isGlossaryReady, loadGlossary, lookupGlossary } from 
 import { fetchSharedTranslations, pushSharedTranslations, translateTexts } from '../services/translationService.js';
 
 // Langues cibles. 'fr' n'en est pas une : c'est le mode Original, sans moteur.
-export const TARGET_LANGS = ['en', 'es', 'de'];
+export const TARGET_LANGS = ['en', 'es', 'de', 'it'];
 
 // Clé du cache local par langue. L'anglais garde sa clé historique : les
 // appareils déjà en English ne reperdent pas ce qu'ils ont traduit.
 const CACHE_KEY_PREFIX = 'sc_i18n_';
 const cacheKey = (lang) => `${CACHE_KEY_PREFIX}${lang}_v1`;
 // Repère de synchro du cache partagé : + id d'établissement pour l'anglais
-// (clé historique), + 'es_' + id pour l'espagnol, + 'de_' + id pour l'allemand.
+// (clé historique), + 'es_' + id pour l'espagnol, + 'de_' + id pour l'allemand,
+// + 'it_' + id pour l'italien.
 const SYNC_KEY = 'sc_i18n_sync_';
 const CACHE_MAX = 5000;      // entrées conservées en localStorage, par langue
 const BATCH_SIZE = 40;       // phrases par appel IA
@@ -597,7 +599,7 @@ export function clearTranslationCache() {
     for (let i = localStorage.length - 1; i >= 0; i -= 1) {
       const k = localStorage.key(i);
       if (!k) continue;
-      // Couvre sc_i18n_en_v1, sc_i18n_es_v1, sc_i18n_de_v1 et tous les repères sc_i18n_sync_*.
+      // Couvre sc_i18n_en_v1, sc_i18n_es_v1, sc_i18n_de_v1, sc_i18n_it_v1 et tous les repères sc_i18n_sync_*.
       if (k.startsWith(SYNC_KEY) || TARGET_LANGS.some((l) => k === cacheKey(l))) {
         localStorage.removeItem(k);
       }
@@ -608,13 +610,13 @@ export function clearTranslationCache() {
 }
 
 /**
- * Bascule l'app en 'en', 'es' ou 'de' (traduction à la volée) ou 'fr' (texte
+ * Bascule l'app en 'en', 'es', 'de' ou 'it' (traduction à la volée) ou 'fr' (texte
  * d'origine). Toute autre valeur vaut 'fr'.
  */
 export function setLanguage(lang) {
   const next = isTarget(lang) ? lang : 'fr';
 
-  // Glossaire pas encore chargé (espagnol, allemand) : on n'applique rien
+  // Glossaire pas encore chargé (espagnol, allemand, italien) : on n'applique rien
   // avant lui. Sinon le premier balayage enverrait tout l'écran à l'IA.
   if (isTarget(next) && !isGlossaryReady(next)) {
     if (pendingLang === next) return;
@@ -656,7 +658,7 @@ function applyLanguage(next) {
   }
 
   // Quitter une langue traduite, c'est d'abord revenir au français d'origine :
-  // English → Español ou Deutsch retraduit depuis la source, jamais depuis
+  // English → Español, Deutsch ou Italiano retraduit depuis la source, jamais depuis
   // l'anglais.
   // L'observateur est coupé avant restore() pour ne pas recevoir nos propres
   // réécritures (disconnect jette les enregistrements en attente).
@@ -689,8 +691,8 @@ export function preloadGlossary(lang) {
 }
 
 /**
- * Appelé au démarrage : réapplique la langue mémorisée. En espagnol ou en
- * allemand, la langue s'applique quand son glossaire est chargé.
+ * Appelé au démarrage : réapplique la langue mémorisée. En espagnol, en
+ * allemand ou en italien, la langue s'applique quand son glossaire est chargé.
  */
 export function initTranslator(lang) {
   if (isTarget(lang)) setLanguage(lang);

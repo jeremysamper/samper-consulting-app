@@ -126,14 +126,15 @@ test('aucune ouverture sur le KDS ni sur le pointage', () => {
   assert.equal(pageExclue('accueil'), false);
 });
 
-test('chaque texte est dans les trois glossaires', async () => {
-  // L'espagnol et l'allemand se chargent à la demande, comme dans l'app.
-  await Promise.all([loadGlossary('es'), loadGlossary('de')]);
+test('chaque texte est dans les quatre glossaires', async () => {
+  // L'espagnol, l'allemand et l'italien se chargent à la demande, comme dans l'app.
+  await Promise.all([loadGlossary('es'), loadGlossary('de'), loadGlossary('it')]);
   const manquants = [];
   textesATraduire().forEach((t) => {
     if (!lookupGlossary(t, 'en')) manquants.push(`en: ${t}`);
     if (!lookupGlossary(t, 'es')) manquants.push(`es: ${t}`);
     if (!lookupGlossary(t, 'de')) manquants.push(`de: ${t}`);
+    if (!lookupGlossary(t, 'it')) manquants.push(`it: ${t}`);
   });
   assert.deepEqual(manquants, []);
   assert.ok(textesATraduire().length >= 30);

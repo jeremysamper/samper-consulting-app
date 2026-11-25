@@ -1,6 +1,7 @@
 // ════════════════════════════════════════════════════════════════
-// Glossaire statique FR → EN (les pendants espagnol et allemand vivent dans
-// glossaryEs.js et glossaryDe.js, chargés à la demande : voir loadGlossary).
+// Glossaire statique FR → EN (les pendants espagnol, allemand et italien vivent
+// dans glossaryEs.js, glossaryDe.js et glossaryIt.js, chargés à la demande :
+// voir loadGlossary).
 //
 // Couvre le vocabulaire d'interface le plus fréquent (navigation, actions,
 // statuts, en-têtes de tableaux, catégories produits). Ces chaînes sont
@@ -5704,7 +5705,7 @@ export const UI_GLOSSARY = {
   "E-mail d'envoi": "Sending email",
   "Nom, téléphone, mot de passe, double authentification, déconnexion": "Name, phone, password, two-factor authentication, sign out",
   "Thème, taille du texte, densité, couleur des actions, animations, contraste": "Theme, text size, density, action colour, animations, contrast",
-  "Original, English, Español ou Deutsch, pour l'affichage": "Original, English, Español or Deutsch, for display",
+  "Original, English, Español, Deutsch ou Italiano, pour l'affichage": "Original, English, Español, Deutsch or Italiano, for display",
   "La page qui s'ouvre au lancement de l'app": "The page that opens when the app starts",
   "Présentation, menu déplié, geste de retour par le bord": "Layout, expanded menu, edge swipe back",
   "Chercher un réglage": "Search settings",
@@ -5735,7 +5736,7 @@ export const UI_GLOSSARY = {
   "Le bouton principal, la pilule choisie et l'entrée choisie du menu. Pétrole est la couleur de la marque.": "The main button, the selected pill and the selected menu entry. Petrol is the brand colour.",
   "Plus de fondus ni de glissements : les écrans changent d'un coup.": "No more fades or slides: screens change at once.",
   "Textes secondaires plus foncés, filets et contours plus marqués.": "Darker secondary text, stronger rules and outlines.",
-  "Original garde le texte tel qu'il a été saisi. English, Español et Deutsch traduisent l'écran, pas les données. Le sélecteur de la barre du haut fait la même chose.": "Original keeps the text as it was typed. English, Español and Deutsch translate the screen, not the data. The selector in the top bar does the same.",
+  "Original garde le texte tel qu'il a été saisi. English, Español, Deutsch et Italiano traduisent l'écran, pas les données. Le sélecteur de la barre du haut fait la même chose.": "Original keeps the text as it was typed. English, Español, Deutsch and Italiano translate the screen, not the data. The selector in the top bar does the same.",
   "Ouvrir l'app sur": "Open the app on",
   "La dernière page ouverte": "The last page opened",
   "La page d'accueil": "The home page",
@@ -7222,8 +7223,8 @@ export const DO_NOT_TRANSLATE = new Set([
 ]);
 
 // Une table par langue cible, toutes indexées sur la même chaîne française.
-// L'anglais est embarqué. L'espagnol et l'allemand (plus de 100 Ko gzip
-// chacun) arrivent par import() à la première bascule vers leur langue : un
+// L'anglais est embarqué. L'espagnol, l'allemand et l'italien (plus de 100 Ko
+// gzip chacun) arrivent par import() à la première bascule vers leur langue : un
 // appareil en Original ou en English ne les télécharge ni ne les analyse.
 // Tant qu'une table n'est pas chargée, lookupGlossary rend null pour sa
 // langue : le moteur attend donc loadGlossary avant d'appliquer la langue
@@ -7232,6 +7233,7 @@ const TABLES = { en: UI_GLOSSARY };
 const LOADERS = {
   es: () => import('./glossaryEs.js').then((m) => m.UI_GLOSSARY_ES),
   de: () => import('./glossaryDe.js').then((m) => m.UI_GLOSSARY_DE),
+  it: () => import('./glossaryIt.js').then((m) => m.UI_GLOSSARY_IT),
 };
 const loading = {};
 
@@ -7245,7 +7247,7 @@ export function isGlossaryReady(lang) {
  * lookupGlossary peut s'en servir. Rejette si le fichier n'arrive pas ; un
  * appel suivant retente. Aussi la voie des scripts Node (tests) :
  * `await loadGlossary('es')` avant de chercher en espagnol.
- * @param {'en'|'es'|'de'} lang
+ * @param {'en'|'es'|'de'|'it'} lang
  * @returns {Promise<void>}
  */
 export function loadGlossary(lang) {
@@ -7317,7 +7319,7 @@ function glossaryIndex(lang) {
  * est découpée de la même façon et retrouve ses affixes autour de la traduction.
  * Préserve la casse tout-majuscules (« SUPPRIMER » → « DELETE » / « ELIMINAR »).
  * @param {string} source chaîne française
- * @param {'en'|'es'|'de'} [lang='en'] langue cible
+ * @param {'en'|'es'|'de'|'it'} [lang='en'] langue cible
  * @returns {string|null} la traduction, ou null si absente du glossaire.
  */
 export function lookupGlossary(source, lang = 'en') {
