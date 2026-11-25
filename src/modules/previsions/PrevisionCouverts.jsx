@@ -13,7 +13,7 @@ import { chargerMeteo, npaDepuisAdresse } from './meteo.js';
 import { useReglagesMaison } from '../../hooks/useReglagesMaison.js';
 import { useReglagesModule } from '../../hooks/useReglagesModule.js';
 import { isPageActiveForEtab } from '../moduleConfig.js';
-import { pensionParService } from './previsionCouverts.js';
+import { pensionParService, phrasePension } from './previsionCouverts.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Prévision des couverts des 7 prochains jours, sous le planning des
@@ -376,12 +376,13 @@ function Constats({ prevision, etatPension, relire }) {
       );
     }
   }
-  if (etatPension === 'pret') {
-    lignes.push(<div key="p" style={texteCourant}>Les hôtes en pension comptent dans la prévision. Source : les séjours de l'Hébergement.</div>);
-  } else if (etatPension === 'erreur') {
+  const pension = phrasePension(etatPension);
+  if (pension && !pension.reessayer) {
+    lignes.push(<div key="p" style={texteCourant}>{pension.texte}</div>);
+  } else if (pension) {
     lignes.push(
       <div key="p" style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-        <span style={texteCourant}>Les séjours n'ont pas pu être lus : la prévision ne compte pas les hôtes en pension.</span>
+        <span style={texteCourant}>{pension.texte}</span>
         <Btn small onClick={relire}>Réessayer</Btn>
       </div>,
     );

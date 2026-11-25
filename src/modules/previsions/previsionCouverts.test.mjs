@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  construirePrevision, mesurerEffet, couvertsParService, jourSemaine, pensionParService,
+  construirePrevision, mesurerEffet, couvertsParService, jourSemaine, pensionParService, phrasePension,
   SEMAINES, SEMAINES_MIN, JOURS_MIN_PAR_CLASSE,
 } from './previsionCouverts.js';
 import {
@@ -395,4 +395,11 @@ test('service fermé et historique court : pas de valeur, la pension est portée
   assert.equal(ferme.jours[0].services.midi.etat, 'ferme');
   assert.equal(ferme.jours[0].services.midi.valeur, null);
   assert.equal(ferme.jours[0].services.midi.pension, 2);
+});
+
+test('phrase de la pension : lue, en échec avec Réessayer, sinon rien', () => {
+  assert.deepEqual(phrasePension('pret'), { texte: "Les hôtes en pension comptent dans la prévision. Source : les séjours de l'Hébergement.", reessayer: false });
+  assert.deepEqual(phrasePension('erreur'), { texte: "Les séjours n'ont pas pu être lus : la prévision ne compte pas les hôtes en pension.", reessayer: true });
+  assert.equal(phrasePension('eteinte'), null);
+  assert.equal(phrasePension('chargement'), null);
 });

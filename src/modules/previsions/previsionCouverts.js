@@ -121,6 +121,19 @@ export function pensionParService({ sejours, liens, resas, aujourdhui }) {
   return table;
 }
 
+// Phrase des constats sur la source « hôtes en pension », selon l'état de sa
+// lecture : lue, en échec (avec « Réessayer »), sinon rien (éteinte ou en
+// cours de lecture : l'écran d'avant).
+export function phrasePension(etat) {
+  if (etat === 'pret') {
+    return { texte: "Les hôtes en pension comptent dans la prévision. Source : les séjours de l'Hébergement.", reessayer: false };
+  }
+  if (etat === 'erreur') {
+    return { texte: "Les séjours n'ont pas pu être lus : la prévision ne compte pas les hôtes en pension.", reessayer: true };
+  }
+  return null;
+}
+
 // Moyenne des mêmes services : le même jour de la semaine, les semaines
 // passées, depuis la première réservation de l'établissement.
 export function baseService({ jour, service, aujourdhui, premiereDate, realises }) {
