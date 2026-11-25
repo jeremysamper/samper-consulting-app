@@ -7063,4 +7063,5 @@ export const UI_GLOSSARY_DE = {
   "Ce ticket est déjà sur la note d'une autre chambre.": "Dieser Beleg steht schon auf der Rechnung eines anderen Zimmers.",
   "Le ticket n'a pas pu être porté sur la note. Réessayez.": "Der Beleg konnte nicht auf die Rechnung gebucht werden. Versuchen Sie es erneut.",
   "La note n'a pas pu être vérifiée.": "Die Rechnung konnte nicht geprüft werden.",
+  "Ce ticket date de plus de 14 jours : ajoutez-le à la main sur la note.": "Dieser Beleg ist älter als 14 Tage: Tragen Sie ihn von Hand auf der Rechnung ein.",
 };

@@ -16,6 +16,7 @@ const MESSAGES_NOTE = {
   'note: ticket introuvable': 'Ce ticket est introuvable.',
   'note: ticket de test': 'Un ticket de test ne va jamais sur une note.',
   'note: ticket non encaissé': "Ce ticket n'est pas encaissé.",
+  'note: ticket trop ancien': 'Ce ticket date de plus de 14 jours : ajoutez-le à la main sur la note.',
   'note: séjour introuvable': 'Ce séjour est introuvable.',
   'note: séjour pas en maison': "Ce séjour n'est plus en maison.",
   'note: aucun paiement sur la chambre': "Ce ticket n'a pas de paiement sur la chambre.",

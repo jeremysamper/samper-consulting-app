@@ -552,9 +552,11 @@ const RPC = {
     if (!peutCaisseDemo(ctx) && !hotel) throw new ErreurRpc('note: accès refusé', '42501');
     if (t.test) throw new ErreurRpc('note: ticket de test', '22023');
     if (t.statut !== 'encaisse' || t.numero == null) throw new ErreurRpc('note: ticket non encaissé', '22023');
+    if (!t.closed_at || new Date(t.closed_at).getTime() < Date.now() - 14 * 86400000) throw new ErreurRpc('note: ticket trop ancien', '22023');
     const s = ctx.db.sejours.find((x) => x.id === a.p_sejour_id);
     if (!s || s.etablissement_id !== t.etablissement_id) throw new ErreurRpc('note: séjour introuvable', 'P0002');
-    if (!(s.statut === 'en_maison' || (s.statut === 'parti' && hotel))) throw new ErreurRpc('note: séjour pas en maison', '22023');
+    const limiteDepart = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich' }).format(new Date(Date.now() - 14 * 86400000));
+    if (!(s.statut === 'en_maison' || (s.statut === 'parti' && hotel && String(s.depart) >= limiteDepart))) throw new ErreurRpc('note: séjour pas en maison', '22023');
     const montant = montantChambre(ctx, t.id);
     if (!(montant > 0)) throw new ErreurRpc('note: aucun paiement sur la chambre', '22023');
     const deja = ligneOrigine(ctx, 'caisse_ticket', t.id);

@@ -7132,6 +7132,7 @@ export const UI_GLOSSARY = {
   "Ce ticket est déjà sur la note d'une autre chambre.": "This ticket is already on the bill of another room.",
   "Le ticket n'a pas pu être porté sur la note. Réessayez.": "The ticket could not be added to the bill. Try again.",
   "La note n'a pas pu être vérifiée.": "The bill could not be checked.",
+  "Ce ticket date de plus de 14 jours : ajoutez-le à la main sur la note.": "This ticket is more than 14 days old: add it to the bill by hand.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

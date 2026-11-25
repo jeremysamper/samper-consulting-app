@@ -7113,4 +7113,5 @@ export const UI_GLOSSARY_ES = {
   "Ce ticket est déjà sur la note d'une autre chambre.": "Este ticket ya está en la cuenta de otra habitación.",
   "Le ticket n'a pas pu être porté sur la note. Réessayez.": "No se pudo cargar el ticket en la cuenta. Vuelva a intentarlo.",
   "La note n'a pas pu être vérifiée.": "No se pudo comprobar la cuenta.",
+  "Ce ticket date de plus de 14 jours : ajoutez-le à la main sur la note.": "Este ticket tiene más de 14 días: añádalo a mano a la cuenta.",
 };

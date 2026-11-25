@@ -235,7 +235,7 @@ export default function Hebergement({ user, etablissement }) {
           titre={TITRES[ecran] || ''}
           etat={ecran === 'en_maison' ? <><span>{couverts}</span> <span>{couverts === 1 ? 'couvert petit-déjeuner demain' : 'couverts petit-déjeuner demain'}</span></> : null}
           onRetour={retourAccueil}
-          actions={peutGerer && !['chambres', 'hotes', 'tarifs', 'registre'].includes(ecran) ? (
+          actions={peutGerer && !['chambres', 'hotes', 'tarifs', 'registre', 'tickets'].includes(ecran) ? (
             <Btn variant="primary" onClick={() => setForm({ sejour: null })} style={{ minHeight: 48, padding: '10px 16px', fontSize: 14 }}>
               <Plus size={18} strokeWidth={1.75} aria-hidden="true" />
               <span>Nouveau séjour</span>

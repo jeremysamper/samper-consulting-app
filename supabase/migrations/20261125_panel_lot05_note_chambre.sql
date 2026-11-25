@@ -126,15 +126,21 @@ begin
   if t.statut <> 'encaisse' or t.numero is null or t.annee is null then
     raise exception 'note: ticket non encaissé' using errcode = '22023';
   end if;
+  -- D14 : la fenêtre de rattrapage de la liste vaut aussi pour un appel direct.
+  if t.closed_at is null or t.closed_at < now() - interval '14 days' then
+    raise exception 'note: ticket trop ancien' using errcode = '22023';
+  end if;
 
-  select sj.id, sj.etablissement_id, sj.statut
+  select sj.id, sj.etablissement_id, sj.statut, sj.depart
     into s
     from public.sejours sj
    where sj.id = p_sejour_id;
   if not found or s.etablissement_id <> t.etablissement_id then
     raise exception 'note: séjour introuvable' using errcode = 'P0002';
   end if;
-  if not (s.statut = 'en_maison' or (s.statut = 'parti' and v_hotel)) then
+  if not (s.statut = 'en_maison'
+          or (s.statut = 'parti' and v_hotel
+              and s.depart >= (now() at time zone 'Europe/Zurich')::date - 14)) then
     raise exception 'note: séjour pas en maison' using errcode = '22023';
   end if;
 
