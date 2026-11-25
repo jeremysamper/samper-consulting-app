@@ -770,3 +770,17 @@ test('plats vendus : une lecture sans la clé options retombe sur le libellé (l
   avec.lignes.filter((l) => l.plat_id === 'vin').forEach((l, i) => { l.libelle = i ? 'Vin de la maison, 50 cl' : 'Vin de la maison, 1 dl'; });
   assert.equal(rapportCaisse(avec, DEUX_JOURS).plats.lignes.filter((l) => l.platId === 'vin').length, 1);
 });
+
+// Lot 05 du panel : le paiement porté sur la chambre (moyen autre, libellé
+// « Chambre ») forme sa propre ligne, distincte d'un « autre » sans libellé.
+test('lot 05 : « Chambre » a sa ligne de moyen, distincte de « Autre »', () => {
+  const donnees = jeuEssai();
+  const twint = donnees.paiements.find((p) => p.libelle === 'TWINT');
+  twint.libelle = 'Chambre';
+  donnees.paiements.push({ ...twint, id: 'p-autre-sans-libelle', libelle: null });
+  const r = rapportCaisse(donnees, DEUX_JOURS);
+  const noms = r.moyens.lignes.map((l) => l.nom);
+  assert.ok(noms.includes('Chambre'));
+  assert.ok(noms.includes('Autre'));
+  assert.equal(r.moyens.lignes.find((l) => l.nom === 'Chambre').nombre, 1);
+});

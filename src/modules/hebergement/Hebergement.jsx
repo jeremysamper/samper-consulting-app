@@ -1,12 +1,12 @@
 import React from 'react';
-import { BedDouble, BookOpen, Croissant, LogIn, LogOut, Plus, Users } from 'lucide-react';
+import { BedDouble, BookOpen, Croissant, LogIn, LogOut, Plus, Receipt, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
 import { Btn } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { canManageModule, getPermissionsForRole } from '../../data/demoData.js';
-import { isPageActiveForEtab, peutOuvrirPage } from '../moduleConfig.js';
+import { isModuleActiveForEtab, isPageActiveForEtab, peutOuvrirPage } from '../moduleConfig.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import {
   aVenir, arriveesDu, couvertsPetitDejeuner, departsDu, enMaison, libelleGroupe, libelleReservation, totauxNote, trierChambres,
@@ -21,6 +21,7 @@ import SejourNote from './SejourNote.jsx';
 import SejourOccupants from './SejourOccupants.jsx';
 import { estDirectionHotel } from './gardesHotel.js';
 import RegistreMois from './RegistreMois.jsx';
+import TicketsAPorter, { useTicketsAPorter } from './TicketsAPorter.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hébergement (branche Hôtel, lot H0) : l'accueil à tuiles du socle des
@@ -41,6 +42,7 @@ const TITRES = {
   hotes: 'Les hôtes',
   tarifs: 'Tarifs et taxes',
   registre: 'Registre et statistiques',
+  tickets: 'Tickets à porter',
 };
 
 // Date de Zurich, relue chaque minute : un écran ouvert à minuit change de jour.
@@ -76,6 +78,9 @@ export default function Hebergement({ user, etablissement }) {
   const occupants = useOccupants(etabId, { actif: peutGerer });
   const lignes = useLignesSejour(etabId, { actif: peutGerer });
   const reglage = reglages.rows[0] || null;
+  // Lot 05 du panel : les tickets de la Caisse payés sur la chambre, sans note.
+  const avecCaisse = peutGerer && isModuleActiveForEtab(etablissement, 'caisse');
+  const ticketsAPorter = useTicketsAPorter(etabId, { actif: avecCaisse });
   // Lot H5 : les forfaits, pour le choix sur le séjour.
   const forfaits = useForfaits(etabId);
   // Lot 6b : les activités des prochains jours, pour inscrire un séjour en un
@@ -104,7 +109,10 @@ export default function Hebergement({ user, etablissement }) {
     };
   };
 
-  const ecransRepris = direction ? ['arrivees', 'departs', 'en_maison', 'chambres', 'hotes', 'tarifs', 'registre'] : ['arrivees', 'departs', 'en_maison', 'hotes'];
+  const ecransRepris = [
+    ...(direction ? ['arrivees', 'departs', 'en_maison', 'chambres', 'hotes', 'tarifs', 'registre'] : ['arrivees', 'departs', 'en_maison', 'hotes']),
+    ...(avecCaisse ? ['tickets'] : []),
+  ];
   const { ecran, setEcran, retourAccueil } = useEcranModule('hebergement', { repris: ecransRepris });
   const [form, setForm] = React.useState(null); // { sejour: null | sejour }
   const [ficheId, setFicheId] = React.useState(null);
@@ -179,6 +187,12 @@ export default function Hebergement({ user, etablissement }) {
     { id: 'nouveau', libelle: 'Nouveau séjour', Icone: Plus, visible: peutGerer, onClick: () => setForm({ sejour: null }) },
     { id: 'hotes', libelle: 'Hôtes', Icone: Users, etat: etat(hotes.rows.filter((x) => !x.archive).length, 'fiche', 'fiches'), onClick: () => setEcran('hotes') },
     { id: 'registre', libelle: 'Registre et statistiques', Icone: BookOpen, visible: direction, etat: <span>Nuitées, HESTA, taxes du mois</span>, onClick: () => setEcran('registre') },
+    {
+      id: 'tickets', libelle: 'Tickets à porter', Icone: Receipt,
+      visible: avecCaisse && ticketsAPorter.status === 'ready' && ticketsAPorter.rows.length > 0,
+      etat: etat(ticketsAPorter.rows.length, 'ticket payé sur la chambre', 'tickets payés sur la chambre'),
+      onClick: () => setEcran('tickets'),
+    },
   ];
   const lierHote = async (s, hoteId) => {
     const res = await sejours.modifier(s.id, { hote_id: hoteId || null });
@@ -242,6 +256,9 @@ export default function Hebergement({ user, etablissement }) {
         </>
       )}
       {etabId && ecran === 'departs' && listeDe(departs, 'Aucun départ aujourd\'hui.')}
+      {etabId && ecran === 'tickets' && avecCaisse && (
+        <TicketsAPorter etabId={etabId} tickets={ticketsAPorter} onPorte={lignes.reload} />
+      )}
       {etabId && ecran === 'en_maison' && listeDe(presents, 'Personne en maison pour l\'instant.')}
       {/* Chambres : dans la page des réglages (section 'hebergement_chambres'),
           la tuile y mène. */}
@@ -310,6 +327,7 @@ export default function Hebergement({ user, etablissement }) {
           reglages={reglage} occupants={occupants.rows} lignes={lignes}
           peutGerer={peutGerer} peutSupprimer={direction} etablissement={etablissement}
           onClose={() => setNoteId(null)}
+          onLignesCaisse={() => { lignes.reload(); ticketsAPorter.reload(); }}
         />
       )}
       {sejourOccupants && peutGerer && (

@@ -58,7 +58,9 @@ function tauxHebergementParJour(notes) {
 // Une ligne par jour qui a au moins une source, triée par jour.
 //   manuel : [{ jour, taux, montantTtc, source }]   (ventes_jour)
 //   pos    : [{ jour, montantTtc }]         (pos_sales, revenue_cts / 100)
-//   notes  : [{ jour, type, montant, tvaTaux }]  (sejour_lignes)
+//   notes  : [{ jour, type, montant, tvaTaux, origine }]  (sejour_lignes)
+//            une ligne d'origine « caisse… » (lot 05 du panel) est écartée : le
+//            repas porté sur la chambre est déjà dans les ventes de la Caisse.
 // → [{ jour, source: 'manuel' | 'caisse' | 'pos' | null, parTaux: { cle: ttc }, ttc,
 //      posTtc (null sans caisse ce jour), notesTtc, avecNotes }]
 export function ventesParJour({ manuel = [], pos = [], notes = [], debut = null, fin = null } = {}) {
@@ -83,7 +85,8 @@ export function ventesParJour({ manuel = [], pos = [], notes = [], debut = null,
     const x = jour(v.jour);
     x.pos = (x.pos || 0) + m;
   });
-  const notesRetenues = (notes || []).filter(l => dans(l.jour) && nombre(l.montant) != null && !NOTES_EXCLUES.has(l.type));
+  const notesRetenues = (notes || []).filter(l => dans(l.jour) && nombre(l.montant) != null && !NOTES_EXCLUES.has(l.type)
+    && !String(l.origine || '').startsWith('caisse'));
   const tauxHebergement = tauxHebergementParJour(notesRetenues);
   notesRetenues.forEach((l) => {
     const x = jour(l.jour);

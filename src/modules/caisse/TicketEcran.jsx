@@ -110,7 +110,7 @@ export default function TicketEcran({
   ticketsMemeTable, onDeplacer, onFusionne, onClos, onEncaissementEnvoye, reload,
   cartes = [], reservation = null, reservations = [], onReservationsChange,
   modeTest = false, onQuittance,
-  terminaux = [], role = null,
+  terminaux = [], role = null, hebergementActif = false,
   titre = null, onRetour, bandeau = null,
 }) {
   const [recherche, setRecherche] = React.useState('');
@@ -1317,6 +1317,7 @@ export default function TicketEcran({
           boutons={boutons}
           categories={categories}
           articles={articles}
+          hebergementActif={hebergementActif}
         />
       )}
       {libreOuvert && (

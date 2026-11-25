@@ -73,7 +73,7 @@ export function creerBase(options = {}) {
 function baseUneMaison() {
   const { reservations, tags, liens } = genererReservations();
   const { releves, controles } = genererHaccp();
-  const { plats_boissons: boissons, ...caisse } = genererCaisse();
+  const { plats_boissons: boissons, tickets_chambre: ticketsChambre, ...caisse } = genererCaisse();
   // Lots 4a et 4b : pertes reliées, liste J+1 (la commande par fournisseur ne part pas).
   const mep = mepLot4a(MEP_LISTES, MEP_ITEMS);
   const pos = genererPos();
@@ -185,7 +185,7 @@ function baseUneMaison() {
     scans_facture: [],
     ...caisse,
     ...pos,
-    ...genererHotel(),
+    ...genererHotel({ ticketsChambre }),
     ...genererSpa(),
   };
 }

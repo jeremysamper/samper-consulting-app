@@ -4,6 +4,8 @@ import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { Champ, h } from './hotelUi.jsx';
+import { verifierReportsSejour } from '../../services/noteChambreService.js';
+import { ligneDeLaCaisse } from '../caisse/noteChambre.js';
 import {
   TYPES_AUTOMATIQUES, TYPES_LIGNE, chf, dateCourte, libelleDe, lignesAutomatiques, nuitsDe, personnes, totauxNote,
 } from './hotelData.js';
@@ -18,7 +20,7 @@ import {
 
 const MOYENS = ['Carte', 'Espèces', 'Twint', 'Virement', 'Facture'];
 
-export default function SejourNote({ sejour: s, chambre, tarif, reglages, occupants, lignes, peutGerer, peutSupprimer, etablissement, onClose }) {
+export default function SejourNote({ sejour: s, chambre, tarif, reglages, occupants, lignes, peutGerer, peutSupprimer, etablissement, onClose, onLignesCaisse }) {
   const mesLignes = lignes.rows.filter((l) => l.sejourId === s.id);
   const totaux = totauxNote(mesLignes);
   const [mode, setMode] = React.useState(null); // 'ligne' | 'encaisser'
@@ -28,6 +30,19 @@ export default function SejourNote({ sejour: s, chambre, tarif, reglages, occupa
   const champ = (k) => (ev) => setF((p) => ({ ...p, [k]: ev.target.value }));
   const dejaCalcule = mesLignes.some((l) => TYPES_AUTOMATIQUES.includes(l.type));
   const nuits = nuitsDe(s);
+
+  // Lot 05 du panel : à l'ouverture, une seule fois, la contre-ligne de chaque
+  // ticket de caisse annulé depuis son report.
+  const verifie = React.useRef(null);
+  const surLignesCaisse = React.useRef(onLignesCaisse);
+  surLignesCaisse.current = onLignesCaisse;
+  React.useEffect(() => {
+    if (!peutGerer || !s?.id || verifie.current === s.id) return;
+    verifie.current = s.id;
+    verifierReportsSejour(s.id).then(({ data }) => {
+      if (data > 0) { notify('Un ticket annulé à la caisse est retiré de la note.', 'info'); surLignesCaisse.current?.(); }
+    });
+  }, [peutGerer, s?.id]);
 
   const lancer = async (travail) => {
     setErreur('');
@@ -139,6 +154,7 @@ export default function SejourNote({ sejour: s, chambre, tarif, reglages, occupa
               <span style={{ ...h.detail, flex: '0 0 72px' }} data-no-translate>{dateCourte(l.jour)}</span>
               <span style={{ flex: '1 1 160px', minWidth: 0 }}>
                 <span data-no-translate>{l.libelle}</span>
+                {ligneDeLaCaisse(l) && <span style={n.origine} data-ligne-caisse="">Caisse</span>}
                 <span style={h.detail}> <span>{libelleDe(TYPES_LIGNE, l.type)}</span>{l.quantite !== 1 && <> <span data-no-translate>{l.quantite} x {chf(l.prixUnitaire)}</span></>}</span>
               </span>
               <span style={n.montant} data-no-translate>{chf(l.montant)}</span>
@@ -198,6 +214,7 @@ export default function SejourNote({ sejour: s, chambre, tarif, reglages, occupa
 
 const n = {
   ligne: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 0', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', fontSize: 14, color: 'var(--text)' },
+  origine: { marginLeft: 8, padding: '1px 8px', borderRadius: 'var(--r-full)', background: 'var(--piste)', fontSize: 'var(--t1)', color: 'var(--text2)', whiteSpace: 'nowrap' },
   montant: { flex: '0 0 90px', textAlign: 'right', fontFamily: 'var(--font-num)', fontVariantNumeric: 'tabular-nums' },
   totaux: { display: 'flex', flexDirection: 'column', gap: 4, padding: '10px 12px', background: 'var(--surface2)', borderRadius: 'var(--r)' },
   totalLigne: { display: 'flex', justifyContent: 'space-between', gap: 12, fontSize: 14, color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },

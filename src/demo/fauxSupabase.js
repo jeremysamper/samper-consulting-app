@@ -41,7 +41,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // v13 (23.11.2026) : devis, factures et paiements des groupes.
 // v14 (23.11.2026) : coordonnées légales de la caisse ; sans elles, un vrai
 // ticket ne s'encaisse pas.
-const VERSION_BASE = 'v14-' + aujourdhui();
+// v15 (lot 05 du panel, 25.11.2026) : origine des lignes de note, deux tickets
+// payés « Chambre » (l'un porté sur une note, l'autre à porter).
+const VERSION_BASE = 'v15-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.
@@ -185,7 +187,8 @@ const DEFAUTS = {
   tarifs: { pension: 'petit_dejeuner', personnes_incluses: 2, prix_personne_sup: 0, prix_enfant: 0, actif: true, ordre: 0 },
   sejour_occupants: { exonere_taxe: false, created_by: () => sessionUid },
   // montant : colonne calculée en base (quantité x prix unitaire).
-  sejour_lignes: { quantite: 1, prix_unitaire: 0, montant: (l) => Math.round((Number(l.quantite ?? 1) * Number(l.prix_unitaire ?? 0)) * 100) / 100, created_by: () => sessionUid },
+  // origine, origine_id : lot 05 du panel (ligne venue de la Caisse).
+  sejour_lignes: { quantite: 1, prix_unitaire: 0, montant: (l) => Math.round((Number(l.quantite ?? 1) * Number(l.prix_unitaire ?? 0)) * 100) / 100, origine: null, origine_id: null, created_by: () => sessionUid },
   forfaits: { prix_par_nuit: 0, actif: true, ordre: 0 },
   forfait_droits: { categorie: 'autre', ordre: 0 },
   activites: { prix: 0, inclus_forfait: true, annulee: false, created_by: () => sessionUid },

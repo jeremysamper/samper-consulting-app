@@ -265,7 +265,7 @@ const nuits = (s) => Math.round((Date.parse(s.depart) - Date.parse(s.arrivee)) /
 
 // Note de séjour : nuitées et taxes calculées à l'arrivée, extras, encaissement
 // des séjours partis.
-export function genererLignesSejour() {
+export function genererLignesSejour({ ticketsChambre = [] } = {}) {
   const lignes = [];
   let k = 0;
   const ligne = (s, j, type, libelle, quantite, prix_unitaire, tva_taux, heure = '18:00') => {
@@ -274,7 +274,7 @@ export function genererLignesSejour() {
       id: uid3('08', k),
       etablissement_id: ETAB, sejour_id: s.id, jour: j, type, libelle, quantite, prix_unitaire,
       montant: deuxDec(quantite * prix_unitaire), tva_taux, note: null, created_by: HOTE,
-      created_at: instant(j, heure),
+      created_at: instant(j, heure), origine: null, origine_id: null,
     });
   };
   for (const s of SEJOURS.filter(occupe)) {
@@ -297,6 +297,11 @@ export function genererLignesSejour() {
   ligne(sj(8), jour(-1), 'extra', 'Room service, plateau du soir', 1, 42, 8.1, '21:30');
   ligne(sj(8), jour(-1), 'remise', 'Geste fidélité', 1, -30, 3.8, '21:35');
   ligne(sj(2), jour(-1), 'extra', 'Minibar, chocolat', 1, 6.5, 8.1, '23:00');
+  // Lot 05 du panel : un ticket de la Caisse déjà porté sur la note (chambre 103).
+  ticketsChambre.filter((t) => t.porte).forEach((t) => {
+    ligne(sj(4), t.jour, 'extra', `Restaurant, ticket n° ${t.annee}-${String(t.numero).padStart(6, '0')}`, 1, t.montant, null, '21:20');
+    Object.assign(lignes[lignes.length - 1], { origine: 'caisse_ticket', origine_id: t.ticket_id, created_by: SERVEUR });
+  });
   // Encaissement des séjours partis : la note est soldée.
   for (const s of SEJOURS.filter((x) => x.statut === 'parti')) {
     const total = lignes.filter((l) => l.sejour_id === s.id).reduce((t, l) => t + l.montant, 0);
@@ -556,7 +561,7 @@ export function genererTechnique() {
   return { equipements, maintenance_plans: plans, ordres_travail: ordres };
 }
 
-export function genererHotel() {
+export function genererHotel({ ticketsChambre = [] } = {}) {
   return {
     hotel_reglages: HOTEL_REGLAGES,
     tarifs: TARIFS,
@@ -566,7 +571,7 @@ export function genererHotel() {
     forfait_droits: FORFAIT_DROITS,
     sejours: SEJOURS,
     sejour_occupants: SEJOUR_OCCUPANTS,
-    sejour_lignes: genererLignesSejour(),
+    sejour_lignes: genererLignesSejour({ ticketsChambre }),
     sejour_liens: [],
     room_service_commandes: genererRoomService(),
     ...genererEtages(),

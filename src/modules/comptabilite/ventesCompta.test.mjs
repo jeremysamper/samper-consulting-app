@@ -171,3 +171,23 @@ test('clôture de la caisse native : le jour est dit caisse, par taux ; une sais
   const c = couvertureVentes({ parJour, joursOuverts: new Set(), debut: '2026-11-03', finEffective: '2026-11-05', aujourdhui: '2026-11-10' });
   assert.deepEqual(c, { avec: 3, attendus: 3, manquants: [] });
 });
+
+// Lot 05 du panel : un repas porté sur la chambre est déjà dans les ventes de la Caisse.
+test('ventesParJour écarte les lignes de note venues de la Caisse', () => {
+  const parJour = ventesParJour({
+    manuel: [{ jour: '2026-11-25', taux: 8.1, montantTtc: 84.5, source: 'caisse' }],
+    notes: [
+      { jour: '2026-11-25', type: 'extra', montant: 84.5, tvaTaux: null, origine: 'caisse_ticket' },
+      { jour: '2026-11-25', type: 'remise', montant: -84.5, tvaTaux: null, origine: 'caisse_annulation' },
+    ],
+  });
+  assert.equal(parJour.length, 1);
+  assert.equal(parJour[0].ttc, 84.5);
+  assert.equal(parJour[0].avecNotes, false);
+  // Un extra sans origine compte comme avant.
+  const avant = ventesParJour({
+    manuel: [{ jour: '2026-11-25', taux: 8.1, montantTtc: 84.5, source: 'caisse' }],
+    notes: [{ jour: '2026-11-25', type: 'extra', montant: 12, tvaTaux: 8.1 }],
+  });
+  assert.equal(avant[0].ttc, 96.5);
+});

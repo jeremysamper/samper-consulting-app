@@ -118,7 +118,7 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   const lireCaisseFenetre = useCallback(() => lireCaisse(etabId, debutLecture, finLecture), [etabId, debutLecture, finLecture]);
   const caisse = useLecture(`caisse|${etabId}|${debutLecture}|${finLecture}`, lireCaisseFenetre, { actif: actif && !!etabId, tables: ['pos_sales'] });
 
-  const lireNotes = useCallback(() => lireToutesLesPages((de, a) => supabase.from('sejour_lignes').select('jour, type, montant, tva_taux')
+  const lireNotes = useCallback(() => lireToutesLesPages((de, a) => supabase.from('sejour_lignes').select('jour, type, montant, tva_taux, origine')
     .eq('etablissement_id', etabId).gte('jour', debutLecture).lte('jour', finLecture).order('jour').order('id').range(de, a)), [etabId, debutLecture, finLecture]);
   const notes = useLecture(`notes|${etabId}|${debutLecture}|${finLecture}`, lireNotes, { actif: actif && !!etabId && hebergement, tables: ['sejour_lignes'] });
 
@@ -156,7 +156,7 @@ export function useCompta({ etablissement, periode, precedente, aujourdhui, inve
   const parJourTout = useMemo(() => ventesParJour({
     manuel: ventesJour.lignes,
     pos: caisse.data?.lignes || [],
-    notes: (notes.data || []).map(l => ({ jour: l.jour, type: l.type, montant: l.montant, tvaTaux: l.tva_taux })),
+    notes: (notes.data || []).map(l => ({ jour: l.jour, type: l.type, montant: l.montant, tvaTaux: l.tva_taux, origine: l.origine })),
   }), [ventesJour.lignes, caisse.data, notes.data]);
 
   const joursOuverts = useMemo(() => new Set((horaires.data || []).map(s => s.date)), [horaires.data]);

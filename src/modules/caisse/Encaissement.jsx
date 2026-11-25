@@ -13,6 +13,9 @@ import { PARTS_MAX, PARTS_MIN, POURBOIRES_POURCENT, partParPlat, partsEgales, po
 import FeuilleBonCadeau from './bonsCadeaux/FeuilleBonCadeau.jsx';
 import { manquesLegaux } from './reglages.js';
 import ListeManques from './ListeManques.jsx';
+import ChoixSejour from '../hebergement/ChoixSejour.jsx';
+import { LIBELLE_CHAMBRE, boutonChambreVisible } from './noteChambre.js';
+import { porterTicketSurNote } from '../../services/noteChambreService.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Encaissement (v7) : une feuille, le total en grand, les moyens en gros
@@ -56,6 +59,13 @@ import ListeManques from './ListeManques.jsx';
 // l'encaissement), les paiements posés, le reste, « Remise ou offert », puis
 // les moyens, qui encaissent la part. Les calculs sont dans partage.js ; rien
 // n'est écrit en base de plus qu'avant (le service ne transmet pas `partage`).
+//
+// Sur la chambre (lot 05 du panel, 25.11.2026) : quand l'établissement a le
+// module Hébergement, « Sur la chambre » ouvre le choix d'un séjour en maison.
+// Le paiement se pose en moyen « autre », libellé « Chambre », sans pourboire ;
+// sejourId et chambreNumero restent à l'écran (encaisserTicket ne les envoie
+// pas). Le ticket encaissé, un second appel le porte sur la note du séjour ;
+// son échec ne défait rien, la réception le rattrape depuis Hébergement.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -89,7 +99,7 @@ function useEnLigne() {
 
 export default function Encaissement({
   ticket, reglages, peutRemiser = false, modeTest = false, onEncaisse, onEnvoi, onQuittance, onClose, reload,
-  terminaux = [], role = null, boutons = {}, categories = [], articles = [],
+  terminaux = [], role = null, boutons = {}, categories = [], articles = [], hebergementActif = false,
 }) {
   const lignes = React.useMemo(() => ticket?.lignes || [], [ticket]);
   const total = totalLignes(lignes);
@@ -111,6 +121,11 @@ export default function Encaissement({
   const [fait, setFait] = React.useState(null); // réponse de la base après encaissement
   const [client, setClient] = React.useState({ nom: '', adresse: '' });
   const [feuilleBon, setFeuilleBon] = React.useState(false);
+  const [feuilleChambre, setFeuilleChambre] = React.useState(false);
+  // Report sur la note : { sejourId, chambreNumero, etat: 'envoi' | 'ok' | 'echec' }.
+  const [report, setReport] = React.useState(null);
+  const monte = React.useRef(true);
+  React.useEffect(() => { monte.current = true; return () => { monte.current = false; }; }, []);
   // Addition partagée (L1)
   const [mode, setMode] = React.useState('tout'); // 'tout' | 'plat' | 'parts'
   const [choix, setChoix] = React.useState({}); // par plat : id de ligne -> unités cochées
@@ -154,7 +169,7 @@ export default function Encaissement({
   }, [aDesTerminaux, ticket?.id, terminaux, libelleCarte]);
   React.useEffect(() => { chargerTpe(true); }, [chargerTpe]);
   const tpePret = lectureTpe === 'sans' || lectureTpe === 'lue';
-  React.useEffect(() => { terminalOuvert.current = Boolean(feuille) || feuilleBon; }, [feuille, feuilleBon]);
+  React.useEffect(() => { terminalOuvert.current = Boolean(feuille) || feuilleBon || feuilleChambre; }, [feuille, feuilleBon, feuilleChambre]);
 
   const fermer = React.useCallback(() => { if (fait) onEncaisse?.(fait); else onClose(); }, [fait, onEncaisse, onClose]);
   // v9 : tant que la feuille du terminal est ouverte, Échap ne ferme pas
@@ -216,10 +231,31 @@ export default function Encaissement({
       if (error) { onEnvoi?.(null); notify(error, 'error'); reload?.(); return; }
       setFait(data);
       notify(modeTest ? 'Ticket de test encaissé' : 'Ticket encaissé', 'success');
+      // Lire l'argument, pas `poses` : le paiement qui solde n'y passe pas.
+      const surChambre = (paiements || []).find((p) => p.sejourId);
+      if (surChambre && !ticket.test) porterSurChambre(surChambre.sejourId, surChambre.chambreNumero);
     } finally {
       verrou.current = false;
       setEnCours(false);
     }
+  }
+
+  // Second appel, après l'encaissement : porter le ticket sur la note du
+  // séjour. L'encaissement n'est jamais défait ni bloqué par son échec.
+  async function porterSurChambre(sejourId, chambreNumero) {
+    setReport({ sejourId, chambreNumero, etat: 'envoi' });
+    const { error } = await porterTicketSurNote(ticket.id, sejourId);
+    if (error) {
+      notify(`Le ticket est encaissé. Il n'est pas encore sur la note de la chambre ${chambreNumero} : la réception le portera depuis Hébergement.`, 'warning');
+    } else {
+      notify('Le ticket est porté sur la note de la chambre.', 'success');
+    }
+    if (monte.current) setReport({ sejourId, chambreNumero, etat: error ? 'echec' : 'ok' });
+  }
+  function reessayerReport(r) {
+    if (!r || r.etat === 'envoi') return;
+    porterSurChambre(r.sejourId, r.chambreNumero);
+    setReport({ ...r, etat: 'envoi', essai: true });
   }
 
   // Un tap sur un moyen : il prend la part affichée. S'il règle tout le reste,
@@ -354,6 +390,21 @@ export default function Encaissement({
                 : <span>, le bon est épuisé.</span>}
             </p>
           ))}
+          {report?.etat === 'ok' && (
+            <p style={st.ligneInfo} data-caisse-report="ok">
+              <span>Porté sur la note de la chambre</span> <span style={st.num} data-no-translate>{report.chambreNumero}</span>
+            </p>
+          )}
+          {(report?.etat === 'echec' || (report?.etat === 'envoi' && report.essai)) && (
+            <div style={st.horsLigne} data-cadre="" role="alert" data-caisse-report="echec">
+              <span style={st.alerteTexte}>
+                <span>Le ticket est encaissé. Il n'est pas encore sur la note de la chambre</span>{' '}
+                <span style={st.num} data-no-translate>{report.chambreNumero}</span>{' '}
+                <span>: la réception le portera depuis Hébergement.</span>
+              </span>
+              <Btn variant="primary" disabled={report.etat === 'envoi'} onClick={() => reessayerReport(report)} style={st.btn44}>Réessayer</Btn>
+            </div>
+          )}
           {!fait.test && Number(fait.total) > SEUIL_NOM_CLIENT && (
             <div style={st.bloc}>
               <p style={st.aide}>Au-dessus de 400 francs, le client peut demander son nom et son adresse sur la quittance.</p>
@@ -550,6 +601,15 @@ export default function Encaissement({
                     ? <Btn variant="ghost" disabled={enCours || !enLigne} onClick={() => rembourserPose(p)} style={st.btn44}>Rembourser</Btn>
                     : <span style={st.petit}>Payé sur le terminal</span>}
                 </div>
+              ) : p.sejourId ? (
+                <div key={'chambre-' + p.sejourId} style={st.pose} data-caisse-pose="chambre">
+                  <span style={st.poseNomTerminal}>
+                    <span><span>Sur la chambre</span> <span style={st.num} data-no-translate>{p.chambreNumero}</span></span>
+                    <DetailPartage pose={p} lignes={lignes} />
+                  </span>
+                  <span style={st.num}>{chf(p.montant)}</span>
+                  <Btn variant="ghost" onClick={() => setPoses(poses.filter((_, j) => j !== i))} style={st.btn44}>Retirer</Btn>
+                </div>
               ) : p.bonCadeau ? (
                 <div key={'bon-' + p.bonCadeau} style={st.pose} data-caisse-pose="bon-cadeau">
                   <span style={st.poseNomTerminal}>
@@ -652,6 +712,11 @@ export default function Encaissement({
                     <Btn variant="ghost" disabled={enCours || !peutPayer || !tpePret || rienAPayer} onClick={() => setFeuilleBon(true)} style={st.btnMoyen}>
                       Bon cadeau
                     </Btn>
+                    {boutonChambreVisible({ hebergementActif, test: ticket.test, poses }) && (
+                      <Btn variant="ghost" disabled={enCours || !peutPayer || !tpePret || rienAPayer} onClick={() => setFeuilleChambre(true)} style={st.btnMoyen} data-caisse-sur-chambre="">
+                        Sur la chambre
+                      </Btn>
+                    )}
                   </div>
                   {terminal && (
                     <div style={st.bloc} data-caisse-terminal-choix="">
@@ -705,6 +770,20 @@ export default function Encaissement({
               poser(avecPartage({ moyen: 'autre', libelle: 'Bon cadeau', montant: montantBon, pourboire: 0, bonCadeau: code }));
             }}
             onClose={() => setFeuilleBon(false)}
+          />
+        </div>
+      )}
+      {feuilleChambre && (
+        <div onClick={(e) => e.stopPropagation()}>
+          <ChoixSejour
+            etablissementId={ticket.etablissement_id}
+            montant={part}
+            zIndex={1300}
+            onChoisir={(sejour, chambre) => {
+              setFeuilleChambre(false);
+              poser(avecPartage({ moyen: 'autre', libelle: LIBELLE_CHAMBRE, montant: part, pourboire: 0, sejourId: sejour.id, chambreNumero: chambre?.numero || '' }));
+            }}
+            onClose={() => setFeuilleChambre(false)}
           />
         </div>
       )}

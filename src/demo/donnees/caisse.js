@@ -196,6 +196,34 @@ export function genererCaisse() {
     });
   }
 
+  // Lot 05 du panel : deux tickets du dernier jour clôturé, payés « Chambre ».
+  // Le premier est déjà sur la note d'un séjour en maison (genererHotel), le
+  // second n'a pas trouvé sa note : il attend dans « Tickets à porter ».
+  const ticketsChambre = [];
+  const derniere = clotures[clotures.length - 1];
+  if (derniere) {
+    [['tb-5', '21:15', true], ['tb-2', '21:40', false]].forEach(([table, heure, porte]) => {
+      const date = derniere.jour_exploitation;
+      nt += 1;
+      numero += 1;
+      const id = uid('8003', nt);
+      let total = nouvelleLigne(id, pick(plats), 2, 'servi', instant(date, heure));
+      total += nouvelleLigne(id, pick(BOISSONS), 2, 'servi', instant(date, heure));
+      total = deuxDec(total);
+      tickets.push({
+        id, etablissement_id: ETAB, table_id: table, statut: 'encaisse', ouvert_par: 'demo-serveur', note: null,
+        created_at: instant(date, '19:30'), closed_at: instant(date, heure), updated_at: instant(date, heure),
+        reservation_id: null, client_id: null, couverts: 2, qui: 'passage', test: false, numero, annee: Number(date.slice(0, 4)), service: 'soir',
+        jour_exploitation: date, a_emporter: false, total_ttc: total, empreinte: null, empreinte_precedente: null,
+        annule_motif: null, annule_par: null, annule_at: null, annule_jour: null,
+      });
+      np += 1;
+      paiements.push({ id: uid('8005', np), ticket_id: id, moyen: 'autre', montant: total, encaisse_par: 'demo-serveur', created_at: instant(date, heure), libelle: 'Chambre', pourboire: 0, rendu: 0, arrondi: 0, tpe_transaction_id: null, bon_cadeau_id: null });
+      derniere.totaux = { total_ttc: deuxDec(derniere.totaux.total_ttc + total), tickets: derniere.totaux.tickets + 1 };
+      ticketsChambre.push({ ticket_id: id, numero, annee: Number(date.slice(0, 4)), jour: date, montant: total, porte });
+    });
+  }
+
   // Ce soir : trois tables ouvertes.
   const ouverts = [['tb-3', 4, 'envoye'], ['tb-7', 6, 'en_attente'], ['tb-1', 2, 'envoye']];
   ouverts.forEach(([table, couverts, statut], rang) => {
@@ -217,6 +245,7 @@ export function genererCaisse() {
 
   return {
     plats_boissons: [...BOISSONS, ...VINS_CARTE],
+    tickets_chambre: ticketsChambre,
     plat_formats: PLAT_FORMATS,
     caisse_categories: CAISSE_CATEGORIES,
     caisse_boutons: boutons,

@@ -28,6 +28,7 @@ import { peutHabillerCaisse } from './gardesCaisse.js';
 import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
 import { articlesDeCaisse, cartesEtArticlesEnVente, fusionnerReglages, manquesLegaux } from './reglages.js';
 import ListeManques from './ListeManques.jsx';
+import { isModuleActiveForEtab } from '../moduleConfig.js';
 import { listFormats } from '../../services/formatsService.js';
 import { formatsParPlat } from '../../utils/formatsBoisson.js';
 import { useMaintenant } from './mesures.js';
@@ -1055,6 +1056,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         onQuittance={quittance}
         terminaux={terminaux}
         role={user?.role}
+        hebergementActif={isModuleActiveForEtab(etablissement, 'hebergement')}
       />
     );
   }

@@ -493,6 +493,8 @@ export function mapLigne(r) {
     id: r.id, sejourId: r.sejour_id, jour: r.jour || '', type: r.type || 'extra', libelle: r.libelle || '', quantite: Number(r.quantite) || 0,
     prixUnitaire: Number(r.prix_unitaire) || 0, montant: Number(r.montant) || 0, tvaTaux: r.tva_taux == null ? null : Number(r.tva_taux),
     note: r.note || '', createdBy: r.created_by || null, createdAt: r.created_at || null,
+    // Lot 05 du panel : la source d'une ligne écrite hors de la note (caisse_ticket, caisse_annulation).
+    origine: r.origine || null, origineId: r.origine_id || null,
   };
 }
 export const useTarifs = (etabId, options = {}) => useTableHotel('tarifs', etabId, { map: mapTarif, order: [['ordre', true], ['nom', true]], limit: 500, ...options });

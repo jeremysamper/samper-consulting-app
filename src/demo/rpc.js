@@ -59,6 +59,22 @@ function totalTicket(ctx, ticketId) {
 
 const arrondi5 = (n) => Math.round(n * 20) / 20;
 
+// ── Note de la chambre (lot 05 du panel) ────────────────────────────────────
+// Mêmes refus que sejour_porter_ticket, sejour_tickets_a_porter et
+// sejour_reports_verifier. Les rôles sont ceux des défauts de la base
+// (caisse_peut_utiliser, user_peut_gerer('hebergement', ...)).
+const peutCaisseDemo = (ctx) => ['consultant', 'patron', 'resp_cuisine', 'serveur'].includes(profilDe(ctx)?.role);
+const peutHotelDemo = (ctx) => ['consultant', 'patron', 'receptionniste'].includes(profilDe(ctx)?.role);
+function compteNote(ctx) {
+  if (!ctx.uid) throw new ErreurRpc('note: connexion requise', '42501');
+  if (!profilDe(ctx)?.role) throw new ErreurRpc('note: compte sans rôle', '42501');
+}
+const estChambre = (p) => p.moyen === 'autre' && !p.bon_cadeau_id && String(p.libelle || '').trim().toLowerCase().startsWith('chambre');
+const montantChambre = (ctx, ticketId) => Math.round(ctx.db.caisse_paiements
+  .filter((p) => p.ticket_id === ticketId && estChambre(p)).reduce((s, p) => s + Number(p.montant || 0), 0) * 100) / 100;
+const numeroNote = (t) => `${t.annee}-${String(t.numero).padStart(6, '0')}`;
+const ligneOrigine = (ctx, origine, id) => ctx.db.sejour_lignes.find((l) => l.origine === origine && l.origine_id === id);
+
 // ── Borne de pointage (lot L6) ───────────────────────────────────────────────
 // Même contrat que les fonctions de la base (pointer_borne, borne_etat...).
 // Empreinte de démonstration (FNV-1a) : la démo n'a rien à protéger, seule la
@@ -527,6 +543,71 @@ const RPC = {
     });
   },
   caisse_verifier_chaine() { return { ok: true, rompue: false, verifie: 0 }; },
+  sejour_porter_ticket(ctx, a) {
+    compteNote(ctx);
+    if (!a.p_ticket_id || !a.p_sejour_id) throw new ErreurRpc('note: ticket ou séjour manquant', '22023');
+    const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id);
+    if (!t) throw new ErreurRpc('note: ticket introuvable', 'P0002');
+    const hotel = peutHotelDemo(ctx);
+    if (!peutCaisseDemo(ctx) && !hotel) throw new ErreurRpc('note: accès refusé', '42501');
+    if (t.test) throw new ErreurRpc('note: ticket de test', '22023');
+    if (t.statut !== 'encaisse' || t.numero == null) throw new ErreurRpc('note: ticket non encaissé', '22023');
+    const s = ctx.db.sejours.find((x) => x.id === a.p_sejour_id);
+    if (!s || s.etablissement_id !== t.etablissement_id) throw new ErreurRpc('note: séjour introuvable', 'P0002');
+    if (!(s.statut === 'en_maison' || (s.statut === 'parti' && hotel))) throw new ErreurRpc('note: séjour pas en maison', '22023');
+    const montant = montantChambre(ctx, t.id);
+    if (!(montant > 0)) throw new ErreurRpc('note: aucun paiement sur la chambre', '22023');
+    const deja = ligneOrigine(ctx, 'caisse_ticket', t.id);
+    if (deja) {
+      if (deja.sejour_id === s.id) return { ligne_id: deja.id, sejour_id: s.id, montant: deja.montant, deja: true };
+      throw new ErreurRpc('note: ticket déjà porté sur une autre note', '23505');
+    }
+    const l = ctx.inserer('sejour_lignes', {
+      etablissement_id: t.etablissement_id, sejour_id: s.id, jour: t.jour_exploitation || jourZurich(), type: 'extra',
+      libelle: `Restaurant, ticket n° ${numeroNote(t)}`, quantite: 1, prix_unitaire: montant, tva_taux: null,
+      origine: 'caisse_ticket', origine_id: t.id, note: null,
+    });
+    return { ligne_id: l.id, sejour_id: s.id, montant, deja: false };
+  },
+  sejour_tickets_a_porter(ctx, a) {
+    compteNote(ctx);
+    if (!a.p_etablissement_id || !peutHotelDemo(ctx)) throw new ErreurRpc('note: accès refusé', '42501');
+    const limite = Date.now() - 14 * 86400000;
+    const tables = new Map((ctx.db.salle_tables || []).map((x) => [x.id, x.nom]));
+    return ctx.db.caisse_tickets
+      .filter((t) => t.etablissement_id === a.p_etablissement_id && t.statut === 'encaisse' && !t.test && t.numero != null
+        && t.closed_at && new Date(t.closed_at).getTime() >= limite && !ligneOrigine(ctx, 'caisse_ticket', t.id))
+      .map((t) => {
+        const ps = ctx.db.caisse_paiements.filter((p) => p.ticket_id === t.id && estChambre(p));
+        return { t, ps, montant: montantChambre(ctx, t.id) };
+      })
+      .filter((x) => x.montant > 0)
+      .sort((x, y) => String(y.t.closed_at).localeCompare(String(x.t.closed_at)))
+      .slice(0, 200)
+      .map(({ t, ps, montant }) => ({
+        ticket_id: t.id, numero: t.numero, annee: t.annee, jour: t.jour_exploitation, closed_at: t.closed_at, montant,
+        libelle: ps.map((p) => p.libelle).sort()[0] || null, table_nom: tables.get(t.table_id) || null,
+        encaisse_par: ps.map((p) => p.encaisse_par).sort()[0] || null,
+      }));
+  },
+  sejour_reports_verifier(ctx, a) {
+    compteNote(ctx);
+    const s = ctx.db.sejours.find((x) => x.id === a.p_sejour_id);
+    if (!s) throw new ErreurRpc('note: séjour introuvable', 'P0002');
+    if (!peutHotelDemo(ctx)) throw new ErreurRpc('note: accès refusé', '42501');
+    let n = 0;
+    ctx.db.sejour_lignes.filter((l) => l.sejour_id === s.id && l.origine === 'caisse_ticket').forEach((l) => {
+      const t = ctx.db.caisse_tickets.find((x) => x.id === l.origine_id);
+      if (!t || t.statut !== 'annule' || ligneOrigine(ctx, 'caisse_annulation', t.id)) return;
+      ctx.inserer('sejour_lignes', {
+        etablissement_id: s.etablissement_id, sejour_id: s.id, jour: t.annule_jour || jourZurich(), type: 'remise',
+        libelle: `Annulation du ticket n° ${numeroNote(t)}`, quantite: 1, prix_unitaire: -Number(l.prix_unitaire), tva_taux: null,
+        origine: 'caisse_annulation', origine_id: t.id, note: null,
+      });
+      n += 1;
+    });
+    return n;
+  },
   caisse_test_etat() { return { actif: false }; },
   caisse_test_entrer() { throw new ErreurRpc('Le mode test de la caisse n\'est pas ouvert dans la démo.'); },
   caisse_test_sortir() { return { actif: false }; },
