@@ -75,7 +75,7 @@ function messageReleves(n, heure, horsPlage) {
 function LigneAttente({ n }) {
   const phrase = phraseAttente(n).replace(/^\d+ /, '');
   return (
-    <p role="status" style={{ margin: '0 0 16px', fontSize: 'var(--t2)', color: 'var(--text2)', fontFamily: 'var(--font)', lineHeight: 1.4, overflowWrap: 'anywhere' }}>
+    <p role="status" className="haccp-attente" style={{ fontSize: 'var(--t2)', color: 'var(--text2)', fontFamily: 'var(--font)', lineHeight: 1.4, overflowWrap: 'anywhere' }}>
       <N>{n}</N> {phrase}
     </p>
   );
@@ -175,6 +175,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   const [guideEnCours, setGuideEnCours] = React.useState(false);
   // Fenêtre « Nouveau relevé » : un second appui pendant l'écriture est ignoré.
   const [releveEnCours, setReleveEnCours] = React.useState(false);
+  const releveEnCoursRef = React.useRef(false);
   // Jour et tournée du brouillon : il ne vaut que pour eux. Rouvert sur une
   // autre tournée ou un autre jour, le relevé repart vide (un chiffre du matin
   // ne repart jamais avec l'heure du soir).
@@ -449,7 +450,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
     .pop() || null;
 
   const submitReleve = async () => {
-    if (releveEnCours) return;
+    if (releveEnCoursRef.current) return;
     if (!formRel.valeur || !formRel.heure) { alertLegacy('Remplissez tous les champs obligatoires.'); return; }
     if (!formRel.zoneId) { alertLegacy('Choisissez un frigo ou appareil.'); return; }
     const zone = zones.find(z=>z.id===formRel.zoneId);
@@ -465,13 +466,14 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
       commentaire: formRel.commentaire || '',
     };
     if (legacySB) {
+      releveEnCoursRef.current = true;
       setReleveEnCours(true);
       try {
         const res = await ecrireReleve(newReleve, zone?.nom);
         if (res.mode === 'online') setReleves(prev => [res.releve, ...prev]);
         else notifyLegacy(phraseGardes(1, newReleve.heure, conforme ? 0 : 1), conforme ? 'info' : 'warning');
       } catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
-      finally { setReleveEnCours(false); }
+      finally { releveEnCoursRef.current = false; setReleveEnCours(false); }
     } else {
       setReleves([{ id: 'r' + Date.now(), ...newReleve }, ...releves]);
     }

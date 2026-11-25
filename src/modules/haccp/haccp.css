@@ -59,6 +59,8 @@
   align-items: stretch;
   min-width: 0;
 }
+/* Ligne « N relevés attendent le réseau » (lot 08) : toujours sous les repères. */
+.haccp-attente { order: 31; margin: 0; min-width: 0; }
 .haccp-jour { order: 50; min-width: 0; }
 .haccp-pied { order: 60; }
 
@@ -123,6 +125,7 @@
 }
 @container haccp (min-width: 760px) {
   .haccp-reperes { order: 15; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .haccp-attente { order: 16; }
   /* La carte « Maintenant » à côté des tuiles, en deux colonnes, qui prennent
      sa hauteur : la première tuile reste visible sans défiler à la tablette. */
   .haccp-haut { grid-template-columns: repeat(2, minmax(0, 1fr)); }

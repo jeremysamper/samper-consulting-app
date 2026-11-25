@@ -75,7 +75,7 @@ export default function RegistreHaccp({
         {sel.active && (
           <SelectionToolbar
             count={sel.count}
-            total={duJour.length}
+            total={selectionnables.length}
             allSelected={sel.count > 0 && sel.count === selectionnables.length}
             onToggleAll={() => (sel.count === selectionnables.length ? sel.clear() : sel.selectAll(selectionnables.map(r => r.id)))}
             onDelete={onSupprimerSelection}
