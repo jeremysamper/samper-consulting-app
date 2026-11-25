@@ -873,10 +873,11 @@
    les données. */
 .fv-vignette {
   padding: 10px 10px 14px;
-  border-radius: var(--r-lg);
+  border-radius: calc(var(--r) + 10px);
   background: var(--zone);
   box-shadow: inset 0 0 0 1px var(--rule-soft), var(--sh);
 }
+.fv-vignette .fv-ouvrir { border-radius: var(--r); }
 .fv-vignette .fv-cadre-photo {
   border-radius: var(--r);
   box-shadow: none;
@@ -886,7 +887,7 @@
 .fv-fiche:not(:has(.fv-fiche-cols--salle)) section.fv-bloc,
 .fv-fiche:not(:has(.fv-fiche-cols--salle)) .fv-bandeau-allergenes {
   padding: 18px 20px;
-  border-radius: var(--r-lg);
+  border-radius: var(--r-xl);
   background: var(--zone);
   box-shadow: inset 0 0 0 1px var(--rule-soft), var(--sh);
 }
@@ -894,4 +895,5 @@
 @container fvfiche (max-width: 559.98px) {
   .fv-fiche:not(:has(.fv-fiche-cols--salle)) section.fv-bloc,
   .fv-fiche:not(:has(.fv-fiche-cols--salle)) .fv-bandeau-allergenes { padding: 14px; }
+  .fv-fiche:not(:has(.fv-fiche-cols--salle)) .fv-bandeau-allergenes { border-radius: calc(var(--r) + 14px); }
 }

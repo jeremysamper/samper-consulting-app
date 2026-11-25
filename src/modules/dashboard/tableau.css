@@ -117,7 +117,7 @@
    sombre. */
 .tdb-panneau {
   background: var(--zone);
-  border-radius: var(--r-lg);
+  border-radius: calc(var(--r) + 14px);
   box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
   padding: 14px 14px 10px;
   min-width: 0;
@@ -259,7 +259,7 @@
   gap: 8px;
   margin-bottom: 8px;
   padding: 8px;
-  border-radius: var(--r-lg);
+  border-radius: calc(var(--r) + 8px);
   background: var(--zone);
   box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
 }

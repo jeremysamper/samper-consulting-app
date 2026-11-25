@@ -78,11 +78,18 @@
      fenêtres et cartes de mise en avant. La pilule (--r-full) est la forme
      des boutons, des onglets et des étiquettes. Ils ne changent pas avec le
      thème ; une vue capturée en PDF garde les 8 px d'avant (règle
-     .pdf-render-root, en fin de feuille). */
+     .pdf-render-root, en fin de feuille).
+     Les rayons sont liés : le rayon d'un contenant vaut le rayon de ce qu'il
+     contient plus son retrait. --r est le rayon intérieur, --retrait-carte et
+     --retrait-fenetre les retraits des cartes et des fenêtres ; --r-lg et
+     --r-xl s'en déduisent et ne s'écrivent jamais en pixels. Un contenant au
+     retrait différent écrit calc(var(--r) + son retrait). */
+  --retrait-carte: 16px;
+  --retrait-fenetre: 20px;
   --r-sm: 10px;
-  --r: 14px;
-  --r-lg: 20px;
-  --r-xl: 24px;
+  --r: 10px;
+  --r-lg: calc(var(--r) + var(--retrait-carte));
+  --r-xl: calc(var(--r) + var(--retrait-fenetre));
   --r-full: 999px;
 
   /* ─── Échelle d'élévation (teintée pétrole-ardoise, jamais noir pur) ──
@@ -2564,7 +2571,7 @@ html[data-theme="dark"] button:not(:disabled):active {
 /* Carte de repère (CarteRepere, src/components/ui/index.jsx) : son retrait
    est ici, pas en style inline, pour qu'un écran puisse le régler par largeur
    de conteneur. En bouton, elle n'a ni bord ni retrait d'agent utilisateur. */
-.ui-repere { padding: 14px 16px; }
+.ui-repere { padding: var(--retrait-carte); }
 button.ui-repere { border: 0; }
 .ui-repere:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 /* Bouton rond à flèche d'une carte (BoutonFleche) : l'anneau de focus se pose

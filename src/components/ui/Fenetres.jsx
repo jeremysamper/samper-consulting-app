@@ -146,7 +146,7 @@ export const st = {
   voile: { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 },
   enSection: { display: 'flex', flexDirection: 'column', gap: 12, width: '100%', minWidth: 0, boxSizing: 'border-box' },
   // Une fenêtre flotte : c'est elle, avec les menus, qui porte une ombre.
-  fenetre: { position: 'relative', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--sh-lg)', padding: '20px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12, boxSizing: 'border-box' },
+  fenetre: { position: 'relative', maxHeight: '88vh', overflowY: 'auto', background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--sh-lg)', padding: 'var(--retrait-fenetre)', display: 'flex', flexDirection: 'column', gap: 12, boxSizing: 'border-box' },
   fermer: { position: 'absolute', top: 6, right: 8, width: 40, height: 40, border: 'none', background: 'transparent', color: 'var(--text2)', fontSize: 24, cursor: 'pointer', lineHeight: 1 },
   titre: { fontSize: 'var(--t3)', fontWeight: 'var(--g3)', paddingRight: 32, color: 'var(--text)', fontFamily: 'var(--font)' },
   sousTitre: { fontSize: 13, color: 'var(--text2)', marginTop: -6 },

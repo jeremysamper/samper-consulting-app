@@ -32,7 +32,7 @@ export function Card({ children, style = {}, onClick }) {
         borderColor: 'var(--rule-soft)',
         borderRadius: 'var(--r-lg)',
         boxShadow: 'var(--sh)',
-        padding: '16px 18px',
+        padding: 'var(--retrait-carte)',
         cursor: onClick ? 'pointer' : 'default',
         ...style
       }}
@@ -318,7 +318,7 @@ const TONS_AVANT = {
 export function carteAvantStyles(ton = 'nuit') {
   const t = TONS_AVANT[ton] || TONS_AVANT.nuit;
   return {
-    carte: { display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0, padding: '18px 20px', borderRadius: 'var(--r-xl)', background: t.fond, color: t.texte },
+    carte: { display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0, padding: 'var(--retrait-fenetre)', borderRadius: 'var(--r-xl)', background: t.fond, color: t.texte },
     titre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: t.texte, fontFamily: 'var(--font)' },
     libelle: { fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: t.doux },
     chiffre: { fontFamily: 'var(--font-num)', fontSize: 'var(--t6)', fontWeight: 'var(--g-chiffre)', lineHeight: 1, color: t.texte },

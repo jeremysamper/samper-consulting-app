@@ -95,7 +95,7 @@
 /* Cartes blanches posées dans une zone capturée : par classe, hors capture. */
 .haccp-carte:not(.pdf-render-root *) {
   background: var(--zone);
-  border-radius: var(--r-lg);
+  border-radius: calc(var(--r) + 14px);
   box-shadow: 0 0 0 1px var(--rule-soft), var(--sh);
   padding: 14px 14px 6px;
   min-width: 0;
