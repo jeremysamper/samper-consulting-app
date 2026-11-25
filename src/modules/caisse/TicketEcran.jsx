@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft, Check, ChevronDown, ChevronUp, ConciergeBell, FlaskConical, Hourglass, LayoutGrid, Megaphone,
-  Minus, MoreHorizontal, Pencil, Plus, Search, Send, Trash2, TriangleAlert, X,
+  Minus, MoreHorizontal, Pencil, Plus, Search, Send, Trash2, TriangleAlert, UtensilsCrossed, X,
 } from 'lucide-react';
 import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
 import { BoutonActions, Fenetre, st as fen } from '../../components/ui/Fenetres.jsx';
@@ -12,6 +12,8 @@ import { makeSearchMatcher } from '../../utils/searchText.js';
 import { zurichDateHeure, zurichToday } from '../../utils/zurichTime.js';
 import * as caisse from '../../services/caisseService.js';
 import FicheLigne from './FicheLigne.jsx';
+import FeuilleFormule from './FeuilleFormule.jsx';
+import { formulesProposees } from './formules.js';
 import QuiRetire from './QuiRetire.jsx';
 import Interrupteur from '../roles/Interrupteur.jsx';
 import { reperesRetrait } from './retrait.js';
@@ -95,17 +97,25 @@ import { libelleAvecFormat, ligneNueDuFormat, optionFormat, prixAffiche } from '
 // format », puis la ligne s'écrit au prix du format, avec l'option format et le
 // libellé « Nom, 1 dl » (la base relit le prix du format). Une boisson à un
 // seul format part sans question. La règle « même plat = +1 » compte le format.
+//
+// Lot 09 du panel (25.11.2026) : formules à prix fixe. Quand la maison en
+// propose, un onglet « Formules » suit « Tout » dans le rail et un bloc
+// « Formules » ouvre l'onglet « Tout » (sans rail, le bloc reste en tête). Le
+// toucher d'une case ouvre FeuilleFormule ; la base pose une ligne par produit
+// (caisse_poser_formule). Une ligne de formule ne reçoit jamais de +1, son
+// retrait rapide ouvre sa fiche, et sa fiche retire toute la formule.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 const LARGEUR_TABLETTE = 760;
 const ID_PLUS = '_plus';
+const ID_FORMULES = '_formules';
 const LIBELLES_QUI = { reservation: 'Réservation', passage: 'Client de passage', compte: 'Compte client' };
 const SERVICES = [['entrees', 'Entrée', 'Entrées'], ['plats', 'Plat', 'Plats'], ['desserts', 'Dessert', 'Desserts']];
 const DUREE_SORTIE_FEUILLE = 180;
 
 export default function TicketEcran({
-  ticket, articles, allergenesFiches = null, boutons = {}, categories = [], reglages = REGLAGES_DEFAUT,
+  ticket, articles, formules = [], allergenesFiches = null, boutons = {}, categories = [], reglages = REGLAGES_DEFAUT,
   peutHabiller = false, onBoutonsChange,
   ticketsMemeTable, onDeplacer, onFusionne, onClos, onEncaissementEnvoye, reload,
   cartes = [], reservation = null, reservations = [], onReservationsChange,
@@ -155,6 +165,8 @@ export default function TicketEcran({
   // Boisson touchée qui se vend en plusieurs formats : la fenêtre « Choisir le
   // format » est ouverte pour elle.
   const [choixFormat, setChoixFormat] = React.useState(null);
+  // Formule dont la feuille de choix est ouverte (lot 09).
+  const [feuilleFormule, setFeuilleFormule] = React.useState(null);
   // Rupture (L2) : produit dont la feuille de l'appui long est ouverte, liste
   // des produits en rupture, et écriture en cours (verrou immédiat en ref).
   const [produitAppui, setProduitAppui] = React.useState(null);
@@ -312,7 +324,11 @@ export default function TicketEcran({
   // « Tout » par défaut : chaque produit reste à un tap, comme avant les
   // onglets. Une maison peut régler l'ouverture sur sa première catégorie.
   const ongletDefaut = reglages.ouverture === 'categorie' ? (rangement.onglets[0]?.id || ID_TOUT) : ID_TOUT;
+  // Formules proposées (lot 09) : actives, chaque étape réduite aux produits
+  // en vente, rupture du jour de Zurich relue à chaque rendu.
+  const formulesVues = formulesProposees({ formules, articles, boutons, jourZurich: zurichToday() });
   const onglet = ongletChoisi === ID_TOUT || rangement.onglets.some((c) => c.id === ongletChoisi)
+    || (ongletChoisi === ID_FORMULES && formulesVues.length > 0)
     ? ongletChoisi
     : ongletDefaut;
   const match = makeSearchMatcher(recherche);
@@ -373,8 +389,9 @@ export default function TicketEcran({
     // couvert). Le libellé compte aussi : un supplément choisi (« Supplément
     // alcool (Kirsch) ») ne reçoit pas le supplément nu touché dans la grille.
     const libelle = libelleAvecFormat(plat.nom, format?.libelle);
+    // Une ligne de formule (lot 09) ne reçoit jamais de +1.
     const existante = lignesConnues().find((l) =>
-      l.statut === 'en_attente' && l.plat_id === plat.id && l.suite === mode
+      l.statut === 'en_attente' && l.plat_id === plat.id && l.suite === mode && !l.formule_groupe
       && l.libelle === libelle && ligneNueDuFormat(l, format));
     const { data, error } = existante
       ? await caisse.majLigne(existante.id, { quantite: Number(existante.quantite) + 1 })
@@ -424,7 +441,7 @@ export default function TicketEcran({
     if (!ficheLigne) return;
     const libelle = libelleSupplement(s.nom, choix);
     const existante = lignes.find((l) =>
-      l.statut === 'en_attente' && l.plat_id === s.platId && l.suite === ficheLigne.suite
+      l.statut === 'en_attente' && l.plat_id === s.platId && l.suite === ficheLigne.suite && !l.formule_groupe
       && l.libelle === libelle && !l.note && !(l.options || []).length);
     const { error } = existante
       ? await caisse.majLigne(existante.id, { quantite: Number(existante.quantite) + 1 })
@@ -450,6 +467,8 @@ export default function TicketEcran({
   // (une ligne annoncée reste modifiable, la base met son item à jour).
   async function retirerUn(l) {
     if (l.statut !== 'en_attente' || verrouRetrait.current.has(l.id)) return;
+    // Une ligne de formule se retire avec sa formule, depuis sa fiche.
+    if (l.formule_groupe) { setFicheLigneId(l.id); return; }
     verrouRetrait.current.add(l.id);
     try {
       const q = Number(l.quantite);
@@ -461,6 +480,34 @@ export default function TicketEcran({
       await reload();
     } finally {
       verrouRetrait.current.delete(l.id);
+    }
+  }
+
+  // Formules (lot 09) : la base pose les lignes et répartit le prix ; l'écran
+  // n'envoie que des identifiants. Rend vrai quand la formule est posée.
+  async function poserLaFormule(f, choix, groupe) {
+    const { error } = await caisse.poserFormule({ ticketId: ticket.id, formuleId: f.id, choix, groupe });
+    if (erreur(error)) return false;
+    notify('Formule ajoutée au ticket.', 'success');
+    await reload();
+    return true;
+  }
+
+  const verrouRetraitFormule = React.useRef(false);
+  async function retirerLaFormule() {
+    const groupe = ficheLigne?.formule_groupe;
+    if (!groupe || verrouRetraitFormule.current) return;
+    if (!window.confirm(`Retirer la formule « ${ficheLigne.formule_nom} » ? Toutes ses lignes quittent le ticket.`)) return;
+    verrouRetraitFormule.current = true;
+    try {
+      const { error } = await caisse.retirerFormule({ ticketId: ticket.id, groupe });
+      if (erreur(error)) return;
+      lignes.filter((x) => x.formule_groupe === groupe).forEach((x) => ecrites.current.delete(x.id));
+      setFicheLigneId(null);
+      notify('Formule retirée du ticket.', 'success');
+      await reload();
+    } finally {
+      verrouRetraitFormule.current = false;
     }
   }
 
@@ -678,6 +725,48 @@ export default function TicketEcran({
           {rupture
             ? <span style={st.caseRuptureMot} data-cadre="" data-caisse-rupture-mot="">Rupture</span>
             : prixCase(a)}
+        </span>
+      </button>
+    );
+  }
+
+  // ── Une case de formule (lot 09) : le nom, le prix, sans photo. Une formule
+  // dont une étape n'a plus de produit vendable est grisée comme une rupture.
+  // En mode édition des cases, le toucher ne fait rien : une formule se
+  // modifie dans les réglages. ──
+  function caseFormule(f) {
+    return (
+      <button
+        key={f.id}
+        type="button"
+        className="caisse-case"
+        data-cadre=""
+        data-formule={f.id}
+        data-rupture={f.indisponible ? '' : undefined}
+        aria-disabled={f.indisponible || editionBoutons || undefined}
+        title={f.indisponible ? 'Indisponible aujourd\'hui' : undefined}
+        style={{ ...st.case, ...(f.indisponible ? st.caseRupture : null) }}
+        onClick={() => {
+          if (editionBoutons) return;
+          if (f.indisponible) {
+            notify("Cette formule n'est pas disponible : une de ses étapes n'a plus de produit en vente aujourd'hui.", 'info');
+            return;
+          }
+          setFeuilleFormule(f);
+        }}
+      >
+        <span style={{ ...st.caseVisuel, background: 'var(--piste)', ...(f.indisponible ? st.caseVisuelRupture : null) }}>
+          <UtensilsCrossed size={dense ? 24 : 30} strokeWidth={1.5} aria-hidden="true" />
+        </span>
+        <span style={st.caseTexte}>
+          <span style={{ ...st.caseNom, ...(f.indisponible ? st.caseNomRupture : null) }} data-no-translate>{f.nom}</span>
+          {f.indisponible
+            ? <span style={st.caseRuptureMot} data-cadre="" data-caisse-rupture-mot="">Indisponible</span>
+            : (
+              <span style={st.casePrix} data-caisse-prix="">
+                <span data-no-translate>{chf(f.prix)}</span>
+              </span>
+            )}
         </span>
       </button>
     );
@@ -903,6 +992,11 @@ export default function TicketEcran({
                         <span style={st.ligneQte}>{q}</span>
                         <span style={st.ligneCorps}>
                           <span style={st.ligneNom} data-no-translate>{l.libelle}</span>
+                          {l.formule_groupe && (
+                            <span style={st.ligneNote} data-ligne-formule="">
+                              <span data-no-translate>{l.formule_nom}</span>
+                            </span>
+                          )}
                           {params && <span style={st.ligneNote} data-no-translate>{params}</span>}
                           {/* Remise ou offert posés par un responsable (v7). */}
                           {l.offert && <span style={st.ligneNote} data-ligne-offerte="">Offert</span>}
@@ -943,8 +1037,8 @@ export default function TicketEcran({
                           type="button"
                           style={{ ...st.ligneRetrait, ...(q > 1 ? null : st.ligneRetraitSupprimer) }}
                           onClick={() => retirerUn(l)}
-                          aria-label={q > 1 ? 'Retirer un' : 'Supprimer la ligne'}
-                          title={q > 1 ? 'Retirer un' : 'Supprimer la ligne'}
+                          aria-label={l.formule_groupe ? 'Retirer la formule' : (q > 1 ? 'Retirer un' : 'Supprimer la ligne')}
+                          title={l.formule_groupe ? 'Retirer la formule' : (q > 1 ? 'Retirer un' : 'Supprimer la ligne')}
                           data-ligne-retrait=""
                         >
                           {q > 1
@@ -978,6 +1072,7 @@ export default function TicketEcran({
   // ── Le rail des catégories ──
   const ongletsRail = rangement.onglets.length > 1 ? [
     { id: ID_TOUT, nom: 'Tout', Icone: LayoutGrid, donnee: false },
+    ...(formulesVues.length ? [{ id: ID_FORMULES, nom: 'Formules', Icone: UtensilsCrossed, donnee: false }] : []),
     ...rangement.onglets.map((c) => ({
       id: c.id, nom: c.nom, donnee: true,
       Icone: (pictoParId(c.picto) || pictoParId(pictoCategorieDefaut(c.nom)))?.Icone || LayoutGrid,
@@ -1018,6 +1113,15 @@ export default function TicketEcran({
             <span style={st.num}>{ruptures.length}</span> <span>{libelleCompteRupture(ruptures.length)}</span>
           </span>
         </button>
+      )}
+      {/* Formules (lot 09) : en tête de « Tout », seules dans leur onglet,
+          et toujours en tête quand la maison n'a pas de rail. */}
+      {!enRecherche && formulesVues.length > 0
+        && (onglet === ID_TOUT || onglet === ID_FORMULES || ongletsRail.length === 0) && (
+        <section style={st.sectionGrille} data-caisse-formules="">
+          <div style={st.categorie}>Formules</div>
+          <div style={styleGrille}>{formulesVues.map(caseFormule)}</div>
+        </section>
       )}
       {enRecherche ? (
         <div style={styleGrille}>{trouves.map(({ a, c }) => caseProduit(a, c))}</div>
@@ -1298,6 +1402,16 @@ export default function TicketEcran({
           onChange={majFicheLigne}
           onSupprimer={supprimerFicheLigne}
           onClose={() => setFicheLigneId(null)}
+          formule={ficheLigne.formule_groupe ? { nom: ficheLigne.formule_nom } : null}
+          onRetirerFormule={retirerLaFormule}
+        />
+      )}
+      {feuilleFormule && (
+        <FeuilleFormule
+          formule={formulesVues.find((f) => f.id === feuilleFormule.id) || feuilleFormule}
+          conflitsDe={conflitsDe}
+          onPoser={(choix, groupe) => poserLaFormule(feuilleFormule, choix, groupe)}
+          onClose={() => setFeuilleFormule(null)}
         />
       )}
       {/* Encaissement (v7) : la feuille prépare, la base encaisse et numérote. */}

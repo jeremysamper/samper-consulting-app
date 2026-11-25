@@ -45,7 +45,8 @@ const CLE_ROLE = PREFIXE + 'role';
 // payés « Chambre » (l'un porté sur une note, l'autre à porter).
 // v16 (lot 06 du panel, 25.11.2026) : sources de la prévision des couverts
 // (pension allumée) et un séjour en demi-pension relié à une réservation.
-const VERSION_BASE = 'v16-' + aujourdhui();
+// v17 (lot 09 du panel, 25.11.2026) : une « Formule midi » à trois étapes.
+const VERSION_BASE = 'v17-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.
@@ -160,7 +161,9 @@ const DEFAUTS = {
   documents: { roles_visibles: null },
   private_messages: { read_at: null, sender_id: () => sessionUid },
   caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid, retrait_nom: null, retrait_heure: null, retrait_numero: null },
-  caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false },
+  caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false, formule_id: null, formule_groupe: null, formule_nom: null },
+  // Lot 09 du panel (migration 20261125_panel_lot09_caisse_formules).
+  caisse_formules: { actif: true, archivee: false, ordre: 0, created_by: () => sessionUid },
   inventaires: { statut: 'en cours', valeur_totale: 0, lignes: [], nom: 'Général' },
   absences: { motif: 'conge', statut: 'acceptee', created_by: () => sessionUid },
   journal_activite: {},
@@ -472,6 +475,13 @@ function contexte() {
       const avant = { ...ligne };
       Object.assign(ligne, valeurs);
       diffuser({ type: 'UPDATE', table, record: { ...ligne }, old_record: avant });
+    },
+    // Lot 09 du panel : retrait d'une formule (caisse_retirer_formule).
+    supprimer(table, ligne) {
+      const i = (db[table] || []).indexOf(ligne);
+      if (i < 0) return;
+      db[table].splice(i, 1);
+      diffuser({ type: 'DELETE', table, record: null, old_record: { ...ligne } });
     },
   };
 }

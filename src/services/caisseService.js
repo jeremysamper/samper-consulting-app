@@ -114,6 +114,7 @@ const MESSAGES_RPC = {
   "caisse: le mode d'une etape va de 1 a 9": "Le mode d'envoi d'une étape n'est pas valable.",
   'caisse: une etape propose de 1 a 40 produits': 'Une étape propose de 1 à 40 produits.',
   "caisse: produit d'etape illisible": "Un produit de l'étape est illisible. Cochez-le de nouveau.",
+  'caisse: formule partagee entre deux tickets': 'Cette formule est répartie sur deux tickets. Réunissez les tickets avant de la retirer.',
 };
 
 // v9 : les refus qui parlent d'un terminal de paiement sont dits par

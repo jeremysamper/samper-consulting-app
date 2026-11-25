@@ -3,6 +3,7 @@
 // hors production rend une erreur claire au lieu d'un faux succès.
 import { uuid } from './postgrest.js';
 import { planEnLigne } from '../reservation/choixTable.js';
+import { repartirFormule } from '../modules/caisse/formules.js';
 
 const heureZurich = () => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
 const jourZurich = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -473,6 +474,55 @@ const RPC = {
     if (b) ctx.maj('caisse_boutons', b, { rupture_le: jour, updated_at: maintenant() });
     else ctx.inserer('caisse_boutons', { etablissement_id: a.p_etablissement_id, plat_id: a.p_plat_id, rupture_le: jour });
     return jour;
+  },
+  // Formules à prix fixe (lot 09) : mêmes refus que la vraie fonction, et
+  // la même répartition du prix (repartirFormule, D3). La démo ne rejoue pas
+  // les déclencheurs : c'est l'écran qui y tient les règles de D9 (D18).
+  caisse_poser_formule(ctx, a) {
+    if (!ctx.uid) throw new ErreurRpc('caisse: connexion requise', '42501');
+    const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id);
+    if (!t) throw new ErreurRpc('caisse: ticket introuvable');
+    if (!peutCaisseDemo(ctx)) throw new ErreurRpc('caisse: acces refuse', '42501');
+    const deja = ctx.db.caisse_lignes.filter((l) => l.formule_groupe === a.p_groupe);
+    if (deja.some((l) => l.ticket_id !== t.id)) throw new ErreurRpc('caisse: groupe de formule deja pris');
+    if (deja.length) return { groupe: a.p_groupe, lignes: deja.length, deja: true };
+    if (t.statut !== 'ouvert') throw new ErreurRpc("caisse: le ticket n'est pas ouvert");
+    const f = (ctx.db.caisse_formules || []).find((x) => x.id === a.p_formule_id && x.etablissement_id === t.etablissement_id);
+    if (!f || !f.actif || f.archivee) throw new ErreurRpc('caisse: formule indisponible');
+    const choix = Array.isArray(a.p_choix) ? a.p_choix : [];
+    if (choix.length !== f.etapes.length) throw new ErreurRpc('caisse: un produit par etape');
+    const jour = jourZurich();
+    const plats = f.etapes.map((e, i) => {
+      if (typeof choix[i] !== 'string') throw new ErreurRpc('caisse: un produit par etape');
+      if (!e.plat_ids.includes(choix[i])) throw new ErreurRpc("caisse: produit hors de l'etape");
+      const p = ctx.db.plats.find((x) => x.id === choix[i] && x.etablissement_id === t.etablissement_id);
+      if (!p || p.actif === false) throw new ErreurRpc('caisse: produit indisponible');
+      const b = ctx.db.caisse_boutons.find((x) => x.plat_id === p.id && x.etablissement_id === t.etablissement_id);
+      if (b && String(b.rupture_le || '').slice(0, 10) === jour) throw new ErreurRpc('caisse: produit en rupture');
+      return { p, suite: e.suite };
+    });
+    const parts = repartirFormule(Math.round(Number(f.prix) * 100), plats.map(({ p }) => Math.round(Number(p.prix_vente || 0) * 100)));
+    const base = Date.now();
+    plats.forEach(({ p, suite }, i) => ctx.inserer('caisse_lignes', {
+      ticket_id: t.id, plat_id: p.id, libelle: p.nom, quantite: 1, prix_unitaire: parts[i] / 100, suite,
+      formule_id: f.id, formule_groupe: a.p_groupe, formule_nom: String(f.nom).slice(0, 40),
+      created_at: new Date(base + i + 1).toISOString(),
+    }));
+    return { groupe: a.p_groupe, lignes: plats.length, total: Number(f.prix), deja: false };
+  },
+  caisse_retirer_formule(ctx, a) {
+    if (!ctx.uid) throw new ErreurRpc('caisse: connexion requise', '42501');
+    const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id);
+    if (!t) throw new ErreurRpc('caisse: ticket introuvable');
+    if (!peutCaisseDemo(ctx)) throw new ErreurRpc('caisse: acces refuse', '42501');
+    if (t.statut !== 'ouvert') throw new ErreurRpc('caisse: ticket fige, lignes comprises');
+    const groupe = ctx.db.caisse_lignes.filter((l) => l.formule_groupe === a.p_groupe);
+    if (groupe.some((l) => l.ticket_id !== t.id)) throw new ErreurRpc('caisse: formule partagee entre deux tickets');
+    if (groupe.some((l) => l.statut !== 'en_attente') && !estDirection(ctx)) {
+      throw new ErreurRpc('caisse: ligne deja envoyee (retrait par la direction seulement)');
+    }
+    groupe.forEach((l) => ctx.supprimer('caisse_lignes', l));
+    return groupe.length;
   },
   caisse_remise(ctx, a) {
     const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id);

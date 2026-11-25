@@ -35,11 +35,17 @@ export default function SectionReglagesCaisse({ user, etablissement, signaler })
   const [config, setConfig] = React.useState({});
   const [terminaux, setTerminaux] = React.useState([]);
   const [lectureTerminaux, setLectureTerminaux] = React.useState('lecture');
+  const [formules, setFormules] = React.useState([]);
+  const [lectureFormules, setLectureFormules] = React.useState('lecture');
 
   const rechargerGrille = React.useCallback(async () => {
     if (!etabId) return false;
-    const [b, c, r] = await Promise.all([caisse.listBoutons(etabId), caisse.listCategories(etabId), caisse.getReglages(etabId)]);
+    const [b, c, r, f] = await Promise.all([
+      caisse.listBoutons(etabId), caisse.listCategories(etabId), caisse.getReglages(etabId), caisse.listFormules(etabId),
+    ]);
     if (!b.error) setBoutons(b.data || {});
+    // Formules (lot 09) : une lecture en échec ne bloque pas les réglages.
+    if (f.error) setLectureFormules('echec'); else { setFormules(f.data); setLectureFormules('lue'); }
     if (!c.error) setCategories(c.data);
     if (!r.error) setConfig(r.data);
     return !b.error && !c.error && !r.error;
@@ -111,6 +117,8 @@ export default function SectionReglagesCaisse({ user, etablissement, signaler })
       terminaux={terminaux}
       lectureTerminaux={lectureTerminaux}
       onTerminauxChange={surTerminaux}
+      formules={formules}
+      lectureFormules={lectureFormules}
     />
   );
 }

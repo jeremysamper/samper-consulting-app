@@ -209,11 +209,25 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     }),
     [plats, cartesLues, formats, reglages.cartes_ids],
   );
+  // Formules à prix fixe (lot 09) : lues avec les réglages. Une lecture en
+  // échec n'empêche pas la caisse de s'ouvrir : les formules ne s'affichent
+  // pas et un message le dit une fois.
+  const [formules, setFormules] = React.useState([]);
+  const formulesEchecDit = React.useRef(false);
   const rechargerReglages = React.useCallback(async () => {
     if (!etabId) return;
-    const [c, r] = await Promise.all([caisse.listCategories(etabId), caisse.getReglages(etabId)]);
+    const [c, r, f] = await Promise.all([caisse.listCategories(etabId), caisse.getReglages(etabId), caisse.listFormules(etabId)]);
     if (!c.error) setCategories(c.data);
     if (!r.error) { setConfig(r.data); setConfigLue(true); }
+    if (f.error) {
+      setFormules([]);
+      if (!formulesEchecDit.current) {
+        formulesEchecDit.current = true;
+        notify("Les formules n'ont pas pu être lues. Les produits restent en vente un par un.", 'warning');
+      }
+    } else {
+      setFormules(f.data);
+    }
   }, [etabId]);
   const maintenant = useMaintenant();
   const telephone = useIsMobile();
@@ -1034,6 +1048,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         bandeau={bandeauTest}
         ticket={ticket}
         articles={articles}
+        formules={formules}
         allergenesFiches={allergenesFiches}
         boutons={boutons}
         categories={categories}
