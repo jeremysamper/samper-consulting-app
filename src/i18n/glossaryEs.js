@@ -7166,7 +7166,6 @@ export const UI_GLOSSARY_ES = {
   "Les formules n'ont pas pu être lues. Les produits restent en vente un par un.": "No se pudieron leer los menús. Los productos siguen a la venta uno por uno.",
   "Indisponible aujourd'hui": "No disponible hoy",
   "Retirer la formule": "Quitar el menú",
-  "Dans la formule": "En el menú",
   "Attention aux allergènes de la table :": "Atención a los alérgenos de la mesa:",
   "Choisissez un produit par étape.": "Elija un producto por etapa.",
   "Ajouter au ticket": "Añadir al ticket",

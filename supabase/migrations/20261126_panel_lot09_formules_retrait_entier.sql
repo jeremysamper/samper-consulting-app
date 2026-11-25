@@ -40,6 +40,9 @@ begin
     raise exception 'caisse: ticket fige, lignes comprises';
   end if;
   perform pg_advisory_xact_lock(hashtextextended(p_groupe::text, 0));
+  -- Les lignes du groupe sont verrouillées avant le contrôle : un changement
+  -- de ticket concurrent attend la fin du retrait, ou s'est déjà vu ici.
+  perform 1 from public.caisse_lignes where formule_groupe = p_groupe for update;
   if exists (select 1 from public.caisse_lignes
               where formule_groupe = p_groupe and ticket_id <> p_ticket_id) then
     raise exception 'caisse: formule partagee entre deux tickets';

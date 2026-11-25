@@ -7116,7 +7116,6 @@ export const UI_GLOSSARY_DE = {
   "Les formules n'ont pas pu être lues. Les produits restent en vente un par un.": "Die Menüs konnten nicht gelesen werden. Die Produkte bleiben einzeln im Verkauf.",
   "Indisponible aujourd'hui": "Heute nicht verfügbar",
   "Retirer la formule": "Menü entfernen",
-  "Dans la formule": "Im Menü",
   "Attention aux allergènes de la table :": "Achtung, Allergene des Tisches:",
   "Choisissez un produit par étape.": "Wählen Sie ein Produkt pro Gang.",
   "Ajouter au ticket": "Zum Bon hinzufügen",

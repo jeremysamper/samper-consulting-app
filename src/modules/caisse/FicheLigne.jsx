@@ -80,7 +80,7 @@ export default function FicheLigne({
             <div style={st.sousTitre}><span>{chf(Number(ligne.quantite) * Number(ligne.prix_unitaire))}</span> <span>CHF</span></div>
             {formule && (
               <div style={st.formule} data-fiche-formule="">
-                <span>Dans la formule</span> <span data-no-translate>{formule.nom}</span>
+                <span data-no-translate>{formule.nom}</span>
               </div>
             )}
           </div>

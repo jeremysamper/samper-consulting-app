@@ -7185,7 +7185,6 @@ export const UI_GLOSSARY = {
   "Les formules n'ont pas pu être lues. Les produits restent en vente un par un.": "The set menus could not be read. Items remain on sale one by one.",
   "Indisponible aujourd'hui": "Unavailable today",
   "Retirer la formule": "Remove the set menu",
-  "Dans la formule": "In the set menu",
   "Attention aux allergènes de la table :": "Watch the table's allergens:",
   "Choisissez un produit par étape.": "Choose one item per course.",
   "Ajouter au ticket": "Add to the ticket",

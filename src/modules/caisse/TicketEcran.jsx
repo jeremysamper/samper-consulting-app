@@ -2,7 +2,7 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft, Check, ChevronDown, ChevronUp, ConciergeBell, FlaskConical, Hourglass, LayoutGrid, Megaphone,
-  Minus, MoreHorizontal, Pencil, Plus, Search, Send, Trash2, TriangleAlert, UtensilsCrossed, X,
+  Minus, MoreHorizontal, Pencil, Plus, Search, Send, Trash2, TriangleAlert, Layers, X,
 } from 'lucide-react';
 import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
 import { BoutonActions, Fenetre, st as fen } from '../../components/ui/Fenetres.jsx';
@@ -756,7 +756,7 @@ export default function TicketEcran({
         }}
       >
         <span style={{ ...st.caseVisuel, background: 'var(--piste)', ...(f.indisponible ? st.caseVisuelRupture : null) }}>
-          <UtensilsCrossed size={dense ? 24 : 30} strokeWidth={1.5} aria-hidden="true" />
+          <Layers size={dense ? 24 : 30} strokeWidth={1.5} aria-hidden="true" />
         </span>
         <span style={st.caseTexte}>
           <span style={{ ...st.caseNom, ...(f.indisponible ? st.caseNomRupture : null) }} data-no-translate>{f.nom}</span>
@@ -1072,7 +1072,7 @@ export default function TicketEcran({
   // ── Le rail des catégories ──
   const ongletsRail = rangement.onglets.length > 1 ? [
     { id: ID_TOUT, nom: 'Tout', Icone: LayoutGrid, donnee: false },
-    ...(formulesVues.length ? [{ id: ID_FORMULES, nom: 'Formules', Icone: UtensilsCrossed, donnee: false }] : []),
+    ...(formulesVues.length ? [{ id: ID_FORMULES, nom: 'Formules', Icone: Layers, donnee: false }] : []),
     ...rangement.onglets.map((c) => ({
       id: c.id, nom: c.nom, donnee: true,
       Icone: (pictoParId(c.picto) || pictoParId(pictoCategorieDefaut(c.nom)))?.Icone || LayoutGrid,
