@@ -1095,7 +1095,8 @@ html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45;
   padding: 3px 3px 3px 0;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--r);
+  /* Une piste qui serre des pilules est une pilule. */
+  border-radius: var(--r-full);
   overflow-x: auto;
   max-width: 100%;
   /* Permet à la barre de rétrécir (donc de coulisser) même imbriquée dans un

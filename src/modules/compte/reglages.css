@@ -12,6 +12,8 @@
    repliable des modules (.search-toggle), pas sur le champ qu'elle contient. */
 [data-reglages-recherche]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; display: none; }
 input[data-reglages-recherche]:focus { box-shadow: none; }
+/* Le champ suit la pilule qui le serre. */
+.reglages-recherche input[data-reglages-recherche]:not(.pdf-render-root *):not([type="hidden"]):not([type="file"]) { border-radius: var(--r-full) !important; }
 .reglages-recherche:focus-within { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--focus-ring); }
 
 .reglages-section [data-cadre]:not(button):not([role="button"]):not(.pdf-render-root *) { box-shadow: none !important; }
