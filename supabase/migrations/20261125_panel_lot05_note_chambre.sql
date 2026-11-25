@@ -55,10 +55,14 @@ begin
     end if;
   elsif tg_op = 'UPDATE' then
     if old.origine is not null then
-      raise exception 'note: une ligne venue de la Caisse ne se modifie pas'
-        using errcode = '42501';
-    end if;
-    if new.origine is not null then
+      -- Seul created_by peut changer : le « on delete set null » de la
+      -- suppression d'un profil passe par un UPDATE (hotel_h4_coherence, qui
+      -- passe avant, garde created_by immuable pour un appel de l'API).
+      if (to_jsonb(new) - 'created_by') is distinct from (to_jsonb(old) - 'created_by') then
+        raise exception 'note: une ligne venue de la Caisse ne se modifie pas'
+          using errcode = '42501';
+      end if;
+    elsif new.origine is not null then
       raise exception 'note: l''origine d''une ligne ne se pose pas après coup'
         using errcode = '42501';
     end if;
@@ -92,6 +96,7 @@ declare
   v_exist   record;
   v_ligne   uuid;
   v_jour    date;
+  v_contrainte text;
 begin
   if v_uid is null then
     raise exception 'note: connexion requise' using errcode = '42501';
@@ -118,6 +123,19 @@ begin
              and coalesce(public.user_peut_gerer('hebergement', array['consultant', 'patron', 'receptionniste']), false);
   if not (v_caisse or v_hotel) then
     raise exception 'note: accès refusé' using errcode = '42501';
+  end if;
+
+  -- Rejeu : un ticket déjà porté sur ce séjour rend sa ligne, quel que soit
+  -- l'état du ticket ou du séjour depuis (double toucher tardif, départ).
+  select l.id, l.sejour_id, l.montant into v_exist
+    from public.sejour_lignes l
+   where l.origine = 'caisse_ticket' and l.origine_id = t.id;
+  if found then
+    if v_exist.sejour_id = p_sejour_id then
+      return jsonb_build_object('ligne_id', v_exist.id, 'sejour_id', v_exist.sejour_id,
+                                'montant', v_exist.montant, 'deja', true);
+    end if;
+    raise exception 'note: ticket déjà porté sur une autre note' using errcode = '23505';
   end if;
 
   if t.test then
@@ -154,17 +172,6 @@ begin
     raise exception 'note: aucun paiement sur la chambre' using errcode = '22023';
   end if;
 
-  select l.id, l.sejour_id, l.montant into v_exist
-    from public.sejour_lignes l
-   where l.origine = 'caisse_ticket' and l.origine_id = t.id;
-  if found then
-    if v_exist.sejour_id = p_sejour_id then
-      return jsonb_build_object('ligne_id', v_exist.id, 'sejour_id', v_exist.sejour_id,
-                                'montant', v_exist.montant, 'deja', true);
-    end if;
-    raise exception 'note: ticket déjà porté sur une autre note' using errcode = '23505';
-  end if;
-
   v_jour := coalesce(t.jour_exploitation, (t.closed_at at time zone 'Europe/Zurich')::date,
                      (now() at time zone 'Europe/Zurich')::date);
 
@@ -180,7 +187,12 @@ begin
     returning id into v_ligne;
     perform set_config('app.lot05_report', '', true);
   exception when unique_violation then
-    -- Double toucher concurrent : la ligne existe désormais.
+    -- Double toucher concurrent : la ligne existe désormais. Seul l'index du
+    -- lot est attendu ici ; toute autre unicité remonte telle quelle.
+    get stacked diagnostics v_contrainte = constraint_name;
+    if v_contrainte is distinct from 'uq_sejour_lignes_origine' then
+      raise;
+    end if;
     select l.id, l.sejour_id, l.montant into v_exist
       from public.sejour_lignes l
      where l.origine = 'caisse_ticket' and l.origine_id = t.id;
@@ -252,6 +264,9 @@ begin
          and ct.statut = 'encaisse'
          and ct.test = false
          and ct.numero is not null
+         -- jour_exploitation borne la lecture par idx_caisse_tickets_jour ;
+         -- closed_at tient la fenêtre exacte de 14 jours.
+         and ct.jour_exploitation >= (now() at time zone 'Europe/Zurich')::date - 15
          and ct.closed_at >= now() - interval '14 days'
          and not exists (
            select 1 from public.sejour_lignes l
@@ -327,9 +342,9 @@ end;
 $$;
 
 -- 5. Droits -------------------------------------------------------------------
-revoke all on function public.sejour_porter_ticket(uuid, uuid) from public, anon, service_role;
-revoke all on function public.sejour_tickets_a_porter(text) from public, anon, service_role;
-revoke all on function public.sejour_reports_verifier(uuid) from public, anon, service_role;
+revoke all on function public.sejour_porter_ticket(uuid, uuid) from public, anon, authenticated, service_role;
+revoke all on function public.sejour_tickets_a_porter(text) from public, anon, authenticated, service_role;
+revoke all on function public.sejour_reports_verifier(uuid) from public, anon, authenticated, service_role;
 grant execute on function public.sejour_porter_ticket(uuid, uuid) to authenticated;
 grant execute on function public.sejour_tickets_a_porter(text) to authenticated;
 grant execute on function public.sejour_reports_verifier(uuid) to authenticated;

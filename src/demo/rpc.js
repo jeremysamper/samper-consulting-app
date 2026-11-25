@@ -550,6 +550,11 @@ const RPC = {
     if (!t) throw new ErreurRpc('note: ticket introuvable', 'P0002');
     const hotel = peutHotelDemo(ctx);
     if (!peutCaisseDemo(ctx) && !hotel) throw new ErreurRpc('note: accès refusé', '42501');
+    const deja = ligneOrigine(ctx, 'caisse_ticket', t.id);
+    if (deja) {
+      if (deja.sejour_id === a.p_sejour_id) return { ligne_id: deja.id, sejour_id: deja.sejour_id, montant: deja.montant, deja: true };
+      throw new ErreurRpc('note: ticket déjà porté sur une autre note', '23505');
+    }
     if (t.test) throw new ErreurRpc('note: ticket de test', '22023');
     if (t.statut !== 'encaisse' || t.numero == null) throw new ErreurRpc('note: ticket non encaissé', '22023');
     if (!t.closed_at || new Date(t.closed_at).getTime() < Date.now() - 14 * 86400000) throw new ErreurRpc('note: ticket trop ancien', '22023');
@@ -559,11 +564,6 @@ const RPC = {
     if (!(s.statut === 'en_maison' || (s.statut === 'parti' && hotel && String(s.depart) >= limiteDepart))) throw new ErreurRpc('note: séjour pas en maison', '22023');
     const montant = montantChambre(ctx, t.id);
     if (!(montant > 0)) throw new ErreurRpc('note: aucun paiement sur la chambre', '22023');
-    const deja = ligneOrigine(ctx, 'caisse_ticket', t.id);
-    if (deja) {
-      if (deja.sejour_id === s.id) return { ligne_id: deja.id, sejour_id: s.id, montant: deja.montant, deja: true };
-      throw new ErreurRpc('note: ticket déjà porté sur une autre note', '23505');
-    }
     const l = ctx.inserer('sejour_lignes', {
       etablissement_id: t.etablissement_id, sejour_id: s.id, jour: t.jour_exploitation || jourZurich(), type: 'extra',
       libelle: `Restaurant, ticket n° ${numeroNote(t)}`, quantite: 1, prix_unitaire: montant, tva_taux: null,
