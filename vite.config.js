@@ -197,6 +197,18 @@ export default defineConfig({
             },
           },
           {
+            // HACCP (lot 08) : frigos, heures de relevé, contrôles et relevés.
+            // L'écran se rouvre sans réseau au sous-sol sur sa dernière
+            // lecture des sept derniers jours. Lectures seulement (GET).
+            urlPattern: /^https:\/\/[^/]+\.supabase\.co\/rest\/v1\/(haccp_zones|haccp_creneaux|haccp_ctrl_templates|haccp_releves|haccp_controls)\b/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'sb-haccp',
+              networkTimeoutSeconds: 6,
+              expiration: { maxEntries: 40, maxAgeSeconds: 7 * 24 * 60 * 60 },
+            },
+          },
+          {
             // Reste des lectures REST : filet court (micro-coupures).
             urlPattern: /^https:\/\/[^/]+\.supabase\.co\/rest\/v1\/.*/i,
             handler: 'NetworkFirst',

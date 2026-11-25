@@ -16,7 +16,7 @@
 // par quelqu'un qui se déconnecte avant d'avoir retrouvé du réseau.
 // ─────────────────────────────────────────────────────────────
 
-const ETAB_SCOPED_CACHES = ['sb-recettes', 'sb-shifts', 'sb-inventaires', 'sb-photos', 'supabase-cache'];
+const ETAB_SCOPED_CACHES = ['sb-recettes', 'sb-shifts', 'sb-inventaires', 'sb-photos', 'sb-haccp', 'supabase-cache'];
 const ALL_DATA_CACHES = [...ETAB_SCOPED_CACHES, 'sb-boot'];
 
 async function purge(names) {

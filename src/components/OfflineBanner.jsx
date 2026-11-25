@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getPendingPunchCount, subscribePendingPunches } from '../services/offline/punchSync.js';
 import { getPendingSaisieCount, subscribePendingSaisies } from '../services/offline/inventaireSync.js';
+import { getPendingReleveCount, subscribePendingReleves } from '../services/offline/haccpReleveSync.js';
 import { applyPwaUpdate, isPwaUpdateReady, subscribePwaUpdate } from '../pwa/registerPwa.js';
 import UpdatePrompt from './UpdatePrompt.jsx';
 
@@ -26,13 +27,15 @@ export default function OfflineBanner() {
   const online = useOnlineStatus();
   const pending = useSyncExternalStore(subscribePendingPunches, getPendingPunchCount, () => 0);
   const saisies = useSyncExternalStore(subscribePendingSaisies, getPendingSaisieCount, () => 0);
+  const relevesHaccp = useSyncExternalStore(subscribePendingReleves, getPendingReleveCount, () => 0);
   const updateReady = useSyncExternalStore(subscribePwaUpdate, isPwaUpdateReady, () => false);
 
   const punchLabel = `${pending} pointage${pending > 1 ? 's' : ''} en attente de synchronisation`;
   const saisieLabel = `${saisies} quantité${saisies > 1 ? 's' : ''} d'inventaire en attente de synchronisation`;
+  const releveLabel = `${relevesHaccp} relevé${relevesHaccp > 1 ? 's' : ''} HACCP en attente de synchronisation`;
   // Les deux files coexistent : on annonce ce qui attend réellement plutôt
   // qu'un compteur agrégé, qui ne dirait pas à qui s'adresser en cas de blocage.
-  const enAttente = [pending > 0 ? punchLabel : null, saisies > 0 ? saisieLabel : null].filter(Boolean).join(', ');
+  const enAttente = [pending > 0 ? punchLabel : null, saisies > 0 ? saisieLabel : null, relevesHaccp > 0 ? releveLabel : null].filter(Boolean).join(', ');
 
   if (!online) {
     return (
@@ -40,7 +43,7 @@ export default function OfflineBanner() {
         kind="warning"
         text={enAttente
           ? `Hors ligne : ${enAttente}`
-          : 'Hors ligne : pointages, comptages d\'inventaire et fiches déjà chargées restent disponibles'}
+          : 'Hors ligne : pointages, comptages d\'inventaire, relevés HACCP et fiches déjà chargées restent disponibles'}
       />
     );
   }

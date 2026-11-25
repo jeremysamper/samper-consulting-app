@@ -101,7 +101,7 @@ function Tournees({ tournees }) {
 }
 
 export default function MaintenantHaccp({
-  lecture, enEchecRelecture, derniereMaj, etat, maintenant,
+  lecture, enEchecRelecture, horsLigne = false, derniereMaj, etat, maintenant,
   canWrite, isConsultant, onReleve, onReessayer, ferme = null,
 }) {
   const [reessaiEnCours, setReessaiEnCours] = React.useState(false);
@@ -179,7 +179,10 @@ export default function MaintenantHaccp({
   let tonAJour = 'ok';
   if (aRevoir.length) { surtitreAJour = <>À revoir</>; tonAJour = 'retard'; }
   else if (enEchecRelecture) { surtitreAJour = <>Dernière mise à jour à <N>{derniereMaj || '-'}</N></>; tonAJour = 'neutre'; }
-  const coche = !aRevoir.length && !enEchecRelecture;
+  // Sans réseau, la lecture a pu venir du cache (lot 08) : pas de « Tout est
+  // à jour » ni de coche sur la dernière lecture connue.
+  else if (horsLigne) { surtitreAJour = <>Hors ligne : dernière lecture connue.</>; tonAJour = 'neutre'; }
+  const coche = !aRevoir.length && !enEchecRelecture && !horsLigne;
 
   const boutonReleve = (libelle, principal = true) => (canWrite ? (
     <button type="button" data-haccp-action="releve" data-cadre="" style={principal ? st.primaire : st.secondaire} onClick={onReleve}>{libelle}</button>

@@ -26,6 +26,7 @@ import { setNavigationHandler } from './services/navigationService.js';
 import { pushPage, replacePage, startHistory } from './services/historyNav.js';
 import { getPendingPunchCount, startPunchSync } from './services/offline/punchSync.js';
 import { startInventaireSync } from './services/offline/inventaireSync.js';
+import { startHaccpReleveSync } from './services/offline/haccpReleveSync.js';
 import { purgeAllDataCaches, purgeEtabDataCaches } from './services/offline/offlineCaches.js';
 import { clearTranslationCache } from './i18n/domTranslator.js';
 import { messageErreur } from './utils/messageErreur.js';
@@ -154,6 +155,7 @@ export default function App() {
     // Files hors-ligne : rejeu au retour du réseau + compteur global.
     startPunchSync();
     startInventaireSync();
+    startHaccpReleveSync();
   }, []);
 
   useEffect(() => {

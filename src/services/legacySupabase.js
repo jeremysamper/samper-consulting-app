@@ -2275,6 +2275,29 @@ export function installLegacySupabase() {
       if (error) throw error;
       return this.mapHaccpReleveFromDB(data);
     },
+    // Rejeu d'un relevé pris sans réseau (lot 08) : insertion si absent, clé
+    // `id`. Ne demande que le droit d'insérer, ne réécrit jamais une ligne
+    // déjà en base. Charge utile champ par champ : rien de la file (zoneNom,
+    // userId, createdAt, attempts) ne part vers la base. Rend { error }.
+    async insertHaccpReleveSiAbsent(releve) {
+      try {
+        const payload = {
+          id: releve.id,
+          etablissement_id: releve.etablissementId,
+          zone_id: releve.zoneId,
+          date: releve.date,
+          heure: releve.heure,
+          valeur: releve.valeur,
+          operateur: releve.operateur || null,
+          conforme: releve.conforme,
+          commentaire: releve.commentaire || null,
+        };
+        const { error } = await client.from('haccp_releves').upsert(payload, { onConflict: 'id', ignoreDuplicates: true });
+        return { error: error || null };
+      } catch (err) {
+        return { error: err };
+      }
+    },
     async deleteHaccpReleve(id) {
       const { error } = await client.from('haccp_releves').delete().eq('id', id);
       if (error) throw error;

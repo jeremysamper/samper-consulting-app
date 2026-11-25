@@ -45,6 +45,9 @@ import JoursCreneau from './JoursCreneau.jsx';
 import { Panneau, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { chiffresReleves } from './serieHaccp.js';
 import DossierControleFenetre from './DossierControleFenetre.jsx';
+import { fusionnerEnAttente, phraseAttente, phraseGardes } from './relevesHorsLigne.js';
+import { getPendingReleveCount, listPendingReleves, releverOnlineOrQueue, subscribePendingReleves } from '../../services/offline/haccpReleveSync.js';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -67,6 +70,17 @@ function messageReleves(n, heure, horsPlage) {
   return horsPlage > 0 ? `${base}, ${horsPlage} trop chaud ou trop froid : prévenez le chef` : base;
 }
 
+// Ligne de l'accueil quand la file de cet établissement n'est pas vide (D8).
+// Le nombre dans son propre nœud : la phrase reste une entrée du glossaire.
+function LigneAttente({ n }) {
+  const phrase = phraseAttente(n).replace(/^\d+ /, '');
+  return (
+    <p role="status" style={{ margin: '0 0 16px', fontSize: 'var(--t2)', color: 'var(--text2)', fontFamily: 'var(--font)', lineHeight: 1.4, overflowWrap: 'anywhere' }}>
+      <N>{n}</N> {phrase}
+    </p>
+  );
+}
+
 const TABLES_HACCP = ['haccp_zones', 'haccp_ctrl_templates', 'haccp_releves', 'haccp_controls', 'haccp_creneaux'];
 
 // Délai pendant lequel un « C'est fait » se rattrape par « Annuler ».
@@ -80,7 +94,16 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   const demoData = getDemoData();
   const [zones, setZones]       = React.useState([]);
   const [ctrlTpls, setCtrlTpls] = React.useState([]);
-  const [releves, setReleves]   = React.useState([]);
+  // relevesBruts : la dernière lecture du serveur plus les relevés écrits en
+  // ligne depuis. La liste affichée (releves) y ajoute la file hors ligne.
+  const [relevesBruts, setReleves] = React.useState([]);
+  const [enAttenteFile, setEnAttenteFile] = React.useState([]);
+  const [ecritsSession, setEcritsSession] = React.useState([]);
+  const releves = React.useMemo(
+    () => fusionnerEnAttente(relevesBruts, enAttenteFile, etabId, ecritsSession),
+    [relevesBruts, enAttenteFile, etabId, ecritsSession],
+  );
+  const enLigne = useOnlineStatus();
   const [controls, setControls] = React.useState([]);
   const [creneaux, setCreneaux] = React.useState([]);
 
@@ -150,6 +173,8 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   const [brouillon, setBrouillon] = React.useState({});
   const [etatLignes, setEtatLignes] = React.useState({});
   const [guideEnCours, setGuideEnCours] = React.useState(false);
+  // Fenêtre « Nouveau relevé » : un second appui pendant l'écriture est ignoré.
+  const [releveEnCours, setReleveEnCours] = React.useState(false);
   // Jour et tournée du brouillon : il ne vaut que pour eux. Rouvert sur une
   // autre tournée ou un autre jour, le relevé repart vide (un chiffre du matin
   // ne repart jamais avec l'heure du soir).
@@ -293,6 +318,36 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
 
   useResumeRefresh(relire);
 
+  // ─── File des relevés hors ligne (lot 08) ───
+  // Relue à chaque variation du compteur ; quand il baisse, des relevés sont
+  // partis : on relit le serveur. Les écrits de la session valent pour
+  // l'établissement ouvert seulement.
+  React.useEffect(() => {
+    setEcritsSession([]);
+    let actif = true;
+    let compte = getPendingReleveCount();
+    const lire = async (n) => {
+      const items = await listPendingReleves(etabId);
+      if (!actif) return;
+      setEnAttenteFile(items);
+      if (typeof n === 'number') {
+        if (n < compte && legacySB) relire();
+        compte = n;
+      }
+    };
+    lire();
+    const desabonner = subscribePendingReleves(lire);
+    return () => { actif = false; desabonner(); };
+  }, [etabId]);
+
+  // Écrit un relevé par le chemin hors ligne (pont présent seulement).
+  const ecrireReleve = async (releve, zoneNom, sansEssai = false) => {
+    const res = await releverOnlineOrQueue({ releve, userId: user?.id || null, zoneNom: zoneNom || '', sansEssai });
+    if (res.mode === 'online') setEcritsSession(prev => [res.releve, ...prev]);
+    return res;
+  };
+  const idsEnAttente = React.useMemo(() => new Set(enAttenteFile.map(e => e.id)), [enAttenteFile]);
+
   // Échap sur un écran de tâche ramène à l'accueil (useEcranModule), sauf sous
   // une fenêtre du module (relevé, contrôle, export, zone, étiquette maison,
   // photo) : ce ne sont pas des Fenetre, on les reconnaît à leur voile fixe
@@ -394,6 +449,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
     .pop() || null;
 
   const submitReleve = async () => {
+    if (releveEnCours) return;
     if (!formRel.valeur || !formRel.heure) { alertLegacy('Remplissez tous les champs obligatoires.'); return; }
     if (!formRel.zoneId) { alertLegacy('Choisissez un frigo ou appareil.'); return; }
     const zone = zones.find(z=>z.id===formRel.zoneId);
@@ -409,10 +465,13 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
       commentaire: formRel.commentaire || '',
     };
     if (legacySB) {
+      setReleveEnCours(true);
       try {
-        const saved = await legacySB.db.upsertHaccpReleve(newReleve);
-        setReleves(prev => [saved, ...prev]);
+        const res = await ecrireReleve(newReleve, zone?.nom);
+        if (res.mode === 'online') setReleves(prev => [res.releve, ...prev]);
+        else notifyLegacy(phraseGardes(1, newReleve.heure, conforme ? 0 : 1), conforme ? 'info' : 'warning');
       } catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
+      finally { setReleveEnCours(false); }
     } else {
       setReleves([{ id: 'r' + Date.now(), ...newReleve }, ...releves]);
     }
@@ -609,13 +668,14 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   };
 
   const deleteReleve = async (id) => {
-    if (!canManage) return;
+    if (!canManage || idsEnAttente.has(id)) return;
     if (!confirmLegacy('Supprimer ce relevé ?')) return;
     if (legacySB) {
       try { await legacySB.db.deleteHaccpReleve(id); }
       catch (err) { notifyLegacy(messageErreur(err, 'haccp'), 'error'); return; }
     }
     setReleves(prev => prev.filter(r => r.id !== id));
+    setEcritsSession(prev => prev.filter(r => r.id !== id));
   };
 
   // ─── Mode sélection : suppression et export Excel des relevés en lot ───
@@ -625,12 +685,14 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
     setBulkBusy(true);
     let ok = 0;
     for (const id of Array.from(sel.ids)) {
+      if (idsEnAttente.has(id)) continue;
       if (legacySB) {
         try { await legacySB.db.deleteHaccpReleve(id); ok += 1; }
         catch (err) { console.error('[deleteHaccpReleve]', err); }
       } else { ok += 1; }
     }
     setReleves(prev => prev.filter(r => !sel.ids.has(r.id)));
+    setEcritsSession(prev => prev.filter(r => !sel.ids.has(r.id)));
     setBulkBusy(false);
     sel.exit();
     notifyLegacy(`${ok} relevé(s) supprimé(s).`, 'success');
@@ -739,9 +801,15 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
       commentaire: conforme ? '' : commentaireActions(inlineChoix.choisies, inlineChoix.autre),
     };
     setInlineEnCours(true);
+    let gardeEnFile = false;
     try {
-      const saved = legacySB ? await legacySB.db.upsertHaccpReleve(newReleve) : { id: 'r' + Date.now(), ...newReleve };
-      setReleves(prev => [saved, ...prev]);
+      if (legacySB) {
+        const res = await ecrireReleve(newReleve, zone.nom);
+        if (res.mode === 'online') setReleves(prev => [res.releve, ...prev]);
+        else gardeEnFile = true;
+      } else {
+        setReleves(prev => [{ id: 'r' + Date.now(), ...newReleve }, ...prev]);
+      }
     } catch (err) {
       notifyLegacy(messageErreur(err, 'haccp'), 'error');
       setInlineEnCours(false);
@@ -750,7 +818,8 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
     setInlineEnCours(false);
     setInlineReleve(cur => (cur === zone.id ? null : cur));
     setInlineTempInput('');
-    notifyLegacy(messageReleves(1, heure, conforme ? 0 : 1), conforme ? 'success' : 'warning');
+    if (gardeEnFile) notifyLegacy(phraseGardes(1, heure, conforme ? 0 : 1), conforme ? 'info' : 'warning');
+    else notifyLegacy(messageReleves(1, heure, conforme ? 0 : 1), conforme ? 'success' : 'warning');
   };
 
   // ─── Relevé guidé ───
@@ -766,7 +835,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
         setBrouillon({});
         setEtatLignes({});
       } else {
-        const enregistrees = Object.keys(etatLignes).filter(id => etatLignes[id] === 'ok');
+        const enregistrees = Object.keys(etatLignes).filter(id => etatLignes[id] === 'ok' || etatLignes[id] === 'attente');
         if (enregistrees.length) {
           const sans = (prev) => { const n = { ...prev }; enregistrees.forEach(id => { delete n[id]; }); return n; };
           setBrouillon(sans);
@@ -786,7 +855,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
   // autres gardent leur chiffre ; « Réessayer » ne renvoie que celles-là.
   const enregistrerReleveGuide = async () => {
     if (guideEnCours) return;
-    const lignes = activeZones.filter(z => etatLignes[z.id] !== 'ok' && valeurLisible(brouillon[z.id]?.valeur));
+    const lignes = activeZones.filter(z => etatLignes[z.id] !== 'ok' && etatLignes[z.id] !== 'attente' && valeurLisible(brouillon[z.id]?.valeur));
     if (!lignes.length) return;
     setGuideEnCours(true);
     // Les marques « Enregistré » / « Pas enregistré » qui suivent valent pour
@@ -797,7 +866,10 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
     const crees = [];
     const ok = [];
     const echecs = [];
+    // Dès qu'une ligne part en file, les suivantes du lot y vont sans essai.
+    const attente = [];
     let horsPlage = 0;
+    let horsPlageAttente = 0;
     for (const z of lignes) {
       const l = brouillon[z.id];
       const conforme = isConforme(z, l.valeur);
@@ -807,8 +879,17 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
         commentaire: conforme ? '' : commentaireActions(l.choisies, l.autre),
       };
       try {
-        const saved = legacySB ? await legacySB.db.upsertHaccpReleve(nouveau) : { id: 'r' + Date.now() + Math.random(), ...nouveau };
-        crees.push(saved);
+        if (legacySB) {
+          const res = await ecrireReleve(nouveau, z.nom, attente.length > 0);
+          if (res.mode === 'queued') {
+            attente.push(z.id);
+            if (!conforme) horsPlageAttente += 1;
+            continue;
+          }
+          crees.push(res.releve);
+        } else {
+          crees.push({ id: 'r' + Date.now() + Math.random(), ...nouveau });
+        }
         ok.push(z.id);
         if (!conforme) horsPlage += 1;
       } catch (err) {
@@ -821,18 +902,23 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
     if (!echecs.length) {
       setBrouillon({});
       setEtatLignes({});
-      notifyLegacy(messageReleves(crees.length, heure, horsPlage), horsPlage ? 'warning' : 'success');
+      const alerte = horsPlage + horsPlageAttente > 0;
+      if (!attente.length) notifyLegacy(messageReleves(crees.length, heure, horsPlage), alerte ? 'warning' : 'success');
+      else if (!crees.length) notifyLegacy(phraseGardes(attente.length, heure, horsPlageAttente), alerte ? 'warning' : 'info');
+      else notifyLegacy(`${messageReleves(crees.length, heure, horsPlage)}. ${phraseGardes(attente.length, heure, horsPlageAttente)}`, alerte ? 'warning' : 'info');
       if (monteRef.current && ecranRef.current === 'tournee') retourAccueil();
       return;
     }
     setEtatLignes(prev => {
       const n = { ...prev };
       ok.forEach(id => { n[id] = 'ok'; });
+      attente.forEach(id => { n[id] = 'attente'; });
       echecs.forEach(id => { n[id] = 'echec'; });
       return n;
     });
     const s = (n) => (n > 1 ? 's' : '');
-    notifyLegacy(`${crees.length} relevé${s(crees.length)} enregistré${s(crees.length)}, ${echecs.length} pas enregistré${s(echecs.length)}`, 'warning');
+    const faits = crees.length + attente.length;
+    notifyLegacy(`${faits} relevé${s(faits)} enregistré${s(faits)}, ${echecs.length} pas enregistré${s(echecs.length)}`, 'warning');
   };
 
   // Le registre et les contrôles s'ouvrent depuis l'accueil sur aujourd'hui :
@@ -947,10 +1033,12 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
             )}
           </div>
           <ReperesHaccp etat={etatJour} relevesDuJour={relevesDuJour} controles={compte} dernierReleveJour={dernierReleveJour} today={todayStr} />
+          {enAttenteFile.length > 0 && <LigneAttente n={enAttenteFile.length} />}
           <div className="haccp-haut">
             <MaintenantHaccp
               lecture={lecture}
               enEchecRelecture={enEchecRelecture}
+              horsLigne={!enLigne}
               derniereMaj={derniereMaj}
               etat={etatJour}
               ferme={fermeAujourdhui}
@@ -1306,7 +1394,7 @@ const HACCP = ({ user, etablissement, ecranReglage = null }) => {
               </div>
               <div style={{display:'flex',gap:10,justifyContent:'flex-end',marginTop:16}}>
                 <button style={hs.cancelBtn} onClick={()=>setShowReleve(false)}>Annuler</button>
-                <button style={hs.saveBtn} onClick={submitReleve}>Enregistrer</button>
+                <button style={hs.saveBtn} onClick={submitReleve} disabled={releveEnCours} aria-busy={releveEnCours || undefined}>Enregistrer</button>
               </div>
             </div>
           </div>

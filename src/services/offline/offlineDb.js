@@ -16,11 +16,15 @@
 // ─────────────────────────────────────────────────────────────
 
 const DB_NAME = 'samper-offline';
-const DB_VERSION = 2;
+// 3 est réservé au lot 07 (caisse-queue, branche non fusionnée) : il devra
+// passer à 5 à sa fusion, pour qu'aucun appareil ne garde deux schémas
+// différents sous le même numéro.
+const DB_VERSION = 4;
 
 export const STORES = {
   PUNCH: 'punch-queue',
   INVENTAIRE: 'inventaire-queue',
+  HACCP_RELEVES: 'haccp-releve-queue',
 };
 
 let dbPromise = null;
@@ -56,6 +60,11 @@ function openDb() {
         // saisies : seule la dernière quantité comptée a un sens.
         if (!db.objectStoreNames.contains(STORES.INVENTAIRE)) {
           db.createObjectStore(STORES.INVENTAIRE, { keyPath: 'cle' });
+        }
+        // haccp-releve-queue : clé = id du relevé, créé sur l'appareil, qui
+        // sert aussi de clé d'idempotence au rejeu (insertion si absent).
+        if (!db.objectStoreNames.contains(STORES.HACCP_RELEVES)) {
+          db.createObjectStore(STORES.HACCP_RELEVES, { keyPath: 'id' });
         }
       };
       request.onsuccess = () => {
