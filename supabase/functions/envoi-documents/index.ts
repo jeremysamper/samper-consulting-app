@@ -135,8 +135,10 @@ async function envoyer(personne: { id: string; etablissements: string[] }, corps
   let retour: Record<string, unknown> = {};
   try { retour = await reponse.json(); } catch { retour = {}; }
   if (!reponse.ok) {
-    journal('brevo_refus', { ...trace, statut: reponse.status, code: retour.code ?? null });
     const motif = typeof retour.message === 'string' ? retour.message : `statut ${reponse.status}`;
+    // Le motif de Brevo (compte non activé, IP inconnue, expéditeur refusé)
+    // est la seule trace de la cause : il entre au journal, borné.
+    journal('brevo_refus', { ...trace, statut: reponse.status, code: retour.code ?? null, motif: motif.slice(0, 300) });
     if (reponse.status === 401) throw new Refus(502, 'Brevo refuse la clé : vérifiez BREVO_API_KEY.');
     throw new Refus(502, `Brevo a refusé l'envoi : ${motif}`);
   }
