@@ -50,8 +50,9 @@ export default function SejourGroupeForm({
     setLignes((ls) => proposerManquantes(ls, chambres, sejours, c, tarif));
   }, [lectureComplete]);
 
-  const champ = (k) => (e) => setC((p) => ({ ...p, [k]: e.target.value }));
+  const champ = (k) => (e) => { setErreur(''); setC((p) => ({ ...p, [k]: e.target.value })); };
   const changerDate = (k) => (e) => {
+    setErreur('');
     const suite = { ...c, [k]: e.target.value };
     setC(suite);
     setLignes((ls) => reproposerLignes(ls, dispo, occupes, suite, tarif));
@@ -61,13 +62,14 @@ export default function SejourGroupeForm({
     setC((p) => ({ ...p, tarifId: e.target.value, pension: t ? t.pension : p.pension }));
   };
   const changerNombre = (e) => {
+    setErreur('');
     setNombreTexte(e.target.value);
     const n = parseInt(e.target.value, 10);
     if (n >= MIN_CHAMBRES && n <= MAX_CHAMBRES) setLignes((ls) => ajusterLignes(ls, n, dispo, occupes, c, tarif));
   };
   const finirNombre = () => setNombreTexte(String(lignes.length));
-  const changerLigne = (cle, k, valeur) => setLignes((ls) => ls.map((l) => (l.cle === cle ? { ...l, [k]: valeur } : l)));
-  const proposer = () => setLignes((ls) => proposerManquantes(ls, dispo, occupes, c, tarif));
+  const changerLigne = (cle, k, valeur) => { setErreur(''); setLignes((ls) => ls.map((l) => (l.cle === cle ? { ...l, [k]: valeur } : l))); };
+  const proposer = () => { setErreur(''); setLignes((ls) => proposerManquantes(ls, dispo, occupes, c, tarif)); };
 
   const datesValides = !!c.arrivee && !!c.depart && c.depart > c.arrivee;
   const tarifsPossibles = tarifsApplicables(tarifs, { ...c, tarifId: c.tarifId || null }, null);
@@ -249,7 +251,7 @@ const g = {
     borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
   },
   derniere: { borderBottomWidth: 0 },
-  champs: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: 10, minWidth: 0 },
+  champs: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))', gap: 10, minWidth: 0 },
   haut: { minHeight: 44 },
   bordErreur: { borderColor: 'var(--danger-text)' },
 };
