@@ -8,16 +8,19 @@ import { Btn } from '../../../components/ui/index.jsx';
 import { Choix, Fenetre } from '../../../components/ui/Fenetres.jsx';
 import { notify } from '../../../components/toast/index.js';
 import { useBackLayer } from '../../../hooks/useBackLayer.js';
+import { usePlanningGroupes } from '../../../hooks/usePlanningGroupes.js';
+import { useReglagesMaison } from '../../../hooks/useReglagesMaison.js';
 import { makeSearchMatcher } from '../../../utils/searchText.js';
 import { zurichAjouterJours, zurichNowMinutes, zurichToday } from '../../../utils/zurichTime.js';
 import { computeReservationStats } from '../../previsions/rapport/computeReservationStats.js';
 import { useRapportReservations } from '../../previsions/rapport/useRapportReservations.js';
 import { chf } from '../documentsCaisse.js';
 import { jourExploitation } from '../tva.js';
+import { PHRASES_REGLE, heuresMinutes } from '../pourboires.js';
 import { LIBELLES_MOYENS, LIBELLES_SERVICES, trierPlats } from './calculRapports.js';
 import { dateCH, dateHeureCH, libelleGenre } from './exportsRapport.js';
 import {
-  construirePdf, lireRapport, telechargerCsv, telechargerCsvZip, telechargerDossier, telechargerExcel,
+  construirePdf, lirePartagePourboires, lireRapport, telechargerCsv, telechargerCsvZip, telechargerDossier, telechargerExcel,
 } from './lectureRapport.js';
 import {
   ISO_JOUR, TYPES_PERIODE_CAISSE, libellePeriodeCaisse, periodeDe, periodeJour, periodeLibre, periodeMois, periodeAnnee,
@@ -52,6 +55,9 @@ const majuscule = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 const ONGLETS = [
   { id: 'synthese', label: 'Synthèse', direction: true },
   { id: 'moyens', label: 'Paiements', direction: true },
+  // Lot 11 du panel : le partage selon la règle de la maison, jamais pour
+  // une période de service (les heures pointées ne se découpent pas ainsi).
+  { id: 'pourboires', label: 'Pourboires', direction: true, horsService: true },
   { id: 'plats', label: 'Plats vendus' },
   { id: 'services', label: 'Services' },
   { id: 'heures', label: 'Heures', direction: true },
@@ -224,6 +230,75 @@ function Moyens({ r }) {
         </Section>
       )}
     </>
+  );
+}
+
+// ── 2 bis. Pourboires (lot 11 du panel) ──
+// Le total du rapport partagé selon la règle de la maison (pourboires.js).
+// Dans les états vides (sans règle, règle à revoir, aucune heure, lecture en
+// échec), aucun montant par personne n'est affiché.
+function HeuresPointees({ h }) {
+  const { h: hh, min } = heuresMinutes(h);
+  return (
+    <>
+      <span style={st.num}>{hh}</span> <span>h</span>
+      {min ? <>{' '}<span style={st.num}>{String(min).padStart(2, '0')}</span></> : null}
+      {' '}<span>pointées</span>
+    </>
+  );
+}
+function LignePersonne({ l }) {
+  return (
+    <Rang titre={l.nom} brut detail={<HeuresPointees h={l.heures} />}>
+      <Chf v={l.montant} />
+    </Rang>
+  );
+}
+function Pourboires({ r, partage, onReessayer }) {
+  const total = r.moyens?.pourboires ?? 0;
+  const p = partage.data;
+  const pret = partage.status === 'ready' && Boolean(p);
+  const ok = pret && p.etat === 'ok';
+  const parGroupe = ok && p.mode === 'cle';
+  return (
+    <div style={st.colonne} data-caisse-pourboires={pret ? p.etat : partage.status}>
+      <div style={st.cartes}>
+        <Carte titre="Pourboires de la période" detail={r.provisoire ? <Provisoire /> : null}><Chf v={total} fort /></Carte>
+        <Carte titre="Répartis">{ok ? <Chf v={p.reparti} fort /> : <span style={st.numFort}>n/a</span>}</Carte>
+        <Carte titre="Non répartis">{ok ? <Chf v={p.nonReparti} fort /> : <span style={st.numFort}>n/a</span>}</Carte>
+      </div>
+      {r.provisoire && <p style={st.alerte}>Rapport provisoire : un jour non clôturé peut encore changer.</p>}
+      {(partage.status === 'loading' || partage.status === 'idle') && <p style={st.vide}>Chargement…</p>}
+      {partage.status === 'error' && (
+        <div style={st.erreur}>
+          <p style={{ margin: 0 }}>{partage.erreur}</p>
+          <Btn variant="ghost" onClick={onReessayer} style={st.btn44}>Réessayer</Btn>
+        </div>
+      )}
+      {pret && !ok && <p style={st.vide} data-caisse-pourboires-raison="">{p.raison}</p>}
+      {ok && <p style={st.vide}>{PHRASES_REGLE[p.mode]}</p>}
+      {parGroupe && p.groupes.map((g) => {
+        const lignes = p.lignes.filter((l) => l.groupeId === g.id);
+        return (
+          <Section key={g.id} titre={<><span data-no-translate>{g.nom}</span>{', '}<span style={st.num}>{g.part}</span> <span>%</span></>}>
+            <Rang titre="Part du groupe"><Chf v={g.montant} /></Rang>
+            {lignes.map((l) => <LignePersonne key={l.id} l={l} />)}
+            {!lignes.length && <p style={st.vide}>Personne de ce groupe n'a pointé sur la période. Sa part n'est pas répartie.</p>}
+          </Section>
+        );
+      })}
+      {ok && !parGroupe && (
+        <Section titre="Part de chacun">
+          {p.lignes.map((l) => <LignePersonne key={l.id} l={l} />)}
+        </Section>
+      )}
+      {pret && p.horsPartage.length > 0 && (
+        <Section titre="Hors partage">
+          <p style={st.vide}>Ces personnes ont pointé sans faire partie d'un groupe retenu par la règle. Elles ne reçoivent rien.</p>
+          {p.horsPartage.map((h) => <Rang key={h.id} titre={h.nom} brut detail={<HeuresPointees h={h.heures} />} />)}
+        </Section>
+      )}
+    </div>
   );
 }
 
@@ -498,10 +573,10 @@ function Clients({ r, noShow }) {
 }
 
 // ── Fenêtre d'export ──
-function FenetreExport({ rapport, onglet, tri, noShow, comparaison, etablissement, reglages, onClose }) {
+function FenetreExport({ rapport, onglet, tri, noShow, pourboires = null, comparaison, etablissement, reglages, onClose }) {
   const [enCours, setEnCours] = React.useState(false);
   const direction = rapport.niveau === 'direction';
-  const options = { tri, noShow };
+  const options = { tri, noShow, pourboires };
   const faire = async (action, message) => {
     if (enCours) return;
     setEnCours(true);
@@ -564,7 +639,7 @@ function EcranRapport({ etablissement, reglages, periode, setPeriode, jourCouran
 
   const rapport = etat.data?.rapport || null;
   const direction = rapport?.niveau === 'direction';
-  const onglets = ONGLETS.filter((o) => !o.direction || direction);
+  const onglets = ONGLETS.filter((o) => (!o.direction || direction) && !(o.horsService && periode.type === 'service'));
   const actif = onglets.some((o) => o.id === onglet) ? onglet : onglets[0]?.id;
 
   // No-show : lecture du rapport des réservations, sans le recalculer.
@@ -585,6 +660,41 @@ function EcranRapport({ etablissement, reglages, periode, setPeriode, jourCouran
       return null;
     }
   }, [direction, resas.donnees, resas.status, periode.debut, periode.fin, periode.type, periode.service]);
+
+  // Pourboires (lot 11) : la règle de la maison, les groupes du Planning et
+  // les règles de pointage (retenues par useReglagesMaison, lues par
+  // heuresPointees). La lecture des heures n'est lancée qu'au niveau
+  // direction, hors période de service, une fois les deux crochets lus ; un
+  // crochet en échec dit l'échec, jamais un calcul sur des défauts.
+  const planning = usePlanningGroupes(etabId);
+  const maison = useReglagesMaison(etabId);
+  const regle = reglages?.pourboires || null;
+  const totalPourboires = rapport?.moyens?.pourboires ?? null;
+  const voitPourboires = direction && periode.type !== 'service' && totalPourboires != null;
+  const [partage, setPartage] = React.useState({ status: 'idle', data: null, erreur: null });
+  const tourPartage = React.useRef(0);
+  const [relirePartage, setRelirePartage] = React.useState(0);
+  const groupesNoms = React.useMemo(() => planning.groupes.map((g) => ({ id: g.id, nom: g.nom })), [planning.groupes]);
+  React.useEffect(() => {
+    const moi = ++tourPartage.current;
+    if (!voitPourboires) { setPartage({ status: 'idle', data: null, erreur: null }); return; }
+    if (planning.status === 'loading' || maison.status === 'loading') { setPartage({ status: 'loading', data: null, erreur: null }); return; }
+    if (planning.status === 'error' || maison.status === 'error') {
+      setPartage({ status: 'error', data: null, erreur: "Les groupes ou les règles de pointage n'ont pas pu être lus. Réessayez." });
+      return;
+    }
+    setPartage((x) => ({ ...x, status: 'loading', erreur: null }));
+    lirePartagePourboires(etabId, periode, { regle, total: totalPourboires, groupes: groupesNoms, groupeDe: planning.groupeDe })
+      .then(({ data, error }) => {
+        if (moi !== tourPartage.current) return;
+        setPartage(error ? { status: 'error', data: null, erreur: error } : { status: 'ready', data, erreur: null });
+      });
+    // cle : la période, sous une forme stable.
+  }, [voitPourboires, etabId, cle, regle, totalPourboires, planning.status, maison.status, groupesNoms, planning.groupeDe, relirePartage]);
+  const reessayerPartage = () => {
+    if (maison.status === 'error') maison.recharger?.();
+    setRelirePartage((n) => n + 1);
+  };
 
   const suivante = periodeVoisine(periode, 1);
   const peutSuivant = suivante && suivante.debut <= jourCourant;
@@ -655,6 +765,7 @@ function EcranRapport({ etablissement, reglages, periode, setPeriode, jourCouran
             {rapport.vide && <p style={st.vide}>Aucun ticket encaissé sur cette période.</p>}
             {actif === 'synthese' && <Synthese r={rapport} comparaison={etat.data.comparaison} noShow={noShow} />}
             {actif === 'moyens' && <Moyens r={rapport} />}
+            {actif === 'pourboires' && <Pourboires r={rapport} partage={partage} onReessayer={reessayerPartage} />}
             {actif === 'plats' && <Plats r={rapport} tri={tri} setTri={setTri} recherche={recherche} setRecherche={setRecherche} />}
             {actif === 'services' && <Services r={rapport} />}
             {actif === 'heures' && <Heures r={rapport} />}
@@ -670,6 +781,7 @@ function EcranRapport({ etablissement, reglages, periode, setPeriode, jourCouran
           onglet={actif}
           tri={tri}
           noShow={noShow}
+          pourboires={partage.status === 'ready' && partage.data?.etat === 'ok' ? partage.data : null}
           comparaison={etat.data.comparaison}
           etablissement={etablissement}
           reglages={reglages}
@@ -727,6 +839,7 @@ export default function Rapports({ etablissement, reglages, onRetour }) {
 
 const st = {
   racine: { display: 'flex', flexDirection: 'column', gap: 14, marginTop: 12, maxWidth: 900, minWidth: 0 },
+  colonne: { display: 'flex', flexDirection: 'column', gap: 14, minWidth: 0 },
   btn44: { minHeight: 44, flexShrink: 0 },
   barre: { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
   nav: { display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 },

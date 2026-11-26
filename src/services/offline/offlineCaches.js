@@ -16,10 +16,15 @@
 // par quelqu'un qui se déconnecte avant d'avoir retrouvé du réseau.
 // ─────────────────────────────────────────────────────────────
 
-const ETAB_SCOPED_CACHES = ['sb-recettes', 'sb-shifts', 'sb-inventaires', 'sb-photos', 'supabase-cache'];
+import { oublierLectures } from './lecturesHorsLigne.js';
+
+const ETAB_SCOPED_CACHES = ['sb-recettes', 'sb-shifts', 'sb-inventaires', 'sb-photos', 'sb-haccp', 'sb-groupes', 'supabase-cache'];
 const ALL_DATA_CACHES = [...ETAB_SCOPED_CACHES, 'sb-boot'];
 
 async function purge(names) {
+  // Les traces des lectures hors ligne (heure, fiches déjà ouvertes) suivent
+  // le cache qu'elles décrivent.
+  oublierLectures();
   if (typeof caches === 'undefined') return;
   await Promise.all(names.map((name) => caches.delete(name).catch(() => false)));
 }

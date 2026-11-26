@@ -141,3 +141,178 @@ test('série : les jours font les mois pour les flux, demandes, technique, activ
   assert.equal(somme((p) => p.linge.sale), mars.linge.sale);
   assert.ok(mars.demandes.creees > 0 && mars.technique.termines > 0 && mars.activites.inscrits > 0 && mars.chambresFaites > 0);
 });
+
+// ── Lot 13 du panel : classes de taxe, décompte du mois, état du registre ──
+import { ageAu, classeTaxe, decompteTaxe, etatRegistre } from './serieHotel.js';
+
+const REGL = { ageEnfantExonere: 6, ageEnfantReduit: 16, taxeSejourAdulte: 2.5, taxeSejourEnfant: 1.25, taxeHebergement: 1 };
+
+test('classeTaxe : exonération, seuils d\'âge, âge inconnu, anniversaire le jour d\'arrivée', () => {
+  const arr = '2026-11-10';
+  assert.equal(classeTaxe({ exonereTaxe: true, dateNaissance: '2023-01-01' }, arr, REGL), 'exonere_motif');
+  assert.equal(classeTaxe({ exonereTaxe: true, dateNaissance: '1980-01-01' }, arr, REGL), 'exonere_motif');
+  assert.equal(classeTaxe({ dateNaissance: '2021-01-01' }, arr, REGL), 'exonere_age'); // 5 ans
+  assert.equal(classeTaxe({ dateNaissance: '2020-01-01' }, arr, REGL), 'enfant'); // 6 ans
+  assert.equal(classeTaxe({ dateNaissance: '2011-01-01' }, arr, REGL), 'enfant'); // 15 ans
+  assert.equal(classeTaxe({ dateNaissance: '2010-01-01' }, arr, REGL), 'adulte'); // 16 ans
+  assert.equal(classeTaxe({ dateNaissance: '' }, arr, REGL), 'adulte');
+  assert.equal(classeTaxe({}, arr, REGL), 'adulte');
+  assert.equal(ageAu('2010-11-10', arr), 16);
+  assert.equal(classeTaxe({ dateNaissance: '2010-11-10' }, arr, REGL), 'adulte');
+  assert.equal(classeTaxe({ dateNaissance: '2010-11-11' }, arr, REGL), 'enfant');
+});
+
+const occ = (id, sejourId, extra = {}) => ({ id, sejourId, arrivee: '', depart: '', dateNaissance: '', exonereTaxe: false, exonereMotif: '', ...extra });
+
+test('decompteTaxe : jeu écrit à la main, 4 nuits dans le mois', () => {
+  const sejours = [{ id: 's1', statut: 'en_maison', arrivee: '2026-11-10', depart: '2026-11-14', nbAdultes: 3, nbEnfants: 2 }];
+  const occupants = [
+    occ('o1', 's1', { dateNaissance: '1980-02-02' }),
+    occ('o2', 's1', { dateNaissance: '1982-03-03' }),
+    occ('o3', 's1', { dateNaissance: '2016-01-01' }), // 10 ans
+    occ('o4', 's1', { dateNaissance: '2023-01-01' }), // 3 ans
+    occ('o5', 's1', { dateNaissance: '1979-01-01', exonereTaxe: true, exonereMotif: 'Résident de la commune' }),
+  ];
+  const lignes = [
+    { jour: '2026-11-10', type: 'taxe_sejour', montant: 25 },
+    { jour: '2026-11-10', type: 'taxe_hebergement', montant: 12 },
+  ];
+  const d = decompteTaxe({ sejours, occupants, lignes, reglages: REGL, debut: '2026-11-01', fin: '2026-11-30' });
+  assert.equal(d.nuitees.adultes, 8);
+  assert.equal(d.nuitees.enfants, 4);
+  assert.equal(d.nuitees.exonereAge, 4);
+  assert.equal(d.nuitees.exonereMotif, 4);
+  assert.deepEqual(d.motifs, [{ motif: 'Résident de la commune', nuitees: 4 }]);
+  assert.equal(d.du.sejour, 25);
+  assert.equal(d.du.hebergement, 12);
+  assert.deepEqual(d.ecart, { sejour: 0, hebergement: 0 });
+  assert.equal(d.sansInscrit.sejours, 0);
+});
+
+test('decompteTaxe : séjour à cheval sur deux mois, seules les nuits du mois comptent, écart non nul', () => {
+  const sejours = [{ id: 's1', statut: 'parti', arrivee: '2026-10-29', depart: '2026-11-03', nbAdultes: 1, nbEnfants: 0 }];
+  const occupants = [occ('o1', 's1', { dateNaissance: '1980-02-02' })];
+  // La note date ses taxes du jour d'arrivée : 5 nuits en octobre.
+  const lignes = [{ jour: '2026-10-29', type: 'taxe_sejour', montant: 12.5 }, { jour: '2026-10-29', type: 'taxe_hebergement', montant: 5 }];
+  const nov = decompteTaxe({ sejours, occupants, lignes, reglages: REGL, debut: '2026-11-01', fin: '2026-11-30' });
+  assert.equal(nov.nuitees.adultes, 2);
+  assert.equal(nov.du.sejour, 5);
+  assert.equal(nov.notes.sejour, 0);
+  assert.equal(nov.ecart.sejour, -5);
+  const oct = decompteTaxe({ sejours, occupants, lignes, reglages: REGL, debut: '2026-10-01', fin: '2026-10-31' });
+  assert.equal(oct.nuitees.adultes, 3);
+  assert.equal(oct.ecart.sejour, 12.5 - 7.5);
+});
+
+test('decompteTaxe : séjour sans occupant compté d\'après ses nombres, prévu et annulé ignorés', () => {
+  const sejours = [
+    { id: 's1', statut: 'en_maison', arrivee: '2026-11-10', depart: '2026-11-12', nbAdultes: 2, nbEnfants: 1 },
+    { id: 's2', statut: 'prevu', arrivee: '2026-11-10', depart: '2026-11-12', nbAdultes: 2, nbEnfants: 0 },
+    { id: 's3', statut: 'annule', arrivee: '2026-11-10', depart: '2026-11-12', nbAdultes: 2, nbEnfants: 0 },
+  ];
+  const occupants = [occ('o2', 's2', { dateNaissance: '1980-01-01' })];
+  const d = decompteTaxe({ sejours, occupants, lignes: [], reglages: REGL, debut: '2026-11-01', fin: '2026-11-30' });
+  assert.equal(d.nuitees.adultes, 4);
+  assert.equal(d.nuitees.enfants, 2);
+  assert.equal(d.nuitees.total, 6);
+  assert.deepEqual(d.sansInscrit, { sejours: 1, nuitees: 6 });
+  assert.equal(d.du.sejour, 4 * 2.5 + 2 * 1.25);
+});
+
+test('decompteTaxe : motifs regroupés sans casse ni espaces, motif vide sous « Motif non renseigné »', () => {
+  const sejours = [{ id: 's1', statut: 'en_maison', arrivee: '2026-11-10', depart: '2026-11-11', nbAdultes: 4, nbEnfants: 0 }];
+  const occupants = [
+    occ('o1', 's1', { exonereTaxe: true, exonereMotif: 'résident de la commune' }),
+    occ('o2', 's1', { exonereTaxe: true, exonereMotif: 'Résident de la commune  ' }),
+    occ('o3', 's1', { exonereTaxe: true, exonereMotif: '' }),
+    occ('o4', 's1', { exonereTaxe: true, exonereMotif: '   ' }),
+  ];
+  const d = decompteTaxe({ sejours, occupants, lignes: [], reglages: REGL, debut: '2026-11-01', fin: '2026-11-30' });
+  assert.equal(d.motifs.length, 2);
+  assert.equal(d.motifs.find((m) => m.nuitees === 2 && /commune/.test(m.motif)).nuitees, 2);
+  assert.deepEqual(d.motifs.find((m) => m.motif === 'Motif non renseigné'), { motif: 'Motif non renseigné', nuitees: 2 });
+});
+
+// Témoin : la boucle des taxes de lignesAutomatiques avant le lot 13
+// (hotelData.js ne se charge pas sous Node).
+function quantitesAnciennes(sejour, r, occupants) {
+  const mes = occupants.filter((o) => o.sejourId === sejour.id);
+  let adultes = 0;
+  let enfants = 0;
+  if (mes.length) {
+    for (const o of mes) {
+      const age = ageAu(o.dateNaissance, sejour.arrivee);
+      if (o.exonereTaxe || (age != null && age < r.ageEnfantExonere)) continue;
+      if (age != null && age < r.ageEnfantReduit) enfants += 1;
+      else adultes += 1;
+    }
+  } else {
+    adultes = sejour.nbAdultes || 0;
+    enfants = sejour.nbEnfants || 0;
+  }
+  return { adultes, enfants };
+}
+function quantitesNouvelles(sejour, r, occupants) {
+  const mes = occupants.filter((o) => o.sejourId === sejour.id);
+  let adultes = 0;
+  let enfants = 0;
+  if (mes.length) {
+    for (const o of mes) {
+      const c = classeTaxe(o, sejour.arrivee, r);
+      if (c === 'enfant') enfants += 1;
+      else if (c === 'adulte') adultes += 1;
+    }
+  } else {
+    adultes = sejour.nbAdultes || 0;
+    enfants = sejour.nbEnfants || 0;
+  }
+  return { adultes, enfants };
+}
+
+test('non-régression : classeTaxe rend les mêmes quantités de taxes que l\'ancienne boucle', () => {
+  const sejours = Array.from({ length: 60 }, (_, i) => ({ id: `s${i}`, statut: 'parti', arrivee: `2026-${String(1 + (i % 12)).padStart(2, '0')}-${String(1 + (i % 27)).padStart(2, '0')}`, depart: '2026-12-31', nbAdultes: i % 3, nbEnfants: i % 2 }));
+  const occupants = [];
+  sejours.forEach((s, i) => {
+    if (i % 5 === 0) return;
+    for (let k = 0; k < 1 + (i % 4); k += 1) {
+      const an = 1960 + ((i * 7 + k * 11) % 66);
+      occupants.push(occ(`o${i}-${k}`, s.id, { dateNaissance: (i + k) % 6 ? `${an}-${String(1 + ((i + k) % 12)).padStart(2, '0')}-${String(1 + (k % 27)).padStart(2, '0')}` : '', exonereTaxe: (i + k) % 9 === 0 }));
+    }
+  });
+  for (const r of [REGL, { ageEnfantExonere: 0, ageEnfantReduit: 0 }, { ageEnfantExonere: 12, ageEnfantReduit: 18 }]) {
+    for (const s of sejours) assert.deepEqual(quantitesNouvelles(s, r, occupants), quantitesAnciennes(s, r, occupants), s.id);
+  }
+});
+
+test('etatRegistre : réservé, erreur, chargement, prêt', () => {
+  const ok = ['ready', 'ready', 'ready'];
+  assert.equal(etatRegistre({ peutGerer: false, statuts: ok }), 'reserve');
+  assert.equal(etatRegistre({ peutGerer: true, statuts: ['ready', 'error', 'ready'] }), 'erreur');
+  assert.equal(etatRegistre({ peutGerer: true, statuts: ['ready', 'ready', 'absent'] }), 'erreur');
+  assert.equal(etatRegistre({ peutGerer: true, statuts: ['ready', 'loading', 'ready'] }), 'chargement');
+  assert.equal(etatRegistre({ peutGerer: true, statuts: ok }), 'pret');
+});
+
+test('égalité avec le registre : la somme des classes égale les nuitées personnes de statsPeriode', () => {
+  const j = jeuHotel();
+  const reglages = REGL;
+  // Cas aux bords : un séjour sans occupant ni nombre de personnes, un
+  // occupant sans dates, un exonéré, un enfant.
+  const sejours = [...j.sejours,
+    { id: 'bord1', statut: 'parti', arrivee: '2026-03-05', depart: '2026-03-09', nbAdultes: 0, nbEnfants: 0, chambreId: j.chambres[0]?.id },
+    { id: 'bord2', statut: 'en_maison', arrivee: '2026-03-28', depart: '2026-04-03', nbAdultes: 2, nbEnfants: 0, chambreId: j.chambres[0]?.id }];
+  const occupants = [...j.occupants,
+    occ('b1', 'bord2', { dateNaissance: '1990-01-01' }),
+    occ('b2', 'bord2', { dateNaissance: '2018-06-01', exonereTaxe: true, exonereMotif: 'Chauffeur' }),
+    occ('b3', 'bord2', { dateNaissance: '2022-06-01', arrivee: '2026-03-30', depart: '2026-04-02' })];
+  for (const mois of ['2026-01', '2026-03', '2026-04', '2026-07', '2026-12']) {
+    const debut = premierDuMois(mois);
+    const fin = finDuMois(mois);
+    const s = statsPeriode({ ...j, sejours, occupants, debut, fin });
+    const d = decompteTaxe({ sejours, occupants, lignes: j.lignes, reglages, debut, fin });
+    const somme = d.nuitees.adultes + d.nuitees.enfants + d.nuitees.exonereAge + d.nuitees.exonereMotif;
+    assert.equal(somme, s.nuiteesPersonnes, mois);
+    assert.equal(d.nuitees.total, s.nuiteesPersonnes, mois);
+    assert.ok(Math.abs(d.notes.sejour - s.taxes.sejour) < 0.005, mois);
+  }
+});

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Btn } from '../../components/ui/index.jsx';
+import { usePlanningGroupes } from '../../hooks/usePlanningGroupes.js';
 import { dbService } from '../../services/dbService.js';
 import * as caisse from '../../services/caisseService.js';
 import * as tpe from '../../services/caisseTpeService.js';
@@ -35,11 +36,20 @@ export default function SectionReglagesCaisse({ user, etablissement, signaler })
   const [config, setConfig] = React.useState({});
   const [terminaux, setTerminaux] = React.useState([]);
   const [lectureTerminaux, setLectureTerminaux] = React.useState('lecture');
+  const [formules, setFormules] = React.useState([]);
+  const [lectureFormules, setLectureFormules] = React.useState('lecture');
+  // Lot 11 du panel : les groupes du Planning, pour la règle de partage des
+  // pourboires (section montrée à la direction seulement).
+  const planning = usePlanningGroupes(etabId);
 
   const rechargerGrille = React.useCallback(async () => {
     if (!etabId) return false;
-    const [b, c, r] = await Promise.all([caisse.listBoutons(etabId), caisse.listCategories(etabId), caisse.getReglages(etabId)]);
+    const [b, c, r, f] = await Promise.all([
+      caisse.listBoutons(etabId), caisse.listCategories(etabId), caisse.getReglages(etabId), caisse.listFormules(etabId),
+    ]);
     if (!b.error) setBoutons(b.data || {});
+    // Formules (lot 09) : une lecture en échec ne bloque pas les réglages.
+    if (f.error) setLectureFormules('echec'); else { setFormules(f.data); setLectureFormules('lue'); }
     if (!c.error) setCategories(c.data);
     if (!r.error) setConfig(r.data);
     return !b.error && !c.error && !r.error;
@@ -111,6 +121,10 @@ export default function SectionReglagesCaisse({ user, etablissement, signaler })
       terminaux={terminaux}
       lectureTerminaux={lectureTerminaux}
       onTerminauxChange={surTerminaux}
+      formules={formules}
+      lectureFormules={lectureFormules}
+      groupes={planning.groupes}
+      statutGroupes={planning.status}
     />
   );
 }

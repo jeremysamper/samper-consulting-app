@@ -1,8 +1,8 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Parité des glossaires de traduction (src/i18n/glossary.js ↔ glossaryEs.js
-// ↔ glossaryDe.js).
+// ↔ glossaryDe.js ↔ glossaryIt.js ↔ glossaryPt.js).
 //
-// Les trois tables sont indexées sur la même chaîne française. Une clé absente
+// Les cinq tables sont indexées sur la même chaîne française. Une clé absente
 // d'une table ne casse rien, mais la chaîne part à l'IA dans cette langue :
 // plus lente, en ligne seulement, et payante à chaque établissement. D'où ce
 // contrôle, branché sur `npm run lint`. L'anglais sert de référence : chaque
@@ -23,9 +23,11 @@
 import { UI_GLOSSARY, glossaryEntryCore } from '../src/i18n/glossary.js';
 import { UI_GLOSSARY_ES } from '../src/i18n/glossaryEs.js';
 import { UI_GLOSSARY_DE } from '../src/i18n/glossaryDe.js';
+import { UI_GLOSSARY_IT } from '../src/i18n/glossaryIt.js';
+import { UI_GLOSSARY_PT } from '../src/i18n/glossaryPt.js';
 
-const tables = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES, de: UI_GLOSSARY_DE };
-const fichiers = { es: 'glossaryEs.js', de: 'glossaryDe.js' };
+const tables = { en: UI_GLOSSARY, es: UI_GLOSSARY_ES, de: UI_GLOSSARY_DE, it: UI_GLOSSARY_IT, pt: UI_GLOSSARY_PT };
+const fichiers = { es: 'glossaryEs.js', de: 'glossaryDe.js', it: 'glossaryIt.js', pt: 'glossaryPt.js' };
 const problems = [];
 
 const keys = (t) => new Set(Object.keys(t));
@@ -73,4 +75,4 @@ if (problems.length) {
   process.exit(1);
 }
 
-console.log(`Glossaires alignés : ${en.size} clés en anglais, en espagnol et en allemand (dont ${ponctuees} ponctuées, indexées sur leur cœur).`);
+console.log(`Glossaires alignés : ${en.size} clés en anglais, en espagnol, en allemand, en italien et en portugais (dont ${ponctuees} ponctuées, indexées sur leur cœur).`);

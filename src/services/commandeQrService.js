@@ -1,4 +1,5 @@
 import { supabase } from './supabase.js';
+import { messagePortions } from '../modules/caisse/rupture.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Commande par QR, côté app (lot L3, migration 20261122_caisse_commande_qr).
@@ -34,6 +35,9 @@ function messageErreur(error, repli) {
   if (MESSAGES[brut]) return MESSAGES[brut];
   const code = String(error.code || '');
   if (MESSAGES[code]) return MESSAGES[code];
+  // Lot 12 : produit dont le compteur du jour ne suffit plus à l'acceptation.
+  const portions = messagePortions(brut);
+  if (portions) return portions;
   if (/^caisse: /.test(brut)) return brut;
   return repli || 'Erreur technique. Réessayez.';
 }

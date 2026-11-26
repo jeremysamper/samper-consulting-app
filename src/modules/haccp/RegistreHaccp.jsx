@@ -29,6 +29,7 @@ export default function RegistreHaccp({
 }) {
   const etroit = useIsMobile(600);
   const duJour = releves.filter(r => r.date === date);
+  const selectionnables = duJour.filter(r => !r.enAttente);
   const mois = date.slice(0, 7);
   const duMois = releves.filter(r => (r.date || '').startsWith(mois));
   const horsPlageMois = duMois.filter(r => !r.conforme);
@@ -74,9 +75,9 @@ export default function RegistreHaccp({
         {sel.active && (
           <SelectionToolbar
             count={sel.count}
-            total={duJour.length}
-            allSelected={sel.count > 0 && sel.count === duJour.length}
-            onToggleAll={() => (sel.count === duJour.length ? sel.clear() : sel.selectAll(duJour.map(r => r.id)))}
+            total={selectionnables.length}
+            allSelected={sel.count > 0 && sel.count === selectionnables.length}
+            onToggleAll={() => (sel.count === selectionnables.length ? sel.clear() : sel.selectAll(selectionnables.map(r => r.id)))}
             onDelete={onSupprimerSelection}
             onExport={onExporterSelection}
             exportLabel="Exporter Excel"
@@ -98,13 +99,17 @@ export default function RegistreHaccp({
             const v = zone ? verdictReleve(zone, r.valeur) : null;
             const mot = r.conforme ? 'Bon' : (v?.ton === 'danger' ? v.mot : 'À surveiller');
             const couleur = r.conforme ? 'var(--success-text)' : 'var(--danger-strong)';
+            // Relevé gardé sur l'appareil (lot 08) : ni sélectionnable ni
+            // supprimable, le rejeu le recréerait.
+            const attente = !!r.enAttente;
             const choisi = sel.active && sel.isSelected(r.id);
-            const caseACocher = sel.active && (
+            const mentionAttente = attente && <div data-releve-attente="" style={st.attente}>En attente d'envoi</div>;
+            const caseACocher = sel.active && (attente ? <span className="no-print" style={{ minWidth: etroit ? 44 : 28, flexShrink: 0 }} /> : (
               <label className="no-print" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minWidth: etroit ? 44 : 28, minHeight: 44, cursor: 'pointer', flexShrink: 0 }}>
                 <input type="checkbox" checked={sel.isSelected(r.id)} onChange={() => sel.toggle(r.id)} style={{ width: 18, height: 18, cursor: 'pointer' }} />
               </label>
-            );
-            const supprimer = canManage && (
+            ));
+            const supprimer = canManage && !attente && (
               <button className="btn-suppr-discret no-print" style={{ ...hcfg.deleteBtn, ...(etroit ? { minHeight: 44, flexShrink: 0 } : {}) }} onClick={() => onSupprimer(r.id)}>Supprimer</button>
             );
             if (etroit) {
@@ -120,6 +125,7 @@ export default function RegistreHaccp({
                       <N>{String(r.heure || '').slice(0, 5)}</N>, par <N>{userDisplay(r.operateur).name}</N>. <span style={{ color: couleur, fontWeight: 'var(--g3)' }}>{mot}</span>
                     </div>
                     {r.commentaire && <div style={st.commentaire}>{r.commentaire}</div>}
+                    {mentionAttente}
                   </div>
                   {supprimer}
                 </div>
@@ -128,7 +134,7 @@ export default function RegistreHaccp({
             return (
               <div key={r.id} data-registre-releve="" className="grid-table-row" style={{ ...hs.relRow, gridTemplateColumns: colonnes, ...(choisi ? { background: 'var(--selection)' } : {}) }}>
                 {caseACocher}
-                <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)' }}>{zone?.nom}</span>
+                <span style={{ fontSize: 'var(--t2)', fontWeight: 'var(--g2)', minWidth: 0, overflowWrap: 'anywhere' }}>{zone?.nom}{mentionAttente}</span>
                 <span style={hs.cell}><N>{String(r.heure || '').slice(0, 5)}</N></span>
                 <span style={{ ...hs.cell, textAlign: 'right', fontWeight: 'var(--g-chiffre)', color: couleur, fontSize: 'var(--t2)', fontFamily: 'var(--font-num)' }}><Mesure valeur={r.valeur} unite={zone?.unite || ''} /></span>
                 <span style={hs.cell}><N>{userDisplay(r.operateur).name}</N></span>
@@ -165,4 +171,5 @@ const st = {
   valeur: { fontSize: 'var(--t3)', fontWeight: 'var(--g-chiffre)', fontFamily: 'var(--font-num)', flexShrink: 0 },
   detail: { fontSize: 'var(--t2)', color: 'var(--text2)', marginTop: 2, lineHeight: 1.4 },
   commentaire: { fontSize: 'var(--t2)', color: 'var(--text)', marginTop: 4, lineHeight: 1.4 },
+  attente: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)', marginTop: 4, lineHeight: 1.4 },
 };

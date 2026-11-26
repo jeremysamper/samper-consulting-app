@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, MapPin, Phone, X } from 'lucide-react';
 import { ALLERGENES } from '../utils/allergenes.js';
 import PlanChoixTable from './PlanChoixTable.jsx';
+import { composerMessage, lignesReponses, nettoyerQuestions, questionsSansReponse } from './questionsEnLigne.js';
 import './reservationTable.css';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -41,13 +42,32 @@ const SERVICES = { midi: 'Midi', soir: 'Soir', brunch: 'Brunch' };
 const EMAIL_OK = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const ACCENT_DEFAUT = '#003042';
 
-// Message envoyé au restaurant : la ligne des allergènes cochés d'abord (forme
-// lue par le déclencheur resa_tags_allergenes_en_ligne), puis le mot du client.
-function messageAvecAllergies(message, ids) {
+// Questions à choix de la maison (lot 18) : RPC anonyme
+// table_en_ligne_questions, appelée comme le plan. Elle ne rend que le
+// libellé, les choix et le caractère obligatoire de chaque question.
+const URL_QUESTIONS = `${URL_BASE}/rest/v1/rpc/table_en_ligne_questions`;
+
+// Ligne des allergènes cochés, en tête du message (forme lue par le
+// déclencheur resa_tags_allergenes_en_ligne) ; vide sans allergène.
+function ligneAllergies(ids) {
   const libelles = ALLERGENES.filter((a) => ids.includes(a.id)).map((a) => a.label);
-  const mot = String(message || '').trim();
-  if (!libelles.length) return mot;
-  return `Allergies : ${libelles.join(', ')}${mot ? `\n\n${mot}` : ''}`;
+  return libelles.length ? `Allergies : ${libelles.join(', ')}` : '';
+}
+
+// Toute erreur (fonction absente, réseau, réponse illisible) rend [] : la
+// page marche alors comme avant, sans question et sans message.
+async function lireQuestions(slug) {
+  try {
+    const r = await fetch(URL_QUESTIONS, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: CLE_PUBLIQUE },
+      body: JSON.stringify({ p_adresse: slug }),
+    });
+    if (!r.ok) return [];
+    return nettoyerQuestions(await r.json());
+  } catch {
+    return [];
+  }
 }
 // Espace fine insécable devant « ? » : le signe ne part jamais seul à la ligne.
 const FINE = '\u202f';
@@ -165,6 +185,17 @@ export default function ReservationTable() {
   const basculerAllergene = (id) => setForm((p) => ({
     ...p, allergenes: p.allergenes.includes(id) ? p.allergenes.filter((x) => x !== id) : [...p.allergenes, id],
   }));
+  // Questions de la maison et réponses du visiteur ({ [id question]: choix }).
+  const [questions, setQuestions] = useState([]);
+  const [reponses, setReponses] = useState({});
+  const basculerReponse = (q, c) => setReponses((p) => {
+    if (p[q.id] === c) {
+      if (q.obligatoire) return p;
+      const { [q.id]: _retire, ...reste } = p;
+      return reste;
+    }
+    return { ...p, [q.id]: c };
+  });
   const [envoi, setEnvoi] = useState(false);
   const [resultat, setResultat] = useState(null);
   const [erreur, setErreur] = useState(null);
@@ -188,6 +219,16 @@ export default function ReservationTable() {
       })
       .catch(() => setEtatChargement('erreur'));
   }, [parametres]);
+
+  // Questions lues une fois, quand l'adresse est ouverte. Lentes ou en échec,
+  // elles ne bloquent rien : la page s'affiche et s'envoie sans elles.
+  const adresseOuverte = etatChargement === 'pret';
+  useEffect(() => {
+    if (!adresseOuverte) return undefined;
+    let vivant = true;
+    lireQuestions(parametres.slug).then((q) => { if (vivant) setQuestions(q); });
+    return () => { vivant = false; };
+  }, [adresseOuverte, parametres.slug]);
 
   useEffect(() => {
     if (typeof ResizeObserver === 'undefined') return undefined;
@@ -279,6 +320,8 @@ export default function ReservationTable() {
     if (!f.prenom.trim() || !f.nom.trim()) { setErreur('Indiquez votre prénom et votre nom.'); return; }
     if (!EMAIL_OK.test(f.email.trim())) { setErreur('Votre adresse e-mail semble incorrecte.'); return; }
     if (f.telephone.replace(/\D/g, '').length < 6) { setErreur('Indiquez un numéro de téléphone.'); return; }
+    const manquante = questionsSansReponse(questions, reponses)[0];
+    if (manquante) { setErreur(`Répondez à la question « ${manquante.libelle} » avant d'envoyer.`); return; }
     setEnvoi(true);
     setErreur(null);
     try {
@@ -289,8 +332,14 @@ export default function ReservationTable() {
         // La base en tire les tags de la réservation (déclencheur
         // resa_tags_allergenes_en_ligne, migration 20261117), que la caisse
         // croise avec les fiches des plats commandés. L'équipe la lit aussi
-        // dans les notes et dans l'e-mail.
-        message: messageAvecAllergies(f.message, f.allergenes),
+        // dans les notes et dans l'e-mail. Les réponses aux questions de la
+        // maison suivent, en lignes « Libellé : Choix » (déclencheur
+        // resa_tags_questions_en_ligne, migration 20261125), puis le mot.
+        message: composerMessage({
+          ligneAllergies: ligneAllergies(f.allergenes),
+          lignes: lignesReponses(questions, reponses),
+          mot: f.message,
+        }),
         // Table choisie sur le plan : revérifiée par la base à l'envoi.
         ...(table ? { table: table.id } : {}),
         // Accord pour les actualités et bons cadeaux : décoché par défaut,
@@ -328,6 +377,7 @@ export default function ReservationTable() {
     setTable(null);
     setResultat(null);
     setForm((p) => ({ ...p, message: '', allergenes: [] }));
+    setReponses({});
     debutSaisie.current = performance.now();
     allerA('moment');
   }
@@ -609,6 +659,33 @@ export default function ReservationTable() {
                         })}
                       </div>
                     </fieldset>
+                    {/* Questions de la maison (lot 18) : un toucher, choix unique.
+                        Libellés et choix sont des données de la maison. */}
+                    {questions.map((q) => (
+                      <fieldset key={q.id} style={s.groupe}>
+                        <legend style={s.legende}>
+                          <span data-no-translate>{q.libelle}</span>{q.obligatoire ? '' : ' (facultatif)'}
+                        </legend>
+                        <div role="radiogroup" aria-label={q.libelle} data-no-translate style={{ ...s.puces, marginTop: 10 }}>
+                          {q.choix.map((c) => {
+                            const actif = reponses[q.id] === c;
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                role="radio"
+                                aria-checked={actif}
+                                data-actif={actif ? '1' : undefined}
+                                className="rt-choix rt-allergene"
+                                onClick={() => basculerReponse(q, c)}
+                              >
+                                {c}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </fieldset>
+                    ))}
                     <Champ label="Un mot pour le restaurant (facultatif)" id="t-message">
                       <textarea id="t-message" className="rt-champ" style={{ ...s.champ, minHeight: 84, resize: 'vertical' }} value={form.message} placeholder="Précision sur une allergie, anniversaire, chaise haute…" onChange={(e) => setForm({ ...form, message: e.target.value })} />
                     </Champ>
@@ -662,19 +739,24 @@ export default function ReservationTable() {
                 </p>
                 {/* Le bon de réservation, tel que le restaurant le notera. */}
                 <dl style={s.bon}>
+                  {/* [clé, libellé, valeur, données de la maison ou du client] */}
                   {[
-                    ['Table pour', personnes(couverts)],
-                    ['Le', jourLong(date)],
-                    ['À', choix.heure],
-                    ...(table ? [['Table', table.reperes?.[0] || 'Choisie sur le plan']] : []),
-                    ['Au nom de', `${form.prenom.trim()} ${form.nom.trim()}`],
+                    ['couverts', 'Table pour', personnes(couverts)],
+                    ['jour', 'Le', jourLong(date)],
+                    ['heure', 'À', choix.heure],
+                    ...(table ? [['table', 'Table', table.reperes?.[0] || 'Choisie sur le plan']] : []),
+                    ['nom', 'Au nom de', `${form.prenom.trim()} ${form.nom.trim()}`, 'valeur'],
                     ...(form.allergenes.length
-                      ? [['Allergies', ALLERGENES.filter((a) => form.allergenes.includes(a.id)).map((a) => a.label).join(', ')]]
+                      ? [['allergies', 'Allergies', ALLERGENES.filter((a) => form.allergenes.includes(a.id)).map((a) => a.label).join(', ')]]
                       : []),
-                  ].map(([label, valeur], i, liste) => (
-                    <div key={label} className="rt-apparait" style={{ ...s.bonLigne, ...delai(i + 4, 60), ...(i === liste.length - 1 ? { borderBottomWidth: 0 } : null) }}>
-                      <dt style={s.bonLabel}>{label}</dt>
-                      <dd style={s.bonValeur} data-no-translate={label === 'Au nom de' ? true : undefined}>{valeur}</dd>
+                    // Réponses aux questions : clé bâtie sur l'id de la question,
+                    // libellé et choix jamais traduits.
+                    ...questions.filter((q) => q.choix.includes(reponses[q.id]))
+                      .map((q) => [`question-${q.id}`, q.libelle, reponses[q.id], 'tout']),
+                  ].map(([cle, label, valeur, brut], i, liste) => (
+                    <div key={cle} className="rt-apparait" style={{ ...s.bonLigne, ...delai(i + 4, 60), ...(i === liste.length - 1 ? { borderBottomWidth: 0 } : null) }}>
+                      <dt style={s.bonLabel} data-no-translate={brut === 'tout' ? true : undefined}>{label}</dt>
+                      <dd style={s.bonValeur} data-no-translate={brut ? true : undefined}>{valeur}</dd>
                     </div>
                   ))}
                 </dl>

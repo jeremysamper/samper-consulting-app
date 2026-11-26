@@ -91,6 +91,125 @@ export function statsPeriode({ sejours = [], chambres = [], occupants = [], lign
   };
 }
 
+// ── Lot 13 du panel : classes de la taxe de séjour et décompte du mois ──────
+
+// Âge révolu d'une personne à une date donnée, ou null sans date de naissance.
+// (Rangé ici depuis le lot 13 ; hotelData.js le réexporte.)
+export function ageAu(dateNaissance, jour) {
+  if (!dateNaissance || !jour) return null;
+  const [ny, nm, nd] = dateNaissance.split('-').map(Number);
+  const [jy, jm, jd] = jour.split('-').map(Number);
+  let age = jy - ny;
+  if (jm < nm || (jm === nm && jd < nd)) age -= 1;
+  return age;
+}
+
+// Classe d'une personne pour la taxe de séjour, à un jour donné (le jour
+// d'arrivée du séjour) : 'exonere_motif' (case exonéré cochée), 'exonere_age'
+// (sous l'âge d'exonération), 'enfant' (sous l'âge du tarif réduit), sinon
+// 'adulte', âge inconnu compris. Seule règle : la note (lignesAutomatiques)
+// et le décompte de la commune la lisent toutes deux.
+export function classeTaxe(occupant, jourReference, reglages) {
+  if (occupant?.exonereTaxe) return 'exonere_motif';
+  const r = reglages || {};
+  const age = ageAu(occupant?.dateNaissance, jourReference);
+  if (age != null && age < r.ageEnfantExonere) return 'exonere_age';
+  if (age != null && age < r.ageEnfantReduit) return 'enfant';
+  return 'adulte';
+}
+
+export const MOTIF_NON_RENSEIGNE = 'Motif non renseigné';
+const auCentime = (x) => Math.round(x * 100) / 100;
+const cleMotif = (m) => String(m || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('fr');
+
+// Décompte de la taxe de séjour d'une période : mêmes séjours que le registre
+// (en maison ou partis), nuits de chaque personne dans la période, âge au
+// jour d'arrivée du séjour, mêmes replis que statsPeriode (dates de la
+// personne, sinon du séjour ; séjour sans personne inscrite compté d'après
+// ses adultes et ses enfants, enfants au tarif réduit, ou pour un adulte sans
+// nombre). La somme des classes égale donc toujours statsPeriode(...).
+// nuiteesPersonnes. Taxes dues aux taux des réglages ; taxes des notes : les
+// lignes taxe_sejour et taxe_hebergement datées dans la période. Écart =
+// taxes des notes moins taxes dues ; il se montre, il ne se corrige pas.
+export function decompteTaxe({ sejours = [], occupants = [], lignes = [], reglages, debut, fin }) {
+  const r = reglages || {};
+  const duPas = sejours.filter((s) => sejourCompte(s) && s.arrivee <= fin && s.depart > debut);
+  const ids = new Set(duPas.map((s) => s.id));
+  const parSejour = new Map();
+  for (const o of occupants) {
+    if (!ids.has(o.sejourId)) continue;
+    parSejour.set(o.sejourId, [...(parSejour.get(o.sejourId) || []), o]);
+  }
+  const nuitees = { adultes: 0, enfants: 0, exonereAge: 0, exonereMotif: 0 };
+  const motifs = new Map();
+  const sansInscrit = { sejours: 0, nuitees: 0 };
+  for (const s of duPas) {
+    const liste = parSejour.get(s.id);
+    if (liste && liste.length) {
+      for (const o of liste) {
+        const n = nuitsDansPeriode(o.arrivee || s.arrivee, o.depart || s.depart, debut, fin);
+        const classe = classeTaxe(o, s.arrivee, r);
+        if (classe === 'adulte') nuitees.adultes += n;
+        else if (classe === 'enfant') nuitees.enfants += n;
+        else if (classe === 'exonere_age') nuitees.exonereAge += n;
+        else {
+          nuitees.exonereMotif += n;
+          const cle = cleMotif(o.exonereMotif);
+          const e = motifs.get(cle) || { motif: cle ? String(o.exonereMotif).trim().replace(/\s+/g, ' ') : MOTIF_NON_RENSEIGNE, nuitees: 0 };
+          e.nuitees += n;
+          motifs.set(cle, e);
+        }
+      }
+    } else {
+      const n = nuitsDansPeriode(s.arrivee, s.depart, debut, fin);
+      const adultes = personnesDe(s) ? (s.nbAdultes || 0) : 1;
+      const enfants = personnesDe(s) ? (s.nbEnfants || 0) : 0;
+      nuitees.adultes += n * adultes;
+      nuitees.enfants += n * enfants;
+      if (n > 0) { sansInscrit.sejours += 1; sansInscrit.nuitees += n * (adultes + enfants); }
+    }
+  }
+  const total = nuitees.adultes + nuitees.enfants + nuitees.exonereAge + nuitees.exonereMotif;
+  const tauxAdulte = Number(r.taxeSejourAdulte) || 0;
+  const tauxEnfant = Number(r.taxeSejourEnfant) || 0;
+  const tauxHebergement = Number(r.taxeHebergement) || 0;
+  const assujetties = nuitees.adultes + nuitees.enfants;
+  const du = {
+    adultes: auCentime(nuitees.adultes * tauxAdulte),
+    enfants: auCentime(nuitees.enfants * tauxEnfant),
+    sejour: auCentime(nuitees.adultes * tauxAdulte + nuitees.enfants * tauxEnfant),
+    hebergement: auCentime(assujetties * tauxHebergement),
+  };
+  const notes = { sejour: 0, hebergement: 0 };
+  for (const l of lignes) {
+    if (!(l.jour >= debut && l.jour <= fin)) continue;
+    if (l.type === 'taxe_sejour') notes.sejour += l.montant;
+    if (l.type === 'taxe_hebergement') notes.hebergement += l.montant;
+  }
+  notes.sejour = auCentime(notes.sejour);
+  notes.hebergement = auCentime(notes.hebergement);
+  return {
+    nuitees: { ...nuitees, assujetties, total },
+    motifs: [...motifs.values()].sort((a, b) => b.nuitees - a.nuitees || a.motif.localeCompare(b.motif, 'fr')),
+    sansInscrit,
+    taux: { adulte: tauxAdulte, enfant: tauxEnfant, hebergement: tauxHebergement },
+    du,
+    notes,
+    ecart: { sejour: auCentime(notes.sejour - du.sejour), hebergement: auCentime(notes.hebergement - du.hebergement) },
+  };
+}
+
+// État de l'écran du registre : 'reserve' sans le droit Modifier (les
+// lectures des personnes et des lignes ne sont pas lancées), 'erreur' si une
+// lecture a échoué ou si la table manque, 'pret' quand les trois lectures sont
+// abouties, 'chargement' sinon. Hors 'pret', le décompte ne s'affiche pas.
+export function etatRegistre({ peutGerer, statuts = [] } = {}) {
+  if (!peutGerer) return 'reserve';
+  if (statuts.some((x) => x === 'error' || x === 'absent')) return 'erreur';
+  if (statuts.length && statuts.every((x) => x === 'ready')) return 'pret';
+  return 'chargement';
+}
+
 const jourDe = (iso) => (iso ? zurichDateHeure(iso).jour : null);
 const dans = (jour, t) => !!jour && jour >= t.debut && jour <= t.fin;
 

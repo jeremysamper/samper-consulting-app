@@ -63,6 +63,10 @@ function reservationPubliqueDevPlugin() {
         if (/^\/commande\/[a-z0-9-]+\/?$/i.test(chemin)) {
           req.url = `/commande.html${requete ? `?${requete}` : ''}`;
         }
+        // /chambre/<jeton> : demande de l'hôte par le QR de la chambre (lot 17), entrée à part.
+        if (/^\/chambre\/[a-z0-9]+\/?$/.test(chemin)) {
+          req.url = `/chambre.html${requete ? `?${requete}` : ''}`;
+        }
         // /demo : l'application sur un Supabase simulé (src/demo), comme
         // cleanUrls le sert en production.
         if (/^\/demo\/?$/i.test(chemin)) {
@@ -127,7 +131,7 @@ export default defineConfig({
         // restaurants ; entrée à part), jamais remplacées par l'app shell.
         // /demo : la démo publique (src/demo) ne passe jamais par l'app shell.
         // /commande/ : la commande par QR (lot L3), page publique à part.
-        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//, /^\/commande\//, /^\/confidentialite/, /^\/demo/],
+        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//, /^\/commande\//, /^\/chambre\//, /^\/confidentialite/, /^\/demo/],
         cleanupOutdatedCaches: true,
         // Caches runtime : l'ordre compte (première route qui matche gagne).
         // Les clés de cache sont les URL PostgREST complètes : le filtre
@@ -197,6 +201,32 @@ export default defineConfig({
             },
           },
           {
+            // HACCP (lot 08) : frigos, heures de relevé, contrôles et relevés.
+            // L'écran se rouvre sans réseau au sous-sol sur sa dernière
+            // lecture des sept derniers jours. Lectures seulement (GET).
+            urlPattern: /^https:\/\/[^/]+\.supabase\.co\/rest\/v1\/(haccp_zones|haccp_creneaux|haccp_ctrl_templates|haccp_releves|haccp_controls)\b/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'sb-haccp',
+              networkTimeoutSeconds: 6,
+              expiration: { maxEntries: 40, maxAgeSeconds: 7 * 24 * 60 * 60 },
+            },
+          },
+          {
+            // Groupes (lot 24) : groupes, menus de groupe et catalogue des
+            // produits (liste de courses ; plats et fiches sont déjà dans
+            // sb-recettes). Une fiche de groupe ouverte avec le réseau se
+            // rouvre sans réseau chez le client, en lecture seule, sur sa
+            // dernière lecture des sept derniers jours. Lectures seulement (GET).
+            urlPattern: /^https:\/\/[^/]+\.supabase\.co\/rest\/v1\/(groupe_evenements|groupe_menus|produits)\b/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'sb-groupes',
+              networkTimeoutSeconds: 6,
+              expiration: { maxEntries: 60, maxAgeSeconds: 7 * 24 * 60 * 60 },
+            },
+          },
+          {
             // Reste des lectures REST : filet court (micro-coupures).
             urlPattern: /^https:\/\/[^/]+\.supabase\.co\/rest\/v1\/.*/i,
             handler: 'NetworkFirst',
@@ -244,7 +274,10 @@ export default defineConfig({
         demo: 'demo.html',
         // Commande de boissons par QR (/commande/<adresse>, lot L3), sans le
         // bundle de l'app.
-        commande: 'commande.html'
+        commande: 'commande.html',
+        // Demande de l'hôte par le QR de la chambre (/chambre/<jeton>, lot 17),
+        // sans le bundle de l'app.
+        chambre: 'chambre.html'
       },
       output: {
         manualChunks: {

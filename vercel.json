@@ -90,6 +90,7 @@
     { "source": "/reserver/:adresse/integrer", "destination": "/reserver" },
     { "source": "/table/:adresse", "destination": "/reserver" },
     { "source": "/commande/:adresse", "destination": "/commande" },
+    { "source": "/chambre/:jeton", "destination": "/chambre" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [

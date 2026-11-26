@@ -822,6 +822,26 @@
   color: var(--text2);
 }
 
+/* Lot 15 du panel : accord relié à une boisson que la Caisse a mise en rupture
+ (nom barré, mention en dessous) ou retirée de la carte. L'état se dit par le
+ texte ; le trait ne fait que l'appuyer. */
+.fv-accord--rupture .fv-accord-nom {
+  text-decoration: line-through;
+  color: var(--text3);
+}
+.fv-accord-etat {
+  font-size: var(--t1);
+  font-weight: var(--g2);
+  color: var(--danger-text);
+}
+.fv-accord-etat--retire {
+  color: var(--warning-text);
+}
+.fv-onglet-rupture {
+  margin-left: 6px;
+  font-weight: var(--g2);
+}
+
 /* ── États (Fiches salle) ─────────────────────────────────────────────────── */
 .fv-etat {
   display: flex;

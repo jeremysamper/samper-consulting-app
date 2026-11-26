@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { notify } from '../../components/toast/index.js';
 import { SegmentedTabs, encadreStyle, encadreTitreStyle } from '../../components/ui/index.jsx';
 import { pdfUtils } from '../../services/pdf.js';
+import { libelleDerniereLecture } from '../../services/offline/lecturesHorsLigne.js';
 import { labelAllergene, sortAllergenes } from '../../utils/allergenes.js';
 import { userDisplayName } from '../../utils/userDisplay.js';
 import ChoixGroupe from './ChoixGroupe.jsx';
@@ -24,6 +25,11 @@ import { libelleGroupe, lignesParSection, metaStatut, statutsActifs } from './ty
 // de la saison tant que rien n'est choisi), le choix du client (cocher), et la
 // liste de courses calculée sur ce qui est choisi. Fiche et courses
 // s'exportent en PDF dans la DA de la maison.
+//
+// Hors ligne (lot 24) : la fiche se lit sur la dernière lecture gardée par le
+// service worker, avec son heure. Rien ne s'écrit : état, choix, modifier,
+// annuler, supprimer et la facturation sont éteints (« Disponible avec le
+// réseau. »). Une fiche jamais ouverte avec le réseau sur cet appareil le dit.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function horodatage(iso) {
@@ -40,8 +46,16 @@ export default function GroupeFiche({
   // Onglet ajouté par Groupes (« Devis et factures », droit factures_groupes) :
   // { id, label, rendu() }.
   ongletSupplementaire = null,
+  // Hors ligne : lecture seule, heure de la dernière lecture faite avec le
+  // réseau, et fiche jamais ouverte avec le réseau sur cet appareil (D2).
+  horsLigne = false, jamaisOuverte = false, derniereLecture = null,
 }) {
   const [onglet, setOnglet] = useState(ongletInitial);
+  const lu = libelleDerniereLecture(derniereLecture);
+  // Écrire : avec le réseau seulement. Les boutons restent visibles, éteints.
+  const eteint = horsLigne
+    ? { disabled: true, title: 'Disponible avec le réseau.', 'aria-describedby': 'groupe-fiche-reseau' }
+    : {};
   const [statutEnCours, setStatutEnCours] = useState(false);
 
   // Menu servi à la date du groupe : la saison ET la fenêtre de chaque plat
@@ -174,6 +188,17 @@ export default function GroupeFiche({
 
         <div style={st.corps}>
         <div style={st.colonne}>
+          {jamaisOuverte && (
+            <div style={st.vide} data-groupe-jamais-ouverte="">
+              Cette fiche n'a pas encore été ouverte sur cet appareil.
+            </div>
+          )}
+          {!jamaisOuverte && (<>
+          {horsLigne && (
+            <div style={{ ...st.encart, ...st.encartAttention }} data-groupe-hors-ligne="">
+              {lu.texte}{lu.valeur && <> <span data-no-translate>{lu.valeur}</span>.</>}
+            </div>
+          )}
           {groupe.annule && (
             <div style={{ ...st.encart, ...st.encartDanger }}>
               Ce groupe est annulé : il reste barré dans « groupes annulés ».
@@ -186,17 +211,23 @@ export default function GroupeFiche({
           {/* ── État de préparation ── */}
           {!groupe.annule && (
             <div>
-              <div style={st.selecteur} role="radiogroup" aria-label="État de préparation">
+              <div
+                style={{ ...st.selecteur, ...(horsLigne ? st.eteint : null) }}
+                role="radiogroup" aria-label="État de préparation"
+                aria-describedby={horsLigne ? 'groupe-fiche-reseau' : undefined}
+              >
                 {statutsActifs(groupe.statut).map((sid) => {
                   const m = metaStatut(sid);
                   const actif = groupe.statut === sid;
                   return (
                     <button
                       key={sid} type="button" role="radio" aria-checked={actif}
-                      disabled={statutEnCours}
+                      disabled={statutEnCours || horsLigne}
+                      title={horsLigne ? 'Disponible avec le réseau.' : undefined}
                       onClick={() => choisirStatut(sid)}
                       style={{
                         ...st.position,
+                        ...(horsLigne ? { cursor: 'not-allowed' } : null),
                         ...(actif ? { background: m.fond, color: m.texte, borderColor: m.barre } : null),
                       }}
                     >
@@ -242,12 +273,18 @@ export default function GroupeFiche({
                         Plats, apéritif, gâteau et mignardises se cochent dans « Choix du client ».
                       </div>
                     </div>
-                    <button type="button" onClick={() => setOnglet('choix')} style={{ ...st.bouton, ...st.boutonPrincipal, flex: '0 0 auto' }}>
+                    <button
+                      type="button" onClick={() => setOnglet('choix')} {...eteint}
+                      style={{ ...st.bouton, ...st.boutonPrincipal, flex: '0 0 auto', ...(horsLigne ? st.eteint : null) }}
+                    >
                       Cocher les choix du client
                     </button>
                   </div>
                 ) : (
-                  <button type="button" onClick={() => setOnglet('choix')} style={{ ...st.bouton, alignSelf: 'flex-start', flex: '0 0 auto' }}>
+                  <button
+                    type="button" onClick={() => setOnglet('choix')} {...eteint}
+                    style={{ ...st.bouton, alignSelf: 'flex-start', flex: '0 0 auto', ...(horsLigne ? st.eteint : null) }}
+                  >
                     Modifier les choix du client
                   </button>
                 )
@@ -369,13 +406,16 @@ export default function GroupeFiche({
               menu={menu}
               complements={complements}
               menus={menus}
-              canEdit={canEdit && !groupe.annule}
+              canEdit={canEdit && !groupe.annule && !horsLigne}
               voirPrix={voirPrix}
               onSave={onEnregistrerChoix}
             />
           )}
 
-          {ongletSupplementaire && onglet === ongletSupplementaire.id && ongletSupplementaire.rendu()}
+          {/* Devis, factures et paiements : en ligne seulement. */}
+          {ongletSupplementaire && onglet === ongletSupplementaire.id && (
+            horsLigne ? <div style={st.vide}>Disponible avec le réseau.</div> : ongletSupplementaire.rendu()
+          )}
 
           {onglet === 'courses' && (
             <ListeCourses
@@ -384,20 +424,28 @@ export default function GroupeFiche({
               indisponible={cuisine.status === 'error' || menusStatus === 'error'}
             />
           )}
+          </>)}
         </div>
         </div>
 
+        {!jamaisOuverte && (
         <div style={st.pied}>
           <button type="button" onClick={exporterFiche} style={st.bouton}>Menu PDF</button>
           <button type="button" onClick={exporterCourses} style={st.bouton}>Courses PDF</button>
           {canEdit && !groupe.annule && (
-            <button type="button" onClick={() => onEdit(groupe)} style={{ ...st.bouton, ...st.boutonPrincipal }}>Modifier</button>
+            <button
+              type="button" onClick={() => onEdit(groupe)} {...eteint}
+              style={{ ...st.bouton, ...st.boutonPrincipal, ...(horsLigne ? st.eteint : null) }}
+            >
+              Modifier
+            </button>
           )}
           {canEdit && (
             <button
               type="button"
               onClick={() => onAnnuler(groupe, !groupe.annule)}
-              style={{ ...st.bouton, ...(groupe.annule ? null : st.boutonDanger) }}
+              {...eteint}
+              style={{ ...st.bouton, ...(groupe.annule ? null : st.boutonDanger), ...(horsLigne ? st.eteint : null) }}
             >
               {groupe.annule ? 'Rétablir le groupe' : 'Annuler le groupe'}
             </button>
@@ -407,12 +455,17 @@ export default function GroupeFiche({
             <button
               type="button"
               onClick={() => onSupprimer(groupe)}
-              style={{ ...st.bouton, ...st.boutonDanger }}
+              {...eteint}
+              style={{ ...st.bouton, ...st.boutonDanger, ...(horsLigne ? st.eteint : null) }}
             >
               Supprimer définitivement
             </button>
           )}
+          {horsLigne && (
+            <div id="groupe-fiche-reseau" style={st.noteReseau}>Disponible avec le réseau.</div>
+          )}
         </div>
+        )}
       </div>
     </div>
   );
@@ -552,4 +605,7 @@ const st = {
   },
   boutonPrincipal: { background: 'var(--accent)', color: 'var(--on-accent)', border: '1px solid var(--accent)' },
   boutonDanger: { background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid transparent' },
+  // Hors ligne : action éteinte, lisible (0,65 au plus bas, direction Galet).
+  eteint: { opacity: 0.65, cursor: 'not-allowed' },
+  noteReseau: { flex: '1 1 100%', fontSize: 'var(--t1)', color: 'var(--text2)' },
 };

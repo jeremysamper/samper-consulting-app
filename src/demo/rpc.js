@@ -3,6 +3,9 @@
 // hors production rend une erreur claire au lieu d'un faux succès.
 import { uuid } from './postgrest.js';
 import { planEnLigne } from '../reservation/choixTable.js';
+import { nettoyerQuestions } from '../reservation/questionsEnLigne.js';
+import { repartirFormule } from '../modules/caisse/formules.js';
+import { portionRendue } from '../modules/caisse/rupture.js';
 
 const heureZurich = () => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
 const jourZurich = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -27,6 +30,52 @@ function retraitSuivant(ctx, etab) {
 export class ErreurRpc extends Error {
   constructor(message, code = 'P0001') { super(message); this.code = code; }
 }
+
+// ── Lot 12 du panel : compteur de portions du jour ──────────────────────────
+// Même règle que le déclencheur trg_caisse_ligne_portions : une unité de
+// ligne vaut une portion (une demi-quantité en prend une), un ticket de test
+// ne compte pas, un compteur d'un autre jour non plus. Un manque refuse tout
+// (rien n'est posé à moitié), avec le message de la base. À zéro, le produit
+// passe en rupture du jour ; une portion rendue lève cette rupture.
+// Partagée par fauxSupabase.js (lignes posées, changées, retirées),
+// commande_qr_accepter et caisse_poser_formule.
+export const portionsDeLigne = (q) => Math.ceil(Number(q) || 0);
+
+export function decompterPortions(db, mouvements, maj) {
+  const jour = jourZurich();
+  const parPlat = new Map();
+  for (const m of mouvements) {
+    if (!m.plat_id || !m.delta) continue;
+    const t = (db.caisse_tickets || []).find((x) => x.id === m.ticket_id);
+    if (!t || t.test) continue;
+    // Lot 20 : une portion n'est rendue que pour une ligne créée le jour du
+    // compteur et après sa dernière pose (portionRendue, rupture.js).
+    if (m.delta < 0) {
+      const b = (db.caisse_boutons || []).find((x) => x.plat_id === m.plat_id && String(x.portions_le || '').slice(0, 10) === jour);
+      if (!b || !portionRendue(m.created_at, b, jour)) continue;
+    }
+    parPlat.set(m.plat_id, (parPlat.get(m.plat_id) || 0) + m.delta);
+  }
+  const plan = [];
+  for (const [platId, delta] of parPlat) {
+    if (!delta) continue;
+    const b = (db.caisse_boutons || []).find((x) => x.plat_id === platId && String(x.portions_le || '').slice(0, 10) === jour);
+    if (!b || b.portions_restantes === null || b.portions_restantes === undefined) continue;
+    const reste = Number(b.portions_restantes);
+    if (delta > 0 && reste < delta) {
+      if (reste <= 0) throw new ErreurRpc('caisse: il ne reste plus de portion de ce produit');
+      if (reste === 1) throw new ErreurRpc("caisse: il ne reste qu'une portion de ce produit");
+      throw new ErreurRpc(`caisse: il ne reste que ${reste} portions de ce produit`);
+    }
+    plan.push([b, delta, reste]);
+  }
+  for (const [b, delta, reste] of plan) {
+    const n = delta > 0 ? reste - delta : Math.min(999, reste - delta);
+    maj(b, { portions_restantes: n, rupture_le: delta > 0 ? (n === 0 ? jour : b.rupture_le) : null, updated_at: maintenant() });
+  }
+}
+
+const ETATS_DISPONIBILITE = ['en_vente', 'rupture_jour', 'epuise', 'portions'];
 
 function profilDe(ctx, id = ctx.uid) {
   return ctx.db.profiles.find((p) => p.id === id) || null;
@@ -96,6 +145,12 @@ const tablesBorne = (ctx) => {
 };
 
 const estDirection = (ctx) => ['consultant', 'patron'].includes(profilDe(ctx)?.role);
+
+// Lot 23 : rôles par défaut de la policy chambres_update (Hébergement ou
+// Étages) et du droit Inspecter les chambres.
+const STATUTS_CHAMBRE = ['a_faire', 'en_cours', 'propre', 'inspectee', 'hors_service'];
+const ROLES_ETAGES = ['consultant', 'patron', 'gouvernante', 'femme_de_chambre', 'receptionniste'];
+const ROLES_INSPECTION = ['consultant', 'patron', 'gouvernante'];
 
 function borneSeulement(ctx, etab) {
   const r = (ctx.db.reglages_maison || []).find((x) => x.etablissement_id === etab);
@@ -460,19 +515,96 @@ const RPC = {
   },
   // Rupture d'un produit (lot L2) : comme la vraie fonction, n'écrit que
   // rupture_le, au jour de Zurich, pour l'habillage et le serveur.
+  // Lot 12 : devenue un cas particulier de caisse_poser_disponibilite (vrai :
+  // rupture du jour ; faux : en vente, épuisé et compteur effacés).
   caisse_poser_rupture(ctx, a) {
+    const r = RPC.caisse_poser_disponibilite(ctx, {
+      p_etablissement_id: a.p_etablissement_id, p_plat_id: a.p_plat_id, p_etat: a.p_rupture ? 'rupture_jour' : 'en_vente',
+    });
+    return r.rupture_le;
+  },
+  // Lot 12 du panel : les quatre états d'un produit, comme la vraie fonction.
+  caisse_poser_disponibilite(ctx, a) {
+    if (!ctx.uid) throw new ErreurRpc('caisse: connexion requise', '42501');
     if (!['consultant', 'patron', 'resp_cuisine', 'serveur'].includes(profilDe(ctx)?.role)) {
       throw new ErreurRpc('caisse: rupture reservee', '42501');
     }
     if (!ctx.db.plats.some((p) => p.id === a.p_plat_id && p.etablissement_id === a.p_etablissement_id)) {
       throw new ErreurRpc('caisse: plat inconnu pour cet etablissement');
     }
-    const jour = a.p_rupture ? jourZurich() : null;
+    if (!ETATS_DISPONIBILITE.includes(a.p_etat)) throw new ErreurRpc('caisse: etat de disponibilite inconnu', '22023');
+    const n = Number(a.p_portions);
+    if (a.p_etat === 'portions' && (!Number.isInteger(n) || n < 1 || n > 999)) {
+      throw new ErreurRpc('caisse: nombre de portions invalide', '22023');
+    }
+    const jour = jourZurich();
+    const valeurs = {
+      rupture_le: a.p_etat === 'rupture_jour' || a.p_etat === 'epuise' ? jour : null,
+      epuise_durable: a.p_etat === 'epuise',
+      portions_le: a.p_etat === 'portions' ? jour : null,
+      portions_restantes: a.p_etat === 'portions' ? n : null,
+      portions_posees_a: a.p_etat === 'portions' ? maintenant() : null,
+    };
     const b = ctx.db.caisse_boutons.find((x) => x.plat_id === a.p_plat_id);
     if (b && b.etablissement_id !== a.p_etablissement_id) throw new ErreurRpc('caisse: plat inconnu pour cet etablissement');
-    if (b) ctx.maj('caisse_boutons', b, { rupture_le: jour, updated_at: maintenant() });
-    else ctx.inserer('caisse_boutons', { etablissement_id: a.p_etablissement_id, plat_id: a.p_plat_id, rupture_le: jour });
-    return jour;
+    if (b) ctx.maj('caisse_boutons', b, { ...valeurs, updated_at: maintenant() });
+    else ctx.inserer('caisse_boutons', { etablissement_id: a.p_etablissement_id, plat_id: a.p_plat_id, ...valeurs });
+    // Même retour que la vraie fonction : l'instant de la pose n'en sort pas.
+    return {
+      etat: a.p_etat, rupture_le: valeurs.rupture_le, epuise_durable: valeurs.epuise_durable,
+      portions_le: valeurs.portions_le, portions_restantes: valeurs.portions_restantes,
+    };
+  },
+  // Formules à prix fixe (lot 09) : mêmes refus que la vraie fonction, et
+  // la même répartition du prix (repartirFormule, D3). La démo ne rejoue pas
+  // les déclencheurs : c'est l'écran qui y tient les règles de D9 (D18).
+  caisse_poser_formule(ctx, a) {
+    if (!ctx.uid) throw new ErreurRpc('caisse: connexion requise', '42501');
+    const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id);
+    if (!t) throw new ErreurRpc('caisse: ticket introuvable');
+    if (!peutCaisseDemo(ctx)) throw new ErreurRpc('caisse: acces refuse', '42501');
+    const deja = ctx.db.caisse_lignes.filter((l) => l.formule_groupe === a.p_groupe);
+    if (deja.some((l) => l.ticket_id !== t.id)) throw new ErreurRpc('caisse: groupe de formule deja pris');
+    if (deja.length) return { groupe: a.p_groupe, lignes: deja.length, deja: true };
+    if (t.statut !== 'ouvert') throw new ErreurRpc("caisse: le ticket n'est pas ouvert");
+    const f = (ctx.db.caisse_formules || []).find((x) => x.id === a.p_formule_id && x.etablissement_id === t.etablissement_id);
+    if (!f || !f.actif || f.archivee) throw new ErreurRpc('caisse: formule indisponible');
+    const choix = Array.isArray(a.p_choix) ? a.p_choix : [];
+    if (choix.length !== f.etapes.length) throw new ErreurRpc('caisse: un produit par etape');
+    const jour = jourZurich();
+    const plats = f.etapes.map((e, i) => {
+      if (typeof choix[i] !== 'string') throw new ErreurRpc('caisse: un produit par etape');
+      if (!e.plat_ids.includes(choix[i])) throw new ErreurRpc("caisse: produit hors de l'etape");
+      const p = ctx.db.plats.find((x) => x.id === choix[i] && x.etablissement_id === t.etablissement_id);
+      if (!p || p.actif === false) throw new ErreurRpc('caisse: produit indisponible');
+      const b = ctx.db.caisse_boutons.find((x) => x.plat_id === p.id && x.etablissement_id === t.etablissement_id);
+      if (b && String(b.rupture_le || '').slice(0, 10) === jour) throw new ErreurRpc('caisse: produit en rupture');
+      return { p, suite: e.suite };
+    });
+    // Lot 12 : le déclencheur du compteur voit aussi les lignes de formule.
+    decompterPortions(ctx.db, plats.map(({ p }) => ({ plat_id: p.id, ticket_id: t.id, delta: 1 })), (b, v) => ctx.maj('caisse_boutons', b, v));
+    const parts = repartirFormule(Math.round(Number(f.prix) * 100), plats.map(({ p }) => Math.round(Number(p.prix_vente || 0) * 100)));
+    const base = Date.now();
+    plats.forEach(({ p, suite }, i) => ctx.inserer('caisse_lignes', {
+      ticket_id: t.id, plat_id: p.id, libelle: p.nom, quantite: 1, prix_unitaire: parts[i] / 100, suite,
+      formule_id: f.id, formule_groupe: a.p_groupe, formule_nom: String(f.nom).slice(0, 40),
+      created_at: new Date(base + i + 1).toISOString(),
+    }));
+    return { groupe: a.p_groupe, lignes: plats.length, total: Number(f.prix), deja: false };
+  },
+  caisse_retirer_formule(ctx, a) {
+    if (!ctx.uid) throw new ErreurRpc('caisse: connexion requise', '42501');
+    const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id);
+    if (!t) throw new ErreurRpc('caisse: ticket introuvable');
+    if (!peutCaisseDemo(ctx)) throw new ErreurRpc('caisse: acces refuse', '42501');
+    if (t.statut !== 'ouvert') throw new ErreurRpc('caisse: ticket fige, lignes comprises');
+    const groupe = ctx.db.caisse_lignes.filter((l) => l.formule_groupe === a.p_groupe);
+    if (groupe.some((l) => l.ticket_id !== t.id)) throw new ErreurRpc('caisse: formule partagee entre deux tickets');
+    if (groupe.some((l) => l.statut !== 'en_attente') && !estDirection(ctx)) {
+      throw new ErreurRpc('caisse: ligne deja envoyee (retrait par la direction seulement)');
+    }
+    groupe.forEach((l) => ctx.supprimer('caisse_lignes', l));
+    return groupe.length;
   },
   caisse_remise(ctx, a) {
     const t = ctx.db.caisse_tickets.find((x) => x.id === a.p_ticket_id);
@@ -660,17 +792,75 @@ const RPC = {
     if (r) ctx.maj('reservations', r, { ...(a.p_nom ? { nom: a.p_nom } : {}), ...(a.p_couverts ? { nb_couverts: a.p_couverts } : {}), ...(a.p_statut ? { statut: a.p_statut } : {}) });
     return r ? { ...r } : null;
   },
+  // Même forme que la fonction de la base (20261110_caisse_v8.sql, reprise
+  // par 20261123_carte_boissons_droits.sql), alignée au lot 11 du panel :
+  // refus hors gestionnaires, niveau par le rôle (direction : tout ; cuisine :
+  // ni paiements, ni personnes, ni auteurs), jour d'exploitation sous la clé
+  // jour (tickets et clôtures), tickets annulés dans la période, jour_courant,
+  // premier_jour et noms des personnes. Options réduites à l'élément format
+  // (lot C).
   caisse_rapport_donnees(ctx, a) {
-    const tickets = ctx.db.caisse_tickets.filter((t) => t.etablissement_id === a.p_etablissement_id && !t.test && t.jour_exploitation >= a.p_debut && t.jour_exploitation <= a.p_fin && t.statut !== 'ouvert');
-    const ids = new Set(tickets.map((t) => t.id));
-    // Même forme que la fonction de la base : le jour d'exploitation sous la
-    // clé jour, et options réduit à l'élément format (lot C).
+    if (!gere(ctx)) throw new ErreurRpc('caisse: acces refuse', '42501');
+    const etab = a.p_etablissement_id;
+    const direction = estDirection(ctx);
+    const dans = (j) => j && j >= a.p_debut && j <= a.p_fin;
+    const pieces = ctx.db.caisse_tickets.filter((t) => t.etablissement_id === etab && !t.test && t.numero != null
+      && (dans(t.jour_exploitation) || dans(t.annule_jour)));
+    const ids = new Set(pieces.map((t) => t.id));
+    const lignes = ctx.db.caisse_lignes.filter((l) => ids.has(l.ticket_id));
+    const paiements = direction ? ctx.db.caisse_paiements.filter((p) => ids.has(p.ticket_id)) : [];
+    const abandons = direction
+      ? ctx.db.caisse_tickets.filter((t) => t.etablissement_id === etab && !t.test && t.numero == null && t.statut === 'annule' && dans(t.jour_exploitation))
+      : [];
+    const acteurs = new Set([
+      ...pieces.flatMap((t) => [t.ouvert_par, t.annule_par]), ...lignes.map((l) => l.remise_par),
+      ...paiements.map((p) => p.encaisse_par), ...abandons.map((t) => t.ouvert_par),
+    ].filter(Boolean));
+    const nomDe = (p) => [p.prenom, p.nom].filter((x) => String(x || '').trim()).join(' ').trim() || 'Sans nom';
+    // Jour d'exploitation courant : la veille avant la fin de journée réglée.
+    const fin = String(ctx.db.caisse_reglages.find((r) => r.etablissement_id === etab)?.config?.fin_journee || '04:00');
+    let jourCourant = jourZurich();
+    if (heureZurich().slice(0, 5) < fin) {
+      const d = new Date(`${jourCourant}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - 1);
+      jourCourant = d.toISOString().slice(0, 10);
+    }
+    const premiers = ctx.db.caisse_tickets.filter((t) => t.etablissement_id === etab && !t.test && t.numero != null).map((t) => t.jour_exploitation).filter(Boolean).sort();
     return {
-      tickets: tickets.map((t) => ({ ...t, jour: t.jour_exploitation })),
-      lignes: ctx.db.caisse_lignes.filter((l) => ids.has(l.ticket_id))
-        .map((l) => ({ ...l, options: (Array.isArray(l.options) ? l.options : []).filter((o) => o?.type === 'format') })),
-      paiements: ctx.db.caisse_paiements.filter((p) => ids.has(p.ticket_id)),
-      clotures: ctx.db.caisse_clotures.filter((c) => c.etablissement_id === a.p_etablissement_id && c.jour_exploitation >= a.p_debut && c.jour_exploitation <= a.p_fin),
+      niveau: direction ? 'direction' : 'cuisine',
+      etablissement_id: etab,
+      debut: a.p_debut,
+      fin: a.p_fin,
+      jour_courant: jourCourant,
+      premier_jour: premiers[0] || null,
+      tickets: pieces.map((t) => ({
+        ...t,
+        jour: t.jour_exploitation,
+        annule_motif: direction ? t.annule_motif : null,
+        annule_par: direction ? t.annule_par : null,
+        ouvert_par: direction ? t.ouvert_par : null,
+        sur_table: t.table_id != null,
+        origine: t.reservation_id ? 'reservation' : (t.table_id ? 'passage' : 'direct'),
+        compte_client: t.client_id != null,
+      })),
+      lignes: lignes.map((l) => ({
+        ...l,
+        remise_motif: direction ? l.remise_motif : null,
+        remise_par: direction ? l.remise_par : null,
+        options: (Array.isArray(l.options) ? l.options : []).filter((o) => o?.type === 'format'),
+      })),
+      paiements,
+      clotures: ctx.db.caisse_clotures.filter((c) => c.etablissement_id === etab && dans(c.jour_exploitation))
+        .map((c) => (direction ? { ...c, jour: c.jour_exploitation } : {
+          id: c.id, jour: c.jour_exploitation, numero: c.numero, complement_de: c.complement_de, cloture_at: c.cloture_at,
+        })),
+      ventes_jour: [],
+      personnes: direction
+        ? Object.fromEntries(ctx.db.profiles.filter((p) => acteurs.has(p.id)).map((p) => [p.id, nomDe(p)]))
+        : {},
+      abandons: abandons.map((t) => ({ id: t.id, jour: t.jour_exploitation, closed_at: t.closed_at, ouvert_par: t.ouvert_par, montant: totalTicket(ctx, t.id) })),
+      corrections: [],
+      tests: [],
       bons: [],
       tpe: [],
     };
@@ -688,6 +878,13 @@ const RPC = {
       jour: a.p_jour, heure: String(a.p_heure).slice(0, 5), personnes: a.p_personnes, service: a.p_service || null,
       aujourdhui: jourZurich(), maintenant: h * 60 + m,
     });
+  },
+  // Questions à choix de la maison (lot 18) : celles d'une adresse ouverte,
+  // nettoyées comme le fait la fonction de la base.
+  table_en_ligne_questions(ctx, a) {
+    const params = (ctx.db.reservation_en_ligne_parametres || [])
+      .find((p) => p.slug === String(a.p_adresse || '').trim().toLowerCase() && p.en_ligne_actif);
+    return params ? nettoyerQuestions(params.questions_en_ligne) : [];
   },
   caisse_tpe_rapport() { return { transactions: [], bouclements: [] }; },
   caisse_tpe_bouclement_poser() { throw new ErreurRpc('Aucun terminal de paiement n\'est relié dans la démo.'); },
@@ -734,6 +931,11 @@ const RPC = {
       return [{ plat_id: p.id, libelle: `${p.nom}, ${f.libelle}`, quantite: l.quantite, prix_unitaire: f.prix,
         options: [{ type: 'format', id: f.id, valeur: f.libelle }] }];
     });
+    // Lot 12 (D14) : un compteur du jour insuffisant refuse l'acceptation
+    // avant toute écriture ; la commande reste « à valider ». Le ticket n'est
+    // pas encore ouvert : le contrôle porte sur un ticket réel (jamais de test).
+    const reel = { id: '__commande_qr__', test: false };
+    decompterPortions({ ...ctx.db, caisse_tickets: [reel] }, aPoser.map((l) => ({ plat_id: l.plat_id, ticket_id: reel.id, delta: portionsDeLigne(l.quantite) })), () => {});
     let ticketId;
     if (!c.au_bar) {
       ticketId = RPC.caisse_ouvrir_ticket(ctx, { p_etablissement_id: c.etablissement_id, p_table_id: c.table_id, p_qui: 'passage', p_couverts: 1 }).ticket_id;
@@ -745,6 +947,7 @@ const RPC = {
         service: heure < '16:00' ? 'midi' : 'soir', jour_exploitation: jourZurich(), a_emporter: false, total_ttc: null,
       }).id;
     }
+    decompterPortions(ctx.db, aPoser.map((l) => ({ plat_id: l.plat_id, ticket_id: ticketId, delta: portionsDeLigne(l.quantite) })), (b, v) => ctx.maj('caisse_boutons', b, v));
     aPoser.forEach((l) => {
       ctx.inserer('caisse_lignes', {
         ticket_id: ticketId, ...l, suite: 1, statut: 'envoye', envoye_at: maintenant(), envoye_par: ctx.uid,
@@ -762,7 +965,72 @@ const RPC = {
     ctx.maj('caisse_commandes_qr', c, { statut: 'refusee', motif_refus: motif, traitee_par: ctx.uid, traitee_at: maintenant() });
     return { ok: true };
   },
+
+  // Lot 17 du panel : jetons des QR de chambre, mêmes réponses que
+  // demandes_qr_preparer et demandes_qr_renouveler (direction seule).
+  demandes_qr_preparer(ctx, a) {
+    if (!estDirection(ctx)) throw new ErreurRpc('DEMANDES_QR_REFUSE: réservé à la direction de l\'établissement', '42501');
+    const lignes = (ctx.db.demandes_qr_chambres ||= []);
+    const manquantes = (ctx.db.chambres || []).filter((c) => c.etablissement_id === a.p_etablissement_id && c.actif !== false
+      && !lignes.some((q) => q.chambre_id === c.id));
+    manquantes.forEach((c) => ctx.inserer('demandes_qr_chambres', {
+      chambre_id: c.id, etablissement_id: c.etablissement_id, jeton: jetonChambreDemo(), created_at: maintenant(), renouvele_at: null,
+    }));
+    return { crees: manquantes.length };
+  },
+  // Lot 23 du panel : statut d'une chambre par geste (chambre_statut_geste,
+  // migration 20261126_lot23). Le plus récent gagne ; même clé, une seule
+  // écriture ; heure du geste bornée (+5 min, -48 h).
+  chambre_statut_geste(ctx, a) {
+    if (!a.p_cle || !a.p_chambre_id) throw new ErreurRpc('GESTE_INCOMPLET: clé et chambre requises', '22023');
+    if (!STATUTS_CHAMBRE.includes(a.p_statut)) throw new ErreurRpc('STATUT_INCONNU: statut de chambre inconnu', '23514');
+    const now = Date.now();
+    const geste = a.p_geste_at ? Date.parse(a.p_geste_at) : now;
+    if (!Number.isFinite(geste) || geste > now + 5 * 60000) throw new ErreurRpc('GESTE_HEURE_REFUSEE: heure du geste dans le futur', '22007');
+    if (geste < now - 48 * 3600000) throw new ErreurRpc('GESTE_HEURE_REFUSEE: geste de plus de 48 heures', '22007');
+    const gestes = (ctx.db.chambres_statut_gestes ||= []);
+    if (gestes.some((g) => g.cle === a.p_cle)) return 'deja_recu';
+    const c = (ctx.db.chambres || []).find((x) => x.id === a.p_chambre_id);
+    if (!c) throw new ErreurRpc('CHAMBRE_INCONNUE: chambre introuvable', 'P0002');
+    const role = profilDe(ctx)?.role;
+    if (!ROLES_ETAGES.includes(role)) throw new ErreurRpc('ETAGES_RESERVE: changer le statut d\'une chambre demande le droit Modifier d\'Étages', '42501');
+    if (a.p_statut === 'inspectee' && c.statut_menage !== 'inspectee' && !ROLES_INSPECTION.includes(role)) {
+      throw new ErreurRpc('INSPECTION_RESERVEE: passer une chambre « inspectée » demande le droit Inspecter les chambres', '42501');
+    }
+    const at = Math.min(geste, now);
+    // Le journal de démo est semé à heures fixes du jour : une heure encore à
+    // venir ne compte pas (en base, aucune heure de statut n'est dans le futur).
+    const dernierJournal = (ctx.db.chambres_statut_journal || []).filter((j) => j.chambre_id === c.id)
+      .map((j) => Date.parse(j.at) || 0).filter((t) => t <= now)
+      .reduce((m, t) => Math.max(m, t), 0);
+    const actuel = c.statut_menage_at ? Date.parse(c.statut_menage_at) : (dernierJournal || Date.parse(c.created_at) || 0);
+    const resultat = actuel && at <= actuel ? 'ignore' : 'applique';
+    gestes.push({ cle: a.p_cle, etablissement_id: c.etablissement_id, chambre_id: c.id, statut: a.p_statut, geste_at: new Date(geste).toISOString(), resultat, par: ctx.uid, recu_at: maintenant() });
+    if (resultat === 'ignore') return 'ignore';
+    const ancien = c.statut_menage;
+    const motif = a.p_statut === 'hors_service' ? (String(a.p_motif || '').trim() || null) : null;
+    ctx.maj('chambres', c, { statut_menage: a.p_statut, hors_service_motif: motif, statut_menage_at: new Date(at).toISOString(), updated_at: maintenant() });
+    if (ancien !== a.p_statut) {
+      ctx.inserer('chambres_statut_journal', { etablissement_id: c.etablissement_id, chambre_id: c.id, ancien, nouveau: a.p_statut, par: ctx.uid, at: maintenant() });
+    }
+    return 'applique';
+  },
+  demandes_qr_renouveler(ctx, a) {
+    const c = (ctx.db.chambres || []).find((x) => x.id === a.p_chambre_id);
+    if (!c || !estDirection(ctx)) throw new ErreurRpc('DEMANDES_QR_REFUSE: réservé à la direction de l\'établissement', '42501');
+    const q = (ctx.db.demandes_qr_chambres ||= []).find((x) => x.chambre_id === c.id);
+    if (q) ctx.maj('demandes_qr_chambres', q, { jeton: jetonChambreDemo(), renouvele_at: maintenant() });
+    else ctx.inserer('demandes_qr_chambres', { chambre_id: c.id, etablissement_id: c.etablissement_id, jeton: jetonChambreDemo(), created_at: maintenant(), renouvele_at: null });
+    return { ok: true };
+  },
 };
+
+// Jeton d'une chambre : 32 signes hexadécimaux, comme
+// replace(gen_random_uuid()::text, '-', '') en base.
+function jetonChambreDemo() {
+  const u = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`.padEnd(36, '0');
+  return u.replace(/-/g, '').slice(0, 32).padEnd(32, '0');
+}
 
 export function executerRpc(ctx, nom, args) {
   const f = RPC[nom];

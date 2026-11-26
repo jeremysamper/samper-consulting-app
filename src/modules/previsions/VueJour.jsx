@@ -9,13 +9,7 @@ import BandeauNonActualise from './BandeauNonActualise.jsx';
 import ReservationDetailModal from './ReservationDetailModal.jsx';
 import ReservationForm from './ReservationForm.jsx';
 import PlanSalle from './PlanSalle.jsx';
-
-const TAG_COLORS = {
-  allergene: { bg: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: 'var(--danger-bd)' },
-  regime:    { bg: 'var(--success-bg-soft)', color: 'var(--success-text)', border: 'var(--success-bd)' },
-  occasion:  { bg: 'var(--ai-bg-soft)', color: 'var(--ai-text)', border: 'var(--ai-bd)' },
-  autre:     { bg: 'var(--surface)', color: 'var(--text)', border: 'var(--border)' },
-};
+import { TAG_COLORS } from './couleursTags.js';
 
 // ── Carte réservation ──────────────────────────────────────
 function ResaCard({ resa, isMobile, onClick, onStatut, onTraiter, canEdit }) {

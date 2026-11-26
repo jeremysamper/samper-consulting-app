@@ -18,7 +18,7 @@ import {
 // étages le note par déclencheur.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tarifs = [], forfaits = [], restaurant = null, note = null, activites = null, onNote, onOccupants, onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose }) {
+export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tarifs = [], forfaits = [], restaurant = null, note = null, activites = null, onNote, onOccupants, onLierHote, onCreerHote, aujourdhui, peutGerer, onModifier, onAffecter, onStatut, onCheckOut, onClose, onOuvrirSejour = null }) {
   const s = sejour;
   // Lot 6b : un séjour prévu sans chambre se voit proposer une chambre libre
   // (catégorie du tarif, prête d'abord) : le check-in l'affecte en un toucher.
@@ -182,6 +182,27 @@ export default function SejourFiche({ sejour, chambres, sejours, hotes = [], tar
               </select>
             </div>
           )}
+          {/* Lot 14 du panel : les autres séjours du même groupe, ouverts d'un toucher. */}
+          {restaurant.freres?.length > 0 && (
+            <>
+              <div style={h.sousTitre}>Les autres séjours du groupe</div>
+              <div style={f.freres} data-freres="">
+                {restaurant.freres.map(({ sejour: x, numero }, i) => (
+                  <button
+                    key={x.id} type="button" className="tdb-lien" data-frere={x.id}
+                    style={{ ...f.frere, ...(i === restaurant.freres.length - 1 ? { borderBottomWidth: 0 } : null) }}
+                    onClick={() => onOuvrirSejour?.(x)}
+                  >
+                    <span style={f.frereChambre}>
+                      {numero != null ? <><span>Chambre</span> <span data-no-translate>{numero}</span></> : <span>Sans chambre</span>}
+                    </span>
+                    <span style={f.frereNom} data-no-translate>{x.nomHote}</span>
+                    <Puce ton={tonDe(STATUTS_SEJOUR, x.statut)}>{libelleDe(STATUTS_SEJOUR, x.statut)}</Puce>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -237,4 +258,12 @@ const f = {
   ligne: { display: 'flex', gap: 12, alignItems: 'baseline', flexWrap: 'wrap' },
   label: { fontSize: 12, fontWeight: 500, color: 'var(--text2)', flex: '0 0 140px' },
   valeur: { fontSize: 14, color: 'var(--text)', flex: '1 1 160px', minWidth: 0, overflowWrap: 'anywhere' },
+  freres: { display: 'flex', flexDirection: 'column', minWidth: 0 },
+  frere: {
+    display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '8px 0', boxSizing: 'border-box',
+    background: 'transparent', color: 'var(--text)', textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font)', borderRadius: 0,
+    borderWidth: 0, borderStyle: 'solid', borderColor: 'var(--rule-soft)', borderBottomWidth: 1,
+  },
+  frereChambre: { flex: '0 0 auto', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)' },
+  frereNom: { flex: '1 1 auto', minWidth: 0, fontSize: 'var(--t2)', color: 'var(--text2)', overflowWrap: 'anywhere' },
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { BedDouble, BookOpen, Croissant, LogIn, LogOut, Plus, Receipt, Users } from 'lucide-react';
+import { BedDouble, BookOpen, CalendarRange, Croissant, LogIn, LogOut, Plus, Receipt, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -15,13 +15,16 @@ import {
 } from './hotelData.js';
 import { LigneSejour, Liste, PageHotel, ReperesHotel, Vide, h } from './hotelUi.jsx';
 import SejourForm from './SejourForm.jsx';
+import SejourGroupeForm from './SejourGroupeForm.jsx';
 import SejourFiche from './SejourFiche.jsx';
 import HotesGestion, { HoteForm } from './HotesGestion.jsx';
 import SejourNote from './SejourNote.jsx';
 import SejourOccupants from './SejourOccupants.jsx';
 import { estDirectionHotel } from './gardesHotel.js';
 import RegistreMois from './RegistreMois.jsx';
+import { etatRegistre } from './serieHotel.js';
 import TicketsAPorter, { useTicketsAPorter } from './TicketsAPorter.jsx';
+import PlanOccupation from './PlanOccupation.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hébergement (branche Hôtel, lot H0) : l'accueil à tuiles du socle des
@@ -43,6 +46,7 @@ const TITRES = {
   tarifs: 'Tarifs et taxes',
   registre: 'Registre et statistiques',
   tickets: 'Tickets à porter',
+  plan: 'Plan d\'occupation',
 };
 
 // Date de Zurich, relue chaque minute : un écran ouvert à minuit change de jour.
@@ -99,9 +103,19 @@ export default function Hebergement({ user, etablissement }) {
       return { ...l, libelle: cible ? (l.type === 'groupe' ? libelleGroupe(cible) : libelleReservation(cible)) : l.cibleId };
     });
     const dejaLies = new Set(mesLiens.map((l) => l.cibleId));
+    // Lot 14 du panel : les autres séjours reliés au même groupe.
+    const groupesDuSejour = new Set(mesLiens.filter((l) => l.type === 'groupe').map((l) => l.cibleId));
+    const idsFreres = new Set(liens.rows.filter((l) => l.type === 'groupe' && groupesDuSejour.has(l.cibleId) && l.sejourId !== s.id).map((l) => l.sejourId));
+    const numeroDe = (x) => chambres.rows.find((c) => c.id === x.chambreId)?.numero ?? null;
+    const freres = sejours.rows.filter((x) => idsFreres.has(x.id) && x.statut !== 'annule')
+      .map((x) => ({ sejour: x, numero: numeroDe(x) }))
+      .sort((a, b) => (a.numero == null) - (b.numero == null)
+        || String(a.numero ?? '').localeCompare(String(b.numero ?? ''), 'fr', { numeric: true })
+        || String(a.sejour.nomHote).localeCompare(String(b.sejour.nomHote), 'fr'));
     const autour = (d) => d >= s.arrivee && d <= s.depart;
     return {
       liens: mesLiens,
+      freres,
       reservations: reservations.rows.filter((r) => !dejaLies.has(r.id) && autour(r.dateService) && r.statut !== 'annulee').slice(0, 100).map((r) => ({ id: r.id, libelle: libelleReservation(r) })),
       groupes: groupes.rows.filter((g) => !dejaLies.has(g.id) && !g.annule && autour(g.dateEvenement)).slice(0, 100).map((g) => ({ id: g.id, libelle: libelleGroupe(g) })),
       onLier: async (type, cibleId) => { const r = await liens.inserer({ sejour_id: s.id, type, cible_id: cibleId }); if (r.error) notify(r.error, 'error'); else notify(type === 'groupe' ? 'Groupe relié au séjour.' : 'Réservation reliée au séjour.', 'success'); },
@@ -110,11 +124,11 @@ export default function Hebergement({ user, etablissement }) {
   };
 
   const ecransRepris = [
-    ...(direction ? ['arrivees', 'departs', 'en_maison', 'chambres', 'hotes', 'tarifs', 'registre'] : ['arrivees', 'departs', 'en_maison', 'hotes']),
+    ...(direction ? ['arrivees', 'departs', 'en_maison', 'plan', 'chambres', 'hotes', 'tarifs', 'registre'] : ['arrivees', 'departs', 'en_maison', 'plan', 'hotes']),
     ...(avecCaisse ? ['tickets'] : []),
   ];
   const { ecran, setEcran, retourAccueil } = useEcranModule('hebergement', { repris: ecransRepris });
-  const [form, setForm] = React.useState(null); // { sejour: null | sejour }
+  const [form, setForm] = React.useState(null); // { sejour: null | sejour, plusieurs?: true, initial?: { chambreId, arrivee, depart } }
   const [ficheId, setFicheId] = React.useState(null);
   const [hoteForm, setHoteForm] = React.useState(null); // { nomInitial, sejour }
   const [noteId, setNoteId] = React.useState(null);
@@ -142,6 +156,23 @@ export default function Hebergement({ user, etablissement }) {
       : await sejours.inserer({ ...valeurs, created_by: user?.id || null });
     if (!res.error) notify(form?.sejour ? 'Séjour modifié.' : 'Séjour créé.', 'success');
     return res;
+  };
+  // Lot 14 du panel : plusieurs séjours en une requête (tout ou rien), puis
+  // les liens au groupe dans une seconde requête. Si seuls les liens échouent,
+  // les séjours restent et la fenêtre se ferme quand même (D14).
+  const enregistrerGroupe = async ({ sejours: valeurs, groupeId }) => {
+    const res = await sejours.insererPlusieurs(valeurs.map((v) => ({ ...v, created_by: user?.id || null })));
+    if (res.error) return res;
+    const crees = res.data || [];
+    if (groupeId && crees.length) {
+      const resLiens = await liens.insererPlusieurs(crees.map((x) => ({ sejour_id: x.id, type: 'groupe', cible_id: groupeId })));
+      if (resLiens.error) {
+        notify('Les séjours sont créés. Le lien au groupe n\'a pas pu être posé : reliez-le depuis une fiche.', 'warning');
+        return { error: null };
+      }
+    }
+    notify(`${crees.length} séjours créés.`, 'success');
+    return { error: null };
   };
   const affecter = async (s, chambreId) => {
     const res = await sejours.modifier(s.id, { chambre_id: chambreId });
@@ -184,6 +215,8 @@ export default function Hebergement({ user, etablissement }) {
       etat: <>{etat(presents.length, 'séjour', 'séjours')}<span aria-hidden="true"> </span><span>{couverts}</span> <span>{couverts === 1 ? 'couvert petit-déjeuner demain' : 'couverts petit-déjeuner demain'}</span></>,
       onClick: () => setEcran('en_maison'),
     },
+    // Lot 16 du panel : les quatorze prochaines nuits de toutes les chambres.
+    { id: 'plan', libelle: 'Plan d\'occupation', Icone: CalendarRange, etat: <span>Quatorze nuits d'un coup d'oeil</span>, onClick: () => setEcran('plan') },
     { id: 'nouveau', libelle: 'Nouveau séjour', Icone: Plus, visible: peutGerer, onClick: () => setForm({ sejour: null }) },
     { id: 'hotes', libelle: 'Hôtes', Icone: Users, etat: etat(hotes.rows.filter((x) => !x.archive).length, 'fiche', 'fiches'), onClick: () => setEcran('hotes') },
     { id: 'registre', libelle: 'Registre et statistiques', Icone: BookOpen, visible: direction, etat: <span>Nuitées, HESTA, taxes du mois</span>, onClick: () => setEcran('registre') },
@@ -207,9 +240,13 @@ export default function Hebergement({ user, etablissement }) {
       : <Vide>{vide}</Vide>
   );
 
-  const etatLecture = sejours.status === 'absent'
+  const etatLecture = sejours.status === 'absent' || chambres.status === 'absent'
     ? 'Le socle hôtel n\'est pas encore activé sur la base de données.'
-    : sejours.status === 'error' ? 'Les séjours n\'ont pas pu être lus. Nouvel essai en cours…' : null;
+    : sejours.status === 'error' ? 'Les séjours n\'ont pas pu être lus. Nouvel essai en cours…'
+      : chambres.status === 'error' ? 'Les chambres n\'ont pas pu être lues. Nouvel essai en cours…' : null;
+  // Lot 16 du panel : le plan ne se dessine que sur une lecture réussie des
+  // chambres et des séjours (une lecture en échec ne se lit jamais « libre »).
+  const planPret = chambres.status === 'ready' && sejours.status === 'ready';
 
   return (
     <section className="hebergement" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' }}>
@@ -256,6 +293,13 @@ export default function Hebergement({ user, etablissement }) {
         </>
       )}
       {etabId && ecran === 'departs' && listeDe(departs, 'Aucun départ aujourd\'hui.')}
+      {etabId && ecran === 'plan' && (planPret ? (
+        <PlanOccupation
+          chambres={trierChambres(chambres.rows)} sejours={sejours.rows} aujourdhui={aujourdhui} peutGerer={peutGerer}
+          onOuvrirSejour={(s) => setFicheId(s.id)}
+          onCaseLibre={(initial) => setForm({ sejour: null, initial })}
+        />
+      ) : <Vide>{etatLecture || 'Chargement…'}</Vide>)}
       {etabId && ecran === 'tickets' && avecCaisse && (
         <TicketsAPorter etabId={etabId} tickets={ticketsAPorter} onPorte={lignes.reload} />
       )}
@@ -274,7 +318,10 @@ export default function Hebergement({ user, etablissement }) {
       {/* Tarifs et taxes : dans la page des réglages (section
           'hebergement_tarifs'), la tuile y mène. */}
       {etabId && ecran === 'registre' && direction && (
-        <RegistreMois sejours={sejours.rows} chambres={chambres.rows} occupants={occupants.rows} lignes={lignes.rows} reglages={reglage} />
+        <RegistreMois
+          sejours={sejours.rows} chambres={chambres.rows} occupants={occupants.rows} lignes={lignes.rows} reglages={reglage} etablissement={etablissement}
+          etat={etatRegistre({ peutGerer, statuts: [sejours.status, occupants.status, lignes.status] })}
+        />
       )}
 
       {hoteForm && (
@@ -285,7 +332,21 @@ export default function Hebergement({ user, etablissement }) {
         />
       )}
 
-      {form && (
+      {form && form.plusieurs && (
+        <SejourGroupeForm
+          chambres={trierChambres(chambres.rows)}
+          sejours={sejours.rows}
+          tarifs={tarifs.rows}
+          groupes={groupes.rows}
+          groupesLisibles={groupes.status === 'ready' && liens.status === 'ready'}
+          lectureComplete={chambres.status === 'ready' && sejours.status === 'ready'}
+          aujourdhui={aujourdhui}
+          onEnregistrer={enregistrerGroupe}
+          onUneSeule={() => setForm({ sejour: null })}
+          onClose={() => setForm(null)}
+        />
+      )}
+      {form && !form.plusieurs && (
         <SejourForm
           sejour={form.sejour}
           chambres={trierChambres(chambres.rows)}
@@ -294,6 +355,8 @@ export default function Hebergement({ user, etablissement }) {
           forfaits={forfaits.rows}
           aujourdhui={aujourdhui}
           onEnregistrer={enregistrerSejour}
+          initial={form.initial || null}
+          onPlusieurs={form.sejour ? null : () => setForm({ sejour: null, plusieurs: true })}
           onClose={() => setForm(null)}
         />
       )}
@@ -319,6 +382,7 @@ export default function Hebergement({ user, etablissement }) {
           onStatut={changerStatut}
           onCheckOut={checkOut}
           onClose={() => setFicheId(null)}
+          onOuvrirSejour={(x) => setFicheId(x.id)}
         />
       )}
       {sejourNote && peutGerer && (
@@ -333,7 +397,7 @@ export default function Hebergement({ user, etablissement }) {
       {sejourOccupants && peutGerer && (
         <SejourOccupants
           sejour={sejourOccupants} chambre={chambreDe(sejourOccupants)} hote={hotes.rows.find((x) => x.id === sejourOccupants.hoteId) || null}
-          hotes={hotes.rows} occupants={occupants} reglages={reglage}
+          hotes={hotes.rows} occupants={occupants} sejours={sejours.rows} reglages={reglage}
           peutGerer={peutGerer} peutSupprimer={direction} etablissement={etablissement}
           onClose={() => setOccupantsId(null)}
         />

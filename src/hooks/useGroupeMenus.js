@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../services/supabase.js';
 import { dbService } from '../services/dbService.js';
+import { enLigneMaintenant, lireDerniereLecture, noterLecture } from '../services/offline/lecturesHorsLigne.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useGroupeMenus - menus des groupes (table groupe_menus) : un menu par palier
@@ -17,6 +18,9 @@ import { dbService } from '../services/dbService.js';
 // se relance seule. Les écrans NE DOIVENT PAS confondre « pas encore lu » et
 // « menu à composer » : tant que status n'est pas 'ready', aucun éditeur ne
 // s'ouvre - l'enregistrement est un upsert, il écraserait le vrai menu.
+//
+// Sans réseau, la lecture vient du cache du service worker (règle sb-groupes,
+// lot 24) : `luHorsLigne` et `derniereLecture`, comme useGroupes.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TABLE = 'groupe_menus';
@@ -133,6 +137,7 @@ function reglesVersDB(regles) {
 export function useGroupeMenus(etablissementId) {
   const [menus, setMenus] = useState([]);
   const [status, setStatus] = useState(etablissementId ? 'loading' : 'ready');
+  const [lecture, setLecture] = useState({ horsLigne: false, a: null });
   const reloadRef = useRef(null);
 
   useEffect(() => {
@@ -165,6 +170,9 @@ export function useGroupeMenus(etablissementId) {
       }
       loadedOnce = true;
       retryDelay = RETRY_MIN_MS;
+      const enLigne = enLigneMaintenant();
+      if (enLigne) noterLecture(etablissementId, TABLE);
+      setLecture({ horsLigne: !enLigne, a: enLigne ? Date.now() : lireDerniereLecture(etablissementId, TABLE) });
       setMenus((data || []).map(mapMenuFromDB));
       setStatus('ready');
     };
@@ -269,5 +277,7 @@ export function useGroupeMenus(etablissementId) {
     [menus]
   );
 
-  return { menus, status, reload, menuDe, menusDuType, ...actions };
+  return {
+    menus, status, reload, menuDe, menusDuType, luHorsLigne: lecture.horsLigne, derniereLecture: lecture.a, ...actions,
+  };
 }

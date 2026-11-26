@@ -11,12 +11,13 @@
 //   changements faits dans la démo.
 // - IA : jamais d'appel à ai-proxy.
 import { executer, erreurPg, uuid } from './postgrest.js';
-import { executerRpc } from './rpc.js';
+import { decompterPortions, executerRpc, portionsDeLigne } from './rpc.js';
 import { creerBase } from './donnees/index.js';
 import { ETAB, EQUIPE, ROLES_DEMO, aujourdhui, jour, instant } from './donnees/base.js';
 import { STOCKAGE, PREFIXE } from './isolation.js';
 import { defaultPermissions } from '../modules/moduleConfig.js';
 import { totaux } from '../modules/groupes/facturation/calculs.js';
+import { ROLES_POURBOIRES, REFUS_POURBOIRES, changementPourboiresRefuse } from '../modules/caisse/gardesCaisse.js';
 
 export const DEMO_URL = 'https://demo.invalid';
 const DEMO_HOTE = new URL(DEMO_URL).hostname;
@@ -45,9 +46,20 @@ const CLE_ROLE = PREFIXE + 'role';
 // payés « Chambre » (l'un porté sur une note, l'autre à porter).
 // v16 (lot 06 du panel, 25.11.2026) : sources de la prévision des couverts
 // (pension allumée) et un séjour en demi-pension relié à une réservation.
-// v17 (lot 07 du panel, 25.11.2026) : réglage « espèces sans réseau » allumé
+// v17 (lot 09 du panel, 25.11.2026) : une « Formule midi » à trois étapes.
+// v18 (lot 11 du panel, 26.11.2026) : règle de partage des pourboires dans
+// les réglages de la caisse (Salle 70, Cuisine 30).
+// v20 (lot 13 du panel, 26.11.2026) : un exonéré de la taxe de séjour
+// (« Résident de la commune ») dans le registre de la chambre 103.
+// v21 (lot 15 du panel, 26.11.2026) : accords des fiches salle reliés aux
+// boissons de la caisse (platId).
+// v22 (lot 17 du panel, 26.11.2026) : demande par le QR de la chambre
+// (demandes_qr_parametres, demandes_qr_chambres, une demande par_qr).
+// v23 (lot 18 du panel, 26.11.2026) : question « Formule » de la réservation
+// en ligne (questions_en_ligne), réponse et étiquette sur les demandes.
+// v24 (lot 07 du panel, 26.11.2026) : réglage « espèces sans réseau » allumé
 // et journal des rejeux (caisse_encaissements_hors_ligne).
-const VERSION_BASE = 'v17-' + aujourdhui();
+const VERSION_BASE = 'v24-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.
@@ -148,7 +160,7 @@ export function oublierBase() {
 
 // Valeurs par défaut de la base, pour les insertions de l'app.
 const DEFAUTS = {
-  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres', 'reglages_modules', 'facturation_reglages', 'groupe_docs_compteurs'],
+  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres', 'demandes_qr_parametres', 'demandes_qr_chambres', 'reglages_modules', 'facturation_reglages', 'groupe_docs_compteurs'],
   reservations: { statut: 'confirme', origine: 'equipe', est_groupe: false, passeport_gourmand: false, created_by: () => sessionUid },
   shifts: { pause: 0, type_shift: 'simple', statut: 'confirmé', pointage_debut: null, pointage_fin: null, pointage_fin_auto: false },
   recettes: { statut: 'brouillon', version: 1, portions: 4, prix_vente: 0, allergenes_ids: [], ingredients: [], etapes: [], masquee: false, created_by: () => sessionUid },
@@ -162,7 +174,11 @@ const DEFAUTS = {
   documents: { roles_visibles: null },
   private_messages: { read_at: null, sender_id: () => sessionUid },
   caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid, retrait_nom: null, retrait_heure: null, retrait_numero: null },
-  caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false },
+  caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false, formule_id: null, formule_groupe: null, formule_nom: null },
+  // Lot 12 du panel (migration 20261126_panel_lot12_caisse_disponibilite).
+  caisse_boutons: { epuise_durable: false, portions_le: null, portions_restantes: null, portions_posees_a: null },
+  // Lot 09 du panel (migration 20261125_panel_lot09_caisse_formules).
+  caisse_formules: { actif: true, archivee: false, ordre: 0, created_by: () => sessionUid },
   inventaires: { statut: 'en cours', valeur_totale: 0, lignes: [], nom: 'Général' },
   absences: { motif: 'conge', statut: 'acceptee', created_by: () => sessionUid },
   journal_activite: {},
@@ -180,13 +196,13 @@ const DEFAUTS = {
   mep_items: { quantite_suggeree: null, origine: null },
   // Lot 6a (D4) : branche Hôtel et Spa. Défauts des migrations hotel_h0 à h8 et
   // spa_module ; l'auteur est posé par les déclencheurs de la base.
-  chambres: { statut_menage: 'a_faire', ordre: 0, actif: true },
+  chambres: { statut_menage: 'a_faire', ordre: 0, actif: true, statut_menage_at: () => new Date().toISOString() },
   sejours: { statut: 'prevu', pension: 'aucune', nb_adultes: 1, nb_enfants: 0, created_by: () => sessionUid },
   chambres_minibar: { quantite: 1, par: () => sessionUid },
   objets_trouves: { statut: 'trouve', par: () => sessionUid },
   linge_mouvements: { sens: 'sale', quantite: 1, par: () => sessionUid },
   chambres_turndown: { fait_par: () => sessionUid, at: () => new Date().toISOString() },
-  demandes: { origine: 'hote', priorite: 'normale', statut: 'ouverte', escaladee: false, cree_par: () => sessionUid },
+  demandes: { origine: 'hote', priorite: 'normale', statut: 'ouverte', escaladee: false, par_qr: false, cree_par: () => sessionUid },
   hotes: { langue: 'fr', vip: false, consentement_marketing: false, archive: false, created_by: () => sessionUid },
   tarifs: { pension: 'petit_dejeuner', personnes_incluses: 2, prix_personne_sup: 0, prix_enfant: 0, actif: true, ordre: 0 },
   sejour_occupants: { exonere_taxe: false, created_by: () => sessionUid },
@@ -239,6 +255,8 @@ const CLES_PRIMAIRES = {
   factures_compteurs: ['etablissement_id', 'date'],
   caisse_compteurs: ['etablissement_id', 'cle'],
   caisse_commande_qr_parametres: ['etablissement_id'],
+  demandes_qr_parametres: ['etablissement_id'],
+  demandes_qr_chambres: ['chambre_id'],
   reglages_modules: ['etablissement_id', 'module'],
   hotel_reglages: ['etablissement_id'],
   facturation_reglages: ['etablissement_id'],
@@ -258,8 +276,50 @@ function numeroDemo(etab, prefixe, dateIso) {
   return `${prefixe}-${annee}-${String(c.dernier).padStart(4, '0')}`;
 }
 
+// Lot 12 du panel : le compteur de portions du jour, comme le déclencheur
+// trg_caisse_ligne_portions (décompte, refus de la ligne de trop, portion
+// rendue). Une seule règle, decompterPortions de rpc.js.
+function majBouton(b, valeurs) {
+  const avant = { ...b };
+  Object.assign(b, valeurs);
+  diffuser({ type: 'UPDATE', table: 'caisse_boutons', record: { ...b }, old_record: avant });
+}
+
+// Déclencheurs de la base qui refusent une écriture, rejoués avant qu'elle
+// touche la base en mémoire (postgrest.js, option garde). Lot 19 : la clé
+// « pourboires » de caisse_reglages, consultant et patron actifs seulement
+// (trg_caisse_reglages_garde_pourboires), même message que la production.
+function gardeEcriture(type, table, nouvelle, ancienne) {
+  if (table !== 'caisse_reglages') return;
+  const profil = (db.profiles || []).find((p) => p.id === sessionUid);
+  const estDirection = (etab) => Boolean(profil && profil.actif !== false
+    && ROLES_POURBOIRES.includes(profil.role) && (profil.etablissement_ids || []).includes(etab));
+  // En insertion, la garde relit la règle déjà en base pour l'établissement.
+  const avant = type === 'INSERT'
+    ? (db.caisse_reglages || []).find((r) => r.etablissement_id === nouvelle?.etablissement_id) || null
+    : ancienne;
+  if (changementPourboiresRefuse({ type, nouvelle, ancienne: avant, estDirection })) {
+    throw Object.assign(new Error(REFUS_POURBOIRES), { code: '42501' });
+  }
+}
+
 function avantEcriture(type, table, ligne, avant) {
   const maintenant = new Date().toISOString();
+  // Lot 23 : déclencheur trg_chambres_statut_at. Une écriture directe qui
+  // change le statut l'horodate ; personne ne pose cette heure à la main.
+  if (table === 'chambres' && type === 'UPDATE') {
+    ligne.statut_menage_at = ligne.statut_menage !== avant?.statut_menage ? maintenant : (avant?.statut_menage_at ?? null);
+  }
+  if (table === 'caisse_lignes') {
+    const delta = portionsDeLigne(ligne.quantite) - (type === 'INSERT' ? 0 : portionsDeLigne(avant?.quantite));
+    try {
+      decompterPortions(db, [{ plat_id: ligne.plat_id, ticket_id: ligne.ticket_id, delta, created_at: avant?.created_at ?? ligne.created_at }], majBouton);
+    } catch (e) {
+      // PATCH : postgrest.js a déjà copié les valeurs neuves, la base n'écrit rien.
+      if (avant) { Object.keys(ligne).forEach((k) => { if (!(k in avant)) delete ligne[k]; }); Object.assign(ligne, avant); }
+      throw e;
+    }
+  }
   if (table === 'groupe_devis') {
     if (type === 'INSERT') { ligne.numero = numeroDemo(ligne.etablissement_id, 'DEV', ligne.date_devis); ligne.created_by = sessionUid; }
     if (ligne.statut !== avant?.statut) {
@@ -350,6 +410,12 @@ function journaliser(evt) {
 }
 
 function apresEcriture(evt) {
+  // postgrest.js n'appelle pas avantEcriture à la suppression : la portion
+  // d'une ligne retirée est rendue ici.
+  if (evt.type === 'DELETE' && evt.table === 'caisse_lignes' && evt.old_record) {
+    const o = evt.old_record;
+    decompterPortions(db, [{ plat_id: o.plat_id, ticket_id: o.ticket_id, delta: -portionsDeLigne(o.quantite), created_at: o.created_at }], majBouton);
+  }
   journaliser(evt);
   diffuser(evt);
 }
@@ -474,6 +540,13 @@ function contexte() {
       const avant = { ...ligne };
       Object.assign(ligne, valeurs);
       diffuser({ type: 'UPDATE', table, record: { ...ligne }, old_record: avant });
+    },
+    // Lot 09 du panel : retrait d'une formule (caisse_retirer_formule).
+    supprimer(table, ligne) {
+      const i = (db[table] || []).indexOf(ligne);
+      if (i < 0) return;
+      db[table].splice(i, 1);
+      apresEcriture({ type: 'DELETE', table, record: null, old_record: { ...ligne } });
     },
   };
 }
@@ -614,8 +687,15 @@ async function servir(url, input, init) {
   }
   if (chemin.startsWith('/rest/v1/')) {
     const table = decodeURIComponent(chemin.slice('/rest/v1/'.length));
-    const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, avantEcriture, apresEcriture });
-    return reponse(r.status, r.corps, r.entetes);
+    try {
+      const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, garde: gardeEcriture, avantEcriture, apresEcriture });
+      return reponse(r.status, r.corps, r.entetes);
+    } catch (e) {
+      // Refus levé par un déclencheur simulé (compteur de portions, lot 12 ;
+      // règle des pourboires, lot 19). PostgREST rend 403 pour un 42501.
+      if (!e?.code) throw e;
+      return reponse(e.code === '42501' ? 403 : 400, { code: e.code, message: e.message, details: null, hint: null });
+    }
   }
   const e = erreurPg(404, 'Chemin inconnu de la démo : ' + chemin);
   return reponse(e.status, e.corps);

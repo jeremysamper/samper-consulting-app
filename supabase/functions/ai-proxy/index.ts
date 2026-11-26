@@ -18,7 +18,7 @@
 // Tâches : 'ocr-recipe' (vision), 'parse-facture' (vision), 'detect-allergens',
 //          'generate-haccp', 'suggest-recipe', 'match-product',
 //          'generate-fiche-salle', 'parse-catalogue', 'dedupe-commande',
-//          'translate' (texte ; payload.target = 'en' par défaut, 'es' ou 'de'),
+//          'translate' (texte ; payload.target = 'en' par défaut, 'es', 'de', 'it' ou 'pt'),
 //          'orientation-document' (vision : quatre rotations d'une photo, celle à l'endroit).
 // ════════════════════════════════════════════════════════════════
 import { createClient } from 'jsr:@supabase/supabase-js@2';
@@ -364,12 +364,45 @@ Règles :
 - vocabulaire métier imposé : "mise en place" → "Mise en place" ; "brigade" → "Brigade" ; "carte" → "Karte" ; "fiche technique" → "Rezeptblatt" ; "fiche salle" → "Serviceblatt" ; "perte" → "Verlust" ; "pointage" → "Zeiterfassung" ; "pointer" → "stempeln" ; "inventaire" → "Inventur" ; "établissement" → "Betrieb" ; "commande" → "Bestellung" ; "prévisions" → "Prognosen" ; "dressage" → "Anrichten" ; "conservation" → "Lagerung" ; "régénération" → "Regenerieren" ; "portion" → "Portion" ; "préparation" (recette de base) → "Zubereitung" ; "temps de préparation" → "Rüstzeit" ; "réservation" → "Reservation" ; "planning" → "Dienstplan" ; "couverts" → "Gedecke" ; "chef de partie" → "Chef de partie" ; "commis" → "Commis" ; "TVA" → "MWST" ; "CCNT" → "L-GAV" ; "fiduciaire" → "Treuhand" ; "carte bancaire" → "Bankkarte"
 - ne commente jamais, ne pose jamais de question : traduis.`;
 
+// Même contrat, cible italienne : italien standard, compris au Tessin et en
+// Italie. Vocabulaire aligné sur le glossaire statique du front (src/i18n/glossaryIt.js).
+const TRANSLATE_SYSTEM_IT = `Tu traduis du français vers l'italien les textes d'une application de gestion de cuisine professionnelle (restauration, hôtellerie, HACCP, recettes, planning, inventaire).
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
+{"t":["Elimina","Ricette"]}
+Règles :
+- "t" contient EXACTEMENT autant d'éléments que la liste fournie, dans le MÊME ordre. C'est impératif : un décalage casse l'affichage.
+- traduis chaque entrée indépendamment ; n'en fusionne, n'en ajoute et n'en supprime aucune
+- registre : italien standard de cuisine et d'hôtellerie professionnelles, compréhensible au Tessin et en Italie ; concis, ton d'interface logicielle (pas de phrase explicative) ; actions et boutons à la forme d'usage des logiciels italiens ("Salva", "Elimina", "Annulla", "Modifica", "Stampa") ; forme de courtoisie ("Lei", verbe à la troisième personne, sans majuscule de révérence) quand le texte s'adresse à l'utilisateur, ou tournure impersonnelle quand elle est plus courte ; guillemets « » sans espace intérieur
+- garde TEL QUEL : noms propres, noms de personnes, d'établissements, de lieux et de plats signature, marques (Lightspeed, Metro, Transgourmet), sigles (HACCP, DLC, SOP, POS, KDS, MEP, CHF), unités (g, kg, ml, L, pcs, cs, cc), nombres, dates, heures et prix
+- conserve la casse d'origine (une entrée TOUT EN MAJUSCULES le reste) et la ponctuation finale
+- si une entrée est déjà en italien, ou n'a rien à traduire, renvoie-la à l'identique
+- vocabulaire métier imposé : "mise en place" → "mise en place" ; "brigade" → "brigata" ; "carte" → "menu" ; "carte bancaire" → "carta bancaria" ; "fiche technique" → "scheda tecnica" ; "fiche salle" → "scheda di sala" ; "perte" → "perdita" ; "pointage" → "timbratura" ; "pointer" → "timbrare" ; "planning" → "piano dei turni" ; "inventaire" → "inventario" ; "établissement" → "struttura" ; "commande" → "ordine" ; "prévisions" → "previsioni" ; "dressage" → "impiattamento" ; "conservation" → "conservazione" ; "régénération" → "rigenerazione" ; "portion" → "porzione" ; "préparation" (recette de base) → "preparazione" ; "réservation" → "prenotazione" ; "couverts" → "coperti" ; "relevé" → "rilevazione" ; "étages" → "piani" ; "femme de chambre" → "cameriera ai piani" ; "gouvernante" → "governante" ; "chef de partie" → "chef de partie" ; "commis" → "commis" ; "TVA" → "IVA" ; "CCNT" → "CCNL" ; "fiduciaire" → "fiduciaria"
+- ne commente jamais, ne pose jamais de question : traduis.`;
+
+// Même contrat, cible portugaise : portugais européen (pt-PT), pour les équipes
+// portugaises nombreuses en Suisse. Vocabulaire aligné sur le glossaire statique
+// du front (src/i18n/glossaryPt.js).
+const TRANSLATE_SYSTEM_PT = `Tu traduis du français vers le portugais européen (pt-PT) les textes d'une application de gestion de cuisine professionnelle (restauration, hôtellerie, HACCP, recettes, planning, inventaire).
+Réponds UNIQUEMENT avec un objet JSON valide, sans texte autour, au format exact :
+{"t":["Eliminar","Receitas"]}
+Règles :
+- "t" contient EXACTEMENT autant d'éléments que la liste fournie, dans le MÊME ordre. C'est impératif : un décalage casse l'affichage.
+- traduis chaque entrée indépendamment ; n'en fusionne, n'en ajoute et n'en supprime aucune
+- registre : portugais du Portugal (jamais brésilien), orthographe de l'accord de 1990, cuisine et hôtellerie professionnelles ; concis, ton d'interface logicielle (pas de phrase explicative) ; boutons et actions à l'infinitif comme les logiciels portugais ("Guardar", "Eliminar", "Cancelar", "Editar", "Imprimir") ; jamais de tutoiement : troisième personne de politesse ("Escolha", "Tente novamente") ou tournure impersonnelle quand elle est plus courte ; vocabulaire du Portugal ("ecrã", "ficheiro", "utilizador", "equipa", "definições", "telemóvel", "registo", "partilhar") ; guillemets « » sans espace intérieur
+- garde TEL QUEL : noms propres, noms de personnes, d'établissements, de lieux et de plats signature, marques (Lightspeed, Metro, Transgourmet), sigles (HACCP, DLC, SOP, POS, KDS, MEP, CHF, CCNT), unités (g, kg, ml, L, pcs, cs, cc), nombres, dates, heures et prix
+- conserve la casse d'origine (une entrée TOUT EN MAJUSCULES le reste) et la ponctuation finale
+- si une entrée est déjà en portugais, ou n'a rien à traduire, renvoie-la à l'identique
+- vocabulaire métier imposé : "mise en place" → "mise en place" ; "brigade" → "brigada" ; "carte" → "ementa" ; "carte des boissons" → "carta de bebidas" ; "carte des vins" → "carta de vinhos" ; "carte bancaire" → "cartão bancário" ; "fiche technique" → "ficha técnica" ; "fiche salle" → "ficha de sala" ; "perte" → "perda" ; "pointage" → "registo de ponto" ; "pointer" → "registar o ponto" ; "planning" → "escala" ; "relevé" → "registo" ; "inventaire" → "inventário" ; "établissement" → "estabelecimento" ; "commande" → "pedido" ; "bon de commande" → "nota de encomenda" ; "ticket" (caisse) → "conta" ; "bon" (cuisine) → "talão" ; "prévisions" → "previsões" ; "dressage" → "empratamento" ; "conservation" → "conservação" ; "régénération" → "regeneração" ; "portion" → "porção" ; "préparation" (recette de base) → "preparação" ; "réservation" → "reserva" ; "couverts" → "cobertos" ; "étages" → "andares" ; "femme de chambre" → "empregada de andares" ; "gouvernante" → "governanta" ; "nuitée" → "dormida" ; "taxe de séjour" → "taxa turística" ; "chef de partie" → "chef de partie" ; "commis" → "commis" ; "TVA" → "IVA" ; "fiduciaire" → "fiduciária"
+- ne commente jamais, ne pose jamais de question : traduis.`;
+
 // Langues cibles de la tâche translate. `target` absent = 'en' : les fronts
 // déjà ouverts (qui envoient 'en' ou rien) gardent exactement leur comportement.
 const TRANSLATE_TARGETS: Record<string, { system: string; nom: string }> = {
   en: { system: TRANSLATE_SYSTEM, nom: 'anglais' },
   es: { system: TRANSLATE_SYSTEM_ES, nom: 'espagnol' },
   de: { system: TRANSLATE_SYSTEM_DE, nom: 'allemand' },
+  it: { system: TRANSLATE_SYSTEM_IT, nom: 'italien' },
+  pt: { system: TRANSLATE_SYSTEM_PT, nom: 'portugais européen' },
 };
 
 // Sens d'une photo de document. Une facture photographiée à plat sur un plan de

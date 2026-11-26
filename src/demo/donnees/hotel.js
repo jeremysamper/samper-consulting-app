@@ -235,6 +235,10 @@ export const SEJOUR_OCCUPANTS = SEJOURS.filter(occupe).flatMap((s, i) => {
   for (let k = 0; k < s.nb_adultes + s.nb_enfants; k += 1) {
     const principal = k === 0;
     const enfant = k >= s.nb_adultes;
+    // Lot 13 du panel (D13) : le deuxième adulte de la chambre 103 (séjour n° 4)
+    // est exonéré ; sa note garde la taxe de deux adultes, le décompte en
+    // montre l'écart.
+    const exonere = s.id === uid('06', 4) && k === 1;
     out.push({
       id: uid3('07', out.length + 1 + i * 4),
       etablissement_id: ETAB,
@@ -251,8 +255,8 @@ export const SEJOUR_OCCUPANTS = SEJOURS.filter(occupe).flatMap((s, i) => {
       piece_numero: principal ? `X${String(4100000 + i * 7).slice(0, 7)}` : null,
       arrivee: s.arrivee,
       depart: s.depart,
-      exonere_taxe: false,
-      exonere_motif: null,
+      exonere_taxe: exonere,
+      exonere_motif: exonere ? 'Résident de la commune' : null,
       created_by: HOTE,
       created_at: instant(s.arrivee, '16:00'),
       updated_at: instant(s.arrivee, '16:00'),
@@ -375,7 +379,11 @@ export function genererDemandes() {
     // Lot 6b : une demande du pôle Technique sans ordre de travail encore,
     // que la technique transforme en ordre en un toucher.
     [9, '202', 6, 'hote', 'technique', 'Lampe de chevet en panne', 'Côté fenêtre. L\'ampoule a été changée, rien ne s\'allume.', 'normale', [0, '20:00'], 'ouverte', false, null, [0, '09:40'], HOTE],
+    // Lot 17 du panel : une demande envoyée par l'hôte avec le QR de sa
+    // chambre, sans compte (cree_par nul, par_qr vrai).
+    [10, '202', 6, 'hote', 'etages', 'Serviettes en plus', 'Deux grandes serviettes, merci.', 'normale', [0, '11:30'], 'ouverte', false, null, [0, '10:50'], null],
   ];
+  const parQr = new Set([10]);
   const demandes = brutes.map(([n, numero, s, origine, pole, titre, detail, priorite, [ed, eh], statut, escaladee, assignee, [cd, chh], par]) => ({
     id: uid('14', n),
     etablissement_id: ETAB,
@@ -395,6 +403,7 @@ export function genererDemandes() {
     cree_par: par,
     faite_par: statut === 'faite' ? assignee : null,
     faite_at: statut === 'faite' ? instant(jour(0), '10:45') : null,
+    par_qr: parQr.has(n),
     created_at: instant(jour(cd), chh),
     updated_at: instant(jour(0), '10:45'),
   }));
@@ -411,6 +420,24 @@ export function genererDemandes() {
   }
   return { demandes, demandes_journal: journal };
 }
+
+// Lot 17 du panel : demande par le QR de la chambre. Service allumé, six
+// demandes courantes ouvertes aux hôtes (les mêmes que /chambre/demo), un
+// jeton fixe de 32 signes hexadécimaux par chambre.
+export const DEMANDES_QR_PARAMETRES = [{
+  etablissement_id: ETAB,
+  actif: true,
+  libelles: ['Oreillers en plus', 'Serviettes en plus', 'Peignoirs pour le spa', 'Lit bébé', 'Taxi à commander', 'Départ tardif'],
+  created_at: CREE,
+  updated_at: CREE,
+}];
+export const DEMANDES_QR_CHAMBRES = CHAMBRES.map((c, i) => ({
+  chambre_id: c.id,
+  etablissement_id: ETAB,
+  jeton: `c0de17${String(i + 1).padStart(2, '0')}`.padEnd(32, 'a'),
+  created_at: CREE,
+  renouvele_at: null,
+}));
 
 // ── Activités ───────────────────────────────────────────────────────────────
 
@@ -579,5 +606,7 @@ export function genererHotel({ ticketsChambre = [] } = {}) {
     ...genererActivites(),
     ...genererPassations(),
     ...genererTechnique(),
+    demandes_qr_parametres: DEMANDES_QR_PARAMETRES,
+    demandes_qr_chambres: DEMANDES_QR_CHAMBRES,
   };
 }

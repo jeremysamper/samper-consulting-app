@@ -7,6 +7,7 @@ import { Ligne, ui } from '../compte/sections/reglagesUi.jsx';
 import { EtatModule, st as stm } from '../compte/sections/reglagesModulesUi.jsx';
 import { POLES, PRIORITES, libelleDe } from '../hebergement/hotelData.js';
 import { delaiLisible } from './demandesCourantes.js';
+import BlocDemandesQr from './BlocDemandesQr.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section « Demandes » de la page des réglages (plan 15, lot 6b) : les
@@ -84,6 +85,12 @@ export default function SectionReglagesDemandes({ etablissement }) {
           </div>
         </div>
       </Ligne>
+      <BlocDemandesQr
+        etablissement={etablissement}
+        categories={liste}
+        categoriesReglees={reglages.categoriesReglees}
+        enregistrerCategories={ecrire}
+      />
       <Ligne colonne derniere titre="Liste d'origine" aide="Les neuf demandes proposées avant tout réglage.">
         <div>
           <Btn variant="ghost" disabled={enCours || !reglages.categoriesReglees} style={ui.btn44} onClick={() => ecrire(CATEGORIES_DEMANDE_DEFAUT)}>Reprendre la liste d'origine</Btn>

@@ -93,6 +93,8 @@ const categorieDe = (pl) => CAISSE_CATEGORIES.find((c) => c.nom === pl.categorie
 
 export function genererCaisse() {
   const tousPlats = [...PLATS, ...BOISSONS];
+  const PLAT_COMPTE = 'pl-tarte';
+  const VIN_EPUISE = 'pl-b-cornalin-btl';
   const boutons = tousPlats.map((pl, i) => ({
     id: uid('8002', i + 1),
     etablissement_id: ETAB,
@@ -108,7 +110,12 @@ export function genererCaisse() {
     photo_url: null,
     // Rupture du jour (lot L2) : plus de féra aujourd'hui, pour que la démo
     // montre une case grisée et le compteur.
-    rupture_le: pl.id === 'pl-fera' ? aujourdhui() : null,
+    rupture_le: pl.id === 'pl-fera' ? aujourdhui() : pl.id === VIN_EPUISE ? jour(-2) : null,
+    // Lot 12 du panel : la tarte au compteur (il en reste 3 aujourd'hui), le
+    // cornalin en bouteille épuisé depuis deux jours, jusqu'à nouvel arrivage.
+    epuise_durable: pl.id === VIN_EPUISE,
+    portions_le: pl.id === PLAT_COMPTE ? aujourdhui() : null,
+    portions_restantes: pl.id === PLAT_COMPTE ? 3 : null,
   }));
 
   const alea = graine('caisse-' + aujourdhui());
@@ -249,13 +256,41 @@ export function genererCaisse() {
     plat_formats: PLAT_FORMATS,
     caisse_categories: CAISSE_CATEGORIES,
     caisse_boutons: boutons,
+    // Lot 09 du panel : une formule à prix fixe, trois étapes, deux à choix.
+    caisse_formules: [{
+      id: '00000000-0000-4000-8009-000000000001',
+      etablissement_id: ETAB,
+      nom: 'Formule midi',
+      prix: 39,
+      etapes: [
+        { nom: 'Entrée', suite: 1, plat_ids: ['pl-veloute', 'pl-salade'] },
+        { nom: 'Plat', suite: 2, plat_ids: ['pl-croute', 'pl-rosti', 'pl-risotto', 'pl-fera'] },
+        { nom: 'Dessert', suite: 3, plat_ids: ['pl-mousse', 'pl-tarte'] },
+      ],
+      actif: true,
+      archivee: false,
+      ordre: 0,
+      created_by: null,
+      created_at: '2026-11-20T08:00:00Z',
+      updated_at: '2026-11-20T08:00:00Z',
+    }],
     // Coordonnées de la quittance : sans elles la caisse n'encaisse que des
     // tickets de test. Numéro de TVA fictif, à la clé de contrôle juste.
     caisse_reglages: [{
       etablissement_id: ETAB,
-      // especes_hors_ligne (lot 07 du panel) : allumé pour que le parcours
-      // « espèces sans réseau » soit visible dans la démo.
-      config: { especes_hors_ligne: true, legal: { raison_sociale: 'Brasserie Démo SA', adresse: 'Place des Mélèzes 1', localite: '1950 Sion', numero_tva: 'CHE-123.456.788 TVA' } },
+      config: {
+        // especes_hors_ligne (lot 07 du panel) : allumé pour que le parcours
+        // « espèces sans réseau » soit visible dans la démo.
+        especes_hors_ligne: true,
+        legal: { raison_sociale: 'Brasserie Démo SA', adresse: 'Place des Mélèzes 1', localite: '1950 Sion', numero_tva: 'CHE-123.456.788 TVA' },
+        // Lot 11 du panel : partage des pourboires par groupe, Salle 70 et
+        // Cuisine 30 (identifiants de PLANNING_GROUPES) ; le Spa n'est pas
+        // retenu, sa praticienne est nommée « Hors partage ».
+        pourboires: {
+          mode: 'cle',
+          groupes: [{ id: '00000000-0000-4000-8000-0000000000c2', part: 70 }, { id: '00000000-0000-4000-8000-0000000000c1', part: 30 }],
+        },
+      },
       updated_at: '2026-10-01T08:00:00Z',
     }],
     caisse_tickets: tickets,

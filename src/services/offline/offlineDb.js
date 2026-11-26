@@ -16,11 +16,17 @@
 // ─────────────────────────────────────────────────────────────
 
 const DB_NAME = 'samper-offline';
-const DB_VERSION = 3;
+// Le lot 07 (caisse-queue), fusionné après les lots 08 et 23, prend 7 : les
+// numéros 3 et 5, qu'il avait pris ou qu'on lui avait réservés, ne sont pas
+// réutilisés, pour qu'aucun appareil ne garde deux schémas différents sous le
+// même numéro.
+const DB_VERSION = 7;
 
 export const STORES = {
   PUNCH: 'punch-queue',
   INVENTAIRE: 'inventaire-queue',
+  HACCP_RELEVES: 'haccp-releve-queue',
+  ETAGES: 'etages-queue',
   CAISSE: 'caisse-queue',
 };
 
@@ -58,7 +64,17 @@ function openDb() {
         if (!db.objectStoreNames.contains(STORES.INVENTAIRE)) {
           db.createObjectStore(STORES.INVENTAIRE, { keyPath: 'cle' });
         }
-        // caisse-queue (v3, lot 07 du panel) : ventes en espèces gardées sans
+        // haccp-releve-queue : clé = id du relevé, créé sur l'appareil, qui
+        // sert aussi de clé d'idempotence au rejeu (insertion si absent).
+        if (!db.objectStoreNames.contains(STORES.HACCP_RELEVES)) {
+          db.createObjectStore(STORES.HACCP_RELEVES, { keyPath: 'id' });
+        }
+        // etages-queue : clé = clé du geste, posée sur l'appareil, qui sert
+        // aussi de clé d'idempotence à la RPC chambre_statut_geste (lot 23).
+        if (!db.objectStoreNames.contains(STORES.ETAGES)) {
+          db.createObjectStore(STORES.ETAGES, { keyPath: 'cle' });
+        }
+        // caisse-queue (v7, lot 07 du panel) : ventes en espèces gardées sans
         // réseau. Clé = clientUuid, la clé d'idempotence du rejeu.
         if (!db.objectStoreNames.contains(STORES.CAISSE)) {
           db.createObjectStore(STORES.CAISSE, { keyPath: 'clientUuid' });

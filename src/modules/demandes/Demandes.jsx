@@ -176,6 +176,7 @@ function LigneDemande({ demande: dm, chambre, hote, maintenant, aujourdhui, onCl
       <span style={h.ligneDroite}>
         {dm.escaladee && <Puce ton="danger">Escaladée</Puce>}
         {dm.priorite !== 'normale' && <Puce ton={tonDe(PRIORITES, dm.priorite)}>{libelleDe(PRIORITES, dm.priorite)}</Puce>}
+        {dm.parQr && <Puce>Par QR</Puce>}
         <Puce ton={tonDe(STATUTS_DEMANDE, dm.statut)}>{libelleDe(STATUTS_DEMANDE, dm.statut)}</Puce>
         <ChevronRight size={16} strokeWidth={1.8} aria-hidden="true" style={{ flexShrink: 0, color: 'var(--text3)' }} />
       </span>
@@ -394,7 +395,7 @@ function DemandeFiche({ demande: dm, chambre, hote, equipe, journal, user, peutS
         {/* Seule une URL https (le bucket de l'app) devient un lien : jamais un
             texte saisi, la base l'impose aussi (demandes_photo_url_https). */}
         {dm.photoUrl && /^https:\/\//.test(dm.photoUrl) && <Ligne label="Photo"><a href={dm.photoUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>Voir la photo</a></Ligne>}
-        <Ligne label="Demandé par"><span data-no-translate>{nomPersonne(dm.creePar) || 'Système'}</span> <span data-no-translate>{dateHeureZurich(dm.createdAt)}</span></Ligne>
+        <Ligne label="Demandé par">{dm.parQr ? <span>L'hôte, par le QR de la chambre</span> : <span data-no-translate>{nomPersonne(dm.creePar) || 'Système'}</span>} <span data-no-translate>{dateHeureZurich(dm.createdAt)}</span></Ligne>
         {dm.faitePar && <Ligne label="Faite par"><span data-no-translate>{nomPersonne(dm.faitePar)}</span> <span data-no-translate>{dateHeureZurich(dm.faiteAt)}</span></Ligne>}
       </div>
       {demandeOuverte(dm) && (
@@ -413,7 +414,7 @@ function DemandeFiche({ demande: dm, chambre, hote, equipe, journal, user, peutS
           <div key={l.id} style={d.ligneJournal}>
             <span style={{ ...h.detail, fontVariantNumeric: 'tabular-nums' }} data-no-translate>{dateHeureZurich(l.at)}</span>
             <span style={{ fontSize: 13, color: 'var(--text)' }}><span>{ACTIONS_DEMANDE[l.action] || l.action}</span> <span data-no-translate>{detailJournal(l)}</span></span>
-            <span style={h.detail}>{l.par ? <span data-no-translate>{nomPersonne(l.par)}</span> : <span>Système</span>}</span>
+            <span style={h.detail}>{l.par ? <span data-no-translate>{nomPersonne(l.par)}</span> : <span>{dm.parQr && l.action === 'creee' ? "L'hôte" : 'Système'}</span>}</span>
           </div>
         ))}
       </div>

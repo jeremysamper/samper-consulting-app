@@ -5,7 +5,7 @@ import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { getDemoData } from '../../data/demoData.js';
 import { userDisplay } from '../../utils/userDisplay.js';
 import { zurichAjouterJours, zurichDateHeure, zurichMinuitIso } from '../../utils/zurichTime.js';
-import { statsPeriode } from './serieHotel.js';
+import { ageAu, classeTaxe, statsPeriode } from './serieHotel.js';
 import { pensionComprend, sejourMange } from './pension.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -294,6 +294,16 @@ export function useTableHotel(table, etabId, { map, filtres = [], cle = '', orde
         if (error) return { data: null, error: messageErreur(error) };
         return { data: remplacer(data), error: null };
       },
+      // Lot 14 du panel : plusieurs lignes en une seule requête. En base, c'est
+      // une seule instruction : tout est créé, ou rien.
+      async insererPlusieurs(listeDeValeurs) {
+        const liste = Array.isArray(listeDeValeurs) ? listeDeValeurs : [];
+        if (!liste.length) return { data: [], error: null };
+        const { data, error } = await supabase.from(table)
+          .insert(liste.map((v) => ({ ...v, etablissement_id: etabId }))).select();
+        if (error) return { data: null, error: messageErreur(error) };
+        return { data: (data || []).map((row) => remplacer(row)), error: null };
+      },
       async modifier(id, valeurs) {
         const { data, error } = await supabase.from(table).update(valeurs).eq(colonneId, id).select().single();
         if (error) return { data: null, error: messageErreur(error) };
@@ -410,6 +420,8 @@ export function mapDemande(r) {
     echeance: r.echeance || null, statut: r.statut || 'ouverte', escaladee: r.escaladee === true, escaladeeAt: r.escaladee_at || null,
     assigneeA: r.assignee_a || null, creePar: r.cree_par || null, faitePar: r.faite_par || null, faiteAt: r.faite_at || null,
     createdAt: r.created_at || null, updatedAt: r.updated_at || null,
+    // Lot 17 : demande née du QR de la chambre (lue, jamais écrite par l'app).
+    parQr: r.par_qr === true,
   };
 }
 export function mapDemandeJournal(r) {
@@ -511,15 +523,8 @@ export function chf(n) {
   const [ent, dec] = Math.abs(v).toFixed(2).split('.');
   return `${v < 0 ? '-' : ''}${ent.replace(/\B(?=(\d{3})+(?!\d))/g, '\'')}.${dec}`;
 }
-// Âge révolu d'une personne à une date donnée, ou null sans date de naissance.
-export function ageAu(dateNaissance, jour) {
-  if (!dateNaissance || !jour) return null;
-  const [ny, nm, nd] = dateNaissance.split('-').map(Number);
-  const [jy, jm, jd] = jour.split('-').map(Number);
-  let age = jy - ny;
-  if (jm < nm || (jm === nm && jd < nd)) age -= 1;
-  return age;
-}
+// Âge révolu : rangé dans serieHotel.js (lot 13 du panel), réexporté ici.
+export { ageAu };
 // Tarifs utilisables pour un séjour : actifs, de la catégorie de la chambre
 // (ou sans catégorie), valables le jour d'arrivée.
 export function tarifsApplicables(tarifs, sejour, chambre) {
@@ -558,10 +563,9 @@ export function lignesAutomatiques(sejour, tarif, reglages, occupants = []) {
   let enfants = 0;
   if (mesOccupants.length) {
     for (const o of mesOccupants) {
-      const age = ageAu(o.dateNaissance, sejour.arrivee);
-      if (o.exonereTaxe || (age != null && age < r.ageEnfantExonere)) continue;
-      if (age != null && age < r.ageEnfantReduit) enfants += 1;
-      else adultes += 1;
+      const classe = classeTaxe(o, sejour.arrivee, r);
+      if (classe === 'enfant') enfants += 1;
+      else if (classe === 'adulte') adultes += 1;
     }
   } else {
     adultes = sejour.nbAdultes || 0;

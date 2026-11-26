@@ -128,8 +128,8 @@ export const SECTIONS = [
     charger: () => import('./sections/SectionApparence.jsx'),
   },
   {
-    id: 'langue', libelle: 'Langue', detail: "Original, English, Español ou Deutsch, pour l'affichage",
-    motsCles: 'traduction anglais espagnol', groupe: 'appareil', portee: 'appareil', garde: toutLeMonde,
+    id: 'langue', libelle: 'Langue', detail: "Original, English, Español, Deutsch, Italiano ou Português, pour l'affichage",
+    motsCles: 'traduction anglais espagnol allemand italien portugais', groupe: 'appareil', portee: 'appareil', garde: toutLeMonde,
     charger: () => import('./sections/SectionLangue.jsx'),
   },
   {
@@ -214,7 +214,7 @@ export const SECTIONS = [
   // ── Les modules ──
   {
     id: 'caisse', libelle: 'Caisse', detail: 'Catégories, produits, modes, paiement, terminal, TVA, clôture et commande par QR',
-    motsCles: 'mode test tpe ticket qr commande boissons', groupe: 'modules', portee: 'maison', module: 'caisse',
+    motsCles: 'mode test tpe ticket qr commande boissons formule menu pourboires partage', groupe: 'modules', portee: 'maison', module: 'caisse',
     garde: (ctx) => ouvreLeModule('caisse')(ctx) && peutHabillerCaisse(ctx.user?.role),
     charger: () => import('../caisse/SectionReglagesCaisse.jsx'),
   },

@@ -2112,6 +2112,133 @@ export const pdfUtils = {
     });
   },
 
+  // Lot 13 du panel : décompte de la taxe de séjour d'un mois, pour la
+  // commune. payload : { commune, mois, numeroHesta, phraseEcart, decompte }
+  // (decompte : la valeur de decompteTaxe, serieHotel.js). Une page A4
+  // vectorielle, en français quelle que soit la langue affichée, sans aucun
+  // nom de personne : des nombres et des motifs seulement.
+  async exportDecompteTaxeSejourPdf(payload, options = {}) {
+    try {
+      const jsPDF = await this._loadJsPdf();
+      const etab = options.etablissement || this._getCurrentEtablissement();
+      const logoDataUrl = options.logoDataUrl !== undefined ? options.logoDataUrl : await this._resolveLogoDataUrl(etab);
+      const doc = this._nouveauDocA4(jsPDF);
+      this._renderDecompteTaxeSejour(doc, payload || {}, { ...options, etablissement: etab, logoDataUrl });
+      doc.save(options.filename || 'decompte-taxe-sejour.pdf');
+      return doc;
+    } catch (err) {
+      console.error('[pdf exportDecompteTaxeSejourPdf]', err);
+      notifyLegacy('Export PDF échoué : ' + (err?.message || 'erreur inconnue'), 'error');
+      throw err;
+    }
+  },
+
+  _renderDecompteTaxeSejour(doc, payload, options = {}) {
+    const PAGE_W = 210, M = BRAND.page.marginMm;
+    const contentW = PAGE_W - 2 * M;
+    const etabName = pdfSafeText((options.etablissement?.nom || 'Samper Consulting').toString());
+    const d = payload.decompte || {};
+    const n = d.nuitees || {};
+    const taux = d.taux || {};
+    const du = d.du || {};
+    const notes = d.notes || {};
+    const ecart = d.ecart || {};
+    const chf = (x) => {
+      const v = Number(x) || 0;
+      const [ent, dec] = Math.abs(v).toFixed(2).split('.');
+      return `${v < 0 ? '-' : ''}${ent.replace(/\B(?=(\d{3})+(?!\d))/g, "'")}.${dec}`;
+    };
+    const commune = pdfSafeText(String(payload.commune || ''));
+    let y = this._enTeteDocument(doc, {
+      titre: 'Décompte de la taxe de séjour',
+      sousTitre: commune ? `Commune de ${commune}` : 'Taxe de séjour',
+      meta: [pdfSafeText(String(payload.mois || '')), payload.numeroHesta ? `numéro HESTA ${pdfSafeText(String(payload.numeroHesta))}` : ''].filter(Boolean).join(', '),
+      etablissement: etabName,
+      logoDataUrl: options.logoDataUrl || null,
+    });
+
+    const colLib = M + 2.5, colNuit = M + contentW - 62, colTaux = M + contentW - 32, colMont = M + contentW - 2.5;
+    const ligne = (libelle, nuitees, tx, montant, { retrait = false, fort = false, index = 0 } = {}) => {
+      const rowH = 7;
+      this._fondZebre(doc, index, M, y - 4.6, contentW, rowH);
+      setBrandFont(doc, fort ? 'label' : 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+      doc.text(pdfSafeText(String(libelle || '')), colLib + (retrait ? 5 : 0), y);
+      setBrandFont(doc, 'data');
+      if (nuitees != null) this._texteDroite(doc, String(nuitees), colNuit, y);
+      if (tx != null) this._texteDroite(doc, chf(tx), colTaux, y);
+      if (montant != null) {
+        setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amount); doc.setTextColor(...PDF.primary);
+        this._texteDroite(doc, chf(montant), colMont, y);
+      }
+      this._filetInterne(doc, M, y + rowH - 4.6, M + contentW);
+      y += rowH;
+    };
+
+    y = this._titreSection(doc, 'Nuitées par classe', M, y, contentW);
+    y = this._bandeTableau(doc, [
+      { label: 'Classe', x: colLib }, { label: 'Nuitées', x: colNuit, align: 'right' },
+      { label: 'Taux', x: colTaux, align: 'right' }, { label: 'Montant', x: colMont, align: 'right' },
+    ], M, y - 4, contentW);
+    let k = 0;
+    ligne('Adultes', n.adultes || 0, taux.adulte || 0, du.adultes || 0, { index: k++ });
+    ligne('Enfants au tarif réduit', n.enfants || 0, taux.enfant || 0, du.enfants || 0, { index: k++ });
+    ligne("Enfants exonérés par l'âge", n.exonereAge || 0, null, null, { index: k++ });
+    ligne('Exonérés par motif', n.exonereMotif || 0, null, null, { index: k++ });
+    (Array.isArray(d.motifs) ? d.motifs : []).forEach((m) => ligne(m.motif, m.nuitees, null, null, { retrait: true, index: k++ }));
+    ligne('Total des nuitées', n.total || 0, null, null, { fort: true, index: k++ });
+    y += 2;
+    this._fondTotal(doc, M, y - 4.6, contentW, 7.5);
+    setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.primary);
+    doc.text('Taxe de séjour due', colLib, y, { charSpace: BRAND.charSpace.label });
+    setBrandFont(doc, 'voice'); doc.setFontSize(BRAND.size.amountLarge); doc.setTextColor(...PDF.primary);
+    this._texteDroite(doc, `CHF ${chf(du.sejour)}`, colMont, y);
+    y += 12;
+
+    y = this._titreSection(doc, "Taxe d'hébergement", M, y, contentW);
+    k = 0;
+    ligne('Nuitées assujetties', n.assujetties || 0, taux.hebergement || 0, du.hebergement || 0, { index: k++ });
+    y += 6;
+
+    y = this._titreSection(doc, 'Comparaison avec les notes', M, y, contentW);
+    const colDue = M + contentW - 62, colNotes = M + contentW - 32;
+    y = this._bandeTableau(doc, [
+      { label: 'Taxe', x: colLib }, { label: 'Due', x: colDue, align: 'right' },
+      { label: 'Sur les notes', x: colNotes, align: 'right' }, { label: 'Écart', x: colMont, align: 'right' },
+    ], M, y - 4, contentW);
+    [['Taxe de séjour', du.sejour, notes.sejour, ecart.sejour], ["Taxe d'hébergement", du.hebergement, notes.hebergement, ecart.hebergement]].forEach(([lib, a, b, c], i) => {
+      this._fondZebre(doc, i, M, y - 4.6, contentW, 7);
+      setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.body); doc.setTextColor(...PDF.ink);
+      doc.text(lib, colLib, y);
+      this._texteDroite(doc, chf(a), colDue, y);
+      this._texteDroite(doc, chf(b), colNotes, y);
+      this._texteDroite(doc, chf(c), colMont, y);
+      this._filetInterne(doc, M, y + 2.4, M + contentW);
+      y += 7;
+    });
+    y += 2;
+    setBrandFont(doc, 'data'); doc.setFontSize(BRAND.size.note); doc.setTextColor(...PDF.stone);
+    const remarques = [];
+    if ((Number(ecart.sejour) || 0) !== 0 || (Number(ecart.hebergement) || 0) !== 0) remarques.push(String(payload.phraseEcart || ''));
+    const nbSans = d.sansInscrit?.sejours || 0;
+    if (nbSans > 0) {
+      remarques.push(nbSans > 1
+        ? `${nbSans} séjours n'ont aucune personne inscrite au registre. Leurs nuitées sont comptées d'après le nombre de personnes du séjour.`
+        : "1 séjour n'a aucune personne inscrite au registre. Ses nuitées sont comptées d'après le nombre de personnes du séjour.");
+    }
+    remarques.push('Taxes dues calculées aux taux actuels des réglages. Montants en CHF.');
+    remarques.filter(Boolean).forEach((r) => {
+      doc.splitTextToSize(pdfSafeText(r), contentW).forEach((txt) => { doc.text(txt, M, y); y += 3.8; });
+      y += 1.2;
+    });
+
+    y += 10;
+    setBrandFont(doc, 'label'); doc.setFontSize(BRAND.size.sectionLabel); doc.setTextColor(...PDF.stone);
+    doc.text('Lieu et date', M, y); doc.text('Signature', M + contentW / 2 + 6, y);
+    doc.setDrawColor(...PDF.rule); doc.setLineWidth(RULE.medium);
+    doc.line(M, y + 12, M + contentW / 2 - 6, y + 12);
+    doc.line(M + contentW / 2 + 6, y + 12, M + contentW, y + 12);
+  },
+
   async exportCommandePdf(payload, options = {}) {
     try {
       const jsPDF = await this._loadJsPdf();

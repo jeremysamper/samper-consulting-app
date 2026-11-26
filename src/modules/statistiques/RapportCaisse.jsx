@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import * as caisse from '../../services/caisseService.js';
 import { Btn } from '../../components/ui/index.jsx';
 import { fusionnerReglages } from '../caisse/reglages.js';
+import { useReglageModifie } from '../../services/reglagesSignal.js';
 // Les sections du rapport perdent le filet de leur dernière ligne par la
 // feuille de la caisse.
 import '../caisse/caisse.css';
@@ -17,6 +18,11 @@ import '../caisse/caisse.css';
 // Les réglages de la maison (fin de journée, bascule de service) se lisent
 // comme dans la Caisse. Une lecture en échec ne retombe pas sur les réglages
 // d'origine : le jour d'exploitation pourrait différer de celui de la caisse.
+//
+// Une règle changée dans la page des réglages (partage des pourboires, lot 11
+// du panel) s'applique au rapport resté monté : au signal 'caisse', les
+// réglages sont relus sans démonter le rapport ; une relecture en échec garde
+// les réglages déjà lus.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const Rapports = lazy(() => import('../caisse/rapports/Rapports.jsx'));
@@ -39,6 +45,12 @@ export default function RapportCaisse({ etablissement, onRetour }) {
     });
     return () => { vivant = false; };
   }, [etabId, tour]);
+  useReglageModifie('caisse', () => {
+    if (!etabId) return;
+    caisse.getReglages(etabId).then((r) => {
+      if (!r.error) setLecture((l) => (l.status === 'ready' ? { status: 'ready', config: r.data || {} } : l));
+    });
+  });
   const reglages = useMemo(() => (lecture.status === 'ready' ? fusionnerReglages(lecture.config) : null), [lecture]);
 
   if (lecture.status === 'error') {

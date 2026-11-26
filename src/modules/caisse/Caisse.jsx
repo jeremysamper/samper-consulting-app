@@ -21,6 +21,7 @@ import BandeauTest from './BandeauTest.jsx';
 import InvitationAvisPret from './InvitationAvisPret.jsx';
 import Historique from './Historique.jsx';
 import Cloture from './Cloture.jsx';
+import FinDeJournee from './FinDeJournee.jsx';
 import BonsCadeaux from './bonsCadeaux/BonsCadeaux.jsx';
 import { bonEnAttente, oublierBonEnAttente } from './bonsCadeaux/bonEnAttente.js';
 import { ROLES_MODE_TEST, idPoste, lireModeTest, oublierModeTest, retenirModeTest } from './modeTest.js';
@@ -222,11 +223,25 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     }),
     [plats, cartesLues, formats, reglages.cartes_ids],
   );
+  // Formules à prix fixe (lot 09) : lues avec les réglages. Une lecture en
+  // échec n'empêche pas la caisse de s'ouvrir : les formules ne s'affichent
+  // pas et un message le dit une fois.
+  const [formules, setFormules] = React.useState([]);
+  const formulesEchecDit = React.useRef(false);
   const rechargerReglages = React.useCallback(async () => {
     if (!etabId) return;
-    const [c, r] = await Promise.all([caisse.listCategories(etabId), caisse.getReglages(etabId)]);
+    const [c, r, f] = await Promise.all([caisse.listCategories(etabId), caisse.getReglages(etabId), caisse.listFormules(etabId)]);
     if (!c.error) setCategories(c.data);
     if (!r.error) { setConfig(r.data); setConfigLue(true); }
+    if (f.error) {
+      setFormules([]);
+      if (!formulesEchecDit.current) {
+        formulesEchecDit.current = true;
+        notify("Les formules n'ont pas pu être lues. Les produits restent en vente un par un.", 'warning');
+      }
+    } else {
+      setFormules(f.data);
+    }
   }, [etabId]);
   const maintenant = useMaintenant();
   const telephone = useIsMobile();
@@ -769,6 +784,12 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       detail: 'Les tickets de ce poste ne comptent plus dans les chiffres.',
       onClick: entrerEnTest,
     };
+    // Lot 20 : fin de journée des compteurs de portions, dans « Plus » seulement.
+    const choixFinJournee = !modeTest && peutHabiller && {
+      titre: 'Fin de journée',
+      detail: 'Les portions qui restent : en perte ou remises à zéro.',
+      onClick: () => setEcran('fin_journee'),
+    };
     return (
       <>
         {bandeauTest}
@@ -846,6 +867,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
                 !modeTest && { titre: 'Historique et quittances', onClick: () => setEcran('historique') },
                 !modeTest && { titre: 'Bons cadeaux', detail: 'Vendre, retrouver, suivre', onClick: () => setEcran('bons_cadeaux') },
                 !modeTest && peutHabiller && { titre: 'Clôture de caisse', onClick: () => setEcran('cloture') },
+                choixFinJournee,
                 choixModeTest,
               ] }]}
             />
@@ -860,8 +882,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
               {!modeTest && <Btn onClick={() => setEcran('historique')} style={st.btn44}>Historique et quittances</Btn>}
               {!modeTest && <Btn onClick={() => setEcran('bons_cadeaux')} style={st.btn44}>Bons cadeaux</Btn>}
               {!modeTest && peutHabiller && <Btn onClick={() => setEcran('cloture')} style={st.btn44}>Clôture de caisse</Btn>}
-              {choixModeTest && (
-                <BoutonActions id="caisse-plus" label="Plus" style={st.plus} titre="Caisse" sections={[{ items: [choixModeTest] }]} />
+              {(choixFinJournee || choixModeTest) && (
+                <BoutonActions id="caisse-plus" label="Plus" style={st.plus} titre="Caisse" sections={[{ items: [choixFinJournee, choixModeTest] }]} />
               )}
             </>
           )}
@@ -983,6 +1005,15 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     );
   }
 
+  // ── Fin de journée des compteurs de portions (lot 20 du panel) ──
+  if (ecran === 'fin_journee' && !modeTest && peutHabiller) {
+    return (
+      <EcranTache titre="Fin de journée" etat="Les portions qui restent aujourd'hui" onRetour={retourAccueil}>
+        <FinDeJournee etablissement={etablissement} user={user} boutons={boutons} plats={plats} onChange={rechargerBoutons} />
+      </EcranTache>
+    );
+  }
+
   // ── Tickets ouverts ──
   if (ecran === 'tickets') {
     return (
@@ -1064,6 +1095,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         bandeau={bandeauTest}
         ticket={ticket}
         articles={articles}
+        formules={formules}
         allergenesFiches={allergenesFiches}
         boutons={boutons}
         categories={categories}

@@ -30,6 +30,9 @@ import PhotoFiche from '../../components/fiches/PhotoFiche.jsx';
 import AllergenesFiche from '../../components/fiches/AllergenesFiche.jsx';
 import { allergenesDeFicheSalle, estCategorieTechnique, photoDeFicheSalle } from '../../components/fiches/rangementFiches.js';
 import { categorieDuPlat, categoriesPresentes, grouperParCategorie } from '../../utils/categoriesPlat.js';
+import { listBoutons } from '../../services/caisseService.js';
+import { zurichToday } from '../../utils/zurichTime.js';
+import { boissonsDeLaMaison, resoudreAccord, lierAccord, delierAccord, nettoyerAccords } from './accordsCarte.js';
 
 
 // ─────────────────────────────────────────────────────
@@ -167,6 +170,13 @@ const FichesSalle = ({ user, etablissement }) => {
   const [statutLecture, setStatutLecture] = React.useState(() => (legacySB ? 'loading' : 'ready'));
   const [fichesLues, setFichesLues] = React.useState(!legacySB);
   const lireFichesRef = React.useRef(null);
+  // Lot 15 du panel : lignes de caisse_boutons (plat_id -> ligne) et jour de
+  // Zurich de leur lecture. Une boisson reliée que la Caisse a mise en rupture
+  // se barre sur la fiche. Lecture en échec ou sans pont : table vide, rien
+  // de barré (la fiche n'affirme jamais qu'une boisson est disponible).
+  const [boutons, setBoutons] = React.useState({});
+  const [jourBoutons, setJourBoutons] = React.useState(() => zurichToday());
+  const lireBoutonsRef = React.useRef(null);
   const online = useOnlineStatus();
   const [selected, setSelected] = React.useState(null);
   const [search, setSearch] = React.useState('');
@@ -294,20 +304,30 @@ const FichesSalle = ({ user, etablissement }) => {
       try { const pls = await legacySB.db.listPlats(etabId); if (mounted) setPlats(pls || []); }
       catch (e) {}
     };
+    const lireBoutons = async () => {
+      try {
+        const { data } = await listBoutons(etabId);
+        if (mounted) { setBoutons(data || {}); setJourBoutons(zurichToday()); }
+      } catch (e) {}
+    };
     lireFichesRef.current = lireFiches;
+    lireBoutonsRef.current = lireBoutons;
     setStatutLecture('loading');
     lireFiches();
     lireRecettes();
     lirePlats();
+    lireBoutons();
     unsubs.push(legacySB.realtime.subscribeReload('fiches_salle', lireFiches));
     unsubs.push(legacySB.realtime.subscribeReload('recettes', lireRecettes));
     unsubs.push(legacySB.realtime.subscribeReload('plats', lirePlats));
     unsubs.push(legacySB.realtime.subscribeReload('plat_recettes', lirePlats));
     unsubs.push(legacySB.realtime.subscribeReload('carte_fiches_salle', lireFiches));
+    unsubs.push(legacySB.realtime.subscribeReload('caisse_boutons', lireBoutons));
     return () => {
       mounted = false;
       if (essaiTimer) clearTimeout(essaiTimer);
       if (lireFichesRef.current === lireFiches) lireFichesRef.current = null;
+      if (lireBoutonsRef.current === lireBoutons) lireBoutonsRef.current = null;
       unsubs.forEach(u => u && u());
     };
   }, [etabId]);
@@ -315,7 +335,11 @@ const FichesSalle = ({ user, etablissement }) => {
   // Réveil de la tablette, retour du réseau : le canal realtime est mort
   // pendant la veille, on relit (resumeCoordinator attend une session saine).
   const relireFiches = React.useCallback(() => (lireFichesRef.current ? lireFichesRef.current() : undefined), []);
-  useResumeRefresh(relireFiches);
+  const relireAuReveil = React.useCallback(() => {
+    if (lireBoutonsRef.current) lireBoutonsRef.current();
+    return relireFiches();
+  }, [relireFiches]);
+  useResumeRefresh(relireAuReveil);
   // « Réessayer » de l'écran « Fiches indisponibles » (aucune fiche lue) :
   // l'écran repasse en « Chargement des fiches… » le temps de la relecture,
   // au moins un instant, sinon un échec immédiat (hors ligne) laisserait le
@@ -443,6 +467,7 @@ const FichesSalle = ({ user, etablissement }) => {
       etablissementId: etabId,
       modifiePar: user.id,
       accordsGeneraux: (f.accordsGeneraux || []).map(s => String(s || '').trim()).filter(Boolean),
+      accords: nettoyerAccords(f.accords),
     };
     if (legacySB) {
       try {
@@ -667,7 +692,7 @@ const FichesSalle = ({ user, etablissement }) => {
   };
 
   // ── Détail fiche ──
-  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} photo={photoDeFicheSalle(selected, plats, recettes)} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} plats={plats} cartes={cartes} champs={champs} peutPublier={peutPublier} onPublier={publierFiche}/>;
+  if (ecran === 'fiche' && selected) return <FicheDetail fiche={selected} photo={photoDeFicheSalle(selected, plats, recettes)} user={user} canEdit={canEdit} onBack={retourAccueil} onEdit={()=>openEdit(selected)} onDelete={()=>{ deleteFiche(selected.id); }} showForm={showForm} editFiche={editFiche} setEditFiche={setEditFiche} setShowForm={setShowForm} saveFiche={saveFiche} recettes={recettes} plats={plats} cartes={cartes} champs={champs} peutPublier={peutPublier} onPublier={publierFiche} boutons={boutons} jourBoutons={jourBoutons}/>;
 
   return (
     <div style={fss.root}>
@@ -880,7 +905,7 @@ const FichesSalle = ({ user, etablissement }) => {
         </>
       )}
 
-      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes} peutPublier={peutPublier}/>}
+      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} plats={plats} cartes={cartes} peutPublier={peutPublier}/>}
       {showBulkCartes && (
         <BulkCartesModal
           cartes={cartes}
@@ -895,7 +920,11 @@ const FichesSalle = ({ user, etablissement }) => {
 };
 
 // ── Détail d'une fiche ──
-const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], plats = [], cartes = [], champs = { temps: true, accords: true, allergenes: true }, peutPublier = true, onPublier = null }) => {
+const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, showForm, editFiche, setEditFiche, setShowForm, saveFiche, recettes = [], plats = [], cartes = [], champs = { temps: true, accords: true, allergenes: true }, peutPublier = true, onPublier = null, boutons = {}, jourBoutons = '' }) => {
+  // Lot 15 du panel : chaque accord relié se résout sur les plats lus (nom
+  // actuel, retiré de la carte) et sur les ruptures de la Caisse.
+  const platsParId = React.useMemo(() => new Map((plats || []).filter(p => p && p.id).map(p => [p.id, p])), [plats]);
+  const resoudre = React.useCallback(a => resoudreAccord(a, platsParId, boutons, jourBoutons), [platsParId, boutons, jourBoutons]);
   // Un onglet par famille réellement présente sur la fiche. Un type inconnu
   // (import ancien, famille ajoutée plus tard) garde son propre onglet plutôt
   // que d'être avalé : sans ça l'accord n'a pas d'onglet, donc il est invisible
@@ -1018,20 +1047,33 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
                 size="sm"
                 active={groupeActif.id}
                 onChange={setAccordTab}
-                tabs={groupes.map(g => ({
-                  id: g.id,
-                  label: <>{g.label}<span className="fv-onglet-nombre" data-no-translate="">{g.items.length}</span></>,
-                }))}
+                tabs={groupes.map(g => {
+                  const nbRupture = g.items.filter(a => resoudre(a).etat === 'rupture').length;
+                  return {
+                    id: g.id,
+                    label: <>{g.label}<span className="fv-onglet-nombre" data-no-translate="">{g.items.length}</span>{nbRupture > 0 && <span className="fv-onglet-rupture"><span data-no-translate="">{nbRupture}</span> <span>en rupture</span></span>}</>,
+                  };
+                })}
               />
               <ul className="fv-accords">
-                {groupeActif.items.map((a, i) => (
-                  <li key={i} className="fv-accord">
-                    <span className="fv-accord-nom">{a.nom}</span>
-                    {a.region && <span className="fv-accord-region">{a.region}</span>}
-                    {a.alternative && <span className="fv-accord-alt">{a.alternative}</span>}
-                    {a.notes && <span className="fv-accord-notes">{a.notes}</span>}
-                  </li>
-                ))}
+                {groupeActif.items.map((a, i) => {
+                  // 'libre' : l'affichage d'avant le lot. Relié : le nom de
+                  // la boisson, nom propre jamais traduit. L'état se dit par
+                  // le texte ; le trait ne fait que l'appuyer.
+                  const r = resoudre(a);
+                  return (
+                    <li key={i} className={r.etat === 'rupture' ? 'fv-accord fv-accord--rupture' : 'fv-accord'}>
+                      {r.etat === 'libre'
+                        ? <span className="fv-accord-nom">{a.nom}</span>
+                        : <span className="fv-accord-nom" data-no-translate="">{r.nom}</span>}
+                      {r.etat === 'rupture' && <span className="fv-accord-etat">En rupture aujourd'hui</span>}
+                      {r.etat === 'retire' && canEdit && <span className="fv-accord-etat fv-accord-etat--retire">Cette boisson n'est plus à la carte.</span>}
+                      {a.region && <span className="fv-accord-region">{a.region}</span>}
+                      {a.alternative && <span className="fv-accord-alt">{a.alternative}</span>}
+                      {a.notes && <span className="fv-accord-notes">{a.notes}</span>}
+                    </li>
+                  );
+                })}
               </ul>
             </>
           ) : <p className="fv-vide">Aucun accord renseigné.</p>}
@@ -1042,13 +1084,13 @@ const FicheDetail = ({ fiche, photo = null, canEdit, onBack, onEdit, onDelete, s
         )}
       </div>
 
-      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} cartes={cartes} peutPublier={peutPublier}/>}
+      {showForm && <FicheFormModal fiche={editFiche} setFiche={setEditFiche} onSave={saveFiche} onClose={()=>setShowForm(false)} recettes={recettes} plats={plats} cartes={cartes} peutPublier={peutPublier}/>}
     </div>
   );
 };
 
 // ── Formulaire création/édition ──
-const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], cartes = [], peutPublier = true }) => {
+const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], plats = [], cartes = [], peutPublier = true }) => {
   const allAllergs = ALLERGENE_IDS;
   const toggleAllerg = (a) => setFiche(f=>({...f,allergenes:(f.allergenes || []).includes(a)?f.allergenes.filter(x=>x!==a):[...f.allergenes,a]}));
   // Valeurs hors référentiel (texte libre d'un ancien import) : sans puce
@@ -1063,7 +1105,32 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
   });
   const addAccord = (type) => setFiche(f=>({...f,accords:[...(f.accords||[]),{type,nom:'',region:'',alternative:'',notes:''}]}));
   const updateAccord = (i,field,val) => setFiche(f=>({...f,accords:(f.accords || []).map((a,idx)=>idx===i?{...a,[field]:val}:a)}));
-  const removeAccord = (i) => setFiche(f=>({...f,accords:f.accords.filter((_,idx)=>idx!==i)}));
+  const removeAccord = (i) => { setChoixOuvert(null); setFiche(f=>({...f,accords:f.accords.filter((_,idx)=>idx!==i)})); };
+  // Lot 15 du panel : choisir l'accord dans les boissons de la maison. La
+  // liste se déplie dans le bloc de l'accord (aucune fenêtre par-dessus le
+  // formulaire) ; un seul bloc ouvert à la fois.
+  const boissons = React.useMemo(() => boissonsDeLaMaison(plats, cartes), [plats, cartes]);
+  const [choixOuvert, setChoixOuvert] = React.useState(null);
+  const [rechercheBoisson, setRechercheBoisson] = React.useState('');
+  const basculerChoix = (i) => { setRechercheBoisson(''); setChoixOuvert(o => (o === i ? null : i)); };
+  const choisirBoisson = (i, b) => {
+    setFiche(f => ({ ...f, accords: (f.accords || []).map((a, idx) => (idx === i ? lierAccord(a, b) : a)) }));
+    setChoixOuvert(null);
+  };
+  const delier = (i) => setFiche(f => ({ ...f, accords: (f.accords || []).map((a, idx) => (idx === i ? delierAccord({ ...a, nom: nomDeBoisson(a) }) : a)) }));
+  // Nom affiché d'un accord relié : le nom actuel de la boisson (comme le
+  // détail), le nom gardé si le plat n'est pas lu.
+  const nomDeBoisson = (a) => (plats || []).find(p => p && p.id === a.platId)?.nom || a.nom;
+  const boissonsTrouvees = React.useMemo(() => {
+    const trouve = makeSearchMatcher(rechercheBoisson);
+    const groupes = [];
+    boissons.filter(b => trouve(b.nom, b.carteNom)).forEach(b => {
+      const dernier = groupes[groupes.length - 1];
+      if (dernier && dernier.carteNom === b.carteNom) dernier.items.push(b);
+      else groupes.push({ carteNom: b.carteNom, items: [b] });
+    });
+    return groupes;
+  }, [boissons, rechercheBoisson]);
 
   // Importer allergènes depuis une recette liée
   const importFromRecette = (recetteId) => {
@@ -1254,7 +1321,11 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                 <div key={i} style={{border:'1px solid var(--border)',borderRadius: 'var(--r)',padding:8,marginBottom:8}}>
                   <div style={{display:'grid',gridTemplateColumns:'auto 1fr 110px 28px',gap:8,alignItems:'center'}}>
                     <span style={{fontSize: 'var(--t1)',color:'var(--text2)'}}>{accordLabel(a.type)}</span>
-                    <input style={fss.fInput} placeholder="Nom (référence précise)" value={a.nom} onChange={e=>updateAccord(i,'nom',e.target.value)}/>
+                    {typeof a.platId === 'string' && a.platId ? (
+                      <span style={fss.accordLieNom} data-no-translate="">{nomDeBoisson(a)}</span>
+                    ) : (
+                      <input style={fss.fInput} placeholder="Nom (référence précise)" value={a.nom} onChange={e=>updateAccord(i,'nom',e.target.value)}/>
+                    )}
                     <input style={fss.fInput} placeholder="Région" value={a.region} onChange={e=>updateAccord(i,'region',e.target.value)}/>
                     <button style={{background:'none',border:'none',color:'var(--text2)',cursor:'pointer',fontSize: 'var(--t2)'}} onClick={()=>removeAccord(i)} aria-label="Retirer l'accord">×</button>
                   </div>
@@ -1266,6 +1337,35 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], carte
                     <input style={fss.fInput} placeholder="Type général (ex. Vin blanc sec)" value={a.alternative||''} onChange={e=>updateAccord(i,'alternative',e.target.value)}/>
                     <input style={fss.fInput} placeholder="Notes d'accord" value={a.notes} onChange={e=>updateAccord(i,'notes',e.target.value)}/>
                   </div>
+                  {(boissons.length > 0 || (typeof a.platId === 'string' && a.platId)) && (
+                    <div style={{marginTop:6}}>
+                      <div style={fss.choixBoutons}>
+                        {boissons.length > 0 && <button type="button" style={fss.choixBtn} aria-expanded={choixOuvert === i} onClick={() => basculerChoix(i)}>Choisir dans la carte</button>}
+                        {typeof a.platId === 'string' && a.platId && <button type="button" style={fss.choixBtn} onClick={() => delier(i)}>Délier</button>}
+                      </div>
+                      {choixOuvert === i && (
+                        <div style={fss.choixZone}>
+                          <input style={fss.fInput} type="search" placeholder="Rechercher" value={rechercheBoisson} onChange={e => setRechercheBoisson(e.target.value)} />
+                          <div style={fss.choixListe}>
+                            {boissonsTrouvees.length === 0 && <p style={fss.choixVide}>Aucune boisson ne correspond à votre recherche.</p>}
+                            {boissonsTrouvees.map(g => (
+                              <div key={g.carteNom || '__sans_carte__'}>
+                                {/* Sans carte : seules les boissons de catégorie « Boissons » arrivent ici. */}
+                                {g.carteNom
+                                  ? <div style={fss.choixCarte} data-no-translate="">{g.carteNom}</div>
+                                  : <div style={fss.choixCarte}>Boissons</div>}
+                                {g.items.map(b => (
+                                  <button key={b.platId} type="button" style={fss.choixLigne} onClick={() => choisirBoisson(i, b)}>
+                                    <span data-no-translate="">{b.nom}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1414,6 +1514,15 @@ const fss = {
   ligneRecetteCat: { fontSize: 'var(--t1)', color: 'var(--text2)', flexShrink: 0 },
   vide: { margin: '12px 0', fontSize: 'var(--t2)', color: 'var(--text2)' },
   fInput:{padding:'9px 12px',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',color:'var(--text)',background: 'var(--surface)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'},
+  // Lot 15 du panel : choix d'une boisson de la carte dans le bloc d'un accord.
+  choixBoutons:{display:'flex',flexWrap:'wrap',gap:8},
+  accordLieNom:{minWidth:0,overflowWrap:'anywhere',padding:'9px 12px',borderRadius:'var(--r)',background:'var(--piste)',fontSize:'var(--t2)',color:'var(--text)'},
+  choixBtn:{minHeight:44,padding:'0 14px',background:'var(--btn-fond)',borderWidth:1,borderStyle:'solid',borderColor:'var(--btn-bord)',borderRadius:'var(--r-full)',fontSize:'var(--t2)',fontWeight:'var(--g2)',color:'var(--btn-texte)',cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
+  choixZone:{display:'flex',flexDirection:'column',gap:6,marginTop:6,minWidth:0},
+  choixListe:{maxHeight:240,overflowY:'auto',overflowX:'hidden',borderRadius:'var(--r)',background:'var(--piste)'},
+  choixCarte:{padding:'8px 12px 4px',fontSize:'var(--t1)',fontWeight:'var(--g2)',color:'var(--text3)'},
+  choixLigne:{display:'block',width:'100%',minHeight:44,padding:'0 12px',textAlign:'left',background:'transparent',borderWidth:0,borderStyle:'none',borderRadius:0,fontSize:'var(--t2)',color:'var(--text)',cursor:'pointer',fontFamily:'var(--font)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'},
+  choixVide:{margin:0,padding:12,fontSize:'var(--t2)',color:'var(--text2)'},
   smallBtn:{padding:'4px 10px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t1)',fontWeight: 'var(--g2)',color: 'var(--btn-texte)',cursor:'pointer',fontFamily:'var(--font)'},
   cancelBtn:{padding:'8px 16px',background: 'var(--btn-fond)',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',color: 'var(--btn-texte)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   saveBtn:{padding:'9px 20px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},

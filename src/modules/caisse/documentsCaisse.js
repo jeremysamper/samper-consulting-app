@@ -20,6 +20,7 @@
 import { zurichDateHeure } from '../../utils/zurichTime.js';
 import { detailTva, numeroTicket, totalLigne } from './tva.js';
 import { detailCarteTexte, ecartBouclement } from './tpe/ecranTpe.js';
+import { blocsQuittance } from './formules.js';
 
 const LIBELLES_MOYENS = { especes: 'Espèces', carte: 'Carte bancaire', autre: 'Autre' };
 
@@ -125,8 +126,7 @@ function dessinerQuittance(doc, p, { ticket, maison, client }) {
   p.filet(7);
 
   const plusieursTaux = new Set((ticket.lignes || []).map((l) => Number(l.taux_tva ?? 8.1))).size > 1;
-  (ticket.lignes || []).forEach((l) => {
-    p.paire(`${qte(l.quantite)} x ${l.libelle}`, l.offert ? 'offert' : chf(totalLigne(l)));
+  const detailsLigne = (l) => {
     const details = [];
     // Deux taux sur le ticket (vente à emporter avec alcool) : chaque ligne dit le sien.
     if (plusieursTaux) details.push(`TVA ${taux(l.taux_tva ?? 8.1)}`);
@@ -136,6 +136,27 @@ function dessinerQuittance(doc, p, { ticket, maison, client }) {
     else if (l.prix_origine != null && Number(l.remise_montant) > 0) {
       details.push(`prix ${chf(Number(l.quantite) * Number(l.prix_origine))}, remise ${chf(l.remise_montant)}`);
     }
+    return details;
+  };
+  // Lot 09 : une formule s'imprime en un bloc, son nom et la somme de ses
+  // lignes, puis chaque produit en retrait, sans prix. Le total et le détail
+  // de la TVA restent calculés ligne par ligne.
+  const retrait = 10;
+  blocsQuittance(ticket.lignes || []).forEach((b) => {
+    if (b.formule) {
+      p.paire(`1 x ${b.nom}`, chf(b.lignes.reduce((s, l) => s + totalLigne(l), 0)));
+      b.lignes.forEach((l) => {
+        const offert = l.offert ? ', offert' : '';
+        p.texte(`${l.libelle}${offert}`, { x: p.gauche + retrait, largeur: p.largeur - retrait });
+        const details = detailsLigne(l);
+        if (details.length) p.texte(details.join(' ; '), { taille: 8, gris: true, x: p.gauche + retrait, largeur: p.largeur - retrait });
+      });
+      p.espace(1.5);
+      return;
+    }
+    const l = b.ligne;
+    p.paire(`${qte(l.quantite)} x ${l.libelle}`, l.offert ? 'offert' : chf(totalLigne(l)));
+    const details = detailsLigne(l);
     if (details.length) p.texte(details.join(' ; '), { taille: 8, gris: true });
     p.espace(1.5);
   });

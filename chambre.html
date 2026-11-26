@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Votre chambre</title>
+    <!-- IBM Plex Sans : les mêmes fichiers que vite-index.html, déclarés par
+         src/styles/fonts.css via src/chambre/main.jsx. -->
+    <link rel="preload" href="/fonts/ui/IBMPlexSans-latin-wght.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      /* Page publique autonome : n'embarque ni app.css ni le bundle de l'app.
+         Mêmes jetons de police que app.css. */
+      :root {
+        --font: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+      }
+      html, body { margin: 0; padding: 0; overflow-x: hidden; }
+      *, *::before, *::after { box-sizing: border-box; }
+      button, input { font: inherit; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/chambre/main.jsx"></script>
+  </body>
+</html>

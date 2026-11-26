@@ -31,7 +31,8 @@ import { inscrireGeste } from '../../services/tempsGagne.js';
 // le geste retour ou Échap ne les perdent pas tant que le module reste ouvert.
 //
 //   brouillon = { [zoneId]: { valeur, choisies, autre } }
-//   etatLignes = { [zoneId]: 'ok' | 'echec' } après un enregistrement partiel
+//   etatLignes = { [zoneId]: 'ok' | 'attente' | 'echec' } après un enregistrement partiel
+//   ('attente' : gardé sur l'appareil, parti en file hors ligne ; compte comme enregistré)
 //
 // Crochets du banc : data-haccp-valeur (chaque champ), data-haccp-enregistrer.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,11 +74,12 @@ export default function ReleveGuide({
   const pastilles = usePastillesPoints();
   const boutonRef = React.useRef(null);
 
-  const aEnregistrer = zones.filter(z => etatLignes[z.id] !== 'ok' && lisible(brouillon[z.id]?.valeur));
+  const faite = (id) => etatLignes[id] === 'ok' || etatLignes[id] === 'attente';
+  const aEnregistrer = zones.filter(z => !faite(z.id) && lisible(brouillon[z.id]?.valeur));
   const tapes = zones.filter(z => lisible(brouillon[z.id]?.valeur)).length;
   const echecs = aEnregistrer.filter(z => etatLignes[z.id] === 'echec').length;
   // Premier champ vide : il reçoit le focus (autoFocus) à l'ouverture.
-  const premierVide = zones.find(z => etatLignes[z.id] !== 'ok' && !brouillon[z.id]?.valeur)?.id;
+  const premierVide = zones.find(z => !faite(z.id) && !brouillon[z.id]?.valeur)?.id;
 
   // Dernier relevé du jour de chaque zone pour cette tournée (rattaché au
   // créneau le plus proche), ou du jour sans heures de relevé.
@@ -126,7 +128,7 @@ export default function ReleveGuide({
           const etat = etatLignes[z.id];
           const verdict = verdictReleve(z, ligne.valeur);
           const d = deja[z.id];
-          const fige = enregistrement || etat === 'ok';
+          const fige = enregistrement || etat === 'ok' || etat === 'attente';
           return (
             <div key={z.id} data-haccp-ligne={z.id} style={i === zones.length - 1 ? st.ligneDerniere : st.ligne}>
               <div style={st.rangee}>
@@ -172,13 +174,14 @@ export default function ReleveGuide({
                   </button>
                 </div>
               </div>
-              {verdict?.ton === 'ok' && etat !== 'ok' && <div style={st.bon}>Bon</div>}
+              {verdict?.ton === 'ok' && etat !== 'ok' && etat !== 'attente' && <div style={st.bon}>Bon</div>}
               <ActionsCorrectives
                 zone={z} valeur={ligne.valeur} desactive={fige}
                 choix={{ choisies: ligne.choisies || [], autre: ligne.autre || '' }}
                 onChoix={c => onLigne(z.id, c)}
               />
               {etat === 'ok' && <div style={st.enregistre}>Enregistré</div>}
+              {etat === 'attente' && <div style={st.attente}>Gardé sur cet appareil.</div>}
               {etat === 'echec' && <div style={st.echec}>Pas enregistré. Réessayez.</div>}
             </div>
           );
@@ -232,6 +235,7 @@ const st = {
   bon: { marginTop: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--success-text)' },
   enregistre: { marginTop: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--success-text)' },
   echec: { marginTop: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--danger-text)' },
+  attente: { marginTop: 6, fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
   pied: {
     position: 'sticky', bottom: 8, zIndex: 2, marginTop: 12,
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10,

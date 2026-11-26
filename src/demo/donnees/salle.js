@@ -117,6 +117,9 @@ export function genererReservations() {
         }
         if (d > 0 && d <= 3 && i === 0 && service === 'soir') statut = 'demande';
         const id = `resa-${k}`;
+        // Demande en ligne (lot 18) : réponse à la question « Formule » en tête
+        // du message, choix alterné selon la parité du jour (sans tirage).
+        const reponseFormule = statut === 'demande' ? `Formule : ${d % 2 ? 'Menu du marché' : 'À la carte'}` : null;
         reservations.push({
           id,
           etablissement_id: ETAB,
@@ -127,7 +130,9 @@ export function genererReservations() {
           nom: `${cl.nom} ${cl.prenom}`,
           telephone: cl.telephone,
           est_groupe: false,
-          notes_libres: cl.preferences || null,
+          notes_libres: reponseFormule
+            ? `${reponseFormule}${cl.preferences ? `\n\n${cl.preferences}` : ''}`
+            : cl.preferences || null,
           statut,
           created_by: statut === 'demande' ? null : 'demo-hote',
           created_at: instant(jour(Math.min(d, 0) - 3), '10:15'),
@@ -142,6 +147,9 @@ export function genererReservations() {
         if (client[2]) {
           const type = /^[A-Z]/.test(client[2]) ? 'allergene' : client[2] === 'anniversaire' ? 'occasion' : 'regime';
           tags.push({ id: `rt-${k}`, reservation_id: id, type_tag: type, valeur: client[2], libre: false, created_at: instant(date, '10:00') });
+        }
+        if (reponseFormule) {
+          tags.push({ id: `rtq-${k}`, reservation_id: id, type_tag: 'autre', valeur: reponseFormule, libre: true, created_at: instant(date, '10:00') });
         }
         if (d >= -1 && d <= 1) {
           const t = tablesLibres.find((tb) => !utilisees.has(tb.id) && tb.nb_places >= couverts);
@@ -230,6 +238,10 @@ export const RESERVATION_EN_LIGNE_PARAMETRES = [{
   // Choix de la table sur le plan (lot L9), ouvert dans la grande salle.
   choix_table: true,
   salles_choix_table: ['salle-principale'],
+  // Questions au client (lot 18) : une question « Formule » à deux choix.
+  questions_en_ligne: [
+    { id: 'formule', libelle: 'Formule', choix: ['Menu du marché', 'À la carte'], obligatoire: false },
+  ],
 }];
 
 export function genererPrevisions(reservations) {

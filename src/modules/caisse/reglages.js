@@ -1,5 +1,6 @@
 import { CUISSONS } from './options.js';
 import { lireSupplements } from './supplements.js';
+import { lireReglePourboires } from './pourboires.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Réglages de la caisse (caisse_reglages.config, migration v4).
@@ -49,6 +50,10 @@ import { lireSupplements } from './supplements.js';
 //   legal           : { raison_sociale, adresse, localite, numero_tva } : les
 //                     coordonnées de la maison imprimées sur la quittance
 //                     (v7). Jamais inventées : un champ vide n'est pas imprimé.
+//   pourboires      : { mode, groupes: [{ id, part }] }, la règle de partage des
+//                     pourboires (lot 11 du panel, pourboires.js). Absente ou
+//                     mal formée = null : aucun partage, jamais une règle
+//                     inventée.
 //
 // Les modes ne changent rien au schéma : le mode de rang n est la suite n de
 // caisse_lignes (1 = En direct, 2 = À suivre, 3 = À suivre 2...).
@@ -81,6 +86,8 @@ export const REGLAGES_DEFAUT = {
   legal: { raison_sociale: '', adresse: '', localite: '', numero_tva: '' },
   // Suppléments proposés dans la fiche d'une ligne (supplements.js).
   supplements: [],
+  // Règle de partage des pourboires (pourboires.js) : aucune par défaut.
+  pourboires: null,
 };
 
 export const HEURES_FIN_JOURNEE = ['02:00', '03:00', '04:00', '05:00', '06:00'];
@@ -192,6 +199,7 @@ export function fusionnerReglages(config) {
       numero_tva: String(c.legal?.numero_tva ?? '').trim().slice(0, 24),
     },
     supplements: lireSupplements(c.supplements),
+    pourboires: lireReglePourboires(c.pourboires),
     perso: {
       cuissons: Boolean(cuissons && cuissons.length),
       moyens_paiement: Boolean(moyens && moyens.length),

@@ -6,6 +6,10 @@ import { canManageModule } from '../../data/demoData.js';
 import { useGroupes } from '../../hooks/useGroupes.js';
 import { useGroupeMenus } from '../../hooks/useGroupeMenus.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus.js';
+import {
+  enLigneMaintenant, estVue, lireDerniereLecture, marquerVue, noterLecture,
+} from '../../services/offline/lecturesHorsLigne.js';
 import { getBrowserWindow } from '../../legacy/legacyApi.js';
 import { dbService } from '../../services/dbService.js';
 import { formatDateCourte, formatJourSemaine, isoDate } from '../../utils/dateHelpers.js';
@@ -79,13 +83,19 @@ const LARGEUR_MOYENNE = 910;
 // Plats, fiches techniques et catalogue de l'établissement : ils servent à
 // composer les menus et à calculer les listes de courses. Lecture stricte -
 // une liste vide issue d'une erreur réseau produirait une liste de courses
-// vide « qui a l'air juste ».
+// vide « qui a l'air juste ». Sans réseau, plats et fiches viennent du cache
+// sb-recettes, le catalogue du cache sb-groupes (lot 24) : `derniereLecture`
+// dit l'heure de la dernière lecture faite avec le réseau.
+const SOURCE_CUISINE = 'groupes_cuisine';
+// Fiches de groupe ouvertes avec le réseau sur cet appareil (lot 24, D2).
+const SOURCE_FICHES = 'groupe_evenements';
+
 function useCuisine(etabId) {
-  const [etat, setEtat] = useState({ plats: [], recettes: [], catalogue: [], status: 'loading' });
+  const [etat, setEtat] = useState({ plats: [], recettes: [], catalogue: [], status: 'loading', derniereLecture: null });
 
   useEffect(() => {
     const db = dbService.getDb();
-    if (!etabId || !db) { setEtat({ plats: [], recettes: [], catalogue: [], status: 'ready' }); return undefined; }
+    if (!etabId || !db) { setEtat({ plats: [], recettes: [], catalogue: [], status: 'ready', derniereLecture: null }); return undefined; }
     let mounted = true;
 
     const charger = async () => {
@@ -96,12 +106,15 @@ function useCuisine(etabId) {
           db.listProduits(etabId),
         ]);
         if (!mounted) return;
+        const enLigne = enLigneMaintenant();
+        if (enLigne) noterLecture(etabId, SOURCE_CUISINE);
         setEtat({
           plats: plats || [],
           // Une fiche archivée ne doit plus nourrir une liste de courses.
           recettes: (recettes || []).filter((r) => r.statut !== 'archivée'),
           catalogue: catalogue || [],
           status: 'ready',
+          derniereLecture: enLigne ? Date.now() : lireDerniereLecture(etabId, SOURCE_CUISINE),
         });
       } catch (err) {
         console.error('[Groupes] lecture plats/recettes', err);
@@ -170,12 +183,22 @@ export default function Groupes({ user, etablissement }) {
 
   const {
     groupes, status, reload, assurerDepuis, creer, modifier, changerStatut, annuler, supprimer, enregistrerChoix,
+    luHorsLigne, derniereLecture: luGroupesA,
   } = useGroupes(etabId);
   const {
     menus, status: menusStatus, reload: reloadMenus, menuDe, menusDuType,
     enregistrer: enregistrerMenu, enregistrerPlusieurs: enregistrerMenus, supprimer: supprimerMenu,
+    derniereLecture: luMenusA,
   } = useGroupeMenus(etabId);
   const cuisine = useCuisine(etabId);
+  // Hors ligne (lot 24) : la fiche se lit sur la dernière lecture gardée par le
+  // service worker, rien ne s'écrit. Dernière lecture de la fiche : la plus
+  // ancienne de ses trois lectures (groupes, menus, plats et catalogue).
+  const enLigne = useOnlineStatus();
+  const horsLigne = !enLigne;
+  const lecturesConnues = [luGroupesA, luMenusA, cuisine.derniereLecture].filter(Boolean);
+  const derniereLectureFiche = lecturesConnues.length ? Math.min(...lecturesConnues) : null;
+  const peutCreer = canEdit && enLigne;
   const facturation = useFacturationGroupes(etabId, { actif: voirFacturation });
   const fenetresFacturation = useFenetresFacturation();
   const [refCalendrier, largeurCalendrier] = useLargeur();
@@ -204,6 +227,13 @@ export default function Groupes({ user, etablissement }) {
   const chiffresMois = chiffresGroupes(duMois);
 
   const fiche = ficheId ? groupes.find((g) => g.id === ficheId) || null : null;
+
+  // Fiche ouverte avec le réseau, sur une lecture fraîche : elle pourra se
+  // rouvrir hors ligne. Une fiche jamais ouverte ainsi le dit (D2).
+  useEffect(() => {
+    if (ficheId && enLigne && status === 'ready' && !luHorsLigne) marquerVue(etabId, SOURCE_FICHES, ficheId);
+  }, [ficheId, enLigne, status, luHorsLigne, etabId]);
+  const ficheJamaisOuverte = Boolean(fiche) && horsLigne && !estVue(etabId, SOURCE_FICHES, fiche.id);
   const groupesDuJourOuvert = jourOuvert
     ? actifs.filter((g) => g.dateEvenement === jourOuvert)
     : [];
@@ -282,7 +312,7 @@ export default function Groupes({ user, etablissement }) {
   function tapJour(iso, duJour) {
     if (duJour.length === 1) { setFicheId(duJour[0].id); return; }
     if (duJour.length > 1) { setJourOuvert(iso); return; }
-    if (canEdit) setFormulaire({ date: iso });
+    if (peutCreer) setFormulaire({ date: iso });
   }
 
   async function sauver(contenu) {
@@ -372,7 +402,11 @@ export default function Groupes({ user, etablissement }) {
             </>
           )}
           {onglet !== 'facturation' && canEdit && status !== 'absent' && (
-            <button type="button" className="touch-target" onClick={() => setFormulaire({})} style={st.nouveau}>
+            <button
+              type="button" className="touch-target" onClick={() => setFormulaire({})}
+              disabled={horsLigne} title={horsLigne ? 'Disponible avec le réseau.' : undefined}
+              style={{ ...st.nouveau, ...(horsLigne ? st.eteint : null) }}
+            >
               Nouveau groupe
             </button>
           )}
@@ -422,7 +456,7 @@ export default function Groupes({ user, etablissement }) {
               groupes={actifs}
               aujourdhui={aujourdhui}
               densite={densite}
-              peutCreer={canEdit}
+              peutCreer={peutCreer}
               onJour={tapJour}
             />
           </div>
@@ -494,7 +528,11 @@ export default function Groupes({ user, etablissement }) {
         />
       )}
 
-      {onglet === 'facturation' && voirFacturation && (
+      {/* Devis, factures et paiements : en ligne seulement (lot 24). */}
+      {onglet === 'facturation' && voirFacturation && horsLigne && (
+        <div style={st.encartAttention}>Disponible avec le réseau.</div>
+      )}
+      {onglet === 'facturation' && voirFacturation && !horsLigne && (
         <FacturationGroupes ctx={ctxFacturation} fenetres={fenetresFacturation} />
       )}
 
@@ -514,7 +552,8 @@ export default function Groupes({ user, etablissement }) {
               <button
                 type="button"
                 onClick={() => { setFormulaire({ date: jourOuvert }); setJourOuvert(null); }}
-                style={{ ...st.nouveau, marginTop: 12, width: '100%' }}
+                disabled={horsLigne} title={horsLigne ? 'Disponible avec le réseau.' : undefined}
+                style={{ ...st.nouveau, marginTop: 12, width: '100%', ...(horsLigne ? st.eteint : null) }}
               >
                 Ajouter un groupe ce jour-là
               </button>
@@ -541,6 +580,9 @@ export default function Groupes({ user, etablissement }) {
           onSupprimer={canSupprimer ? supprimerDefinitivement : undefined}
           ongletInitial={ongletFiche}
           onClose={fermerFiche}
+          horsLigne={horsLigne}
+          jamaisOuverte={ficheJamaisOuverte}
+          derniereLecture={derniereLectureFiche}
           ongletSupplementaire={voirFacturation ? {
             id: 'facturation',
             label: 'Devis et factures',
@@ -635,6 +677,8 @@ const st = {
     minHeight: 40, padding: '9px 18px', borderRadius: 'var(--r-full)', border: 'none', cursor: 'pointer',
     background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)',
   },
+  // Action éteinte hors ligne : lisible (0,65 au plus bas, direction Galet).
+  eteint: { opacity: 0.65, cursor: 'not-allowed' },
   encartAttention: {
     marginBottom: 14, padding: '10px 0 10px 12px',  fontSize: 13, lineHeight: 1.5,  borderLeft: '2px solid var(--warning-bd)', color: 'var(--warning-text)',
   },

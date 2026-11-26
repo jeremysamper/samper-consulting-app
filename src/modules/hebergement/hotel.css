@@ -33,3 +33,84 @@
    (style en ligne de la ligne) ; la dernière n'en porte pas. !important : le
    filet est posé en style en ligne. */
 .hotel-liste > :last-child { border-bottom-width: 0 !important; }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   Plan d'occupation (lot 16 du panel). La page ne défile jamais à l'horizontale :
+   seul .hotel-plan-defile défile, barre native visible (plus haut que 160 px,
+   il n'est pas une bande pour defilementSouris.js). Colonne des chambres
+   collée à gauche. Couleurs par jetons seulement.
+   ───────────────────────────────────────────────────────────────────────────── */
+.hotel-plan-masque {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border-width: 0;
+}
+.hotel-plan-defile { overflow-x: auto; overflow-y: hidden; min-width: 0; max-width: 100%; }
+.hotel-plan table {
+  width: 100%; min-width: calc(84px + 14 * 44px);
+  border-collapse: separate; border-spacing: 0; table-layout: fixed;
+  font-family: var(--font); color: var(--text);
+}
+.hotel-plan th, .hotel-plan td {
+  height: 44px; padding: 0; box-sizing: border-box;
+  border-width: 0 0 1px 0; border-style: solid; border-color: var(--rule-soft);
+  vertical-align: middle;
+}
+.hotel-plan tbody tr:last-child > * { border-bottom-width: 0; }
+.hotel-plan tfoot th, .hotel-plan tfoot td { border-top-width: 1px; border-bottom-width: 0; }
+.hotel-plan th { font-weight: var(--g2); }
+.hotel-plan th.hotel-plan-tete {
+  position: sticky; left: 0; z-index: 2; width: 84px;
+  padding: 4px 6px 4px 14px; text-align: left; font-size: var(--t2);
+  background: var(--zone);
+}
+.hotel-plan thead th.hotel-plan-tete, .hotel-plan tfoot th.hotel-plan-tete { color: var(--text2); font-size: var(--t1); }
+.hotel-plan th.hotel-plan-nuit { min-width: 44px; text-align: center; line-height: 1.2; padding: 4px 0; }
+.hotel-plan th.hotel-plan-nuit[data-aujourdhui] { border-bottom-width: 3px; border-bottom-color: var(--onglet); }
+.hotel-plan th.hotel-plan-nuit[data-weekend], .hotel-plan td.hotel-plan-libre[data-weekend] { background: var(--piste); }
+.hotel-plan tr[data-hors-service] > th, .hotel-plan tr[data-hors-service] > td { background: var(--piste); color: var(--text3); }
+.hotel-plan td.hotel-plan-libre { min-width: 44px; }
+.hotel-plan td.hotel-plan-libres { text-align: center; }
+.hotel-plan td.hotel-plan-cellule-sejour { padding: 4px 2px; }
+
+/* Case libre touchable : sans texte ni signe visible, le survol et le focus la disent. */
+.hotel-plan .hotel-plan-case {
+  display: block; width: 100%; height: 44px; min-width: 44px; padding: 0; margin: 0;
+  background: transparent; cursor: pointer; border-radius: 0;
+  border-width: 0; border-style: solid; border-color: transparent;
+}
+.hotel-plan .hotel-plan-case:hover { background: var(--selection); }
+.hotel-plan .hotel-plan-case:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; background: var(--selection); }
+
+/* Barre d'un séjour : rayon --r, coins droits du côté où elle est coupée. */
+.hotel-plan .hotel-plan-barre {
+  display: flex; align-items: center; width: 100%; height: 36px; min-width: 0; padding: 0 10px;
+  font-family: var(--font); font-size: var(--t1); font-weight: var(--g2); text-align: left;
+  border-radius: var(--r); cursor: pointer; box-sizing: border-box;
+  border-width: 0; border-style: solid; border-color: transparent;
+}
+.hotel-plan .hotel-plan-barre[data-coupe-avant] { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.hotel-plan .hotel-plan-barre[data-coupe-apres] { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.hotel-plan .hotel-plan-barre:hover { filter: brightness(0.96); }
+.hotel-plan .hotel-plan-barre:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+
+/* Flèches de période : cercle de 40 px dans une cible de 44 px. */
+.hotel-plan .hotel-plan-fleche {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; padding: 0; background: transparent; cursor: pointer;
+  border-width: 0; border-style: solid; border-color: transparent; border-radius: var(--r-full);
+}
+.hotel-plan .hotel-plan-fleche-rond {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--r-full);
+  background: var(--btn-fond); color: var(--btn-texte);
+  border-width: 1px; border-style: solid; border-color: var(--btn-bord);
+}
+.hotel-plan .hotel-plan-fleche:hover .hotel-plan-fleche-rond { background: var(--selection); }
+.hotel-plan .hotel-plan-fleche:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 0; }
+
+/* Au doigt, la règle globale des cibles porte chaque bouton à 44 px : la barre
+   prend 44 px et toutes les lignes s'alignent sur 52 px, avec ou sans barre. */
+@media (pointer: coarse) {
+  .hotel-plan tbody th, .hotel-plan tbody td { height: 52px; }
+  .hotel-plan .hotel-plan-case { height: 51px; }
+}

@@ -4,6 +4,7 @@ import { toutesLesPages } from '../utils/lirePages.js';
 import { dbService } from '../services/dbService.js';
 import { addDays, isoDate, parseLocalDate } from '../utils/dateHelpers.js';
 import { zurichToday } from '../utils/zurichTime.js';
+import { enLigneMaintenant, lireDerniereLecture, noterLecture } from '../services/offline/lecturesHorsLigne.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // useGroupes - groupes réservés d'un établissement (table groupe_evenements).
@@ -21,6 +22,11 @@ import { zurichToday } from '../utils/zurichTime.js';
 // arrière par défaut). Le volume est minuscule - quelques groupes par semaine -
 // donc on ne pagine pas par mois : naviguer vers l'avenir ne relit rien, et
 // `assurerDepuis` abaisse le plancher quand on remonte plus loin dans le passé.
+//
+// Sans réseau, la lecture est servie par le cache du service worker (règle
+// sb-groupes, lot 24) et réussit comme une autre : `luHorsLigne` le dit, et
+// `derniereLecture` donne l'heure de la dernière lecture faite avec le réseau
+// sur cet appareil (null si aucune n'est connue).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TABLE = 'groupe_evenements';
@@ -138,6 +144,7 @@ export function useGroupes(etablissementId) {
   const [groupes, setGroupes] = useState([]);
   const [status, setStatus] = useState(etablissementId ? 'loading' : 'ready');
   const [depuis, setDepuis] = useState(plancherParDefaut);
+  const [lecture, setLecture] = useState({ horsLigne: false, a: null });
   const reloadRef = useRef(null);
   // Dernière liste connue, lue de façon synchrone par l'affichage optimiste.
   const groupesRef = useRef(groupes);
@@ -178,6 +185,9 @@ export function useGroupes(etablissementId) {
 
       loadedOnce = true;
       retryDelay = RETRY_MIN_MS;
+      const enLigne = enLigneMaintenant();
+      if (enLigne) noterLecture(etablissementId, TABLE);
+      setLecture({ horsLigne: !enLigne, a: enLigne ? Date.now() : lireDerniereLecture(etablissementId, TABLE) });
       setGroupes((data || []).map(mapGroupeFromDB));
       setStatus('ready');
     };
@@ -350,5 +360,7 @@ export function useGroupes(etablissementId) {
     return { creer, modifier, changerStatut, annuler, supprimer, enregistrerChoix };
   }, [etablissementId]);
 
-  return { groupes, status, reload, assurerDepuis, ...actions };
+  return {
+    groupes, status, reload, assurerDepuis, luHorsLigne: lecture.horsLigne, derniereLecture: lecture.a, ...actions,
+  };
 }

@@ -12,6 +12,10 @@ import { telechargerFichier } from '../../inventaire/exportXlsxInventaire.js';
 import { comparaison, fusionnerDonnees, rapportCaisse } from './calculRapports.js';
 import { nomFichierDossier, nomFichierRapport, csvRapport, xlsxRapport, zipCsvRapport, zipDossier } from './exportsRapport.js';
 import { clePeriode, periodeLibre, periodePrecedente, tranches } from './periodesCaisse.js';
+import { lirePeriode } from '../../planning/contratsService.js';
+import { heuresFaites } from '../../planning/soldesHeures.js';
+import { findUtilisateur, userDisplayName } from '../../../utils/userDisplay.js';
+import { repartirPourboires } from '../pourboires.js';
 
 export const MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -67,6 +71,42 @@ export async function lireRapport(etablissementId, periode) {
     }
   }
   return { data: { donnees, rapport, comparaison: compare }, error: null };
+}
+
+// ── Partage des pourboires d'une période (lot 11 du panel) ──
+// Les horaires de la période (lirePeriode, lecture stricte qui lève une
+// exception), les heures pointées retenues de chacun (heuresFaites), son nom
+// et son groupe (groupeDe du crochet usePlanningGroupes), puis le partage du
+// total du rapport. Sans règle, rien n'est lu. Une personne absente de la
+// liste des utilisateurs (partie de la maison) passe avec son seul
+// identifiant : rangée par son affectation si elle en a une, sinon hors
+// partage. Une lecture en échec rend une erreur, jamais un partage vide.
+//   → { data: partage (repartirPourboires), error }
+export async function lirePartagePourboires(etablissementId, periode, { regle, total, groupes, groupeDe }) {
+  if (!regle) return { data: repartirPourboires({ total, regle: null, personnes: [], groupes }), error: null };
+  let shifts;
+  try {
+    ({ shifts } = await lirePeriode(etablissementId, periode.debut, periode.fin));
+  } catch (e) {
+    console.error('[caisse] heures du partage des pourboires', e);
+    return { data: null, error: "Les heures pointées n'ont pas pu être lues. Réessayez." };
+  }
+  const parPersonne = new Map();
+  (shifts || []).forEach((s) => {
+    if (!s?.userId || !s.pointageDebut || !s.pointageFin) return;
+    if (!parPersonne.has(s.userId)) parPersonne.set(s.userId, []);
+    parPersonne.get(s.userId).push(s);
+  });
+  const personnes = [...parPersonne.entries()].map(([id, liste]) => {
+    const u = findUtilisateur(id);
+    return {
+      id,
+      nom: userDisplayName(id),
+      groupeId: typeof groupeDe === 'function' ? groupeDe(u ? { id, role: u.role } : { id }) : null,
+      heures: heuresFaites(liste),
+    };
+  });
+  return { data: repartirPourboires({ total, regle, personnes, groupes }), error: null };
 }
 
 // ── Fichiers d'un rapport déjà à l'écran ──

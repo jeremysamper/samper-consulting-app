@@ -18,7 +18,13 @@ import { REGLAGES_DEFAUT, libelleMode } from './reglages.js';
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 
-export default function FicheLigne({ ligne, sansRecents, reglages = REGLAGES_DEFAUT, suites = [1, 2, 3], supplements = [], onSupplement, onChange, onSupprimer, onClose }) {
+// Ligne d'une formule (lot 09 du panel) : `formule` porte son nom. La
+// quantité ne se change pas, et « Retirer la formule » retire toutes ses
+// lignes (onRetirerFormule) à la place de « Supprimer la ligne ».
+export default function FicheLigne({
+  ligne, sansRecents, reglages = REGLAGES_DEFAUT, suites = [1, 2, 3], supplements = [], onSupplement, onChange, onSupprimer, onClose,
+  formule = null, onRetirerFormule,
+}) {
   const [sansLibre, setSansLibre] = React.useState('');
   const [message, setMessage] = React.useState('');
   const [cibleMessage, setCibleMessage] = React.useState('cuisine');
@@ -72,16 +78,25 @@ export default function FicheLigne({ ligne, sansRecents, reglages = REGLAGES_DEF
           <div style={{ minWidth: 0 }}>
             <div style={st.titre} data-no-translate>{ligne.libelle}</div>
             <div style={st.sousTitre}><span>{chf(Number(ligne.quantite) * Number(ligne.prix_unitaire))}</span> <span>CHF</span></div>
+            {formule && (
+              <div style={st.formule} data-fiche-formule="">
+                <span data-no-translate>{formule.nom}</span>
+              </div>
+            )}
           </div>
           <Btn variant="ghost" onClick={onClose} style={st.btn44}>Fermer</Btn>
         </div>
 
-        <div style={st.rangTitre}>Quantité</div>
-        <div style={st.rang}>
-          <Btn variant="ghost" onClick={() => onChange({ quantite: Math.max(1, Number(ligne.quantite) - 1) })} style={st.btn44} ariaLabel="Réduire la quantité">-1</Btn>
-          <span style={st.qte}>{Number(ligne.quantite)}</span>
-          <Btn variant="ghost" onClick={() => onChange({ quantite: Number(ligne.quantite) + 1 })} style={st.btn44} ariaLabel="Augmenter la quantité">+1</Btn>
-        </div>
+        {!formule && (
+          <>
+            <div style={st.rangTitre}>Quantité</div>
+            <div style={st.rang}>
+              <Btn variant="ghost" onClick={() => onChange({ quantite: Math.max(1, Number(ligne.quantite) - 1) })} style={st.btn44} ariaLabel="Réduire la quantité">-1</Btn>
+              <span style={st.qte}>{Number(ligne.quantite)}</span>
+              <Btn variant="ghost" onClick={() => onChange({ quantite: Number(ligne.quantite) + 1 })} style={st.btn44} ariaLabel="Augmenter la quantité">+1</Btn>
+            </div>
+          </>
+        )}
 
         <div style={st.rangTitre}>Mode</div>
         <div style={st.rang}>
@@ -157,7 +172,9 @@ export default function FicheLigne({ ligne, sansRecents, reglages = REGLAGES_DEF
         </div>
 
         <div style={st.pied}>
-          <Btn variant="danger" onClick={onSupprimer} style={st.btn44}>Supprimer la ligne</Btn>
+          {formule
+            ? <Btn variant="danger" onClick={onRetirerFormule} style={st.btn44}>Retirer la formule</Btn>
+            : <Btn variant="danger" onClick={onSupprimer} style={st.btn44}>Supprimer la ligne</Btn>}
           <Btn variant="primary" onClick={onClose} style={st.btn44}>Fermer</Btn>
         </div>
       </div>
@@ -183,6 +200,7 @@ const st = {
   sousTitre: { fontSize: 13, color: 'var(--text2)', fontFamily: 'var(--font-num)', marginTop: 2 },
   rangTitre: { fontSize: 12, fontWeight: 600, color: 'var(--text3)', margin: '14px 0 6px' },
   rang: { display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' },
+  formule: { fontSize: 'var(--t1)', color: 'var(--text2)', marginTop: 4 },
   qte: { fontFamily: 'var(--font-num)', fontSize: 18, fontWeight: 600, minWidth: 36, textAlign: 'center' },
   prixSupp: { fontFamily: 'var(--font-num)' },
   aide: { fontSize: 'var(--t1)', color: 'var(--text3)', margin: '6px 0 0' },
