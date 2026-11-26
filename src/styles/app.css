@@ -136,18 +136,23 @@
      --courbe          arrivée douce, pour ce qui entre ou se déplace
      --courbe-depart   accélération, pour ce qui sort
      --courbe-ressort  arrivée avec un léger dépassement (pose d'un objet)
-     --mvt-enfonce     échelle d'un bouton sous le doigt
+     --mvt-enfonce     échelle la plus creuse d'un bouton sous le doigt
+     --mvt-creux       ce qu'un bouton perd sur son plus grand côté quand il
+                       s'enfonce : un grand bouton se creuse d'autant de
+                       pixels qu'un petit, jamais plus que --mvt-enfonce
      --mvt-trajet      distance d'une entrée ou d'une secousse
+     Dosage « marqué », choisi par Jérémy sur la planche le 26.11.2026.
      Seules la position, l'échelle et l'opacité bougent. Les animations
      réduites et la capture PDF mettent ces jetons à zéro, plus bas. */
-  --mvt-1: 110ms;
-  --mvt-2: 180ms;
-  --mvt-3: 260ms;
+  --mvt-1: 140ms;
+  --mvt-2: 260ms;
+  --mvt-3: 420ms;
   --courbe: cubic-bezier(0.2, 0.8, 0.2, 1);
   --courbe-depart: cubic-bezier(0.4, 0, 1, 1);
-  --courbe-ressort: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --mvt-enfonce: 0.98;
-  --mvt-trajet: 6px;
+  --courbe-ressort: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --mvt-enfonce: 0.94;
+  --mvt-creux: 8px;
+  --mvt-trajet: 16px;
 
   /* ─── Jetons par rôle ─────────────────────────────────────────────────
      btn-*      bouton secondaire : fond, texte, contour
@@ -791,6 +796,26 @@ html[data-mouvement="reduit"],
 /* Coche qui se trace (Coche de src/components/ui) : le tracé porte
    pathLength="1", le trait part donc de 1 quelle que soit sa taille. */
 .mvt-coche path { stroke-dasharray: 1; animation: mvt-trait var(--mvt-3) var(--courbe) both; }
+/* Pilule qui glisse sous l'élément choisi d'une rangée (onglets, menu de la
+   coque) : usePiluleGlissante la pose et la déplace. La rangée porte
+   data-pilule une fois la pilule posée ; l'élément choisi rend alors son
+   aplat, que la pilule porte à sa place. Sans pilule posée, rien ne change.
+   Une vue capturée en PDF ne la rend pas. */
+.mvt-pilule {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: var(--accent);
+  pointer-events: none;
+  transition:
+    transform var(--mvt-2) var(--courbe-ressort),
+    width var(--mvt-2) var(--courbe),
+    height var(--mvt-2) var(--courbe);
+}
+.mvt-pilule:not([data-posee]),
+.pdf-render-root .mvt-pilule,
+.caisse-modes .mvt-pilule { display: none; }
+
 /* Pastille qui vole d'un point à un autre (voler() de mouvement.js) : posée
    sur le corps de la page, hors de tout écran, elle ne reçoit aucun toucher. */
 .mvt-vol {
@@ -1172,6 +1197,8 @@ html[data-mouvement="reduit"],
   -webkit-overflow-scrolling: touch;
   scrollbar-width: none;
   scroll-snap-type: x proximity;
+  /* Repère de la pilule qui glisse sous l'onglet choisi (.mvt-pilule). */
+  position: relative;
 }
 .segmented-tabs::-webkit-scrollbar { display: none; }
 /* À la souris, la bande défile à la molette et au glisser
@@ -1207,8 +1234,10 @@ html[data-mouvement="reduit"],
   border-radius: var(--r-full);
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  transition: background 0.15s, color var(--mvt-2) var(--courbe), box-shadow 0.15s, scale var(--mvt-1) var(--courbe-ressort);
   -webkit-tap-highlight-color: transparent;
+  /* Posé : l'onglet passe devant la pilule qui glisse. */
+  position: relative;
 }
 .segmented-tabs--sm .segmented-tab { padding: 5px 11px; font-size: 12px; }
 
@@ -1217,6 +1246,11 @@ html[data-mouvement="reduit"],
 .segmented-tab.is-active:not(.caisse-modes .segmented-tab) {
   background: var(--accent);
   color: var(--on-accent);
+}
+/* Pilule posée : elle porte l'aplat de l'onglet choisi et glisse de l'un à
+   l'autre. */
+.segmented-tabs[data-pilule]:not(.pdf-render-root *) .segmented-tab.is-active:not(.caisse-modes .segmented-tab) {
+  background: transparent;
 }
 /* Focus clavier : un anneau plein, posé dans la pilule (la rangée défile et
    rognerait un anneau extérieur). Sur l'aplat de l'onglet choisi, l'anneau
@@ -1886,13 +1920,22 @@ h1 {
      pas s'éclaircir), en sombre on éclaircit (un presque-noir ne peut pas
      s'assombrir visiblement). */
 button {
-  transition-property: filter, transform, box-shadow, background, color, border-color, opacity;
-  transition-duration: 0.12s;
-  transition-timing-function: ease;
+  transition-property: filter, transform, box-shadow, background, color, border-color, opacity, scale;
+  transition-duration: 0.12s, 0.12s, 0.12s, 0.12s, 0.12s, 0.12s, 0.12s, var(--mvt-1);
+  transition-timing-function: ease, ease, ease, ease, ease, ease, ease, var(--courbe-ressort);
 }
 
 button:not(:disabled):active {
   filter: brightness(0.93);
+  /* Le bouton s'enfonce sous le doigt et revient avec un léger ressort.
+     scale et non transform : il se compose avec une transformation déjà
+     posée par une classe ou en ligne (bouton centré, table du plan) au lieu
+     de la remplacer. --mvt-appui est posé au toucher par installerAppui()
+     (src/utils/mouvement.js), d'après la taille du bouton : un grand bouton
+     ne perd pas plus de pixels qu'un petit, et sa zone de clic ne recule
+     presque pas. Sans cette mesure (activation au clavier), l'enfoncement
+     reste léger. */
+  scale: var(--mvt-appui, max(var(--mvt-enfonce), 0.98));
 }
 
 html[data-theme="dark"] button:not(:disabled):active {
@@ -1939,10 +1982,21 @@ html[data-theme="dark"] button:not(:disabled):active {
     transition: none;
   }
 
+  button:not(:disabled):active,
+  .ui-card--clickable:active {
+    scale: none;
+  }
+
   .module-actions > button:not(:disabled):hover,
   .module-toolbar > button:not(:disabled):hover {
     transform: none;
   }
+}
+
+html[data-mouvement="reduit"] button:not(:disabled):active,
+html[data-mouvement="reduit"] .ui-card--clickable:active,
+.pdf-render-root button:not(:disabled):active {
+  scale: none;
 }
 
 /* ─── Primitives UI (src/components/ui/index.jsx) : états interactifs ───────
@@ -1951,7 +2005,7 @@ html[data-theme="dark"] button:not(:disabled):active {
    posées par les composants. Hover réservé aux vrais pointeurs (souris) :
    sur tactile, :hover colle après le tap. */
 .ui-btn {
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, scale var(--mvt-1) var(--courbe-ressort);
 }
 
 .ui-btn:focus-visible {
@@ -1965,12 +2019,13 @@ html[data-theme="dark"] button:not(:disabled):active {
   box-shadow: inset 0 0 0 1px var(--btn-bord), 0 0 0 3px var(--focus-ring) !important;
 }
 
-.ui-btn--primary:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
 .ui-card {
-  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+  transition: box-shadow 0.18s ease, transform 0.18s ease, border-color 0.18s ease, scale var(--mvt-1) var(--courbe-ressort);
+}
+/* Une carte cliquable s'enfonce comme un bouton, sauf quand le toucher porte
+   sur un contrôle qu'elle contient : lui seul répond alors. */
+.ui-card--clickable:active:not(:has(:is(button, a, input, select, textarea, label):active)) {
+  scale: var(--mvt-appui, max(var(--mvt-enfonce), 0.98));
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -1996,7 +2051,6 @@ html[data-theme="dark"] button:not(:disabled):active {
   }
 
   .ui-btn--primary:hover:not(:disabled),
-  .ui-btn--primary:active:not(:disabled),
   .ui-card--clickable:hover {
     transform: none;
   }
@@ -2307,6 +2361,19 @@ html[data-theme="dark"] button:not(:disabled):active {
   .sc-pop-item:not([aria-checked="true"]):hover,
   .sc-title-switch:hover { background: var(--selection) !important; }
 }
+/* Mouvement de la coque. La pilule du menu porte l'aplat de l'entrée choisie
+   et glisse de l'une à l'autre ; dans le rail, elle passe devant les cercles
+   et sous le picto de l'entrée choisie. Les libellés du menu arrivent quand
+   il se déplie ; le titre de la barre du haut arrive à chaque changement de
+   page. */
+.sc-nav-pilule { background: var(--nav-active); }
+[data-pilule] .sc-nav-item[aria-current="page"] { background: transparent !important; }
+.sc-nav-rail .sc-nav-pilule { z-index: 1; }
+.sc-nav-rail .sc-nav-item[aria-current="page"] { z-index: 2; }
+@keyframes sc-nav-libelle { from { opacity: 0; transform: translateX(calc(var(--mvt-trajet) * -0.5)); } }
+.sc-nav-libelle { animation: sc-nav-libelle var(--mvt-2) var(--courbe) both; }
+.sc-titre-page { display: inline-block; animation: mvt-naissance var(--mvt-2) var(--courbe) both; }
+
 /* Anneau hors de la pilule : posé dedans, il se perdrait sur l'aplat sombre
    de l'entrée choisie. */
 .sc-nav-item:focus-visible,

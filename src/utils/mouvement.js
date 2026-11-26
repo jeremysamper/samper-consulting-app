@@ -125,6 +125,44 @@ export function apresDepart(el, suite) {
   setTimeout(finir, 400);
 }
 
+// ── Enfoncement d'un bouton sous le doigt ──
+// La règle d'app.css (« Affordance cliquable généralisée ») réduit le bouton
+// pressé à l'échelle --mvt-appui. Elle est posée ici, au toucher, d'après la
+// taille du bouton : il perd --mvt-creux pixels sur son plus grand côté, sans
+// jamais descendre sous --mvt-enfonce. Une pilule de 120 px se creuse donc
+// nettement, une ligne de 800 px à peine : la profondeur vue est la même, et
+// la zone de clic d'un grand bouton ne recule que de quelques pixels (à la
+// souris, un clic relâché hors du bouton rétréci serait perdu).
+// Un élément qu'on tient pour le déplacer (touch-action: none, draggable) ne
+// s'enfonce pas : il se soulève, c'est l'affaire du glisser-déposer.
+// Un seul écouteur pour toute la page, passif, qui n'arrête aucun événement.
+const CIBLES_APPUI = 'button, .ui-card--clickable';
+let appuiInstalle = false;
+
+export function echelleAppui({ cote, plancher, creux, tenu }) {
+  if (tenu || !(cote > 0)) return 1;
+  return Math.min(1, Math.max(plancher, 1 - creux / cote));
+}
+
+export function installerAppui() {
+  if (appuiInstalle || typeof document === 'undefined') return;
+  appuiInstalle = true;
+  document.addEventListener('pointerdown', (e) => {
+    try {
+      const el = e.target instanceof Element ? e.target.closest(CIBLES_APPUI) : null;
+      if (!el || el.disabled) return;
+      const cs = getComputedStyle(el);
+      const echelle = echelleAppui({
+        cote: Math.max(el.offsetWidth, el.offsetHeight),
+        plancher: enNombre(cs.getPropertyValue('--mvt-enfonce'), 0.94),
+        creux: enNombre(cs.getPropertyValue('--mvt-creux'), 8),
+        tenu: cs.touchAction === 'none' || el.draggable === true,
+      });
+      el.style.setProperty('--mvt-appui', String(Math.round(echelle * 1000) / 1000));
+    } catch { /* un mouvement qui échoue ne casse rien */ }
+  }, { capture: true, passive: true });
+}
+
 // ── Glissement des voisins (liste qui se réordonne, ligne ajoutée ou retirée) ──
 // Avant le changement : relever la place de chaque enfant du conteneur. Après
 // (dans un effet de mise en page) : chaque enfant resté glisse de son ancienne

@@ -1,5 +1,6 @@
 import React from 'react';
 import useOngletEnVue from '../../hooks/useOngletEnVue.js';
+import usePiluleGlissante from '../../hooks/usePiluleGlissante.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SegmentedTabs - barre d'onglets compacte, une seule ligne, défilement
@@ -29,6 +30,9 @@ export default function SegmentedTabs({ tabs, active, onChange, size, retourLign
   // Quand la rangée défile, l'onglet choisi reste en vue.
   const bandeRef = React.useRef(null);
   useOngletEnVue(bandeRef, `${active}|${list.length}`);
+  // La pilule sombre glisse vers l'onglet choisi (.mvt-pilule, app.css).
+  const piluleRef = React.useRef(null);
+  usePiluleGlissante(bandeRef, piluleRef, { selecteur: '.segmented-tab.is-active', cle: active, forme: `${list.length}|${size || ''}` });
   return (
     <div
       ref={bandeRef}
@@ -36,6 +40,7 @@ export default function SegmentedTabs({ tabs, active, onChange, size, retourLign
       role="tablist"
       style={style}
     >
+      <span ref={piluleRef} className="mvt-pilule" aria-hidden="true" />
       {list.map((tab, i) => {
         if (tab.divider) {
           return <span key={'divider-' + i} className="segmented-tabs-divider" aria-hidden="true" />;

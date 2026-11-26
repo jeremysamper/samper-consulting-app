@@ -64,7 +64,8 @@ export default function EtabSwitcher({ etabs = [], current, onSelect, title, var
 
   const body = (
     <>
-      <span style={{ ...s.title, ...(mobile ? s.titleMobile : s.titleDesktop) }}>{title}</span>
+      {/* Le titre arrive à chaque changement de page (.sc-titre-page, app.css). */}
+      <span key={title} className="sc-titre-page" style={{ ...s.title, ...(mobile ? s.titleMobile : s.titleDesktop) }}>{title}</span>
       {current && (
         <span data-cadre="" style={{ ...s.line, ...(mobile ? s.lineMobile : null) }}>
           {dot(current)}

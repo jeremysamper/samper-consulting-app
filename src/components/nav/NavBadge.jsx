@@ -1,13 +1,26 @@
+import React from 'react';
+import { jouer } from '../../utils/mouvement.js';
+
 // Badge d'un module (messages non lus, groupes à préparer), identique dans la
 // barre latérale et sur la page d'accueil tactile. `badges` vient de
-// useVisibleNav. Rien à afficher : null.
+// useVisibleNav. Rien à afficher : null. Quand son nombre monte, la pastille
+// bat une fois (battement du socle de mouvement).
 export default function NavBadge({ itemId, badges, style }) {
-  if (itemId === 'messages' && badges?.messages > 0) {
-    return <span style={{ ...s.badge, color: 'var(--on-danger)', background: 'var(--danger-fill)', ...style }}>{badges.messages}</span>;
+  const nombre = itemId === 'messages' ? (badges?.messages || 0) : itemId === 'groupes' ? (badges?.groupes || 0) : 0;
+  const pastille = React.useRef(null);
+  const avant = React.useRef(nombre);
+  React.useEffect(() => {
+    if (nombre > avant.current) jouer(pastille.current, 'battement');
+    avant.current = nombre;
+  }, [nombre]);
+
+  if (itemId === 'messages' && nombre > 0) {
+    return <span ref={pastille} style={{ ...s.badge, color: 'var(--on-danger)', background: 'var(--danger-fill)', ...style }}>{nombre}</span>;
   }
-  if (itemId === 'groupes' && badges?.groupes > 0) {
+  if (itemId === 'groupes' && nombre > 0) {
     return (
       <span
+        ref={pastille}
         title="Groupes à préparer dans les 14 prochains jours"
         /* Texte foncé sur ambre clair : du blanc sur --warning-strong tombait
            à ~2:1 de contraste, illisible de loin sur l'iPad du passe. */
@@ -16,7 +29,7 @@ export default function NavBadge({ itemId, badges, style }) {
           boxShadow: 'inset 0 0 0 1px var(--warning-bd)', ...style,
         }}
       >
-        {badges.groupes}
+        {nombre}
       </span>
     );
   }
