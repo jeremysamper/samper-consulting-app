@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, ArrowRight, ChevronRight, Search, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Search, X } from 'lucide-react';
 import SafeModule from '../../legacy/SafeModule.jsx';
 import { getBrowserWindow } from '../../legacy/legacyApi.js';
 import { Btn } from '../../components/ui/index.jsx';
@@ -9,8 +9,7 @@ import { goBack } from '../../services/historyNav.js';
 import { navigateToPage } from '../../services/navigationService.js';
 import { signalerReglage } from '../../services/reglagesSignal.js';
 import { getPermissionsForRole } from '../../data/demoData.js';
-import { readText, writeText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
-import { ongletCompteDepuisOutils } from '../moduleConfig.js';
+import { readText, removeStorageKeys, UI_STORAGE_KEYS } from '../../utils/storage.js';
 import { chercherRenvois, chercherSections, cheminDe, entreesParGroupe, idEntree, renvoisVisibles, sectionsVisibles, signauxDe } from './registreReglages.js';
 import './reglages.css';
 
@@ -25,23 +24,20 @@ import './reglages.css';
 // modules), une entrée par module qui porte ses sections en pilules, et une
 // recherche en tête de liste.
 //
-// Écran large : la liste à gauche, une carte par espace ; l'entrée ouverte à
-// droite, son espace au-dessus du titre, ses pilules dessous, la section dans
-// une carte (direction Galet, lot 6).
-// Écran étroit (téléphone, tablette, ordinateur à barre latérale ouverte sous
-// 900 px de contenu) : la liste, puis l'entrée ; le geste retour ramène à la
-// liste. Une section ouverte par le raccourci d'un module (ouvrirCompte) s'ouvre
-// directement : le geste retour ramène au module.
+// Grille (26.11.2026) : à l'arrivée, tous les réglages en tuiles, rangés par
+// espace, chaque tuile avec sa ligne d'explication ; une recherche en tête.
+// Une tuile ouvre son entrée sur toute la largeur (ses pilules dessous, la
+// section dans une carte dès que la place le permet) ; « Retour » et le geste
+// retour ramènent à la grille. Une section ouverte par le raccourci d'un
+// module (ouvrirCompte) s'ouvre directement : le geste retour ramène au module.
 //
 // Chaque section monte l'écran d'origine tel quel, dans un SafeModule. En la
 // quittant, la page signale son réglage : le module d'origine relit
 // (services/reglagesSignal.js).
 //
-// Clés et événement inchangés : sc_compte_tab (ponctuelle), sc_compte_last_tab,
-// 'sc:compte-tab' ; 'parametres', 'roles' et 'alertes' sont trois sections.
+// Clé et événement inchangés : sc_compte_tab (ponctuelle), 'sc:compte-tab' ; 'parametres', 'roles' et 'alertes' sont trois sections.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const LARGEUR_DEUX_VOLETS = 900;
 // La section ouverte ne se pose dans une carte qu'à partir de cette largeur de
 // contenu : en dessous, le retrait de la carte faisait perdre sa colonne à une
 // grille de section (réservation en ligne, deux colonnes de 340 px à la
@@ -69,23 +65,10 @@ function sectionDemandee(ids) {
   return null;
 }
 
-// Section rouverte à l'arrivée par le bouton « Réglages » (deux volets) :
-// dernière section visitée > section d'administration où l'on travaillait dans
-// les Outils consultant (première ouverture) > première de la liste.
-function sectionParDefaut(ids) {
-  try {
-    const last = readText(UI_STORAGE_KEYS.compteLastTab, '');
-    if (ids.includes(last)) return last;
-    const depuisOutils = ongletCompteDepuisOutils(readText(UI_STORAGE_KEYS.consultantToolsLastTab, ''));
-    if (ids.includes(depuisOutils)) return depuisOutils;
-  } catch (e) { /* stockage indisponible : première section */ }
-  return ids[0] || null;
-}
-
 function largeurInitiale() {
   const w = getBrowserWindow();
   // Avant la première mesure : la fenêtre moins la barre latérale et les marges.
-  return w ? w.innerWidth - 290 : LARGEUR_DEUX_VOLETS;
+  return w ? w.innerWidth - 290 : LARGEUR_CARTE_SECTION;
 }
 
 export default function Compte({ user, etablissement, shellMode = 'ordinateur', isActive = true }) {
@@ -97,7 +80,7 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
   const idsRef = React.useRef(ids);
   idsRef.current = ids;
 
-  // Largeur du contenu : elle décide entre deux volets et « liste puis section ».
+  // Largeur du contenu : elle décide si la section ouverte se pose dans une carte.
   const racineRef = React.useRef(null);
   const [largeur, setLargeur] = React.useState(largeurInitiale);
   React.useLayoutEffect(() => {
@@ -110,15 +93,13 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const etroit = shellMode === 'telephone' || largeur < LARGEUR_DEUX_VOLETS;
-  const enCarte = !etroit && largeur >= LARGEUR_CARTE_SECTION;
+  const enCarte = shellMode !== 'telephone' && largeur >= LARGEUR_CARTE_SECTION;
 
   // { id, direct } : direct = ouverte par un raccourci (retour = le module),
-  // sinon choisie dans la liste (retour = la liste, sur écran étroit).
+  // sinon choisie dans la grille (retour = la grille).
   const [ouverte, setOuverte] = React.useState(() => {
     const demandee = sectionDemandee(ids);
-    if (demandee) return { id: demandee, direct: true };
-    return { id: etroit ? null : sectionParDefaut(ids), direct: false };
+    return { id: demandee, direct: Boolean(demandee) };
   });
   const actif = ids.includes(ouverte.id) ? ouverte.id : null;
   const [requete, setRequete] = React.useState('');
@@ -128,16 +109,6 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
   const dernieres = React.useRef(new Map());
 
   React.useEffect(() => { removeStorageKeys([UI_STORAGE_KEYS.compteTab]); }, []);
-
-  // Deux volets : jamais de volet vide. Une section perdue (droit retiré,
-  // établissement sans le module) laisse la place à la section par défaut.
-  React.useEffect(() => {
-    if (etroit || actif) return;
-    const defaut = sectionParDefaut(idsRef.current);
-    if (defaut) setOuverte({ id: defaut, direct: false });
-  }, [etroit, actif, idsCle]);
-
-  React.useEffect(() => { if (actif) writeText(UI_STORAGE_KEYS.compteLastTab, actif); }, [actif]);
 
   // Page déjà montée (keep-alive) : ouvrirCompte prévient par un événement.
   React.useEffect(() => {
@@ -160,13 +131,13 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
     return () => signalerSection(actif);
   }, [actif, isActive]);
 
-  // Écran étroit : une entrée choisie dans la liste est un niveau de plus, le
-  // geste retour ramène à la liste. Ouverte par un raccourci, elle n'empile
+  // Une entrée choisie dans la grille est un niveau de plus, le geste retour
+  // ramène à la grille. Ouverte par un raccourci, elle n'empile
   // rien : le geste retour ramène au module.
   const retourListe = React.useCallback(() => setOuverte({ id: null, direct: false }), []);
-  // Raccourci d'un module : « Retour » y ramène ; sans page derrière, la liste.
+  // Raccourci d'un module : « Retour » y ramène ; sans page derrière, la grille.
   const retourModule = () => { if (!goBack()) retourListe(); };
-  useBackLayer(etroit && Boolean(actif) && !ouverte.direct && isActive, retourListe, 'reglages-section');
+  useBackLayer(Boolean(actif) && !ouverte.direct && isActive, retourListe, 'reglages-section');
 
   if (!sections.length) return null;
 
@@ -210,73 +181,62 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
     </div>
   );
 
-  const boutonEntree = ({ cle, libelle, detail, courant, onClick, nombre, attribut }) => (
-    <button
-      key={cle}
-      type="button"
-      data-cadre=""
-      {...attribut}
-      aria-current={courant ? 'page' : undefined}
-      style={{ ...st.entree, ...(etroit ? st.entreeEtroite : null), ...(courant ? st.entreeActive : null) }}
-      onClick={onClick}
-    >
-      <span style={st.entreeTexte}>
-        <span style={st.entreeLibelle}>{libelle}</span>
-        {detail && (
-          <span style={{ ...st.entreeDetail, ...(courant ? st.entreeDetailActive : null) }}>
-            {Array.isArray(detail) ? <Morceaux parties={detail} /> : detail}
-          </span>
-        )}
-      </span>
-      {!etroit && nombre > 1 && <span style={{ ...st.nombre, ...(courant ? st.nombreActif : null) }} aria-hidden="true" data-no-translate="">{nombre}</span>}
-      {etroit && <ChevronRight size={18} strokeWidth={1.75} aria-hidden="true" style={st.chevron} />}
+  // Une tuile par réglage : son nom, puis une fine ligne qui dit ce qu'on y
+  // règle. Le survol et le focus vivent dans reglages.css (.reglages-tuile).
+  const tuile = ({ cle, libelle, detail, onClick, attribut }) => (
+    <button key={cle} type="button" data-cadre="" className="reglages-tuile" {...attribut} style={st.tuile} onClick={onClick}>
+      <span style={st.tuileLibelle}>{libelle}</span>
+      {detail && (
+        <span style={st.tuileDetail}>
+          {Array.isArray(detail) ? <Morceaux parties={detail} /> : detail}
+        </span>
+      )}
     </button>
   );
 
   const listeEntrees = groupes.map((groupe) => (
-    <div key={groupe.id} role="group" aria-label={groupe.label} data-cadre="" style={etroit ? st.groupeEtroit : st.groupe}>
-      <div style={etroit ? st.groupeTitreEtroit : st.groupeTitre}>{groupe.label}</div>
-      {groupe.entrees.map((e) => boutonEntree({
-        cle: e.id,
-        libelle: e.libelle,
-        detail: etroit ? e.detail : null,
-        courant: !etroit && entree?.id === e.id,
-        onClick: () => choisirEntree(e),
-        nombre: e.sections.length,
-        attribut: e.module ? { 'data-reglage-module': e.module } : { 'data-reglage': e.sections[0].id },
-      }))}
-    </div>
+    <section key={groupe.id} aria-label={groupe.label} style={st.groupe}>
+      <h2 style={st.groupeTitre}>{groupe.label}</h2>
+      <div style={st.grille}>
+        {groupe.entrees.map((e) => tuile({
+          cle: e.id,
+          libelle: e.libelle,
+          detail: e.detail,
+          onClick: () => choisirEntree(e),
+          attribut: e.module ? { 'data-reglage-module': e.module } : { 'data-reglage': e.sections[0].id },
+        }))}
+      </div>
+    </section>
   ));
 
   const listeResultats = (
-    <div role="group" aria-label="Résultats" data-cadre="" style={etroit ? st.groupeEtroit : st.groupe}>
-      <div style={etroit ? st.groupeTitreEtroit : st.groupeTitre}>Résultats</div>
+    <section aria-label="Résultats" style={st.groupe}>
+      <h2 style={st.groupeTitre}>Résultats</h2>
       {resultats.length === 0 && renvois.length === 0 && <p style={st.vide}>Aucun réglage ne correspond.</p>}
-      {resultats.map((s) => boutonEntree({
-        cle: s.id,
-        libelle: s.libelle,
-        detail: cheminDe(s),
-        courant: !etroit && s.id === actif,
-        onClick: () => choisirSection(s.id),
-        attribut: { 'data-reglage': s.id },
-      }))}
-      {renvois.map((r) => (
-        <button key={r.id} type="button" data-renvoi={r.id} style={{ ...st.entree, ...(etroit ? st.entreeEtroite : null) }} onClick={() => navigateToPage(r.page)}>
-          <span style={st.entreeTexte}>
-            <span style={st.entreeLibelle}>{r.libelle}</span>
-            <span style={st.entreeDetail}>{r.ou}</span>
-          </span>
-          <span style={st.yAller}>
-            <span>Y aller</span>
-            <ArrowRight size={16} strokeWidth={1.75} aria-hidden="true" />
-          </span>
-        </button>
-      ))}
-    </div>
+      <div style={st.grille}>
+        {resultats.map((s) => tuile({
+          cle: s.id,
+          libelle: s.libelle,
+          detail: s.detail || cheminDe(s),
+          onClick: () => choisirSection(s.id),
+          attribut: { 'data-reglage': s.id },
+        }))}
+        {renvois.map((r) => (
+          <button key={r.id} type="button" data-cadre="" className="reglages-tuile" data-renvoi={r.id} style={st.tuile} onClick={() => navigateToPage(r.page)}>
+            <span style={st.tuileLibelle}>{r.libelle}</span>
+            <span style={st.tuileDetail}>{r.ou}</span>
+            <span style={st.yAller}>
+              <span>Y aller</span>
+              <ArrowRight size={16} strokeWidth={1.75} aria-hidden="true" />
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
   );
 
   const liste = (
-    <nav aria-label="Réglages" style={etroit ? st.listeEtroite : st.liste} data-reglages-liste="">
+    <nav aria-label="Réglages" style={st.liste} data-reglages-liste="">
       {recherche}
       {enRecherche ? listeResultats : listeEntrees}
     </nav>
@@ -307,57 +267,28 @@ export default function Compte({ user, etablissement, shellMode = 'ordinateur', 
     />
   ) : null;
 
-  if (etroit) {
-    return (
-      <div ref={racineRef} style={st.racineEtroite} data-reglages="etroit">
-        {!section && liste}
-        {section && (
-          <>
-            <div style={st.enTete} className="no-print">
-              <Btn variant="ghost" onClick={ouverte.direct ? retourModule : retourListe} style={st.retour}>
-                <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
-                <span>Retour</span>
-              </Btn>
-              <div style={st.titreEtroit}>
-                <div style={st.espace}>{espace}</div>
-                <div>{titre}</div>
-              </div>
-              {ouverte.direct && (
-                <Btn variant="ghost" onClick={retourListe} style={st.tous}>Tous les réglages</Btn>
-              )}
-            </div>
-            {pilules}
-            {corps}
-          </>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div ref={racineRef} style={st.racine} data-reglages="large">
-      {liste}
-      <div style={st.volet}>
-        {section && (
-          <div style={st.enTeteLarge} className="no-print">
-            <div style={st.enTete}>
-              {/* Venue d'un module par son raccourci : le bouton y ramène, comme le geste retour. */}
-              {ouverte.direct && (
-                <Btn variant="ghost" onClick={retourModule} style={st.retour}>
-                  <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
-                  <span>Retour</span>
-                </Btn>
-              )}
-              <div style={st.titreBloc}>
-                <div style={st.espace}>{espace}</div>
-                <h2 style={st.titre}>{titre}</h2>
-              </div>
+    <div ref={racineRef} style={st.racine} data-reglages={section ? 'section' : 'grille'}>
+      {!section && liste}
+      {section && (
+        <>
+          <div style={st.enTete} className="no-print">
+            <Btn variant="ghost" onClick={ouverte.direct ? retourModule : retourListe} style={st.retour}>
+              <ArrowLeft size={18} strokeWidth={1.75} aria-hidden="true" />
+              <span>Retour</span>
+            </Btn>
+            <div style={st.titreBloc}>
+              <div style={st.espace}>{espace}</div>
+              <h2 style={st.titre}>{titre}</h2>
             </div>
-            {pilules}
+            {ouverte.direct && (
+              <Btn variant="ghost" onClick={retourListe} style={st.tous}>Tous les réglages</Btn>
+            )}
           </div>
-        )}
-        {corps}
-      </div>
+          {pilules}
+          {corps}
+        </>
+      )}
     </div>
   );
 }
@@ -410,19 +341,15 @@ const carte = {
   borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)', boxSizing: 'border-box', minWidth: 0,
 };
 
+const { background: _fondCarte, ...carteSansFond } = carte;
+
 const st = {
-  racine: { display: 'flex', alignItems: 'flex-start', gap: 24, minWidth: 0, width: '100%' },
-  racineEtroite: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, width: '100%' },
-  // Deux volets : la liste reste en vue quand la section défile, et défile
-  // seule si elle dépasse l'écran (--app-header-h : la barre du haut).
-  liste: {
-    width: 248, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 0,
-    maxHeight: 'calc(100dvh - var(--app-header-h, 64px) - 48px)', overflowY: 'auto', overscrollBehavior: 'contain',
-  },
-  listeEtroite: { display: 'flex', flexDirection: 'column', gap: 16, width: '100%', minWidth: 0 },
+  racine: { display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, width: '100%' },
+  liste: { display: 'flex', flexDirection: 'column', gap: 24, width: '100%', minWidth: 0 },
   // Recherche : une pilule, comme celle de la barre du haut.
   recherche: {
     display: 'flex', alignItems: 'center', gap: 8, minHeight: 44, padding: '0 6px 0 14px', boxSizing: 'border-box',
+    width: '100%', maxWidth: 420,
     background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r-full)',
     flexShrink: 0,
   },
@@ -435,43 +362,27 @@ const st = {
     width: 36, height: 36, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     background: 'transparent', borderWidth: 0, borderStyle: 'none', borderRadius: 'var(--r-full)', color: 'var(--text2)', cursor: 'pointer',
   },
-  // Liste seule : une carte par espace ; dedans, une colonne au téléphone,
-  // deux ou trois dès que la largeur le permet (tablette, ordinateur à barre
-  // latérale ouverte), pour que toutes les entrées tiennent en un écran ou
-  // presque.
-  groupeEtroit: { ...carte, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))', gap: 2, padding: 6 },
-  groupeTitreEtroit: { gridColumn: '1 / -1', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', padding: '8px 10px 4px' },
-  groupe: { ...carte, display: 'flex', flexDirection: 'column', gap: 2, padding: 6, flexShrink: 0 },
-  groupeTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', padding: '8px 10px 4px' },
-  entree: {
-    display: 'flex', alignItems: 'center', gap: 10, width: '100%', minHeight: 44, padding: '8px 10px',
-    background: 'transparent', border: 'none', borderRadius: 'var(--r)', color: 'var(--text)',
-    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g1)', lineHeight: 1.25, textAlign: 'left', cursor: 'pointer',
+  // Un espace : son titre posé sur la page, puis ses tuiles en grille (une
+  // colonne au téléphone, autant que la largeur en donne ailleurs).
+  groupe: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
+  groupeTitre: { margin: 0, fontSize: 'var(--t3)', fontWeight: 'var(--g3)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.25 },
+  grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 230px), 1fr))', gap: 12, minWidth: 0 },
+  // Le fond de la tuile vient de reglages.css, pour que le survol le change.
+  tuile: {
+    ...carteSansFond, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4,
+    width: '100%', minHeight: 84, padding: '14px 16px', color: 'var(--text)',
+    fontFamily: 'var(--font)', textAlign: 'left', cursor: 'pointer',
   },
-  entreeEtroite: { minHeight: 56, padding: '10px 12px', fontSize: 'var(--t2)' },
-  entreeActive: { background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 'var(--g2)' },
-  entreeTexte: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 },
-  entreeLibelle: { display: 'block' },
-  entreeDetail: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text2)', lineHeight: 1.35 },
-  entreeDetailActive: { color: 'var(--on-accent)' },
-  // Nombre de sections d'une entrée de module : une pastille discrète.
-  nombre: {
-    flexShrink: 0, minWidth: 22, height: 22, padding: '0 6px', boxSizing: 'border-box', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-    borderRadius: 'var(--r-full)', background: 'var(--piste)', color: 'var(--text2)', fontSize: 'var(--t1)', fontFamily: 'var(--font-num)',
-  },
-  nombreActif: { background: 'transparent', color: 'var(--on-accent)' },
-  chevron: { flexShrink: 0, color: 'var(--text3)' },
-  yAller: { flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--lien)' },
-  vide: { margin: 0, padding: '8px 10px 12px', fontSize: 'var(--t2)', color: 'var(--text2)' },
-  volet: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 16 },
-  enTeteLarge: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
-  titreBloc: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 },
+  tuileLibelle: { display: 'block', fontSize: 'var(--t2)', fontWeight: 'var(--g3)', lineHeight: 1.25 },
+  tuileDetail: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text2)', lineHeight: 1.4 },
+  yAller: { display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 'auto', paddingTop: 4, fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--lien)' },
+  vide: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)' },
+  titreBloc: { flex: '1 1 160px', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 },
   espace: { fontSize: 'var(--t2)', fontWeight: 'var(--g1)', color: 'var(--text3)', lineHeight: 1.3 },
-  titre: { margin: 0, fontSize: 'var(--t6)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.15 },
+  titre: { margin: 0, fontSize: 'var(--t5)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.15 },
   enTete: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 },
   retour: { minHeight: 44, flexShrink: 0 },
   tous: { minHeight: 44, flexShrink: 0, marginLeft: 'auto' },
-  titreEtroit: { flex: '1 1 160px', minWidth: 0, fontSize: 'var(--t5)', fontWeight: 'var(--g2)', fontFamily: 'var(--font)', color: 'var(--text)', lineHeight: 1.15 },
   section: { display: 'flex', flexDirection: 'column', minWidth: 0, width: '100%' },
   sectionCarte: { ...carte, display: 'flex', flexDirection: 'column', width: '100%', padding: '20px 22px' },
   attente: { margin: 0, fontSize: 'var(--t2)', color: 'var(--text2)' },
