@@ -3,8 +3,10 @@ import { Btn, CarteRepere } from '../../components/ui/index.jsx';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { CarteHotel, Vide, h } from './hotelUi.jsx';
 import {
-  PIECES_IDENTITE, chf, dateCourte, libelleDe, registreDuMois, statsMois, telechargerTexte, versCsv,
+  PIECES_IDENTITE, REGLAGES_DEFAUT, chf, dateCourte, finDuMois, libelleDe, premierDuMois, registreDuMois, statsMois, telechargerTexte, versCsv,
 } from './hotelData.js';
+import { MOTIF_NON_RENSEIGNE, classeTaxe, decompteTaxe, nuitsDansPeriode } from './serieHotel.js';
+import { lectureTronquee } from './registreReprise.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Registre et statistiques d'un mois (lot H4), direction : les chiffres
@@ -12,20 +14,50 @@ import {
 // mois), le registre des nuitées par personne (LHR, RS 935.1) et la
 // répartition HESTA par pays de domicile, exportables en CSV. Tout se calcule
 // à l'écran à partir des séjours, des occupants et des lignes de note.
+// Lot 13 du panel : le décompte de la taxe de séjour du mois (nuitées par
+// classe, exonérés par motif, taxe due, écart avec les notes), en carte et en
+// PDF d'une page, et la classe, le motif et les nuitées dans le CSV. Le
+// décompte ne s'affiche que sur trois lectures abouties (etat 'pret').
 // ─────────────────────────────────────────────────────────────────────────────
 
 const pct = (x) => `${Math.round(x * 100)} %`;
 const un = (x) => String(Math.round(x * 10) / 10).replace('.', ',');
+const CLASSES_CSV = { adulte: 'Adulte', enfant: 'Enfant', exonere_age: 'Enfant exonéré', exonere_motif: 'Exonéré' };
+const PHRASE_ECART = 'Les taxes des notes sont datées du jour d\'arrivée. Un séjour à cheval sur deux mois, une personne ajoutée après coup ou un taux modifié créent un écart.';
+const MESSAGES_ETAT = {
+  chargement: 'Chargement du registre…',
+  erreur: 'Le registre n\'a pas pu être lu. Le décompte ne s\'affiche pas.',
+  reserve: 'Le décompte demande le droit Modifier d\'Hébergement.',
+};
+const moisEnLettres = (mois) => {
+  const [y, m] = mois.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, 15)).toLocaleDateString('fr-CH', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+};
 
-export default function RegistreMois({ sejours, chambres, occupants, lignes, reglages }) {
+export default function RegistreMois({ sejours, chambres, occupants, lignes, reglages, etat = 'pret', etablissement }) {
   const [mois, setMois] = React.useState(() => zurichToday().slice(0, 7));
+  const [erreurPdf, setErreurPdf] = React.useState('');
   const stats = statsMois({ sejours, chambres, occupants, lignes, mois });
   const registre = registreDuMois({ sejours, occupants, chambres, mois });
+  const regl = reglages || REGLAGES_DEFAUT;
+  const debut = premierDuMois(mois);
+  const fin = finDuMois(mois);
+  const decompte = decompteTaxe({ sejours, occupants, lignes, reglages: regl, debut, fin });
+  const pret = etat === 'pret';
+  const avecNuitees = decompte.nuitees.total > 0;
+  const tronque = lectureTronquee(occupants.length, 20000) || lectureTronquee(lignes.length, 50000);
+  const sejourDe = (id) => sejours.find((s) => s.id === id);
 
   const exporterRegistre = () => {
     const csv = versCsv(
-      ['Arrivée', 'Départ', 'Nom', 'Prénom', 'Date de naissance', 'Nationalité', 'Adresse', 'Localité', 'Pays', 'Pièce', 'Numéro', 'Chambre', 'Séjour', 'Exonéré'],
-      registre.map((o) => [dateCourte(o.arrivee), dateCourte(o.depart), o.nom, o.prenom, dateCourte(o.dateNaissance), o.nationalite, o.domicileAdresse, o.domicileLocalite, o.domicilePays, libelleDe(PIECES_IDENTITE, o.pieceType), o.pieceNumero, o.chambre, o.nomSejour, o.exonereTaxe ? 'oui' : '']),
+      ['Arrivée', 'Départ', 'Nom', 'Prénom', 'Date de naissance', 'Nationalité', 'Adresse', 'Localité', 'Pays', 'Pièce', 'Numéro', 'Chambre', 'Séjour', 'Exonéré', 'Motif d\'exonération', 'Classe de taxe', 'Nuitées du mois'],
+      registre.map((o) => {
+        const s = sejourDe(o.sejourId);
+        return [dateCourte(o.arrivee), dateCourte(o.depart), o.nom, o.prenom, dateCourte(o.dateNaissance), o.nationalite, o.domicileAdresse, o.domicileLocalite, o.domicilePays, libelleDe(PIECES_IDENTITE, o.pieceType), o.pieceNumero, o.chambre, o.nomSejour, o.exonereTaxe ? 'oui' : '',
+          o.exonereTaxe ? (o.exonereMotif.trim() || MOTIF_NON_RENSEIGNE) : '',
+          CLASSES_CSV[classeTaxe(o, s?.arrivee || o.arrivee, regl)],
+          nuitsDansPeriode(o.arrivee || s?.arrivee, o.depart || s?.depart, debut, fin)];
+      }),
     );
     telechargerTexte(`registre-nuitees-${mois}.csv`, csv);
   };
@@ -35,6 +67,18 @@ export default function RegistreMois({ sejours, chambres, occupants, lignes, reg
       stats.parPays.map((p) => [mois, reglages?.numeroHesta || '', p.pays, p.arrivees, p.nuitees, stats.chambresActives, stats.nuiteesChambres, '']),
     );
     telechargerTexte(`hesta-${mois}.csv`, csv);
+  };
+  const exporterDecompte = async () => {
+    setErreurPdf('');
+    try {
+      const { pdfUtils } = await import('../../services/pdf.js');
+      await pdfUtils.exportDecompteTaxeSejourPdf({
+        commune: regl.commune || '', mois: moisEnLettres(mois), numeroHesta: regl.numeroHesta || '',
+        decompte, phraseEcart: PHRASE_ECART,
+      }, { etablissement, filename: `decompte-taxe-sejour-${mois}.pdf` });
+    } catch (e) {
+      setErreurPdf(e?.message || 'Impression impossible.');
+    }
   };
 
   // Un chiffre du mois : une petite carte de repère (direction Galet).
@@ -51,6 +95,7 @@ export default function RegistreMois({ sejours, chambres, occupants, lignes, reg
         </label>
         <Btn onClick={exporterRegistre} disabled={!registre.length}>Exporter le registre (CSV)</Btn>
         <Btn onClick={exporterHesta} disabled={!stats.parPays.length}>Exporter HESTA (CSV)</Btn>
+        <Btn onClick={exporterDecompte} disabled={!pret || !avecNuitees}>Décompte de la taxe (PDF)</Btn>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: 12 }}>
@@ -63,6 +108,14 @@ export default function RegistreMois({ sejours, chambres, occupants, lignes, reg
         <Chiffre libelle="Taxe de séjour du mois" valeur={`CHF ${chf(stats.taxes.sejour)}`} />
         <Chiffre libelle="Taxe d'hébergement du mois" valeur={`CHF ${chf(stats.taxes.hebergement)}`} />
       </div>
+
+      <CarteHotel titre="Décompte de la taxe de séjour" sousTitre={regl.commune ? <><span>Commune de</span> <span data-no-translate>{regl.commune}</span></> : null}>
+        {!pret && <div style={h.detail}>{MESSAGES_ETAT[etat] || MESSAGES_ETAT.chargement}</div>}
+        {pret && !avecNuitees && <div style={h.detail}>Aucune nuitée ce mois.</div>}
+        {pret && avecNuitees && <Decompte d={decompte} />}
+        {pret && tronque && <div style={h.erreur}>Le registre est trop long pour être lu en entier. Vérifiez les chiffres.</div>}
+        {erreurPdf && <div style={h.erreur} role="alert">{erreurPdf}</div>}
+      </CarteHotel>
 
       <CarteHotel titre="Nuitées par pays de domicile (HESTA)">
         {!stats.parPays.length && <div style={h.detail}>Aucune nuitée ce mois.</div>}
@@ -96,6 +149,50 @@ export default function RegistreMois({ sejours, chambres, occupants, lignes, reg
       </CarteHotel>
       {!sejours.length && <Vide>Aucun séjour enregistré pour l'instant.</Vide>}
     </section>
+  );
+}
+
+// Carte du décompte : classes avec leurs nuitées, motifs, taxes dues, taxes
+// des notes et écart. Chaque nombre dans son propre noeud non traduit.
+const nuiteesDe = (n) => <><span data-no-translate>{n}</span> <span>{n > 1 ? 'nuitées' : 'nuitée'}</span></>;
+const montantDe = (x) => <span data-no-translate>{`CHF ${chf(x)}`}</span>;
+function LigneDecompte({ libelle, n, taux, total, retrait, fort }) {
+  return (
+    <div style={{ ...r.ligne, ...(retrait ? { paddingLeft: 16 } : null), ...(fort ? { fontWeight: 'var(--g2)' } : null) }}>
+      <span style={{ flex: '1 1 160px', minWidth: 0 }}>{libelle}</span>
+      {n != null && <span style={r.nombre}>{nuiteesDe(n)}</span>}
+      {taux != null && <span style={{ ...r.nombre, color: 'var(--text2)' }}>{montantDe(taux)}</span>}
+      {total != null && <span style={r.nombre}>{montantDe(total)}</span>}
+    </div>
+  );
+}
+function Decompte({ d }) {
+  const ecartNonNul = d.ecart.sejour !== 0 || d.ecart.hebergement !== 0;
+  const nbSans = d.sansInscrit.sejours;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <LigneDecompte libelle="Adultes" n={d.nuitees.adultes} taux={d.taux.adulte} total={d.du.adultes} />
+      <LigneDecompte libelle="Enfant au tarif réduit" n={d.nuitees.enfants} taux={d.taux.enfant} total={d.du.enfants} />
+      <LigneDecompte libelle="Enfant exonéré par l'âge" n={d.nuitees.exonereAge} />
+      <LigneDecompte libelle="Exonéré par motif" n={d.nuitees.exonereMotif} />
+      {d.motifs.map((m) => (
+        <LigneDecompte key={m.motif} retrait libelle={<span data-no-translate={m.motif === MOTIF_NON_RENSEIGNE ? undefined : ''}>{m.motif}</span>} n={m.nuitees} />
+      ))}
+      <LigneDecompte fort libelle="Nuitées personnes" n={d.nuitees.total} />
+      <LigneDecompte fort libelle="Taxe de séjour due" total={d.du.sejour} />
+      <LigneDecompte libelle="Taxe de séjour des notes" total={d.notes.sejour} />
+      <LigneDecompte libelle="Écart avec les notes" total={d.ecart.sejour} />
+      <LigneDecompte fort libelle="Taxe d'hébergement due" n={d.nuitees.assujetties} taux={d.taux.hebergement} total={d.du.hebergement} />
+      <LigneDecompte libelle="Taxe d'hébergement des notes" total={d.notes.hebergement} />
+      <LigneDecompte libelle="Écart avec les notes" total={d.ecart.hebergement} />
+      {ecartNonNul && <div style={{ ...h.detail, marginTop: 6 }}>{PHRASE_ECART}</div>}
+      {nbSans > 0 && (
+        <div style={{ ...h.detail, marginTop: 6 }}>
+          <span data-no-translate>{nbSans}</span> <span>{nbSans > 1 ? 'séjours n\'ont aucune personne inscrite au registre.' : 'séjour n\'a aucune personne inscrite au registre.'}</span>
+          {' '}<span>{nbSans > 1 ? 'Leurs nuitées sont comptées d\'après le nombre de personnes du séjour.' : 'Ses nuitées sont comptées d\'après le nombre de personnes du séjour.'}</span>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -235,6 +235,10 @@ export const SEJOUR_OCCUPANTS = SEJOURS.filter(occupe).flatMap((s, i) => {
   for (let k = 0; k < s.nb_adultes + s.nb_enfants; k += 1) {
     const principal = k === 0;
     const enfant = k >= s.nb_adultes;
+    // Lot 13 du panel (D13) : le deuxième adulte de la chambre 103 (séjour n° 4)
+    // est exonéré ; sa note garde la taxe de deux adultes, le décompte en
+    // montre l'écart.
+    const exonere = s.id === uid('06', 4) && k === 1;
     out.push({
       id: uid3('07', out.length + 1 + i * 4),
       etablissement_id: ETAB,
@@ -251,8 +255,8 @@ export const SEJOUR_OCCUPANTS = SEJOURS.filter(occupe).flatMap((s, i) => {
       piece_numero: principal ? `X${String(4100000 + i * 7).slice(0, 7)}` : null,
       arrivee: s.arrivee,
       depart: s.depart,
-      exonere_taxe: false,
-      exonere_motif: null,
+      exonere_taxe: exonere,
+      exonere_motif: exonere ? 'Résident de la commune' : null,
       created_by: HOTE,
       created_at: instant(s.arrivee, '16:00'),
       updated_at: instant(s.arrivee, '16:00'),

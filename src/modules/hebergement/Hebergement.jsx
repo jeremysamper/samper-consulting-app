@@ -21,6 +21,7 @@ import SejourNote from './SejourNote.jsx';
 import SejourOccupants from './SejourOccupants.jsx';
 import { estDirectionHotel } from './gardesHotel.js';
 import RegistreMois from './RegistreMois.jsx';
+import { etatRegistre } from './serieHotel.js';
 import TicketsAPorter, { useTicketsAPorter } from './TicketsAPorter.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -274,7 +275,10 @@ export default function Hebergement({ user, etablissement }) {
       {/* Tarifs et taxes : dans la page des réglages (section
           'hebergement_tarifs'), la tuile y mène. */}
       {etabId && ecran === 'registre' && direction && (
-        <RegistreMois sejours={sejours.rows} chambres={chambres.rows} occupants={occupants.rows} lignes={lignes.rows} reglages={reglage} />
+        <RegistreMois
+          sejours={sejours.rows} chambres={chambres.rows} occupants={occupants.rows} lignes={lignes.rows} reglages={reglage} etablissement={etablissement}
+          etat={etatRegistre({ peutGerer, statuts: [sejours.status, occupants.status, lignes.status] })}
+        />
       )}
 
       {hoteForm && (
@@ -333,7 +337,7 @@ export default function Hebergement({ user, etablissement }) {
       {sejourOccupants && peutGerer && (
         <SejourOccupants
           sejour={sejourOccupants} chambre={chambreDe(sejourOccupants)} hote={hotes.rows.find((x) => x.id === sejourOccupants.hoteId) || null}
-          hotes={hotes.rows} occupants={occupants} reglages={reglage}
+          hotes={hotes.rows} occupants={occupants} sejours={sejours.rows} reglages={reglage}
           peutGerer={peutGerer} peutSupprimer={direction} etablissement={etablissement}
           onClose={() => setOccupantsId(null)}
         />

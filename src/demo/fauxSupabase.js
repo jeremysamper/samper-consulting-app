@@ -48,7 +48,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // v17 (lot 09 du panel, 25.11.2026) : une « Formule midi » à trois étapes.
 // v18 (lot 11 du panel, 26.11.2026) : règle de partage des pourboires dans
 // les réglages de la caisse (Salle 70, Cuisine 30).
-const VERSION_BASE = 'v19-' + aujourdhui();
+// v20 (lot 13 du panel, 26.11.2026) : un exonéré de la taxe de séjour
+// (« Résident de la commune ») dans le registre de la chambre 103.
+const VERSION_BASE = 'v20-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.
