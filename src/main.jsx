@@ -5,6 +5,7 @@ import { borneAuLancement } from './modules/planning/borne/borneAppareil.js';
 import { initPwa } from './pwa/registerPwa.js';
 import { installPreloadErrorRecovery } from './utils/preloadErrorRecovery.js';
 import { installDefilementSouris } from './utils/defilementSouris.js';
+import { installerAppui } from './utils/mouvement.js';
 import { installBrandPrintStyles } from './design/installPrintStyles.js';
 import { appliquerPreferences } from './services/preferencesAppareil.js';
 import { appliquerThemeInitial } from './hooks/useTheme.js';
@@ -28,6 +29,10 @@ installBrandPrintStyles();
 // Bandes d'onglets et de pilules qui débordent : elles défilent aussi à la
 // molette et au glisser de la souris, pas seulement au doigt.
 installDefilementSouris();
+
+// Mouvement : un bouton s'enfonce sous le doigt d'une profondeur mesurée à sa
+// taille (src/utils/mouvement.js, « Affordance cliquable généralisée »).
+installerAppui();
 
 class RootErrorBoundary extends React.Component {
   constructor(props) {
