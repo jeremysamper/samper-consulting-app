@@ -45,7 +45,9 @@ export function GestesRetard({ resa, onPoser, enCours = false, delaiMinutes }) {
   );
 }
 
-export default function BandeauService({ service, resas, nomsTables = new Map(), actions = true, statutEnCours = null, onPoser, delaiMinutes = 30 }) {
+// colonne : posé dans la colonne de droite du plan (grand écran), les quatre
+// chiffres deux par deux, avec leurs couverts.
+export default function BandeauService({ service, resas, nomsTables = new Map(), actions = true, statutEnCours = null, onPoser, delaiMinutes = 30, colonne = false }) {
   const [volet, setVolet] = React.useState(null);
   const { couverts } = resas;
   const segments = [
@@ -62,7 +64,7 @@ export default function BandeauService({ service, resas, nomsTables = new Map(),
   const liste = volet ? resas[volet] : [];
 
   return (
-    <div className="caisse-service" data-caisse-service="">
+    <div className={colonne ? 'caisse-service caisse-service--colonne' : 'caisse-service'} data-caisse-service="">
       <div className="caisse-service-grille" data-cadre="" style={st.carte} role="group" aria-label={service === 'midi' ? 'Réservations de ce midi' : 'Réservations de ce soir'}>
         <span className="caisse-service-titre" style={st.titre}>{service === 'midi' ? 'Ce midi' : 'Ce soir'}</span>
         {segments.map((s) => (

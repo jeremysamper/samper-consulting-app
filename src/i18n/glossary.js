@@ -7471,6 +7471,9 @@ export const UI_GLOSSARY = {
   "prochaine à": "next at",
   "tables": "tables",
   "Tickets encaissés, quittances": "Paid tickets, receipts",
+  "Sens du plan": "Plan orientation",
+  "Adapté à l'écran": "Fit to screen",
+  "Comme dessiné": "As drawn",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

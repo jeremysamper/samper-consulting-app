@@ -7200,4 +7200,7 @@ export const UI_GLOSSARY_IT = {
   "prochaine à": "prossima alle",
   "tables": "tavoli",
   "Tickets encaissés, quittances": "Conti incassati, ricevute",
+  "Sens du plan": "Orientamento della pianta",
+  "Adapté à l'écran": "Adattato allo schermo",
+  "Comme dessiné": "Come disegnato",
 };

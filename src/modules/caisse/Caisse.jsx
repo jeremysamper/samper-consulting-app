@@ -766,6 +766,21 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   // cours, il rend le plan d'arrivée.
   const deplacement = ecran === 'tables' && modeTables === 'deplacer';
   const avecTables = tables.some((t) => t.actif !== false);
+  // Bandeau du service : arrivées, prévues, en retard, no-show. Le plan le
+  // pose au-dessus de lui, ou en tête de sa colonne de droite sur un grand
+  // écran. En mode test, il se lit sans geste (rien n'est écrit).
+  const rendreBandeau = (colonne = false) => (
+    <BandeauService
+      service={service}
+      resas={resasService}
+      nomsTables={nomsDesTables}
+      actions={!modeTest}
+      statutEnCours={statutEnCours}
+      onPoser={poserStatut}
+      delaiMinutes={reglages.delai_no_show_min}
+      colonne={colonne}
+    />
+  );
   const vuePlan = (
     <PlanTables
       salles={salles}
@@ -789,6 +804,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       actionsResa={!modeTest}
       delaiNoShow={reglages.delai_no_show_min}
       boissons={boissonsEnVente}
+      rendreBandeau={deplacement ? null : rendreBandeau}
     />
   );
 
@@ -881,19 +897,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             ] }]}
           />
         </div>
-        {/* Bandeau du service : arrivées, prévues, en retard, no-show. En
-            mode test, il se lit sans geste (rien n'est écrit). */}
-        {(avecTables || reservations.length > 0) && (
-          <BandeauService
-            service={service}
-            resas={resasService}
-            nomsTables={nomsDesTables}
-            actions={!modeTest}
-            statutEnCours={statutEnCours}
-            onPoser={poserStatut}
-            delaiMinutes={reglages.delai_no_show_min}
-          />
-        )}
+        {/* Sans plan dessiné, le bandeau du service se pose seul. */}
+        {!avecTables && reservations.length > 0 && rendreBandeau()}
         {avecTables ? vuePlan : (
           <p style={st.vide}>Aucune table dans le plan de salle. Dessinez la salle dans Réservations, ou vendez sans table par « Vente directe ».</p>
         )}

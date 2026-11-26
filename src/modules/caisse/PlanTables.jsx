@@ -71,7 +71,28 @@ export { etatTicket, estPret };
 
 // ── Affichage gardé sur l'appareil ───────────────────────────────────────────
 const CLE_AFFICHAGE = 'sc_caisse_plan';
-const AFFICHAGE_DEFAUT = { montant: true, minutes: true, couverts: true, nom: true, grand: false, liste: true, salles: {}, zoomTel: null };
+// sens : 'auto' (au téléphone tenu droit, une salle en largeur tourne pour
+// remplir l'écran) ou 'dessin' (toujours comme dessinée).
+const AFFICHAGE_DEFAUT = { montant: true, minutes: true, couverts: true, nom: true, grand: false, liste: true, salles: {}, sens: 'auto' };
+
+// Largeur du plan et de sa colonne à partir de laquelle ils se posent côte à
+// côte (iPad en paysage, ordinateur), et largeur de la colonne.
+const COLONNES_DES = 900;
+const LARGEUR_COLONNE = 300;
+
+// Quart de tour dans le sens des aiguilles d'une montre, en unités du
+// canevas : le canevas tourné mesure PLAN_H de large sur PLAN_W de haut. Le
+// même tour que la feuille de style du décor (translate puis rotate 90deg).
+function tourner(o) {
+  return {
+    ...o,
+    pos_x: PLAN_H - (Number(o.pos_y) + Number(o.hauteur)),
+    pos_y: Number(o.pos_x),
+    largeur: Number(o.hauteur),
+    hauteur: Number(o.largeur),
+  };
+}
+const tournerCadre = (v) => ({ x0: PLAN_H - (v.y0 + v.h), y0: v.x0, w: v.h, h: v.w });
 
 // Zoom du téléphone : une table « lisible » mesure TABLE_LISIBLE pixels de côté
 // (numéro et montant y tiennent). Le zoom est un facteur de la vue « toute la
@@ -92,6 +113,8 @@ export default function PlanTables({
   retards = [], onPoserStatut = null, statutEnCours = null, actionsResa = true, delaiNoShow = 30,
   // Ids des plats vendus depuis une carte de boissons (etatTicket).
   boissons = null,
+  // (colonne) => le bandeau du service ; colonne vrai en deux colonnes.
+  rendreBandeau = null,
 }) {
   const [affichage, setAffichage] = React.useState(lireAffichage);
   // Filtre d'état touché au-dessus du plan, ou null (toutes les tables).
@@ -115,6 +138,9 @@ export default function PlanTables({
   const pincementRef = React.useRef(null);
   const zoomEtat = React.useRef({});
   const [zoomDirect, setZoomDirect] = React.useState(null);   // zoom pendant un pincement
+  const [zoomTel, setZoomTel] = React.useState(null);         // zoom choisi, le temps de l'écran
+  const racineRef = React.useRef(null);
+  const largeurRacine = useLargeur(racineRef);
   const tel = largeurCol > 0 && largeurCol < 560;
 
   const majAffichage = (patch) => setAffichage((a) => {
@@ -143,39 +169,64 @@ export default function PlanTables({
   }
 
   // ── Cadrage : la salle prend la largeur de la carte, bornée par la hauteur
-  // qui reste sous le haut du plan (la salle se voit sans défiler), sauf au
-  // téléphone où la page défile. Hors du mode « Déplacer des tables », la vue
-  // se cale sur ce qui est dessiné (tables, décor et place des chaises) : une
-  // salle qui n'occupe qu'une part du canevas s'affiche en grand. En mode
-  // déplacer, tout le canevas, pour poser une table n'importe où.
+  // qui reste sous le haut du plan (la salle se voit sans défiler). Hors du
+  // mode « Déplacer des tables », la vue se cale sur ce qui est dessiné
+  // (tables, décor et place des chaises) : une salle qui n'occupe qu'une part
+  // du canevas s'affiche en grand. En mode déplacer, tout le canevas, pour
+  // poser une table n'importe où.
+  // Deux colonnes (26.11.2026, iPad en paysage et ordinateur) : le plan à
+  // gauche prend toute la hauteur qui reste jusqu'au bas de l'écran, la salle
+  // centrée dedans ; à droite, le bandeau du service, les filtres et « À faire
+  // maintenant ».
+  const deuxColonnes = largeurRacine >= COLONNES_DES && !choixSeul;
   const pad = tel ? 8 : 14;
   const dispoL = Math.max(0, largeurCol - pad * 2);
   const dispoH = hauteurDispo && largeurCol >= 560 ? Math.max(200, hauteurDispo - pad * 2) : null;
-  const vue = cadrage(deplacerActif ? null : [...visibles, ...decor]);
+  const vueDessin = cadrage(deplacerActif ? null : [...visibles, ...decor]);
+  // Téléphone : la fenêtre du plan prend la hauteur qui reste, et au moins les
+  // trois quarts de l'écran (la page défile un peu quand le haut est chargé),
+  // moins une bande en bas pour les boutons de zoom. Les filtres passent
+  // sous le plan.
+  const reserveZoom = tel ? 56 : 0;
+  const hauteurEcran = typeof document !== 'undefined' ? document.documentElement.clientHeight : 0;
+  const fenetreH = tel
+    ? Math.max(280, Math.floor((hauteurDispo || 0) - pad * 2 - 2), Math.round(hauteurEcran * 0.75) - pad * 2)
+    : 0;
+  // Téléphone tenu droit et salle en largeur : la salle tourne d'un quart de
+  // tour pour remplir l'écran, la salle entière se voit en grand sans zoomer.
+  // Les tables, leurs numéros et leurs pastilles restent droits ; seul le
+  // décor tourne avec la salle. Jamais en mode déplacer (le geste écrit dans
+  // le plan dessiné) ni si la personne a choisi « Comme dessiné ».
+  const pivote = tel && affichage.sens !== 'dessin' && !deplacerActif
+    && vueDessin.w > vueDessin.h * 1.15 && (fenetreH - reserveZoom) > dispoL;
+  const vue = pivote ? tournerCadre(vueDessin) : vueDessin;
+  const visiblesVues = pivote ? visibles.map(tourner) : visibles;
+  const vueDe = new Map(visiblesVues.map((t) => [t.id, t]));
+  const canevasW = pivote ? PLAN_H : PLAN_W;
+  const canevasH = pivote ? PLAN_W : PLAN_H;
   let k = vue.w ? dispoL / vue.w : 0;
   if (dispoH) k = Math.min(k, dispoH / vue.h);
   k = Math.min(k, 1.6);
-  // Téléphone : la fenêtre du plan prend la hauteur qui reste. kToute montre
-  // toute la salle ; le zoom multiplie cette échelle, jusqu'à 1,6 au plus.
-  const fenetreH = tel ? Math.max(280, Math.floor((hauteurDispo || 0) - pad * 2 - 2)) : 0;
-  const kToute = tel && vue.w ? Math.min(dispoL / vue.w, fenetreH / vue.h) : k;
+  // kToute montre toute la salle au-dessus de la bande des boutons ; le zoom
+  // multiplie cette échelle, jusqu'à 1,6 au plus. Le plan s'ouvre toujours
+  // sur toute la salle : le zoom ne se garde pas d'une ouverture à l'autre.
+  const kToute = tel && vue.w ? Math.min(dispoL / vue.w, (fenetreH - reserveZoom) / vue.h) : k;
   const zoomMax = tel && kToute > 0 ? Math.max(1, 1.6 / kToute) : 1;
-  const mediane = medianeTables(visibles);
+  const mediane = medianeTables(visiblesVues);
   const zoomLisible = tel && mediane && kToute ? borne(TABLE_LISIBLE / (mediane * kToute), 1, zoomMax) : 1;
-  const zoom = tel ? borne(zoomDirect ?? affichage.zoomTel ?? zoomLisible, 1, zoomMax) : 1;
+  const zoom = tel ? borne(zoomDirect ?? zoomTel ?? 1, 1, zoomMax) : 1;
   if (tel) k = kToute * zoom;
   const largeur = Math.round(dispoL);
-  const hauteur = Math.round(vue.h * k);
+  // En deux colonnes, la carte du plan descend jusqu'au bas de l'écran.
+  const hauteur = deuxColonnes && dispoH ? Math.round(dispoH) : Math.round(vue.h * k);
   // La surface qui porte la salle : celle de la vue à l'ordinateur ; au
-  // téléphone, au moins la fenêtre, plus une bande sous la salle pour que les
-  // boutons de zoom ne cachent jamais une table.
-  const reserveZoom = tel ? 60 : 0;
+  // téléphone, au moins la fenêtre, plus la bande des boutons de zoom.
   const surfaceW = tel ? Math.max(largeur, Math.ceil(vue.w * k)) : largeur;
   const surfaceH = tel ? Math.max(fenetreH, Math.ceil(vue.h * k) + reserveZoom) : hauteur;
   // Origine du canevas complet dans la vue : la salle est centrée en largeur
-  // (et en hauteur au-dessus de la bande des boutons, au téléphone).
+  // et en hauteur (au-dessus de la bande des boutons, au téléphone).
   const origineX = vue.x0 * k - (surfaceW - vue.w * k) / 2;
-  const origineY = vue.y0 * k - (tel ? Math.max(0, (surfaceH - reserveZoom - vue.h * k) / 2) : 0);
+  const origineY = vue.y0 * k - Math.max(0, (surfaceH - reserveZoom - vue.h * k) / 2);
   const echelleTexte = affichage.grand ? 1.2 : 1;
   zoomEtat.current = { zoom, zoomMax, zoomLisible, k };
 
@@ -196,7 +247,7 @@ export default function PlanTables({
     const sy = r.top + r.height / 2;
     const p = pointSalle(sx, sy);
     if (p) ancreRef.current = { ...p, sx, sy };
-    majAffichage({ zoomTel: borne(valeur, 1, zoomEtat.current.zoomMax) });
+    setZoomTel(borne(valeur, 1, zoomEtat.current.zoomMax));
   }
   // Après un zoom, la fenêtre défile pour remettre le point ancré sous le
   // doigt (ou au centre). À chaque rendu : l'ancre n'existe que juste après
@@ -240,7 +291,7 @@ export default function PlanTables({
       // Le toucher qui reste après un pincement n'ouvre pas de table.
       finGesteRef.current = Date.now();
       setZoomDirect(null);
-      majAffichage({ zoomTel: p.dernier });
+      setZoomTel(p.dernier);
     };
     // Safari : sans cela, le pincement agrandit toute la page.
     const geste = (e) => e.preventDefault();
@@ -258,9 +309,9 @@ export default function PlanTables({
       f.removeEventListener('gesturestart', geste);
       f.removeEventListener('gesturechange', geste);
     };
-    // majAffichage et pointSalle ne lisent que des refs et des mises à jour
-    // fonctionnelles : les écouteurs n'ont besoin d'être reposés qu'en
-    // changeant de présentation.
+    // setZoomTel et pointSalle ne lisent que des refs et des mises à jour
+    // d'état : les écouteurs n'ont besoin d'être reposés qu'en changeant de
+    // présentation.
   }, [tel]);
 
   // ── États : un par tablée (sa principale), sur toute la maison. Les
@@ -414,26 +465,11 @@ export default function PlanTables({
         </div>
   );
 
-  return (
-    <div style={st.racine} data-caisse-plan="">
-      {/* Barre du plan. Plusieurs salles : les salles et les gestes du plan
-          sur une ligne, les filtres d'état sur la suivante. Une seule salle :
-          les filtres et les gestes partagent la ligne. */}
-      {onglets.length > 1 ? (
-        <>
-          <div style={st.barre}>
-            <TabBar tabs={onglets} active={actif} onChange={choisirSalle} />
-            {actionsPlan}
-          </div>
-          <div style={st.barre}>{filtres}</div>
-        </>
-      ) : (
-        <div style={st.barre}>{filtres}{actionsPlan}</div>
-      )}
-
-      {reglages && <ReglagesAffichage affichage={affichage} onChange={majAffichage} />}
-
-      {deplacerActif && (
+  const panneauReglages = reglages ? <ReglagesAffichage affichage={affichage} onChange={majAffichage} tel={tel} /> : null;
+  // Bandeau du service, rendu par Caisse.jsx : au-dessus du plan, ou en tête
+  // de la colonne de droite (deux par deux) en deux colonnes.
+  const enTete = rendreBandeau && !choixSeul ? rendreBandeau(deuxColonnes) : null;
+  const bandeauDeplacer = deplacerActif ? (
         <div style={st.bandeau} data-caisse-deplacer="">
           <span style={st.bandeauTexte}>
             {tableeChoisie.length > 1
@@ -459,10 +495,40 @@ export default function PlanTables({
             <Btn variant="primary" onClick={() => { setDeplacer(false); setChoisie(null); setRemettreArme(false); }} style={st.btn44}>Terminé</Btn>
           </span>
         </div>
-      )}
+  ) : null;
 
-      <div ref={corpsRef} style={st.corps}>
-        <div ref={colRef} style={st.colPlan}>
+  // La structure reste la même dans les deux présentations (les mesures du
+  // plan suivent toujours les mêmes nœuds) ; seuls les emplacements changent.
+  return (
+    <div ref={racineRef} style={st.racine} data-caisse-plan="" data-caisse-colonnes={deuxColonnes ? '2' : '1'}>
+      {!deuxColonnes && enTete}
+      {/* Barre du plan, au-dessus de lui. Plusieurs salles : les salles et les
+          gestes du plan sur une ligne, les filtres d'état sur la suivante.
+          Une seule salle : les filtres et les gestes partagent la ligne. */}
+      {/* Téléphone : au-dessus du plan, les salles et les gestes seulement ;
+          les filtres passent dessous, le plan monte. */}
+      {!deuxColonnes && (onglets.length > 1 ? (
+        <>
+          <div style={st.barre}>
+            <TabBar tabs={onglets} active={actif} onChange={choisirSalle} />
+            {actionsPlan}
+          </div>
+          {!tel && <div style={st.barre}>{filtres}</div>}
+        </>
+      ) : (
+        !tel && <div style={st.barre}>{filtres}{actionsPlan}</div>
+      ))}
+      {/* Le réglage de l'affichage s'ouvre près de son bouton. */}
+      {!deuxColonnes && !(tel && onglets.length <= 1) && panneauReglages}
+      {!deuxColonnes && bandeauDeplacer}
+
+      <div style={deuxColonnes ? st.grille : st.corps}>
+        <div style={deuxColonnes ? st.gauche : st.colPlan}>
+          {deuxColonnes && onglets.length > 1 && <div style={st.barre}><TabBar tabs={onglets} active={actif} onChange={choisirSalle} /></div>}
+          {deuxColonnes && panneauReglages}
+          {deuxColonnes && bandeauDeplacer}
+          <div ref={corpsRef}>
+        <div ref={colRef}>
           <div className="caisse-plan-carte" data-cadre="" style={{ ...st.carte, padding: pad }}>
             <div
               ref={fenetreRef}
@@ -472,12 +538,21 @@ export default function PlanTables({
             <div ref={canevasRef} style={{ position: 'relative', width: surfaceW, height: surfaceH }}>
               <div
                 ref={salleRef}
-                style={{ position: 'absolute', left: -origineX, top: -origineY, width: PLAN_W * k, height: PLAN_H * k }}
+                style={{ position: 'absolute', left: -origineX, top: -origineY, width: canevasW * k, height: canevasH * k }}
               >
-              {decor.map((el) => <ElementDecor key={el.id} el={el} />)}
+              {/* Décor, à l'échelle du canevas dessiné ; salle tournée : le
+                  même quart de tour que tourner(), par la feuille de style. */}
+              <div
+                aria-hidden="true"
+                style={pivote
+                  ? { position: 'absolute', left: 0, top: 0, width: PLAN_W * k, height: PLAN_H * k, transform: `translate(${PLAN_H * k}px, 0) rotate(90deg)`, transformOrigin: '0 0', pointerEvents: 'none' }
+                  : { position: 'absolute', inset: 0, pointerEvents: 'none' }}
+              >
+                {decor.map((el) => <ElementDecor key={el.id} el={el} />)}
+              </div>
               {/* Cadre d'une tablée : ses tables se lisent comme une seule. */}
               {largeur > 0 && cadresTablees(visibles, tablees).map(({ id, membres }) => {
-                const c = cadreDe(membres);
+                const c = cadreDe(membres.map((m) => vueDe.get(m.id) || m));
                 const enDrag = drag?.ids?.has(id);
                 const teinte = TEINTES[etatsParTablee.get(id)?.etat || 'libre'];
                 return (
@@ -494,7 +569,7 @@ export default function PlanTables({
                   />
                 );
               })}
-              {largeur > 0 && visibles.map((t) => {
+              {largeur > 0 && visiblesVues.map((t) => {
                 const tablee = tablees?.get(t.id) || { principale: t, membres: [t] };
                 const principale = tablee.principale;
                 const estPrincipale = principale.id === t.id;
@@ -616,7 +691,19 @@ export default function PlanTables({
             )}
           </div>
         </div>
+          </div>
+          {!deuxColonnes && tel && (
+            <div style={st.barre}>{filtres}{onglets.length > 1 ? null : actionsPlan}</div>
+          )}
+          {!deuxColonnes && tel && onglets.length <= 1 && panneauReglages}
+        </div>
 
+        {/* Colonne : en deux colonnes, le bandeau du service, « À faire
+            maintenant » (en vue sans défiler), puis les filtres et les gestes
+            du plan ; sinon cette liste seule, sous le plan ou à côté. */}
+        {(deuxColonnes || (affichage.liste && !choixSeul)) && (
+        <div style={deuxColonnes ? st.colonne : st.colonnePile}>
+        {deuxColonnes && enTete}
         {/* « À faire maintenant » : ce qui presse, sur toute la maison. Une
             tablée s'ouvre d'un toucher, comme sur le plan ; une réservation en
             retard porte ses deux gestes (jamais en mode test). */}
@@ -678,6 +765,9 @@ export default function PlanTables({
               );
             })}
           </div>
+        )}
+        {deuxColonnes && <div style={st.barreColonne}>{filtres}{actionsPlan}</div>}
+        </div>
         )}
       </div>
     </div>
@@ -836,7 +926,7 @@ function Pilule({ choisi, onClick, children }) {
   );
 }
 
-function ReglagesAffichage({ affichage, onChange }) {
+function ReglagesAffichage({ affichage, onChange, tel = false }) {
   const bascule = (cle) => onChange({ [cle]: !affichage[cle] });
   return (
     <Panneau style={st.reglages}>
@@ -863,6 +953,15 @@ function ReglagesAffichage({ affichage, onChange }) {
           <Pilule choisi={!affichage.liste} onClick={() => onChange({ liste: false })}>Masquée</Pilule>
         </span>
       </div>
+      {tel && (
+        <div style={st.reglagesGroupe}>
+          <span style={st.reglagesTitre}>Sens du plan</span>
+          <span style={st.pilules}>
+            <Pilule choisi={affichage.sens !== 'dessin'} onClick={() => onChange({ sens: 'auto' })}>Adapté à l'écran</Pilule>
+            <Pilule choisi={affichage.sens === 'dessin'} onClick={() => onChange({ sens: 'dessin' })}>Comme dessiné</Pilule>
+          </span>
+        </div>
+      )}
       <span style={st.reglagesNote}>Réglé pour cet appareil.</span>
     </Panneau>
   );
@@ -910,6 +1009,12 @@ const st = {
   // permet ; sinon la liste passe dessous et le plan prend toute la largeur.
   corps: { display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'flex-start', minWidth: 0 },
   colPlan: { flex: '1 1 720px', minWidth: 0 },
+  colonnePile: { display: 'flex', flexDirection: 'column', gap: 12, flex: '1 1 280px', minWidth: 0, maxWidth: 900 },
+  // Deux colonnes : le plan à gauche, la colonne de droite à largeur fixe.
+  grille: { display: 'grid', gridTemplateColumns: `minmax(0, 1fr) ${LARGEUR_COLONNE}px`, gap: 16, alignItems: 'start', minWidth: 0 },
+  gauche: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
+  colonne: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
+  barreColonne: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, minWidth: 0 },
   carte: {
     position: 'relative',
     display: 'flex', justifyContent: 'center', boxSizing: 'border-box', background: 'var(--zone)', borderRadius: 'var(--r-lg)',
@@ -961,7 +1066,7 @@ const st = {
   // par tablée séparée par son filet doux ; la dernière n'en porte pas
   // (caisse.css).
   liste: {
-    display: 'flex', flexDirection: 'column', flex: '1 1 280px', minWidth: 0, maxWidth: 900, padding: '4px 18px', boxSizing: 'border-box',
+    display: 'flex', flexDirection: 'column', minWidth: 0, padding: '4px 18px', boxSizing: 'border-box',
     background: 'var(--zone)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   },

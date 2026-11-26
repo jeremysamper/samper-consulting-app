@@ -7195,4 +7195,7 @@ export const UI_GLOSSARY_PT = {
   "prochaine à": "próxima às",
   "tables": "mesas",
   "Tickets encaissés, quittances": "Contas cobradas, recibos",
+  "Sens du plan": "Orientação da planta",
+  "Adapté à l'écran": "Adaptado ao ecrã",
+  "Comme dessiné": "Como desenhado",
 };

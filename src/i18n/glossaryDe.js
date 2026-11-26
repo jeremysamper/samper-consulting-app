@@ -7401,4 +7401,7 @@ export const UI_GLOSSARY_DE = {
   "prochaine à": "nächste um",
   "tables": "Tische",
   "Tickets encaissés, quittances": "Kassierte Bons, Quittungen",
+  "Sens du plan": "Ausrichtung des Plans",
+  "Adapté à l'écran": "An den Bildschirm angepasst",
+  "Comme dessiné": "Wie gezeichnet",
 };

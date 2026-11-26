@@ -88,3 +88,11 @@
 @container (max-width: 419px) {
   .caisse-service-detail { display: none; }
 }
+
+/* Bandeau dans la colonne de droite du plan (grand écran, 26.11.2026) : le
+   nom du service en tête, puis les quatre chiffres deux par deux, avec leurs
+   couverts. Après les requêtes de conteneur ci-dessus, qu'il remplace. */
+.caisse-service--colonne { margin-bottom: 0; }
+.caisse-service--colonne .caisse-service-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.caisse-service--colonne .caisse-service-titre { display: block; grid-column: 1 / -1; padding: 6px 10px 0; }
+.caisse-service--colonne .caisse-service-detail { display: inline; }
