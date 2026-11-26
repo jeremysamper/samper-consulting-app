@@ -154,7 +154,6 @@ export default function LegacyModuleHost({
   // Coque (useShellMode) : 'ordinateur' | 'tablette' | 'telephone'.
   shellMode = 'ordinateur'
 }) {
-  const tactile = shellMode === 'tablette' || shellMode === 'telephone';
   const permissions = getPermissionsForRole(user.role);
 
   if (loadingEtablissement) {
@@ -211,7 +210,9 @@ export default function LegacyModuleHost({
       // Ordinateur : le tableau de bord, sans redirection (un iPad qui passe
       // du tactile au clavier ne rejoue rien). Spa sur ordinateur : App.jsx
       // redirige vers sa page d'accueil, rien à afficher d'ici là.
-      if (tactile) return wrap('Accueil', <AccueilTactile />);
+      // Téléphone : la page à gros boutons. La tablette porte la barre
+      // latérale de tous les modules : son accueil est le tableau de bord.
+      if (shellMode === 'telephone') return wrap('Accueil', <AccueilTactile />);
       if (!isPageActiveForEtab(etablissement, 'dashboard')) return null;
       return wrap('Tableau de bord', <TableauDeBord user={user} etablissement={etablissement} setPage={setPage} />);
     case 'planning': {

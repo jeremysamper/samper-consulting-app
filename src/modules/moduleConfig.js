@@ -359,13 +359,14 @@ export function isModuleActiveForEtab(etablissement, permKey) {
   return actifs.includes(permKey);
 }
 
-// Coque tactile (tablette, téléphone, useShellMode) : la page d'accueil à gros
-// boutons, quel que soit l'établissement (un spa y a Spa, Planning, Messages).
-// Ordinateur : le tableau de bord quand l'établissement en a un ; sinon le
+// Téléphone (useShellMode) : la page d'accueil à gros boutons, quel que soit
+// l'établissement (un spa y a Spa, Planning, Messages). Ordinateur et
+// tablette (qui porte une barre latérale de tous les modules depuis le
+// 26.11.2026) : le tableau de bord quand l'établissement en a un ; sinon le
 // module Spa pour un spa, à défaut le premier module du menu activé et permis
 // au rôle.
 export function pageAccueil(etablissement, permissions = {}, shellMode = 'ordinateur') {
-  if (shellMode === 'tablette' || shellMode === 'telephone') return 'accueil';
+  if (shellMode === 'telephone') return 'accueil';
   if (isModuleActiveForEtab(etablissement, 'dashboard')) return 'dashboard';
   const permis = (item) => isModuleActiveForEtab(etablissement, item.permKey) && permissions[item.permKey] !== false;
   const spa = navItems.find((item) => item.id === 'spa');

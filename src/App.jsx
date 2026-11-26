@@ -12,7 +12,7 @@ import { effacerChoix } from './services/vueRole.js';
 import { usePasswordRecovery } from './hooks/usePasswordRecovery.js';
 import { useCurrentEtablissement } from './hooks/useCurrentEtablissement.js';
 import { useIsMobile } from './hooks/useIsMobile.js';
-import { estTactile, useShellMode } from './hooks/useShellMode.js';
+import { useShellMode } from './hooks/useShellMode.js';
 import SafeModule from './legacy/SafeModule.jsx';
 import { loadLegacyModules } from './legacy/loadLegacyModules.js';
 import { getHydrateFromSupabase, removeLegacyGlobal, writeLegacyGlobal } from './legacy/legacyApi.js';
@@ -250,7 +250,7 @@ export default function App() {
   useEffect(() => {
     if (!etabCourant || !roleCourant) return;
     if (page !== 'dashboard' && page !== 'accueil') return;
-    if (page === 'accueil' && estTactile(shellMode)) return;
+    if (page === 'accueil' && shellMode === 'telephone') return;
     if (isModuleActiveForEtab(etabCourant, 'dashboard')) return;
     const accueil = pageAccueil(etabCourant, getPermissionsForRole(roleCourant), shellMode);
     if (accueil === page) return;

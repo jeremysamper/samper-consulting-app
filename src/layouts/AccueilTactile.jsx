@@ -70,39 +70,33 @@ export default function AccueilTactile() {
       {/* Carte d'activation des alertes (AppLayout), tant qu'elle a lieu d'être. */}
       {carteAlertes}
 
-      <GrilleModules groupedNav={groupedNav} badges={badges} getLabelForModule={getLabelForModule} onChoisir={setPage} />
+      {groupedNav.map((group) => (
+        <section key={group.label} role="group" aria-label={group.label}>
+          <h3 style={s.rubriqueTitre}>{group.label}</h3>
+          <div className="accueil-grille">
+            {group.items.map((item) => {
+              const Icone = getModuleIcon(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="accueil-tuile"
+                  data-cadre=""
+                  data-module-id={item.id}
+                  style={s.tuile}
+                  onClick={() => setPage(item.id)}
+                >
+                  <span className="accueil-tuile-picto" aria-hidden="true"><Icone size={24} strokeWidth={1.75} /></span>
+                  <span style={s.libelle}>{getLabelForModule(item.id, item.mobileLabel || item.label)}</span>
+                  <NavBadge itemId={item.id} badges={badges} style={s.badge} />
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
     </div>
   );
-}
-
-// Les tuiles des modules, rangées par rubrique : la page d'accueil et le
-// tiroir des modules de la tablette (TiroirModules) les rendent à l'identique.
-export function GrilleModules({ groupedNav, badges, getLabelForModule, onChoisir }) {
-  return groupedNav.map((group) => (
-    <section key={group.label} role="group" aria-label={group.label}>
-      <h3 style={s.rubriqueTitre}>{group.label}</h3>
-      <div className="accueil-grille">
-        {group.items.map((item) => {
-          const Icone = getModuleIcon(item.id);
-          return (
-            <button
-              key={item.id}
-              type="button"
-              className="accueil-tuile"
-              data-cadre=""
-              data-module-id={item.id}
-              style={s.tuile}
-              onClick={() => onChoisir(item.id)}
-            >
-              <span className="accueil-tuile-picto" aria-hidden="true"><Icone size={24} strokeWidth={1.75} /></span>
-              <span style={s.libelle}>{getLabelForModule(item.id, item.mobileLabel || item.label)}</span>
-              <NavBadge itemId={item.id} badges={badges} style={s.badge} />
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  ));
 }
 
 const s = {

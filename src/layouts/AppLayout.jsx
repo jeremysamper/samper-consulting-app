@@ -6,7 +6,6 @@ import usePiluleGlissante from '../hooks/usePiluleGlissante.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { useAlertInstances } from '../hooks/useAlertInstances.js';
 import { useVisibleNav } from '../hooks/useVisibleNav.js';
-import { usePaysageLarge } from '../hooks/useShellMode.js';
 import { usePointsRetour } from '../modules/points/usePointsRetour.js';
 import { IndicateursPointsProvider } from '../modules/points/IndicateursPoints.jsx';
 import PopupPoints from '../modules/points/PopupPoints.jsx';
@@ -19,9 +18,8 @@ import HomeScreenIconBanner from '../components/HomeScreenIconBanner.jsx';
 import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
-import TiroirModules from './TiroirModules.jsx';
 import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
-import { Bell, House, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Search, Sun } from 'lucide-react';
+import { Bell, House, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Search, Settings, Sun } from 'lucide-react';
 import { useCanGoBack } from '../hooks/useBackLayer.js';
 import { goBack, goHome as goHomeHistory } from '../services/historyNav.js';
 import NavOrganizer from '../components/nav/NavOrganizer.jsx';
@@ -60,16 +58,14 @@ const PAGES_MARGE_SERREE = new Set(['spa', 'caisse']);
 const LARGEUR_CONTENU = 1440;
 const PAGES_PLEINE_LARGEUR = new Set(['caisse', 'kds']);
 
-// Barre de raccourcis de la tablette tenue en paysage : les premiers modules
-// de la personne, dans l'ordre du menu de l'ordinateur. La liste complète
-// monte du bas de l'écran d'un glissé vers le haut (TiroirModules), à la place
-// de l'ancien bouton « Tout » (26.11.2026). Sept au plus ; la feuille en
-// retire un ou deux quand l'écran manque de hauteur (.sc-raccourci, app.css).
-// Le passe du KDS ne la porte pas : une colonne de moins lui retirerait des
-// bons. La caisse la porte depuis le 26.11.2026, pour en sortir d'un toucher,
-// et la retire avec la barre du haut quand on la met en plein écran.
+// Barre latérale de la tablette, dans les deux orientations (26.11.2026, à la
+// demande de Jérémy : plus de grille de modules sur la tablette) : tous les
+// modules de la personne, rubrique par rubrique dans l'ordre du menu de
+// l'ordinateur, un cercle et son libellé court chacun, la liste qui défile ;
+// les Réglages au pied, toujours en vue. Le passe du KDS ne la porte pas :
+// une colonne de moins lui retirerait des bons. La caisse la porte, et la
+// retire avec la barre du haut quand on la met en plein écran.
 // La borne de pointage est rendue hors de la coque (main.jsx).
-const NB_RACCOURCIS = 7;
 const LARGEUR_RACCOURCIS = 88;
 const PAGES_SANS_RACCOURCIS = new Set(['kds']);
 
@@ -114,17 +110,15 @@ export default function AppLayout({
   // Tablette et téléphone partagent la coque tactile (page d'accueil, bouton
   // Accueil) ; l'ordinateur garde barre latérale et raccourcis.
   const tactile = shellMode !== 'ordinateur';
-  // Barre de raccourcis : tablette en paysage seulement (media query), jamais
-  // au téléphone ni en portrait, jamais sur un écran de travail en pleine
-  // largeur. Elle suit la page affichée, comme la marge de page.
-  const paysageLarge = usePaysageLarge();
+  // Barre latérale : la tablette, jamais le téléphone ; elle suit la page
+  // affichée, comme la marge de page.
   // Plein écran demandé par un module (la caisse, setPleinEcran du
   // ShellContext) : la coque retire sa barre du haut, ses raccourcis et le
   // menu de l'ordinateur tant que la page qui l'a demandé est à l'écran. Le
   // module reste monté au même endroit de l'arbre : rien ne se recharge.
   const [pleinEcranPage, setPleinEcranPage] = React.useState(null);
   const pleinEcran = pleinEcranPage != null && pleinEcranPage === pageAffichee;
-  const avecRaccourcis = shellMode === 'tablette' && paysageLarge && !pleinEcran && !PAGES_SANS_RACCOURCIS.has(pageAffichee);
+  const avecRaccourcis = shellMode === 'tablette' && !pleinEcran && !PAGES_SANS_RACCOURCIS.has(pageAffichee);
   const { isDark, toggleTheme } = useTheme();
   const legacySB = dbService.getBridge();
   const DEMO_DATA = getDemoData();
@@ -288,13 +282,13 @@ export default function AppLayout({
   ) : null);
 
   // ── Carte d'activation des alertes ─────────────────────────────
-  // Un seul exemplaire : l'accueil tactile la pose sous son en-tête
-  // (ShellContext) ; à l'ordinateur elle ouvre la page d'accueil de
-  // l'établissement (tableau de bord, sinon premier module), gardée montée
-  // et masquée ailleurs pour ne pas relire à chaque retour.
+  // Un seul exemplaire : l'accueil du téléphone la pose sous son en-tête
+  // (ShellContext) ; à l'ordinateur et à la tablette elle ouvre la page
+  // d'accueil de l'établissement (tableau de bord, sinon premier module),
+  // gardée montée et masquée ailleurs pour ne pas relire à chaque retour.
   const voitReservations = visibleNav.some((item) => item.id === 'previsions');
   const carteAlertes = (
-    <CarteAlertes user={user} etablissement={etablissement} voitReservations={voitReservations} bas={tactile ? 0 : 16} />
+    <CarteAlertes user={user} etablissement={etablissement} voitReservations={voitReservations} bas={shellMode === 'telephone' ? 0 : 16} />
   );
   const surAccueilOrdinateur = pageAffichee === 'accueil' || pageAffichee === pageAccueil(etablissement, perms, 'ordinateur');
 
@@ -429,7 +423,7 @@ export default function AppLayout({
     setPage: handleSetPage, etablissement, etabs, accountUser,
     openAccount: ouvrirMonCompte,
     openCompte: ouvrirCompte, compteActif: currentPage === 'compte',
-    carteAlertes: tactile ? carteAlertes : null,
+    carteAlertes: shellMode === 'telephone' ? carteAlertes : null,
     pleinEcran, setPleinEcran: setPleinEcranPage,
   };
 
@@ -495,18 +489,15 @@ export default function AppLayout({
     cle: currentPage,
     forme: `${sidebarOpen}|${organizing}|${visibleNav.length}|${tactile}`,
   });
-  // Raccourcis de la tablette : l'ordre du menu de l'ordinateur (rubrique par
-  // rubrique), la même pilule qui glisse, posée sur le cercle du module ouvert.
-  const raccourcis = React.useMemo(
-    () => groupedNav.flatMap((groupe) => groupe.items).slice(0, NB_RACCOURCIS),
-    [groupedNav],
-  );
+  // Barre latérale de la tablette : tous les modules dans l'ordre du menu de
+  // l'ordinateur (rubrique par rubrique), la même pilule qui glisse, posée sur
+  // le cercle du module ouvert.
   const raccourcisRef = React.useRef(null);
   const raccourcisPiluleRef = React.useRef(null);
   usePiluleGlissante(raccourcisRef, raccourcisPiluleRef, {
     selecteur: '.sc-raccourci[aria-current="page"] .sc-raccourci-cercle',
     cle: currentPage,
-    forme: `${avecRaccourcis}|${raccourcis.map((item) => item.id).join(',')}`,
+    forme: `${avecRaccourcis}|${visibleNav.map((item) => item.id).join(',')}`,
   });
   const mainRef = React.useRef(null);
   const positionsRef = React.useRef(new Map());
@@ -784,10 +775,10 @@ export default function AppLayout({
   // ════════════════════════════════
   // COQUE TACTILE (tablette et téléphone)
   // ════════════════════════════════
-  // Ni barre latérale ni tiroir : la liste des modules est la page d'accueil
-  // (AccueilTactile, rendue par LegacyModuleHost). La tablette tenue en
-  // paysage y ajoute une barre de raccourcis à gauche (avecRaccourcis) : un
-  // toucher pour changer de module au lieu de deux. Header « verre » : bouton
+  // Téléphone : ni barre latérale ni tiroir, la liste des modules est la page
+  // d'accueil (AccueilTactile, rendue par LegacyModuleHost). La tablette porte
+  // à la place une barre latérale de tous les modules, Réglages au pied
+  // (avecRaccourcis), et son accueil est le tableau de bord. Header « verre » : bouton
   // Accueil à gauche, titre et établissement au centre, langue, thème et
   // alertes à droite. Les bandeaux restent au-dessus du header.
   if (tactile) {
@@ -803,31 +794,56 @@ export default function AppLayout({
             iPad qu'on tourne ne remonte aucun module. */}
         <div style={mls.corps}>
         {avecRaccourcis ? (
-          <nav ref={raccourcisRef} style={mls.raccourcis} className="sc-raccourcis" aria-label="Raccourcis">
-            <span ref={raccourcisPiluleRef} className="mvt-pilule sc-nav-pilule" aria-hidden="true" />
-            {raccourcis.map((item, rang) => {
-              const actif = currentPage === item.id;
-              const Icone = getModuleIcon(item.id);
-              return (
+          <aside style={mls.barre} aria-label="Menu principal">
+            <nav ref={raccourcisRef} style={mls.raccourcis} className="sc-raccourcis" aria-label="Modules" data-nav-scroll>
+              <span ref={raccourcisPiluleRef} className="mvt-pilule sc-nav-pilule" aria-hidden="true" />
+              {groupedNav.map((groupe, index) => (
+                <div key={groupe.label} role="group" aria-label={groupe.label} style={mls.raccourcisGroupe}>
+                  {index > 0 && <span style={mls.raccourcisFilet} aria-hidden="true" />}
+                  {groupe.items.map((item) => {
+                    const actif = currentPage === item.id || (currentPage === 'accueil' && item.id === 'dashboard');
+                    const Icone = getModuleIcon(item.id);
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className="sc-raccourci"
+                        data-module-id={item.id}
+                        style={actif ? mls.raccourciActif : mls.raccourci}
+                        aria-current={actif ? 'page' : undefined}
+                        onClick={() => handleSetPage(item.id)}
+                      >
+                        <span className="sc-raccourci-cercle" style={actif ? mls.raccourciCercleActif : mls.raccourciCercle} aria-hidden="true">
+                          <Icone size={20} strokeWidth={1.75} />
+                        </span>
+                        <span className="sc-raccourci-libelle">{getLabelForModule(item.id, item.mobileLabel || item.label)}</span>
+                        <NavBadge itemId={item.id} badges={badges} style={mls.raccourciBadge} />
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </nav>
+            {/* Réglages au pied de la barre, comme à l'ordinateur : toujours
+                en vue, quelle que soit la longueur de la liste. */}
+            {ouvrirCompte ? (
+              <div style={mls.raccourcisPied}>
                 <button
-                  key={item.id}
                   type="button"
                   className="sc-raccourci"
-                  data-rang={rang + 1}
-                  data-module-id={item.id}
-                  style={actif ? mls.raccourciActif : mls.raccourci}
-                  aria-current={actif ? 'page' : undefined}
-                  onClick={() => handleSetPage(item.id)}
+                  data-reglages=""
+                  style={currentPage === 'compte' ? mls.raccourciActif : mls.raccourci}
+                  aria-current={currentPage === 'compte' ? 'page' : undefined}
+                  onClick={ouvrirCompte}
                 >
-                  <span className="sc-raccourci-cercle" style={actif ? mls.raccourciCercleActif : mls.raccourciCercle} aria-hidden="true">
-                    <Icone size={20} strokeWidth={1.75} />
+                  <span className="sc-raccourci-cercle" style={currentPage === 'compte' ? mls.raccourciCercleActif : mls.raccourciCercle} aria-hidden="true">
+                    <Settings size={20} strokeWidth={1.75} />
                   </span>
-                  <span className="sc-raccourci-libelle">{getLabelForModule(item.id, item.mobileLabel || item.label)}</span>
-                  <NavBadge itemId={item.id} badges={badges} style={mls.raccourciBadge} />
+                  <span className="sc-raccourci-libelle">Réglages</span>
                 </button>
-              );
-            })}
-          </nav>
+              </div>
+            ) : null}
+          </aside>
         ) : null}
         <div style={pleinEcran ? mls.stagePlein : mls.stage}>
           <header style={pleinEcran ? mls.topbarPlein : mls.topbar} className="app-glass-bar">
@@ -887,6 +903,7 @@ export default function AppLayout({
           </header>
 
           <main ref={mainRef} style={mls.content} className="mobile-module-content" data-marge={PAGES_MARGE_SERREE.has(pageAffichee) ? 'serree' : undefined} onClick={fermerPanneaux}>
+            {shellMode === 'tablette' ? <div hidden={!surAccueilOrdinateur}>{carteAlertes}</div> : null}
             {children}
           </main>
         </div>
@@ -894,9 +911,6 @@ export default function AppLayout({
 
         {passwordModal}
         {shortcutsLayer}
-        {/* Tablette : la liste des modules monte d'un glissé vers le haut,
-            plein écran compris. */}
-        <TiroirModules actif={shellMode === 'tablette'} page={currentPage} />
       </div>
       <PopupPoints actif={points.actif && points.participant} />
       <Nouveautes user={user} etablissement={etablissement} donneesPretes={donneesPretes} page={currentPage} modules={visibleNav} points={points} pointsAttendus={perms.points !== false} />
@@ -1161,18 +1175,28 @@ const mls = {
   // rangée, elle ne s'élargit pas au contenu d'un module.
   stage: { position: 'relative', flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column', '--app-header-h': '60px' },
 
-  // Barre de raccourcis (tablette en paysage) : posée sur le fond de page
-  // comme le menu de l'ordinateur, un cercle de 44 px par module à la couleur
-  // des cartes, son libellé court dessous, l'entrée choisie en aplat sombre
+  // Barre latérale de la tablette : posée sur le fond de page comme le menu
+  // de l'ordinateur, un cercle de 44 px par module à la couleur des cartes,
+  // son libellé court dessous, l'entrée choisie en aplat sombre
   // (--nav-active, porté par la pilule qui glisse dès qu'elle est posée).
-  // position relative : la barre est le repère de la pilule. Le premier
-  // cercle s'aligne sur les boutons de la barre du haut (8 px). Les états, le
-  // libellé sur deux lignes et les rangs retirés quand la hauteur manque sont
-  // dans app.css (.sc-raccourci).
+  // La liste défile (raccourcis, repère de la pilule, position relative) ;
+  // les Réglages restent au pied, sous un filet, comme à l'ordinateur. Le
+  // premier cercle s'aligne sur les boutons de la barre du haut (8 px). Les
+  // états et le libellé sur deux lignes sont dans app.css (.sc-raccourci).
+  barre: {
+    width: LARGEUR_RACCOURCIS, flexShrink: 0, minHeight: 0, boxSizing: 'border-box',
+    display: 'flex', flexDirection: 'column', background: 'var(--nav)',
+  },
   raccourcis: {
-    position: 'relative', width: LARGEUR_RACCOURCIS, flexShrink: 0, minHeight: 0, boxSizing: 'border-box',
+    position: 'relative', flex: 1, minHeight: 0, boxSizing: 'border-box',
     display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 4px 12px',
-    overflowY: 'auto', overflowX: 'hidden', background: 'var(--nav)',
+    overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain',
+  },
+  raccourcisGroupe: { display: 'flex', flexDirection: 'column', gap: 8 },
+  raccourcisFilet: { alignSelf: 'center', width: 32, height: 1, margin: '2px 0', background: 'var(--nav-border)' },
+  raccourcisPied: {
+    flexShrink: 0, padding: '8px 4px 12px', display: 'flex', justifyContent: 'center',
+    borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--nav-border)',
   },
   raccourci: {
     position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0,
