@@ -28,7 +28,8 @@ import { libelleSupplement, supplementsPourLigne } from './supplements.js';
 import { REGLAGES_DEFAUT, SUITE_MAX, libelleMode, peutOuvrirMode, suitesVisibles } from './reglages.js';
 import { comptesCommande, photoDuBouton, quantitesParPlat } from './commande.js';
 import { useLargeur } from './mesures.js';
-import { enRupture, libelleCompteRupture, produitsEnRupture } from './rupture.js';
+import { enRupture, etatDisponibilite, libelleCompteRupture, motEtat, produitsEnRupture } from './rupture.js';
+import FeuilleDisponibilite from './FeuilleDisponibilite.jsx';
 import { peutMettreEnRupture } from './gardesCaisse.js';
 import { estPret } from './PlanTables.jsx';
 import { libelleAvecFormat, ligneNueDuFormat, optionFormat, prixAffiche } from '../../utils/formatsBoisson.js';
@@ -367,6 +368,12 @@ export default function TicketEcran({
     return [...serveur.values()];
   }
 
+  // Lot 12 : produit qui porte un compteur de portions du jour (sa case suit
+  // la base après chaque ligne posée, retirée ou baissée).
+  function aCompteur(platId) {
+    return Boolean(platId) && String(boutons[platId]?.portions_le || '').slice(0, 10) === zurichToday();
+  }
+
   // format : celui choisi pour une boisson, ou null (plat sans format).
   function ajouterArticle(plat, format = null) {
     const mode = modeActif;
@@ -401,9 +408,11 @@ export default function TicketEcran({
         prixUnitaire: format ? format.prix : (plat.prixVente ?? 0), suite: mode,
         options: format ? [optionFormat(format)] : null,
       });
-    if (erreur(error)) return;
+    // Lot 12 : le nombre restant suit la base, pas le seul temps réel.
+    if (erreur(error)) { onBoutonsChange?.(); return; }
     retenirEcrite(data);
     reload();
+    if (aCompteur(plat.id)) onBoutonsChange?.();
   }
 
   async function ajouterLibre() {
@@ -430,9 +439,10 @@ export default function TicketEcran({
   async function majFicheLigne(partial) {
     if (!ficheLigne) return;
     const { data, error } = await caisse.majLigne(ficheLigne.id, partial);
-    if (erreur(error)) return;
+    if (erreur(error)) { if ('quantite' in partial) onBoutonsChange?.(); return; }
     retenirEcrite(data);
     reload();
+    if ('quantite' in partial && aCompteur(ficheLigne.plat_id)) onBoutonsChange?.();
   }
 
   // Un supplément est une ligne à lui, dans le mode de la ligne d'origine :
@@ -448,9 +458,10 @@ export default function TicketEcran({
       : await caisse.ajouterLigne({
         ticketId: ticket.id, platId: s.platId, libelle, prixUnitaire: s.prix, suite: ficheLigne.suite,
       });
-    if (erreur(error)) return;
+    if (erreur(error)) { onBoutonsChange?.(); return; }
     notify('Supplément ajouté au ticket.', 'success');
     reload();
+    if (aCompteur(s.platId)) onBoutonsChange?.();
   }
 
   async function supprimerFicheLigne() {
@@ -460,6 +471,7 @@ export default function TicketEcran({
     ecrites.current.delete(ficheLigne.id);
     setFicheLigneId(null);
     reload();
+    if (aCompteur(ficheLigne.plat_id)) onBoutonsChange?.();
   }
 
   // Retrait rapide depuis la commande : un de moins, ou la ligne entière quand
@@ -478,6 +490,7 @@ export default function TicketEcran({
       if (erreur(error)) return;
       if (q > 1) retenirEcrite(data); else ecrites.current.delete(l.id);
       await reload();
+      if (aCompteur(l.plat_id)) onBoutonsChange?.();
     } finally {
       verrouRetrait.current.delete(l.id);
     }
@@ -487,7 +500,7 @@ export default function TicketEcran({
   // n'envoie que des identifiants. Rend vrai quand la formule est posée.
   async function poserLaFormule(f, choix, groupe) {
     const { error } = await caisse.poserFormule({ ticketId: ticket.id, formuleId: f.id, choix, groupe });
-    if (erreur(error)) return false;
+    if (erreur(error)) { onBoutonsChange?.(); return false; }
     notify('Formule ajoutée au ticket.', 'success');
     await reload();
     return true;
@@ -599,19 +612,25 @@ export default function TicketEcran({
   // n'écrivent pas deux fois) ; la grille suit par le rechargement des
   // boutons, ici tout de suite et sur les autres postes par le temps réel.
   // Rend vrai si toutes les écritures ont passé.
-  async function changerRupture(plats, mettre) {
+  // Lot 12 : poserEtat pose l'un des quatre états (RPC caisse_poser_disponibilite).
+  function changerRupture(plats, mettre) {
+    return poserEtat(plats, mettre ? 'rupture_jour' : 'en_vente');
+  }
+  async function poserEtat(plats, etat, portions = null) {
     if (verrouRupture.current || !plats.length) return false;
     verrouRupture.current = true;
     setRuptureEnCours(true);
     try {
-      // Le jour de Zurich est pris par la base (RPC caisse_poser_rupture).
-      const resultats = await Promise.all(plats.map((p) => caisse.poserRupture({
-        etablissementId: ticket.etablissement_id, platId: p.id, mettre,
+      // Le jour de Zurich est pris par la base.
+      const resultats = await Promise.all(plats.map((p) => caisse.poserDisponibilite({
+        etablissementId: ticket.etablissement_id, platId: p.id, etat, portions,
       })));
       await onBoutonsChange?.();
       const rate = resultats.find((r) => r.error);
       if (rate) { notify(rate.error, 'error'); return false; }
-      if (mettre) notify("Produit en rupture jusqu'à demain matin.", 'success');
+      if (etat === 'rupture_jour') notify("Produit en rupture jusqu'à demain matin.", 'success');
+      else if (etat === 'epuise') notify("Produit épuisé jusqu'à nouvel arrivage.", 'success');
+      else if (etat === 'portions') notify('Portions restantes enregistrées.', 'success');
       else notify(plats.length > 1 ? 'Produits remis en vente.' : 'Produit remis en vente.', 'success');
       return true;
     } finally {
@@ -630,9 +649,16 @@ export default function TicketEcran({
   // Jour de Zurich relu à chaque rendu : une rupture d'hier tombe d'elle-même.
   const jour = zurichToday();
   const estEnRupture = (plat) => enRupture(boutons[plat.id], jour);
+  const dispoDe = (plat) => etatDisponibilite(boutons[plat.id], jour);
   // Produits en rupture parmi tous ceux en vente, quelle que soit la carte affichée.
   const ruptures = produitsEnRupture(articles, boutons, jour);
   function toucherArticle(plat) {
+    if (dispoDe(plat).etat === 'epuise') {
+      notify(peutRupture
+        ? 'Ce produit est épuisé. Appuyez longuement sur la case pour le remettre en vente.'
+        : "Ce produit est épuisé jusqu'à nouvel arrivage.", 'info');
+      return;
+    }
     if (estEnRupture(plat)) {
       notify(peutRupture
         ? 'Ce produit est en rupture aujourd\'hui. Appuyez longuement sur la case pour le remettre en vente.'
@@ -670,6 +696,7 @@ export default function TicketEcran({
     const conflits = conflitsDe(a);
     const n = quantites.get(a.id) || 0;
     const rupture = estEnRupture(a);
+    const dispo = dispoDe(a);
     return (
       <button
         key={a.id}
@@ -680,8 +707,9 @@ export default function TicketEcran({
         data-photo={avecPhoto ? '' : undefined}
         data-allergene={conflits.length ? '' : undefined}
         data-rupture={rupture ? '' : undefined}
+        data-disponibilite={dispo.etat}
         aria-disabled={rupture || undefined}
-        title={rupture ? 'En rupture aujourd\'hui' : (conflits.length ? `Attention : contient ${conflits.join(', ')}` : undefined)}
+        title={dispo.etat === 'epuise' ? "Épuisé jusqu'à nouvel arrivage" : rupture ? 'En rupture aujourd\'hui' : (conflits.length ? `Attention : contient ${conflits.join(', ')}` : undefined)}
         style={{ ...st.case, ...(conflits.length ? st.caseAllergene : null), ...(rupture ? st.caseRupture : null) }}
         onClick={() => {
           if (appuiLong.current.declenche) { appuiLong.current.declenche = false; return; }
@@ -723,8 +751,13 @@ export default function TicketEcran({
             </span>
           )}
           {rupture
-            ? <span style={st.caseRuptureMot} data-cadre="" data-caisse-rupture-mot="">Rupture</span>
+            ? <span style={st.caseRuptureMot} data-cadre="" data-caisse-rupture-mot="">{motEtat(dispo.etat)}</span>
             : prixCase(a)}
+          {dispo.etat === 'compte' && (
+            <span style={st.caseRuptureMot} data-cadre="" data-caisse-reste="">
+              <span>{motEtat('compte')}</span> <span style={st.num} data-no-translate>{dispo.restant}</span>
+            </span>
+          )}
         </span>
       </button>
     );
@@ -1278,49 +1311,29 @@ export default function TicketEcran({
 
       {/* ── Fenêtres et feuilles : hors de la feuille qui glisse (une
           transformation en cours cadrerait leur position fixe). ── */}
-      {/* Appui long sur une case (L2) : la rupture d'abord, l'habillage ensuite. */}
+      {/* Appui long sur une case (L2, lot 12) : la disponibilité d'abord, l'habillage ensuite. */}
       {produitAppui && (() => {
-        const rupture = estEnRupture(produitAppui);
+        const dispo = dispoDe(produitAppui);
         return (
-          <Fenetre
-            id="caisse-produit-appui"
-            titre="Produit de la caisse"
-            titreMasque
+          <FeuilleDisponibilite
+            key={produitAppui.id}
+            nom={boutons[produitAppui.id]?.nom_court || produitAppui.nom}
+            etat={dispo.etat}
+            restant={dispo.restant}
+            enCours={ruptureEnCours}
+            zIndex={boutonPlat ? 1300 : null}
             onClose={() => setProduitAppui(null)}
-            largeur={420}
-            pied={(
-              <>
-                {/* L'habillage reste aux rôles qui habillent la caisse (RLS). */}
-                {peutHabiller ? (
-                  <button
-                    type="button"
-                    style={fen.secondaire}
-                    onClick={() => { const p = produitAppui; setProduitAppui(null); setBoutonPlat(p); }}
-                  >
-                    Modifier la case
-                  </button>
-                ) : (
-                  <button type="button" style={fen.secondaire} onClick={() => setProduitAppui(null)}>Fermer</button>
-                )}
-                <button
-                  type="button"
-                  style={fen.primaire}
-                  disabled={ruptureEnCours}
-                  data-caisse-rupture-action={rupture ? 'remettre' : 'mettre'}
-                  onClick={async () => { if (await changerRupture([produitAppui], !rupture)) setProduitAppui(null); }}
-                >
-                  {rupture ? 'Remettre en vente' : 'Mettre en rupture'}
-                </button>
-              </>
-            )}
-          >
-            <div style={fen.titre} data-no-translate>{boutons[produitAppui.id]?.nom_court || produitAppui.nom}</div>
-            <p style={st.appuiTexte}>
-              {rupture
-                ? 'Ce produit est en rupture jusqu\'à demain matin. Remis en vente, il se commande de nouveau sur toutes les caisses.'
-                : 'En rupture, la case est grisée sur toutes les caisses et le produit ne se commande plus. Il revient en vente tout seul demain matin.'}
-            </p>
-          </Fenetre>
+            onPoser={async (etat, portions) => { if (await poserEtat([produitAppui], etat, portions)) setProduitAppui(null); }}
+            piedSecondaire={peutHabiller && !boutonPlat ? (
+              <button
+                type="button"
+                style={fen.secondaire}
+                onClick={() => { const p = produitAppui; setProduitAppui(null); setBoutonPlat(p); }}
+              >
+                Modifier la case
+              </button>
+            ) : null}
+          />
         );
       })()}
       {/* Liste des produits en rupture (compteur au-dessus de la grille). */}
@@ -1350,14 +1363,23 @@ export default function TicketEcran({
           {ruptures.length > 0 && (
             <>
               <p style={st.appuiTexte}>
-                {peutRupture
-                  ? 'Ils reviennent en vente tout seuls demain matin. Vous pouvez les remettre en vente avant.'
-                  : 'Ils reviennent en vente demain matin, ou quand un responsable les remet en vente.'}
+                {ruptures.some((a) => dispoDe(a).etat === 'epuise')
+                  ? (peutRupture
+                    ? 'Les ruptures du jour reviennent en vente tout seules demain matin. Un produit épuisé attend que vous le remettiez en vente.'
+                    : 'Les ruptures du jour reviennent en vente demain matin. Un produit épuisé revient quand un responsable le remet en vente.')
+                  : (peutRupture
+                    ? 'Ils reviennent en vente tout seuls demain matin. Vous pouvez les remettre en vente avant.'
+                    : 'Ils reviennent en vente demain matin, ou quand un responsable les remet en vente.')}
               </p>
               <div style={st.rupturesListe} data-caisse-ruptures-liste="">
                 {ruptures.map((a) => (
                   <div key={a.id} style={st.ruptureRang} data-rupture-produit={a.id}>
-                    <span style={st.ruptureNom} data-no-translate>{boutons[a.id]?.nom_court || a.nom}</span>
+                    <span style={st.ruptureNomEtat}>
+                      <span style={st.ruptureNom} data-no-translate>{boutons[a.id]?.nom_court || a.nom}</span>
+                      <span style={st.ruptureEtat} data-rupture-etat={dispoDe(a).etat}>
+                        {dispoDe(a).etat === 'epuise' ? "Épuisé jusqu'à nouvel arrivage" : dispoDe(a).restant === 0 ? 'Plus de portion aujourd\'hui' : 'Rupture aujourd\'hui'}
+                      </span>
+                    </span>
                     {peutRupture && (
                       <Btn variant="ghost" disabled={ruptureEnCours} onClick={() => changerRupture([a], false)} style={st.btn44}>
                         Remettre en vente
@@ -1374,9 +1396,8 @@ export default function TicketEcran({
         <BoutonFiche
           plat={boutonPlat}
           bouton={boutons[boutonPlat.id]}
-          enRupture={estEnRupture(boutonPlat)}
-          ruptureEnCours={ruptureEnCours}
-          onRupture={(mettre) => changerRupture([boutonPlat], mettre)}
+          disponibilite={peutRupture ? dispoDe(boutonPlat) : null}
+          onDisponibilite={peutRupture ? () => setProduitAppui(boutonPlat) : null}
           etablissementId={ticket.etablissement_id}
           onEnregistrer={async (valeurs) => {
             const { error } = await caisse.upsertBouton({
@@ -1688,6 +1709,8 @@ const st = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 52, padding: '4px 0', minWidth: 0,
     borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
   },
+  ruptureNomEtat: { display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 },
+  ruptureEtat: { fontSize: 'var(--t1)', color: 'var(--text2)', lineHeight: 1.4 },
   ruptureNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', overflowWrap: 'anywhere', minWidth: 0 },
   vide: { color: 'var(--text2)', fontSize: 'var(--t2)', margin: '12px 2px' },
   // Panneau de la commande, à droite sur tablette.

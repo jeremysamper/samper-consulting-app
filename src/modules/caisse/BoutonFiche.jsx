@@ -22,14 +22,15 @@ import { ChoixCouleur, ChoixPicto } from './ChoixHabillage.jsx';
 // gardée à l'Enregistrer) ou choisir « Sans photo ». photo vaut null (fiche),
 // '' (sans photo) ou l'adresse envoyée.
 //
-// Rupture (L2, 22.11.2026) : en tête de la fiche, « Mettre en rupture » ou
-// « Remettre en vente », écrit tout de suite (geste de service), sans attendre
-// l'Enregistrer de l'habillage.
+// Disponibilité (L2 du 22.11.2026, lot 12 du panel) : en tête de la fiche,
+// l'état du produit et « Changer la disponibilité », qui ouvre la feuille de
+// l'appui long (FeuilleDisponibilite) par-dessus la fiche. Écrit tout de suite
+// (geste de service), sans attendre l'Enregistrer de l'habillage.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function BoutonFiche({
   plat, bouton, etablissementId, onEnregistrer, onClose,
-  enRupture = false, ruptureEnCours = false, onRupture = null,
+  disponibilite = null, onDisponibilite = null,
 }) {
   const [nomCourt, setNomCourt] = React.useState(bouton?.nom_court || '');
   const [couleur, setCouleur] = React.useState(bouton?.couleur || null);
@@ -38,6 +39,7 @@ export default function BoutonFiche({
   const [envoiPhoto, setEnvoiPhoto] = React.useState(false);
   const [enCours, setEnCours] = React.useState(false);
   const fichierRef = React.useRef(null);
+  const voileRef = React.useRef(null);
 
   useBackLayer(true, onClose, 'caisse-bouton-fiche');
 
@@ -45,6 +47,9 @@ export default function BoutonFiche({
     const echap = (e) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return;
       if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName || '')) return;
+      // Une fenêtre ouverte par-dessus (feuille de disponibilité) se ferme seule.
+      const voiles = document.querySelectorAll('[data-fenetre]');
+      if (voiles.length && voiles[voiles.length - 1] !== voileRef.current) return;
       e.preventDefault();
       onClose();
     };
@@ -106,23 +111,24 @@ export default function BoutonFiche({
   }
 
   return (
-    <div className="modal-sheet-overlay" data-fenetre="" style={st.overlay} onClick={onClose}>
+    <div ref={voileRef} className="modal-sheet-overlay" data-fenetre="" style={st.overlay} onClick={onClose}>
       <div className="modal-sheet" role="region" aria-label="Habillage du bouton" style={st.feuille} onClick={(e) => e.stopPropagation()}>
         <div style={st.enTete}>
           <div style={st.titre} data-no-translate>{plat.nom}</div>
           <Btn variant="ghost" onClick={onClose} style={st.btn44}>Fermer</Btn>
         </div>
 
-        {onRupture && (
-          <div style={st.ruptureRang} data-caisse-fiche-rupture={enRupture ? 'rupture' : 'en_vente'}>
+        {onDisponibilite && disponibilite && (
+          <div style={st.ruptureRang} data-caisse-fiche-rupture={disponibilite.etat}>
             <p style={st.ruptureTexte}>
-              {enRupture
-                ? 'En rupture jusqu\'à demain matin. La case est grisée sur toutes les caisses.'
-                : 'En vente. Mis en rupture, il ne se commande plus jusqu\'à demain matin.'}
+              {disponibilite.etat === 'epuise' && 'Épuisé jusqu\'à nouvel arrivage. La case reste grisée sur toutes les caisses.'}
+              {disponibilite.etat === 'rupture' && 'En rupture jusqu\'à demain matin. La case est grisée sur toutes les caisses.'}
+              {disponibilite.etat === 'compte' && (
+                <><span>Portions restantes aujourd&apos;hui :</span> <span data-no-translate>{disponibilite.restant}</span></>
+              )}
+              {disponibilite.etat === 'en_vente' && 'En vente sur toutes les caisses.'}
             </p>
-            <Btn variant="ghost" disabled={ruptureEnCours} onClick={() => onRupture(!enRupture)} style={st.btn44}>
-              {enRupture ? 'Remettre en vente' : 'Mettre en rupture'}
-            </Btn>
+            <Btn variant="ghost" onClick={onDisponibilite} style={st.btn44}>Changer la disponibilité</Btn>
           </div>
         )}
 

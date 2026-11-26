@@ -11,7 +11,7 @@
 //   changements faits dans la démo.
 // - IA : jamais d'appel à ai-proxy.
 import { executer, erreurPg, uuid } from './postgrest.js';
-import { executerRpc } from './rpc.js';
+import { decompterPortions, executerRpc, portionsDeLigne } from './rpc.js';
 import { creerBase } from './donnees/index.js';
 import { ETAB, EQUIPE, ROLES_DEMO, aujourdhui, jour, instant } from './donnees/base.js';
 import { STOCKAGE, PREFIXE } from './isolation.js';
@@ -48,7 +48,7 @@ const CLE_ROLE = PREFIXE + 'role';
 // v17 (lot 09 du panel, 25.11.2026) : une « Formule midi » à trois étapes.
 // v18 (lot 11 du panel, 26.11.2026) : règle de partage des pourboires dans
 // les réglages de la caisse (Salle 70, Cuisine 30).
-const VERSION_BASE = 'v18-' + aujourdhui();
+const VERSION_BASE = 'v19-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.
@@ -164,6 +164,8 @@ const DEFAUTS = {
   private_messages: { read_at: null, sender_id: () => sessionUid },
   caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid, retrait_nom: null, retrait_heure: null, retrait_numero: null },
   caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false, formule_id: null, formule_groupe: null, formule_nom: null },
+  // Lot 12 du panel (migration 20261126_panel_lot12_caisse_disponibilite).
+  caisse_boutons: { epuise_durable: false, portions_le: null, portions_restantes: null },
   // Lot 09 du panel (migration 20261125_panel_lot09_caisse_formules).
   caisse_formules: { actif: true, archivee: false, ordre: 0, created_by: () => sessionUid },
   inventaires: { statut: 'en cours', valeur_totale: 0, lignes: [], nom: 'Général' },
@@ -261,8 +263,27 @@ function numeroDemo(etab, prefixe, dateIso) {
   return `${prefixe}-${annee}-${String(c.dernier).padStart(4, '0')}`;
 }
 
+// Lot 12 du panel : le compteur de portions du jour, comme le déclencheur
+// trg_caisse_ligne_portions (décompte, refus de la ligne de trop, portion
+// rendue). Une seule règle, decompterPortions de rpc.js.
+function majBouton(b, valeurs) {
+  const avant = { ...b };
+  Object.assign(b, valeurs);
+  diffuser({ type: 'UPDATE', table: 'caisse_boutons', record: { ...b }, old_record: avant });
+}
+
 function avantEcriture(type, table, ligne, avant) {
   const maintenant = new Date().toISOString();
+  if (table === 'caisse_lignes') {
+    const delta = portionsDeLigne(ligne.quantite) - (type === 'INSERT' ? 0 : portionsDeLigne(avant?.quantite));
+    try {
+      decompterPortions(db, [{ plat_id: ligne.plat_id, ticket_id: ligne.ticket_id, delta }], majBouton);
+    } catch (e) {
+      // PATCH : postgrest.js a déjà copié les valeurs neuves, la base n'écrit rien.
+      if (avant) { Object.keys(ligne).forEach((k) => { if (!(k in avant)) delete ligne[k]; }); Object.assign(ligne, avant); }
+      throw e;
+    }
+  }
   if (table === 'groupe_devis') {
     if (type === 'INSERT') { ligne.numero = numeroDemo(ligne.etablissement_id, 'DEV', ligne.date_devis); ligne.created_by = sessionUid; }
     if (ligne.statut !== avant?.statut) {
@@ -353,6 +374,12 @@ function journaliser(evt) {
 }
 
 function apresEcriture(evt) {
+  // postgrest.js n'appelle pas avantEcriture à la suppression : la portion
+  // d'une ligne retirée est rendue ici.
+  if (evt.type === 'DELETE' && evt.table === 'caisse_lignes' && evt.old_record) {
+    const o = evt.old_record;
+    decompterPortions(db, [{ plat_id: o.plat_id, ticket_id: o.ticket_id, delta: -portionsDeLigne(o.quantite) }], majBouton);
+  }
   journaliser(evt);
   diffuser(evt);
 }
@@ -483,7 +510,7 @@ function contexte() {
       const i = (db[table] || []).indexOf(ligne);
       if (i < 0) return;
       db[table].splice(i, 1);
-      diffuser({ type: 'DELETE', table, record: null, old_record: { ...ligne } });
+      apresEcriture({ type: 'DELETE', table, record: null, old_record: { ...ligne } });
     },
   };
 }
@@ -624,8 +651,14 @@ async function servir(url, input, init) {
   }
   if (chemin.startsWith('/rest/v1/')) {
     const table = decodeURIComponent(chemin.slice('/rest/v1/'.length));
-    const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, avantEcriture, apresEcriture });
-    return reponse(r.status, r.corps, r.entetes);
+    try {
+      const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, avantEcriture, apresEcriture });
+      return reponse(r.status, r.corps, r.entetes);
+    } catch (e) {
+      // Refus levé par un déclencheur simulé (compteur de portions, lot 12).
+      if (!e?.code) throw e;
+      return reponse(400, { code: e.code, message: e.message, details: null, hint: null });
+    }
   }
   const e = erreurPg(404, 'Chemin inconnu de la démo : ' + chemin);
   return reponse(e.status, e.corps);

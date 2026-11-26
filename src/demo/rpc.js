@@ -29,6 +29,46 @@ export class ErreurRpc extends Error {
   constructor(message, code = 'P0001') { super(message); this.code = code; }
 }
 
+// ── Lot 12 du panel : compteur de portions du jour ──────────────────────────
+// Même règle que le déclencheur trg_caisse_ligne_portions : une unité de
+// ligne vaut une portion (une demi-quantité en prend une), un ticket de test
+// ne compte pas, un compteur d'un autre jour non plus. Un manque refuse tout
+// (rien n'est posé à moitié), avec le message de la base. À zéro, le produit
+// passe en rupture du jour ; une portion rendue lève cette rupture.
+// Partagée par fauxSupabase.js (lignes posées, changées, retirées),
+// commande_qr_accepter et caisse_poser_formule.
+export const portionsDeLigne = (q) => Math.ceil(Number(q) || 0);
+
+export function decompterPortions(db, mouvements, maj) {
+  const jour = jourZurich();
+  const parPlat = new Map();
+  for (const m of mouvements) {
+    if (!m.plat_id || !m.delta) continue;
+    const t = (db.caisse_tickets || []).find((x) => x.id === m.ticket_id);
+    if (!t || t.test) continue;
+    parPlat.set(m.plat_id, (parPlat.get(m.plat_id) || 0) + m.delta);
+  }
+  const plan = [];
+  for (const [platId, delta] of parPlat) {
+    if (!delta) continue;
+    const b = (db.caisse_boutons || []).find((x) => x.plat_id === platId && String(x.portions_le || '').slice(0, 10) === jour);
+    if (!b || b.portions_restantes === null || b.portions_restantes === undefined) continue;
+    const reste = Number(b.portions_restantes);
+    if (delta > 0 && reste < delta) {
+      if (reste <= 0) throw new ErreurRpc('caisse: il ne reste plus de portion de ce produit');
+      if (reste === 1) throw new ErreurRpc("caisse: il ne reste qu'une portion de ce produit");
+      throw new ErreurRpc(`caisse: il ne reste que ${reste} portions de ce produit`);
+    }
+    plan.push([b, delta, reste]);
+  }
+  for (const [b, delta, reste] of plan) {
+    const n = delta > 0 ? reste - delta : Math.min(999, reste - delta);
+    maj(b, { portions_restantes: n, rupture_le: delta > 0 ? (n === 0 ? jour : b.rupture_le) : null, updated_at: maintenant() });
+  }
+}
+
+const ETATS_DISPONIBILITE = ['en_vente', 'rupture_jour', 'epuise', 'portions'];
+
 function profilDe(ctx, id = ctx.uid) {
   return ctx.db.profiles.find((p) => p.id === id) || null;
 }
@@ -461,19 +501,40 @@ const RPC = {
   },
   // Rupture d'un produit (lot L2) : comme la vraie fonction, n'écrit que
   // rupture_le, au jour de Zurich, pour l'habillage et le serveur.
+  // Lot 12 : devenue un cas particulier de caisse_poser_disponibilite (vrai :
+  // rupture du jour ; faux : en vente, épuisé et compteur effacés).
   caisse_poser_rupture(ctx, a) {
+    const r = RPC.caisse_poser_disponibilite(ctx, {
+      p_etablissement_id: a.p_etablissement_id, p_plat_id: a.p_plat_id, p_etat: a.p_rupture ? 'rupture_jour' : 'en_vente',
+    });
+    return r.rupture_le;
+  },
+  // Lot 12 du panel : les quatre états d'un produit, comme la vraie fonction.
+  caisse_poser_disponibilite(ctx, a) {
+    if (!ctx.uid) throw new ErreurRpc('caisse: connexion requise', '42501');
     if (!['consultant', 'patron', 'resp_cuisine', 'serveur'].includes(profilDe(ctx)?.role)) {
       throw new ErreurRpc('caisse: rupture reservee', '42501');
     }
     if (!ctx.db.plats.some((p) => p.id === a.p_plat_id && p.etablissement_id === a.p_etablissement_id)) {
       throw new ErreurRpc('caisse: plat inconnu pour cet etablissement');
     }
-    const jour = a.p_rupture ? jourZurich() : null;
+    if (!ETATS_DISPONIBILITE.includes(a.p_etat)) throw new ErreurRpc('caisse: etat de disponibilite inconnu', '22023');
+    const n = Number(a.p_portions);
+    if (a.p_etat === 'portions' && (!Number.isInteger(n) || n < 1 || n > 999)) {
+      throw new ErreurRpc('caisse: nombre de portions invalide', '22023');
+    }
+    const jour = jourZurich();
+    const valeurs = {
+      rupture_le: a.p_etat === 'rupture_jour' || a.p_etat === 'epuise' ? jour : null,
+      epuise_durable: a.p_etat === 'epuise',
+      portions_le: a.p_etat === 'portions' ? jour : null,
+      portions_restantes: a.p_etat === 'portions' ? n : null,
+    };
     const b = ctx.db.caisse_boutons.find((x) => x.plat_id === a.p_plat_id);
     if (b && b.etablissement_id !== a.p_etablissement_id) throw new ErreurRpc('caisse: plat inconnu pour cet etablissement');
-    if (b) ctx.maj('caisse_boutons', b, { rupture_le: jour, updated_at: maintenant() });
-    else ctx.inserer('caisse_boutons', { etablissement_id: a.p_etablissement_id, plat_id: a.p_plat_id, rupture_le: jour });
-    return jour;
+    if (b) ctx.maj('caisse_boutons', b, { ...valeurs, updated_at: maintenant() });
+    else ctx.inserer('caisse_boutons', { etablissement_id: a.p_etablissement_id, plat_id: a.p_plat_id, ...valeurs });
+    return { etat: a.p_etat, ...valeurs };
   },
   // Formules à prix fixe (lot 09) : mêmes refus que la vraie fonction, et
   // la même répartition du prix (repartirFormule, D3). La démo ne rejoue pas
@@ -501,6 +562,8 @@ const RPC = {
       if (b && String(b.rupture_le || '').slice(0, 10) === jour) throw new ErreurRpc('caisse: produit en rupture');
       return { p, suite: e.suite };
     });
+    // Lot 12 : le déclencheur du compteur voit aussi les lignes de formule.
+    decompterPortions(ctx.db, plats.map(({ p }) => ({ plat_id: p.id, ticket_id: t.id, delta: 1 })), (b, v) => ctx.maj('caisse_boutons', b, v));
     const parts = repartirFormule(Math.round(Number(f.prix) * 100), plats.map(({ p }) => Math.round(Number(p.prix_vente || 0) * 100)));
     const base = Date.now();
     plats.forEach(({ p, suite }, i) => ctx.inserer('caisse_lignes', {
@@ -801,6 +864,11 @@ const RPC = {
       return [{ plat_id: p.id, libelle: `${p.nom}, ${f.libelle}`, quantite: l.quantite, prix_unitaire: f.prix,
         options: [{ type: 'format', id: f.id, valeur: f.libelle }] }];
     });
+    // Lot 12 (D14) : un compteur du jour insuffisant refuse l'acceptation
+    // avant toute écriture ; la commande reste « à valider ». Le ticket n'est
+    // pas encore ouvert : le contrôle porte sur un ticket réel (jamais de test).
+    const reel = { id: '__commande_qr__', test: false };
+    decompterPortions({ ...ctx.db, caisse_tickets: [reel] }, aPoser.map((l) => ({ plat_id: l.plat_id, ticket_id: reel.id, delta: portionsDeLigne(l.quantite) })), () => {});
     let ticketId;
     if (!c.au_bar) {
       ticketId = RPC.caisse_ouvrir_ticket(ctx, { p_etablissement_id: c.etablissement_id, p_table_id: c.table_id, p_qui: 'passage', p_couverts: 1 }).ticket_id;
@@ -812,6 +880,7 @@ const RPC = {
         service: heure < '16:00' ? 'midi' : 'soir', jour_exploitation: jourZurich(), a_emporter: false, total_ttc: null,
       }).id;
     }
+    decompterPortions(ctx.db, aPoser.map((l) => ({ plat_id: l.plat_id, ticket_id: ticketId, delta: portionsDeLigne(l.quantite) })), (b, v) => ctx.maj('caisse_boutons', b, v));
     aPoser.forEach((l) => {
       ctx.inserer('caisse_lignes', {
         ticket_id: ticketId, ...l, suite: 1, statut: 'envoye', envoye_at: maintenant(), envoye_par: ctx.uid,

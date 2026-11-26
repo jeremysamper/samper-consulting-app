@@ -152,7 +152,7 @@ export default function SectionCommandeQr({ etablissementId, nomEtablissement, c
               </Btn>
             ))}
           </div>
-          <p style={s.aide}>Les produits en rupture du jour ne sont pas proposés. Ouvrez les boissons et les alcools, jamais les plats.</p>
+          <p style={s.aide}>Les produits en rupture du jour et les produits épuisés ne sont pas proposés. Ouvrez les boissons et les alcools, jamais les plats.</p>
         </>
       )}
 

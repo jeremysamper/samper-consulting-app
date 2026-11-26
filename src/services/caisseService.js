@@ -116,6 +116,9 @@ const MESSAGES_RPC = {
   'caisse: une etape propose de 1 a 40 produits': 'Une étape propose de 1 à 40 produits.',
   "caisse: produit d'etape illisible": "Un produit de l'étape est illisible. Cochez-le de nouveau.",
   'caisse: formule partagee entre deux tickets': 'Cette formule est répartie sur deux tickets. Réunissez les tickets avant de la retirer.',
+  // Lot 12 du panel : disponibilité d'un produit (caisse_poser_disponibilite).
+  'caisse: nombre de portions invalide': 'Le nombre de portions va de 1 à 999.',
+  'caisse: etat de disponibilite inconnu': "Cet état n'existe pas. Rechargez la caisse.",
 };
 
 // v9 : les refus qui parlent d'un terminal de paiement sont dits par
