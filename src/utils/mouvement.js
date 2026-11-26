@@ -163,6 +163,18 @@ export function installerAppui() {
   }, { capture: true, passive: true });
 }
 
+// ── Champ refusé ──
+// Un champ que le navigateur refuse à l'envoi d'un formulaire (obligatoire
+// resté vide, format faux) se secoue une fois. L'événement invalid ne remonte
+// pas : il s'écoute en capture. Un seul écouteur pour toute la page.
+let refusInstalle = false;
+
+export function installerRefus() {
+  if (refusInstalle || typeof document === 'undefined') return;
+  refusInstalle = true;
+  document.addEventListener('invalid', (e) => { jouer(e.target, 'secousse'); }, true);
+}
+
 // ── Glissement des voisins (liste qui se réordonne, ligne ajoutée ou retirée) ──
 // Avant le changement : relever la place de chaque enfant du conteneur. Après
 // (dans un effet de mise en page) : chaque enfant resté glisse de son ancienne

@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
+import { mouvementReduit, reglages } from '../../utils/mouvement.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Fenêtres d'actions (Planning, puis tous les modules) : centrées sur
@@ -33,6 +34,30 @@ export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children
   const enSection = React.useContext(ContexteSection);
   useBackLayer(!enSection, onClose, id);
   const voileRef = React.useRef(null);
+  // Sortie : fermée par son voile, sa croix ou Échap, la fenêtre s'efface
+  // (data-sortie, app.css) puis onClose est appelé, après un délai court et
+  // borné, jamais à la fin d'une animation que le navigateur peut figer. Une
+  // fermeture décidée par l'appelant (après un enregistrement, par le geste
+  // retour) reste immédiate. Animations réduites : aucune attente.
+  const [sortie, setSortie] = React.useState(false);
+  const minuteur = React.useRef(null);
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => { onCloseRef.current = onClose; });
+  React.useEffect(() => () => clearTimeout(minuteur.current), []);
+  const fermer = React.useCallback(() => {
+    if (minuteur.current) return;
+    if (mouvementReduit()) { onCloseRef.current?.(); return; }
+    let delai = 140;
+    try { delai = Math.min(200, reglages(voileRef.current).d1); } catch { /* délai d'origine */ }
+    setSortie(true);
+    minuteur.current = setTimeout(() => {
+      minuteur.current = null;
+      onCloseRef.current?.();
+      // L'appelant peut garder la fenêtre ouverte (fermeture refusée) : elle
+      // revient à l'écran.
+      setSortie(false);
+    }, delai);
+  }, []);
   React.useEffect(() => {
     if (enSection) return undefined;
     // Échap ferme la fenêtre du dessus seulement : une fenêtre ouverte depuis
@@ -41,11 +66,11 @@ export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children
       if (e.key !== 'Escape') return;
       const voiles = document.querySelectorAll('[data-fenetre]');
       if (voiles.length && voiles[voiles.length - 1] !== voileRef.current) return;
-      onClose();
+      fermer();
     };
     document.addEventListener('keydown', echap);
     return () => document.removeEventListener('keydown', echap);
-  }, [onClose, enSection]);
+  }, [fermer, enSection]);
   if (enSection) {
     return (
       <ContexteSection.Provider value={false}>
@@ -58,9 +83,9 @@ export function Fenetre({ id, titre, sousTitre, onClose, largeur = 460, children
     );
   }
   return createPortal(
-    <div ref={voileRef} data-fenetre="" className="modal-sheet-overlay" style={zIndex ? { ...st.voile, zIndex } : st.voile} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+    <div ref={voileRef} data-fenetre="" data-sortie={sortie ? '' : undefined} className="modal-sheet-overlay" style={zIndex ? { ...st.voile, zIndex } : st.voile} onClick={(e) => { if (e.target === e.currentTarget) fermer(); }}>
       <div className="modal-sheet" style={{ ...st.fenetre, width: `min(${largeur}px, 100%)` }} role="dialog" aria-modal="true" aria-label={titre}>
-        <button type="button" onClick={onClose} aria-label="Fermer" style={st.fermer}>×</button>
+        <button type="button" onClick={fermer} aria-label="Fermer" style={st.fermer}>×</button>
         {!titreMasque && <div style={st.titre}>{titre}</div>}
         {sousTitre && <div style={st.sousTitre}>{sousTitre}</div>}
         <div style={st.corps}>{children}</div>

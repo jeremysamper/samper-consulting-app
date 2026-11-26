@@ -786,13 +786,21 @@ html[data-mouvement="reduit"],
 @keyframes mvt-feuille-sort { to { transform: translateY(100%); } }
 @keyframes mvt-trait { from { stroke-dashoffset: 1; } }
 
-.mvt-naissance { animation: mvt-naissance var(--mvt-2) var(--courbe) both; }
-.mvt-depart { animation: mvt-depart var(--mvt-1) var(--courbe-depart) both; }
-.mvt-voile { animation: mvt-voile var(--mvt-2) var(--courbe) both; }
-.mvt-voile-sort { animation: mvt-voile-sort var(--mvt-2) var(--courbe-depart) both; }
-.mvt-fenetre { animation: mvt-fenetre var(--mvt-3) var(--courbe-ressort) both; }
-.mvt-feuille { animation: mvt-feuille var(--mvt-3) var(--courbe) both; }
-.mvt-feuille-sort { animation: mvt-feuille-sort var(--mvt-2) var(--courbe-depart) both; }
+/* Une entrée ne garde rien après sa fin (backwards : seul son départ compte,
+   pendant un délai éventuel). Une animation qui resterait posée sur une
+   transformation ferait de l'élément le repère de ses enfants en position
+   fixe : une liste déroulante ouverte dans une fenêtre partirait de travers.
+   Une sortie garde son état final (forwards) jusqu'au retrait de l'élément. */
+.mvt-naissance { animation: mvt-naissance var(--mvt-2) var(--courbe) backwards; }
+.mvt-depart { animation: mvt-depart var(--mvt-1) var(--courbe-depart) forwards; }
+.mvt-voile { animation: mvt-voile var(--mvt-2) var(--courbe) backwards; }
+.mvt-voile-sort { animation: mvt-voile-sort var(--mvt-2) var(--courbe-depart) forwards; }
+.mvt-fenetre { animation: mvt-fenetre var(--mvt-3) var(--courbe-ressort) backwards; }
+.mvt-feuille { animation: mvt-feuille var(--mvt-3) var(--courbe) backwards; }
+.mvt-feuille-sort { animation: mvt-feuille-sort var(--mvt-2) var(--courbe-depart) forwards; }
+/* Menu flottant (langue, établissement) : il s'ouvre depuis son bord haut. */
+@keyframes mvt-menu { from { opacity: 0; transform: scale(0.96); } }
+[role="menu"]:not(.pdf-render-root *) { transform-origin: top center; animation: mvt-menu var(--mvt-1) var(--courbe) backwards; }
 /* Coche qui se trace (Coche de src/components/ui) : le tracé porte
    pathLength="1", le trait part donc de 1 quelle que soit sa taille. */
 .mvt-coche path { stroke-dasharray: 1; animation: mvt-trait var(--mvt-3) var(--courbe) both; }
@@ -1087,6 +1095,18 @@ html[data-mouvement="reduit"],
   to   { transform: translateY(0);    opacity: 1; }
 }
 
+/* Entrée de toute fenêtre de l'app (Fenetre de src/components/ui et les
+   fenêtres des modules qui portent ces classes) : le voile se pose, la
+   fenêtre arrive avec le ressort du socle. Au téléphone, plus bas, elle
+   monte du bas de l'écran. Sortie : Fenetre pose data-sortie le temps de
+   repartir (fermeture par son voile, sa croix ou Échap). */
+.modal-sheet-overlay,
+.modal-full-overlay { animation: mvt-voile var(--mvt-2) var(--courbe) backwards; }
+.modal-sheet,
+.modal-full { animation: mvt-fenetre var(--mvt-3) var(--courbe-ressort) backwards; }
+.modal-sheet-overlay[data-sortie] { animation: mvt-voile-sort var(--mvt-1) var(--courbe-depart) forwards; pointer-events: none; }
+.modal-sheet-overlay[data-sortie] > .modal-sheet { animation: mvt-depart var(--mvt-1) var(--courbe-depart) forwards; }
+
 @media (max-width: 767px) {
   /* ── Pattern A - bottom sheet ─────────────────────────────────────────── */
   .modal-sheet-overlay {
@@ -1101,8 +1121,9 @@ html[data-mouvement="reduit"],
     border-radius: var(--r-xl) var(--r-xl) 0 0 !important;
     overflow-y: auto !important;
     padding-bottom: max(16px, env(safe-area-inset-bottom)) !important;
-    animation: slideUp 0.22s ease;
+    animation: mvt-feuille var(--mvt-3) var(--courbe) backwards;
   }
+  .modal-sheet-overlay[data-sortie] > .modal-sheet { animation: mvt-feuille-sort var(--mvt-1) var(--courbe-depart) forwards; }
 
   /* ── Pattern B - plein écran ──────────────────────────────────────────── */
   .modal-full-overlay {
@@ -1880,6 +1901,20 @@ h1 {
   box-shadow: var(--sh-lg);
 }
 
+/* Le message arrive avec le ressort du socle ; un refus arrive en se
+   secouant une fois ; un message qui part s'efface (.mvt-depart, posée par
+   ToastContainer le temps de la sortie). */
+.toast-entre { animation: mvt-naissance var(--mvt-2) var(--courbe-ressort) backwards; }
+@keyframes toast-refus {
+  0% { opacity: 0; transform: translateY(var(--mvt-trajet)); }
+  35% { opacity: 1; transform: translateX(calc(var(--mvt-trajet) * -0.5)); }
+  55% { transform: translateX(calc(var(--mvt-trajet) * 0.5)); }
+  75% { transform: translateX(calc(var(--mvt-trajet) * -0.25)); }
+  100% { transform: translateX(0); }
+}
+.toast-error.toast-entre { animation: toast-refus var(--mvt-3) var(--courbe) backwards; }
+.toast-icon { display: inline-flex; align-items: center; min-height: 1.45em; }
+
 .toast-success .toast-icon { color: var(--toast-succes); }
 .toast-error .toast-icon { color: var(--toast-danger); }
 .toast-warning .toast-icon { color: var(--toast-alerte); }
@@ -2371,8 +2406,8 @@ html[data-mouvement="reduit"] .ui-card--clickable:active,
 .sc-nav-rail .sc-nav-pilule { z-index: 1; }
 .sc-nav-rail .sc-nav-item[aria-current="page"] { z-index: 2; }
 @keyframes sc-nav-libelle { from { opacity: 0; transform: translateX(calc(var(--mvt-trajet) * -0.5)); } }
-.sc-nav-libelle { animation: sc-nav-libelle var(--mvt-2) var(--courbe) both; }
-.sc-titre-page { display: inline-block; animation: mvt-naissance var(--mvt-2) var(--courbe) both; }
+.sc-nav-libelle { animation: sc-nav-libelle var(--mvt-2) var(--courbe) backwards; }
+.sc-titre-page { display: inline-block; animation: mvt-naissance var(--mvt-2) var(--courbe) backwards; }
 
 /* Barre de raccourcis de la tablette tenue en paysage (AppLayout). La pilule
    du menu y glisse de cercle en cercle : elle passe devant les cercles et
