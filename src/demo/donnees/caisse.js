@@ -231,17 +231,31 @@ export function genererCaisse() {
     });
   }
 
-  // Ce soir : trois tables ouvertes.
-  const ouverts = [['tb-3', 4, 'envoye'], ['tb-7', 6, 'en_attente'], ['tb-1', 2, 'envoye']];
-  ouverts.forEach(([table, couverts, statut], rang) => {
+  // Ce soir : cinq tables ouvertes, une par état du plan de la caisse
+  // (accueilCaisse.js) : plats prêts, rien d'envoyé, en cuisine, suite à
+  // réclamer, tout servi.
+  const ouverts = [
+    ['tb-3', 4, 'pret'], ['tb-7', 6, 'commander'], ['tb-1', 2, 'cuisine'], ['tb-10', 3, 'suite'], ['tb-11', 2, 'servi'],
+  ];
+  ouverts.forEach(([table, couverts, etat], rang) => {
     nt += 1;
     const id = uid('8003', nt);
-    // Ouvertes il y a 20 à 50 minutes, quelle que soit l'heure de la visite.
+    // Ouvertes il y a 20 à 80 minutes, quelle que soit l'heure de la visite.
     const ouvertLe = new Date(Date.now() - (20 + rang * 15) * 60000).toISOString();
+    const premiere = lignes.length;
+    const fini = etat === 'suite' || etat === 'servi';
+    const statutPlat = etat === 'commander' ? 'en_attente' : (fini ? 'servi' : 'envoye');
+    const statutBoisson = etat === 'commander' ? 'en_attente' : (fini ? 'servi' : 'envoye');
     for (let c = 0; c < Math.min(couverts, 3); c += 1) {
-      nouvelleLigne(id, pick(plats), 1, statut, ouvertLe, 1);
-      nouvelleLigne(id, pick(BOISSONS), 1, 'envoye', ouvertLe, 1);
+      nouvelleLigne(id, pick(plats), 1, statutPlat, ouvertLe, 1);
+      nouvelleLigne(id, pick(BOISSONS), 1, statutBoisson, ouvertLe, 1);
     }
+    if (etat === 'suite') nouvelleLigne(id, pick(plats), 2, 'en_attente', ouvertLe, 2);
+    // Faits au KDS : tout ce qui est servi, et le premier plat de la table prête.
+    const faitLe = new Date(Date.now() - 3 * 60000).toISOString();
+    lignes.slice(premiere).forEach((l, i) => {
+      if (l.statut === 'servi' || (etat === 'pret' && i === 0)) l.pret_at = faitLe;
+    });
     tickets.push({
       id, etablissement_id: ETAB, table_id: table, statut: 'ouvert', ouvert_par: 'demo-serveur', note: null,
       created_at: ouvertLe, closed_at: null, updated_at: ouvertLe, reservation_id: null, client_id: null, couverts, qui: 'passage',

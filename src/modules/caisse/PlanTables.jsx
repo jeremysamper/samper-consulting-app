@@ -5,8 +5,13 @@ import { Btn, Panneau, TabBar } from '../../components/ui/index.jsx';
 import { ElementDecor } from '../previsions/planDecor.jsx';
 import { readJson, writeJson } from '../../utils/storage.js';
 import { useHauteurRestante, useLargeur, useMaintenant } from './mesures.js';
-import { ATTENTE_COMMANDE_MIN, cadreDe, decalageBorne, tableSous } from './planService.js';
+import { cadreDe, decalageBorne, tableSous } from './planService.js';
 import { TABLE_LISIBLE, borne, cadrage, chaises, medianeTables, numeroSeul } from '../salle/planVue.js';
+import {
+  ETATS_TABLE, LIBELLES_ETAT, aFaireMaintenant, commandeEnRetard, compterEtats, estPret, etatLibre, etatOccupee, etatTicket,
+} from './accueilCaisse.js';
+import { GestesRetard } from './BandeauService.jsx';
+import { zurichNowMinutes } from '../../utils/zurichTime.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Plan de salle de la caisse : le plan du service tel que Réservations l'a
@@ -17,17 +22,25 @@ import { TABLE_LISIBLE, borne, cadrage, chaises, medianeTables, numeroSeul } fro
 // prennent le même état, seule la principale porte le numéro et les infos, et
 // un toucher sur l'une d'elles agit sur la tablée (Caisse.jsx).
 //
-// États, un par tablée, dits par le fond et l'encre de leurs jetons et redits
-// par les compteurs au-dessus du plan :
-//   libre       surface blanche
-//   réservée    une réservation du service est posée dessus et pas encore assise
-//   occupée     un ticket est ouvert (aplat sombre, comme ce qui est en cours)
-//   à commander pastille d'alerte : ticket ouvert depuis 10 min, rien d'envoyé
-//   plats prêts pastille verte : la cuisine a fini, la salle n'a pas servi
-// et le repère « à suivre » dans le coin quand des lignes attendent.
+// États, un par tablée (accueilCaisse.js, 26.11.2026), dits par le fond et
+// l'encre de leurs jetons, écrits en un mot sur la table quand elle a la
+// place, et redits par les filtres au-dessus du plan :
+//   prête à servir  aplat vert : la cuisine a fini, la salle n'a pas servi
+//   à commander     ambre : ticket ouvert, rien d'envoyé (pastille après 10 min)
+//   en cuisine      aplat sombre : des plats sont partis, pas encore faits
+//   à suivre        violet doux : tout est servi, une suite attend
+//   servie          gris doux : tout est servi, rien n'attend
+//   réservée        bleu doux : une réservation arrive dans les 45 minutes,
+//                   ou est en retard (contour ambre)
+//   libre           surface blanche, « jusqu'à » l'heure d'une réservation
+//                   plus lointaine
+// Toucher un filtre met ses tables en avant, les autres pâlissent ; un second
+// toucher les rend toutes. À droite du plan, « À faire maintenant » range ce
+// qui presse (aFaireMaintenant) : plats prêts, retards à trancher, commandes
+// qui attendent, suites à réclamer.
 //
 // Gestes :
-//   toucher            ouvre le ticket, ou la table (Caisse.jsx)
+//   toucher            ouvre le ticket, ou la table (Caisse.jsx), inchangé
 //   glisser un ticket  une table occupée posée sur une table libre y passe
 //   « Déplacer des tables » (qui écrit dans Réservations) : glisser une table
 //                      la déplace pour ce service, la poser sur une autre les
@@ -52,32 +65,9 @@ import { TABLE_LISIBLE, borne, cadrage, chaises, medianeTables, numeroSeul } fro
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 const N = ({ children, style }) => <span data-no-translate="" style={style}>{children}</span>;
 
-// L'état d'un ticket, calculé une fois pour le plan et pour la liste.
-export function etatTicket(ticket, maintenant = Date.now()) {
-  const lignes = ticket?.lignes || [];
-  const envois = lignes.map((l) => (l.envoye_at ? new Date(l.envoye_at).getTime() : 0)).filter(Boolean);
-  const dernier = envois.length ? Math.max(...envois) : null;
-  const enAttente = lignes.filter((l) => l.statut === 'en_attente');
-  const ouvert = ticket?.created_at ? new Date(ticket.created_at).getTime() : null;
-  return {
-    articles: lignes.reduce((s, l) => s + Number(l.quantite || 0), 0),
-    montant: lignes.reduce((s, l) => s + Number(l.quantite) * Number(l.prix_unitaire), 0),
-    minutes: dernier == null ? null : Math.max(0, Math.floor((maintenant - dernier) / 60000)),
-    // Minutes depuis l'ouverture du ticket, tant que rien n'est parti en cuisine.
-    sansEnvoi: dernier == null && ouvert != null ? Math.max(0, Math.floor((maintenant - ouvert) / 60000)) : null,
-    aEnvoyer: enAttente.filter((l) => l.suite === 1).length,
-    aSuivre: enAttente.filter((l) => l.suite > 1).length,
-    // v6 : plats que la cuisine a marqués faits au KDS et que la salle n'a
-    // pas encore notés servis. Posé par la base (caisse_lignes.pret_at).
-    prets: lignes.filter(estPret).length,
-  };
-}
-
-// Une ligne est « prête » tant que la cuisine l'a marquée faite et que la
-// salle ne l'a pas encore servie.
-export function estPret(ligne) {
-  return Boolean(ligne?.pret_at) && ligne.statut !== 'servi';
-}
+// L'état d'un ticket et d'une ligne vivent dans accueilCaisse.js (fonctions
+// pures, testées) ; ils restent exportés d'ici pour leurs lecteurs d'avant.
+export { etatTicket, estPret };
 
 // ── Affichage gardé sur l'appareil ───────────────────────────────────────────
 const CLE_AFFICHAGE = 'sc_caisse_plan';
@@ -97,8 +87,15 @@ export default function PlanTables({
   onTapTable, onTransferer = null,
   peutDeplacer = false, onDeplacerGroupe, onReunir, onSeparer, onRemettre,
   choixSeul = false,
+  // « À faire maintenant » : réservations en retard (reservationsDuService)
+  // et leurs deux gestes, que Caisse.jsx pose. actionsResa faux en mode test.
+  retards = [], onPoserStatut = null, statutEnCours = null, actionsResa = true, delaiNoShow = 30,
+  // Ids des plats vendus depuis une carte de boissons (etatTicket).
+  boissons = null,
 }) {
   const [affichage, setAffichage] = React.useState(lireAffichage);
+  // Filtre d'état touché au-dessus du plan, ou null (toutes les tables).
+  const [filtre, setFiltre] = React.useState(null);
   const [reglages, setReglages] = React.useState(false);
   const [deplacer, setDeplacer] = React.useState(false);
   const [choisie, setChoisie] = React.useState(null);   // tablée touchée en mode déplacer
@@ -266,23 +263,31 @@ export default function PlanTables({
     // changeant de présentation.
   }, [tel]);
 
-  // ── Compteurs : une tablée compte une fois, sur toute la maison.
+  // ── États : un par tablée (sa principale), sur toute la maison. Les
+  // filtres comptent sur toutes les salles, comme les compteurs d'avant.
   const principales = [];
   const vues = new Set();
   tablesActives.forEach((t) => {
     const p = tablees?.get(t.id)?.principale || t;
     if (!vues.has(p.id)) { vues.add(p.id); principales.push(p); }
   });
-  const compte = { libres: 0, reservees: 0, occupees: 0, prets: 0, commander: 0 };
+  const minutesZurich = zurichNowMinutes();
+  const etatsParTablee = new Map();
   principales.forEach((p) => {
-    const ticket = ticketsParTable?.[p.id];
+    const ticket = ticketsParTable?.[p.id] || null;
     if (ticket) {
-      compte.occupees += 1;
-      const e = etatTicket(ticket, maintenant);
-      if (e.prets > 0) compte.prets += 1;
-      if (e.sansEnvoi != null && e.sansEnvoi >= ATTENTE_COMMANDE_MIN) compte.commander += 1;
-    } else if (attendues[p.id]) compte.reservees += 1;
-    else compte.libres += 1;
+      const e = etatTicket(ticket, maintenant, { boissons });
+      etatsParTablee.set(p.id, { table: p, ticket, e, etat: etatOccupee(e) });
+    } else {
+      const l = etatLibre(attendues[p.id], minutesZurich);
+      etatsParTablee.set(p.id, { table: p, ticket: null, e: null, ...l });
+    }
+  });
+  const compte = compterEtats([...etatsParTablee.values()].map((x) => x.etat));
+  const filtreActif = filtre && compte[filtre] > 0 ? filtre : null;
+  const aFaire = aFaireMaintenant({
+    tablees: [...etatsParTablee.values()].filter((x) => x.ticket),
+    retards: actionsResa ? retards : [],
   });
 
   // ── Gestes au pointeur ────────────────────────────────────────────────────
@@ -356,39 +361,32 @@ export default function PlanTables({
 
   const tableeChoisie = choisie ? tablesActives.filter((t) => (tablees?.get(t.id)?.principale?.id || t.id) === choisie) : [];
 
-  // Tickets ouverts dans la salle affichée, un par tablée.
-  const ouverts = [];
-  const vusTickets = new Set();
-  visibles.forEach((t) => {
-    const ticket = ticketsParTable?.[t.id];
-    if (ticket && !vusTickets.has(ticket.id)) {
-      vusTickets.add(ticket.id);
-      ouverts.push({ t: tablees?.get(t.id)?.principale || t, ticket });
-    }
-  });
-
   if (!tablesActives.length) return null;
 
-  const alertes = (
-    <>
-      {compte.prets > 0 && <Compteur couleur="var(--success-fill)" n={compte.prets} un="plats prêts" plusieurs="plats prêts" />}
-      {compte.commander > 0 && <Compteur couleur="var(--warning-bd)" n={compte.commander} un="à commander" plusieurs="à commander" />}
-    </>
-  );
-
-  return (
-    <div style={st.racine} data-caisse-plan="">
-      {/* Barre du plan : salles, compteurs, déplacer, affichage. */}
-      <div style={st.barre}>
-        {onglets.length > 1 && <TabBar tabs={onglets} active={actif} onChange={choisirSalle} />}
-        {/* Au téléphone : une seule ligne qui défile, les alertes d'abord. */}
-        <div style={{ ...st.compteurs, ...(tel ? st.compteursTel : null) }} aria-live="polite">
-          {tel && alertes}
-          <Compteur couleur="var(--border2)" n={compte.libres} un="libre" plusieurs="libres" />
-          <Compteur couleur="var(--info-bd)" n={compte.reservees} un="réservée" plusieurs="réservées" />
-          <Compteur couleur="var(--accent)" n={compte.occupees} un="occupée" plusieurs="occupées" />
-          {!tel && alertes}
+  // Filtres : un par état présent, du plus pressant au plus calme. Au
+  // téléphone, une seule ligne qui défile.
+  const filtres = (
+        <div style={{ ...st.compteurs, ...(tel ? st.compteursTel : null) }} aria-live="polite" data-caisse-filtres="">
+          <button
+            type="button"
+            aria-pressed={!filtreActif}
+            onClick={() => setFiltre(null)}
+            style={{ ...st.compteur, ...(!filtreActif ? st.compteurChoisi : null) }}
+          >
+            Toutes
+          </button>
+          {ETATS_TABLE.filter((k) => compte[k] > 0).map((k) => (
+            <Compteur
+              key={k}
+              etat={k}
+              n={compte[k]}
+              choisi={filtreActif === k}
+              onClick={() => setFiltre((f) => (f === k ? null : k))}
+            />
+          ))}
         </div>
+  );
+  const actionsPlan = (
         <div style={st.actionsBarre}>
           {peutDeplacer && !choixSeul && !deplacer && (tel ? (
             <button
@@ -414,7 +412,24 @@ export default function PlanTables({
             <SlidersHorizontal size={18} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
-      </div>
+  );
+
+  return (
+    <div style={st.racine} data-caisse-plan="">
+      {/* Barre du plan. Plusieurs salles : les salles et les gestes du plan
+          sur une ligne, les filtres d'état sur la suivante. Une seule salle :
+          les filtres et les gestes partagent la ligne. */}
+      {onglets.length > 1 ? (
+        <>
+          <div style={st.barre}>
+            <TabBar tabs={onglets} active={actif} onChange={choisirSalle} />
+            {actionsPlan}
+          </div>
+          <div style={st.barre}>{filtres}</div>
+        </>
+      ) : (
+        <div style={st.barre}>{filtres}{actionsPlan}</div>
+      )}
 
       {reglages && <ReglagesAffichage affichage={affichage} onChange={majAffichage} />}
 
@@ -463,8 +478,8 @@ export default function PlanTables({
               {/* Cadre d'une tablée : ses tables se lisent comme une seule. */}
               {largeur > 0 && cadresTablees(visibles, tablees).map(({ id, membres }) => {
                 const c = cadreDe(membres);
-                const ticket = ticketsParTable?.[id];
                 const enDrag = drag?.ids?.has(id);
+                const teinte = TEINTES[etatsParTablee.get(id)?.etat || 'libre'];
                 return (
                   <span
                     key={'cadre-' + id}
@@ -472,7 +487,8 @@ export default function PlanTables({
                     style={{
                       ...st.cadreTablee,
                       left: c.x0 * k - 10, top: c.y0 * k - 10, width: c.w * k + 20, height: c.h * k + 20,
-                      borderColor: ticket ? 'var(--accent)' : attendues[id] ? 'var(--info-bd)' : 'var(--border2)',
+                      borderColor: teinte.bord,
+                      opacity: filtreActif && etatsParTablee.get(id)?.etat !== filtreActif ? PALE : undefined,
                       transform: enDrag ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined,
                     }}
                   />
@@ -483,20 +499,25 @@ export default function PlanTables({
                 const principale = tablee.principale;
                 const estPrincipale = principale.id === t.id;
                 const ticket = ticketsParTable?.[t.id] || null;
-                const e = ticket ? etatTicket(ticket, maintenant) : null;
-                const attendue = !ticket ? attendues[principale.id] : null;
+                const info = etatsParTablee.get(principale.id) || { etat: 'libre' };
+                const e = ticket ? info.e : null;
+                const attendue = !ticket && info.etat === 'reservee' ? attendues[principale.id] : null;
                 const enDrag = drag?.ids?.has(t.id);
                 const cible = drag?.cibleId && drag.cibleId === principale.id;
                 const ronde = t.forme === 'ronde' || t.forme === 'tabouret';
                 const w = Math.max(44, t.largeur * k);
                 const h = Math.max(44, t.hauteur * k);
-                const etat = ticket ? 'occupee' : attendue ? 'reservee' : 'libre';
-                const commander = e && e.sansEnvoi != null && e.sansEnvoi >= ATTENTE_COMMANDE_MIN;
+                const etat = info.etat;
+                const teinte = TEINTES[etat];
+                const commander = commandeEnRetard(e);
+                const enRetard = etat === 'reservee' && info.retard > 0;
+                const pale = filtreActif && etat !== filtreActif;
+                const misEnAvant = filtreActif && etat === filtreActif;
                 const touchAction = deplacerActif || (ticket && onTransferer && !choixSeul && !tel) ? 'none' : 'manipulation';
                 const contenu = estPrincipale ? (
                   <ContenuTable
                     t={principale} w={w} h={h} k={k} echelle={echelleTexte} ronde={ronde}
-                    e={e} attendue={attendue} nom={ticket ? nomDeTablee(tablee, noms) : null}
+                    e={e} etat={etat} info={info} attendue={attendue} nom={ticket ? nomDeTablee(tablee, noms) : null}
                     ticket={ticket} affichage={affichage}
                   />
                 ) : null;
@@ -511,6 +532,7 @@ export default function PlanTables({
                       height: h,
                       transform: enDrag ? `translate(${drag.dx}px, ${drag.dy}px)` : undefined,
                       zIndex: enDrag ? 5 : 1,
+                      opacity: pale ? PALE : undefined,
                     }}
                   >
                     {chaises(t, w, h, k).map((c, i) => (
@@ -520,7 +542,7 @@ export default function PlanTables({
                         style={{
                           ...st.chaise, left: c.left, top: c.top, width: c.width, height: c.height,
                           transform: c.rot ? `rotate(${c.rot}deg)` : undefined,
-                          background: etat === 'occupee' ? 'var(--accent)' : etat === 'reservee' ? 'var(--info-bd)' : 'var(--border2)',
+                          background: teinte.chaise,
                         }}
                       />
                     ))}
@@ -535,12 +557,15 @@ export default function PlanTables({
                       onClick={() => toucher(t, ticket)}
                       style={{
                         ...st.table,
-                        ...(etat === 'occupee' ? st.tableOccupee : etat === 'reservee' ? st.tableReservee : null),
+                        background: commander ? 'var(--warning-bg)' : teinte.fond,
+                        color: teinte.encre,
+                        borderColor: enRetard ? 'var(--warning-bd)' : teinte.bord,
+                        borderWidth: enRetard || commander ? 2 : 1,
                         borderRadius: ronde ? '50%' : (Math.min(w, h) < 70 ? 'var(--r-sm)' : 'var(--r)'),
                         touchAction,
                         cursor: deplacerActif ? 'grab' : 'pointer',
                         ...(enDrag ? st.tableDrag : null),
-                        ...(cible || choisie === principale.id ? st.tableCible : null),
+                        ...(cible || choisie === principale.id || misEnAvant ? st.tableCible : null),
                       }}
                     >
                       {contenu}
@@ -592,40 +617,63 @@ export default function PlanTables({
           </div>
         </div>
 
-        {affichage.liste && ouverts.length > 0 && (
-          <div className="caisse-liste" data-cadre="" style={st.liste}>
-            <div style={st.listeTitre}>Tables ouvertes</div>
-            {ouverts.map(({ t, ticket }) => {
-              const e = etatTicket(ticket, maintenant);
-              return (
-                <button key={ticket.id} type="button" style={st.rang} onClick={() => onTapTable(t, ticket)}>
-                  <span style={st.rangNom} data-no-translate>{t.nom}</span>
-                  <span style={st.rangInfos}>
-                    {noms[t.id] && !noms[t.id].attendu && (
-                      <span style={st.rangClient} data-no-translate>{noms[t.id].nom}</span>
-                    )}
-                    <span style={st.rangLigne}>
-                      <span style={st.num}>{e.articles}</span> <span>articles</span>
+        {/* « À faire maintenant » : ce qui presse, sur toute la maison. Une
+            tablée s'ouvre d'un toucher, comme sur le plan ; une réservation en
+            retard porte ses deux gestes (jamais en mode test). */}
+        {affichage.liste && !choixSeul && (
+          <div className="caisse-liste" data-cadre="" style={st.liste} data-caisse-a-faire="">
+            <div style={st.listeTitre}>À faire maintenant</div>
+            {!aFaire.length && <p style={st.listeVide}>Rien ne presse pour le moment.</p>}
+            {aFaire.map((a) => {
+              if (a.type === 'retard') {
+                const r = a.resa;
+                return (
+                  <div key={a.cle} style={{ ...st.rang, cursor: 'default', flexWrap: 'wrap' }} data-a-faire="retard">
+                    <span aria-hidden="true" style={{ ...st.point, background: 'var(--warning-bd)' }} />
+                    <span style={st.rangInfos}>
+                      <span style={st.rangClient}>
+                        <span style={st.num}>{String(r.heure_arrivee || '').slice(0, 5)}</span> <N>{r.nom}</N>
+                      </span>
+                      <span style={st.rangLigne}>
+                        <span style={st.num}>{r.nb_couverts || 0}</span> <span>couv.</span>{' '}
+                        <span>en retard de</span> <span style={st.num}>{r.retard}</span> <span>min</span>
+                      </span>
                     </span>
-                    <span style={st.rangLigne}>
-                      {e.minutes != null
-                        ? <><span>Dernier envoi il y a</span> <span style={st.num}>{e.minutes}</span> <span>min</span></>
-                        : <span>Rien d'envoyé en cuisine</span>}
-                    </span>
-                    {e.aSuivre > 0 && (
-                      <span style={st.rangSuivre}>
-                        <ChevronsRight size={15} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
-                        <span style={st.num}>{e.aSuivre}</span> <span>à suivre en attente</span>
+                    {onPoserStatut && (
+                      <span style={st.rangGestes}>
+                        <GestesRetard resa={r} onPoser={onPoserStatut} enCours={statutEnCours === r.id} delaiMinutes={delaiNoShow} />
                       </span>
                     )}
-                    {e.prets > 0 && (
+                  </div>
+                );
+              }
+              const { table, ticket, e } = a;
+              const client = noms[table.id] && !noms[table.id].attendu ? noms[table.id].nom : null;
+              return (
+                <button key={a.cle} type="button" style={st.rang} onClick={() => onTapTable(table, ticket)} data-a-faire={a.type}>
+                  <span aria-hidden="true" style={{ ...st.point, background: TEINTES[a.etat].point }} />
+                  <span style={st.rangNom} data-no-translate>{table.nom}</span>
+                  <span style={st.rangInfos}>
+                    {client && <span style={st.rangClient} data-no-translate>{client}</span>}
+                    {a.type === 'pret' && (
                       <span style={st.rangPret} data-caisse-prets="">
                         <ConciergeBell size={15} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
-                        <span style={st.num}>{e.prets}</span> <span>{e.prets > 1 ? 'prêts en cuisine' : 'prêt en cuisine'}</span>
+                        <span style={st.num}>{e.prets}</span> <span>{e.prets > 1 ? 'plats prêts à servir' : 'plat prêt à servir'}</span>
                       </span>
                     )}
+                    {a.type === 'commander' && (
+                      <span style={st.rangLigne}><span>Rien d'envoyé depuis</span> <span style={st.num}>{e.sansEnvoi}</span> <span>min</span></span>
+                    )}
+                    {a.type === 'suite' && (
+                      <span style={st.rangSuivre}>
+                        <ChevronsRight size={15} strokeWidth={2} aria-hidden="true" style={{ flexShrink: 0 }} />
+                        <span>Suite à réclamer</span>
+                      </span>
+                    )}
+                    {a.type === 'suite' && e.minutes != null && (
+                      <span style={st.rangLigne}><span>Dernier envoi il y a</span> <span style={st.num}>{e.minutes}</span> <span>min</span></span>
+                    )}
                   </span>
-                  <span style={st.rangMontant}><span>{chf(e.montant)}</span> <span style={st.devise}>CHF</span></span>
                 </button>
               );
             })}
@@ -653,11 +701,20 @@ function nomDeTablee(tablee, noms) {
   return m ? noms[m.id].nom : null;
 }
 
+// Le mot d'état écrit sur une table qui porte un ticket, et la minute qui
+// l'accompagne (depuis le dernier envoi, ou depuis l'ouverture sans envoi).
+const MOT_ETAT = { pret: 'Prêt', commander: 'Commander', cuisine: 'Cuisine', suite: 'Suite', servi: 'Servi' };
+function minutesEtat(etat, e) {
+  if (etat === 'commander') return e.sansEnvoi;
+  if (etat === 'cuisine') return e.minutes;
+  return null;
+}
+
 // Ce qu'une table porte, ligne par ligne, selon sa place et l'affichage
-// choisi. Le numéro d'abord ; ensuite, par ordre de priorité, le montant, le
-// client, le détail (couverts et minutes). Ce qui ne tient pas se lit dans la
-// liste des tables ouvertes.
-function ContenuTable({ t, w, h, k, echelle, ronde, e, attendue, nom, ticket, affichage }) {
+// choisi. Le numéro d'abord ; ensuite, par ordre de priorité, le mot d'état
+// (et sa minute), le montant, le client, les couverts. Ce qui ne tient pas
+// n'est pas rendu : la couleur dit l'état, « À faire maintenant » le détail.
+function ContenuTable({ t, w, h, k, echelle, ronde, e, etat, info, attendue, nom, ticket, affichage }) {
   const taille = (base) => Math.round(Math.max(12, Math.min(base * 1.6, base * (0.75 + k * 0.45))) * echelle);
   const fNum = taille(15);
   const fTexte = taille(12);
@@ -682,20 +739,36 @@ function ContenuTable({ t, w, h, k, echelle, ronde, e, attendue, nom, ticket, af
   };
   const lignes = [];
   const pousser = (cle, el) => { if (el) lignes.push({ cle, el }); };
+  // Mot d'état et sa minute : la minute part la première si la place manque.
+  const motEtat = (mot, minutes, cle = 'etat') => {
+    const morceaux = [{ cle: 'w', txt: mot, el: <span style={st.sepFin}>{mot}</span> }];
+    if (affichage.minutes && minutes != null) morceaux.push({ cle: 'm', txt: `${minutes} min`, el: <><span>{minutes}</span><span style={st.sep}>min</span></> });
+    const el = detail(morceaux);
+    pousser(cle, el ? <span style={{ ...st.tableEtat, fontSize: fTexte }}>{el}</span> : null);
+  };
   if (e) {
+    motEtat(MOT_ETAT[etat], minutesEtat(etat, e));
     if (affichage.montant && tient(chf(e.montant), fNum)) pousser('montant', <span style={{ ...st.tableMontant, fontSize: fNum }}>{chf(e.montant)}</span>);
     if (affichage.nom && nom && utile >= 40) pousser('nom', <N style={{ ...st.tableTexte, fontSize: fTexte, fontWeight: 'var(--g2)' }}>{nom}</N>);
-    const morceaux = [];
-    if (affichage.minutes && e.minutes != null) morceaux.push({ cle: 'm', txt: `${e.minutes} min`, el: <><span>{e.minutes}</span><span style={st.sep}>min</span></> });
-    if (affichage.couverts && ticket?.couverts) morceaux.push({ cle: 'c', txt: `${ticket.couverts} couv.`, el: <><span>{ticket.couverts}</span><span style={st.sep}>couv.</span></> });
-    pousser('detail', detail(morceaux));
+    if (affichage.couverts && ticket?.couverts) {
+      pousser('detail', detail([{ cle: 'c', txt: `${ticket.couverts} couv.`, el: <><span>{ticket.couverts}</span><span style={st.sep}>couv.</span></> }]));
+    }
   } else if (attendue) {
+    if (info?.arrivee) motEtat('Arrivée', null);
+    else if (info?.retard > 0) motEtat('Retard', info.retard);
     if (affichage.nom && utile >= 40) pousser('nom', <N style={{ ...st.tableTexte, fontSize: fTexte, fontWeight: 'var(--g3)' }}>{attendue.nom}</N>);
     const morceaux = [{ cle: 'h', txt: attendue.heure, el: <span style={st.sepFin}>{attendue.heure}</span> }];
     if (affichage.couverts && attendue.couverts) morceaux.push({ cle: 'c', txt: `${attendue.couverts} couv.`, el: <><span>{attendue.couverts}</span><span style={st.sep}>couv.</span></> });
     pousser('detail', detail(morceaux));
-  } else if (affichage.couverts && t.nb_places && t.forme !== 'tabouret' && tient(`${t.nb_places} places`, fTexte)) {
-    pousser('places', <span style={{ ...st.tableDetail, fontSize: fTexte, color: 'var(--text3)' }}><span>{t.nb_places}</span><span style={st.sep}>places</span></span>);
+  } else {
+    // Libre : jusqu'à l'heure d'une réservation plus lointaine, puis ses places.
+    if (info?.jusqua) {
+      const el = detail([{ cle: 'j', txt: `jusqu'à ${info.jusqua}`, el: <><span style={st.sepFin}>jusqu'à</span><span>{info.jusqua}</span></> }]);
+      pousser('jusqua', el ? <span style={{ ...st.tableEtat, fontSize: fTexte }}>{el}</span> : null);
+    }
+    if (affichage.couverts && t.nb_places && t.forme !== 'tabouret' && tient(`${t.nb_places} places`, fTexte)) {
+      pousser('places', <span style={{ ...st.tableDetail, fontSize: fTexte, color: 'var(--text3)' }}><span>{t.nb_places}</span><span style={st.sep}>places</span></span>);
+    }
   }
   return (
     <>
@@ -705,15 +778,39 @@ function ContenuTable({ t, w, h, k, echelle, ronde, e, attendue, nom, ticket, af
   );
 }
 
-function Compteur({ couleur, n, un, plusieurs }) {
+// Filtre d'un état : sa couleur, son nombre, son nom. Un toucher met ses
+// tables en avant, un second les rend toutes.
+function Compteur({ etat, n, choisi, onClick }) {
+  const [un, plusieurs] = LIBELLES_ETAT[etat];
   return (
-    <span style={st.compteur}>
-      <span aria-hidden="true" style={{ ...st.point, background: couleur }} />
+    <button
+      type="button"
+      aria-pressed={choisi}
+      onClick={onClick}
+      data-caisse-filtre={etat}
+      style={{ ...st.compteur, ...(choisi ? st.compteurChoisi : null) }}
+    >
+      <span aria-hidden="true" style={{ ...st.point, background: TEINTES[etat].point }} />
       <N style={st.num}>{n}</N>
       <span>{n > 1 ? plusieurs : un}</span>
-    </span>
+    </button>
   );
 }
+
+// Teintes des états, par jetons (direction Galet : un statut se dit par ses
+// jetons de fond et d'encre). `point` : la pastille du filtre et de la liste.
+const TEINTES = {
+  pret: { fond: 'var(--success-fill)', encre: 'var(--on-success)', bord: 'var(--success-fill)', chaise: 'var(--success-fill)', point: 'var(--success-fill)' },
+  commander: { fond: 'var(--warning-bg-soft)', encre: 'var(--warning-text)', bord: 'var(--warning-bd)', chaise: 'var(--warning-bd)', point: 'var(--warning-bd)' },
+  cuisine: { fond: 'var(--accent)', encre: 'var(--on-accent)', bord: 'var(--accent)', chaise: 'var(--accent)', point: 'var(--accent)' },
+  suite: { fond: 'var(--caisse-violet)', encre: 'var(--text)', bord: 'var(--caisse-violet-vif)', chaise: 'var(--caisse-violet-vif)', point: 'var(--caisse-violet-vif)' },
+  servi: { fond: 'var(--selection)', encre: 'var(--text)', bord: 'var(--border2)', chaise: 'var(--border2)', point: 'var(--text3)' },
+  reservee: { fond: 'var(--info-bg-soft)', encre: 'var(--info-text)', bord: 'var(--info-bd)', chaise: 'var(--info-bd)', point: 'var(--info-bd)' },
+  libre: { fond: 'var(--surface)', encre: 'var(--text)', bord: 'var(--border2)', chaise: 'var(--border2)', point: 'var(--border2)' },
+};
+// Une table hors du filtre touché pâlit sans devenir illisible (0,65 au plus
+// bas, direction Galet).
+const PALE = 0.65;
 
 // Bouton rond à picto seul qui flotte sur le plan (zoom du téléphone).
 function BoutonRond({ label, onClick, disabled = false, children }) {
@@ -760,7 +857,7 @@ function ReglagesAffichage({ affichage, onChange }) {
         </span>
       </div>
       <div style={st.reglagesGroupe}>
-        <span style={st.reglagesTitre}>Liste des tables ouvertes</span>
+        <span style={st.reglagesTitre}>À faire maintenant</span>
         <span style={st.pilules}>
           <Pilule choisi={affichage.liste} onClick={() => onChange({ liste: true })}>Affichée</Pilule>
           <Pilule choisi={!affichage.liste} onClick={() => onChange({ liste: false })}>Masquée</Pilule>
@@ -775,11 +872,14 @@ const st = {
   racine: { display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10, minWidth: 0 },
   barre: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, minWidth: 0 },
   compteurs: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, flex: '1 1 auto', minWidth: 0 },
+  // Filtre d'état : une pilule de 40 px dans une cible de 44 px, la choisie
+  // en aplat sombre (direction Galet).
   compteur: {
-    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 32, padding: '0 12px', borderRadius: 'var(--r-full)',
-    background: 'var(--zone)', color: 'var(--text)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, margin: '2px 0', padding: '0 14px', borderRadius: 'var(--r-full)',
+    background: 'var(--zone)', color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0,
   },
+  compteurChoisi: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
   point: { width: 10, height: 10, borderRadius: '50%', flexShrink: 0 },
   actionsBarre: { display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' },
   btn44: { minHeight: 44 },
@@ -827,11 +927,10 @@ const st = {
     padding: '2px 4px', fontFamily: 'var(--font)', lineHeight: 1.2, overflow: 'hidden',
     WebkitTapHighlightColor: 'transparent',
   },
-  tableOccupee: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
-  tableReservee: { background: 'var(--info-bg-soft)', color: 'var(--info-text)', borderColor: 'var(--info-bd)' },
   tableDrag: { boxShadow: 'var(--sh-lg)', opacity: 0.9 },
   tableCible: { outlineWidth: 3, outlineStyle: 'solid', outlineColor: 'var(--onglet)', outlineOffset: 3 },
   tableNom: { fontWeight: 'var(--g3)', fontFamily: 'var(--font-num)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' },
+  tableEtat: { fontWeight: 'var(--g3)', display: 'inline-flex', maxWidth: '100%' },
   tableTexte: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' },
   tableMontant: { fontWeight: 'var(--g2)', fontFamily: 'var(--font-num)', whiteSpace: 'nowrap' },
   tableDetail: { fontFamily: 'var(--font-num)', display: 'inline-flex', alignItems: 'baseline', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden' },
@@ -867,6 +966,8 @@ const st = {
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   },
   listeTitre: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', margin: '12px 0 4px' },
+  listeVide: { margin: '4px 0 14px', fontSize: 'var(--t2)', color: 'var(--text3)' },
+  rangGestes: { display: 'flex', width: '100%', paddingLeft: 24, boxSizing: 'border-box' },
   rang: {
     display: 'flex', alignItems: 'center', gap: 14, minHeight: 60, padding: '10px 0', width: '100%', boxSizing: 'border-box',
     borderRadius: 0, background: 'transparent', color: 'var(--text)',
@@ -879,6 +980,4 @@ const st = {
   rangLigne: { color: 'var(--text2)', fontSize: 'var(--t1)' },
   rangSuivre: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)' },
   num: { fontFamily: 'var(--font-num)' },
-  rangMontant: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t3)', flexShrink: 0, whiteSpace: 'nowrap' },
-  devise: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
 };

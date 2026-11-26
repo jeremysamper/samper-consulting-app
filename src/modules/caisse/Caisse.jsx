@@ -4,7 +4,6 @@ import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
 import { Btn } from '../../components/ui/index.jsx';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
-import { useIsMobile } from '../../hooks/useIsMobile.js';
 import { notify } from '../../components/toast/index.js';
 import { dbService } from '../../services/dbService.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
@@ -29,7 +28,9 @@ import { peutHabillerCaisse } from './gardesCaisse.js';
 import { ticketsHorsFile } from './horsLigne.js';
 import VentesEnAttente from './VentesEnAttente.jsx';
 import { listEncaissementsAppareil, subscribePendingEncaissements } from '../../services/offline/caisseSync.js';
-import { heureCourte, minutesDe, nomsParTable, reservationsAttachables, reservationsSansTicket } from './clients.js';
+import { heureCourte, minutesDe, nomsParTable, reservationsAttachables } from './clients.js';
+import BandeauService from './BandeauService.jsx';
+import { reservationsDuService } from './accueilCaisse.js';
 import { articlesDeCaisse, cartesEtArticlesEnVente, fusionnerReglages, manquesLegaux } from './reglages.js';
 import ListeManques from './ListeManques.jsx';
 import { isModuleActiveForEtab } from '../moduleConfig.js';
@@ -109,8 +110,10 @@ const totalTicket = (t) => (t.lignes || []).reduce((s, l) => s + Number(l.quanti
 export default function Caisse({ user, etablissement, legacyVersion }) {
   const etabId = etablissement?.id;
   const plan = usePlanSalle(etabId);
+  // « Réservations sans ticket » n'est plus un écran depuis le 26.11.2026 : le
+  // bandeau du service porte les retards (BandeauService.jsx).
   const { ecran, setEcran, retourAccueil } = useEcranModule('caisse', {
-    repris: ['tickets', 'sans_ticket'],
+    repris: ['tickets'],
   });
 
   // Tickets ouverts tels que lus en base ; `tickets`, plus bas, en retire ceux
@@ -244,7 +247,6 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     }
   }, [etabId]);
   const maintenant = useMaintenant();
-  const telephone = useIsMobile();
   // v7 : où en est la caisse (jours passés sans clôture). Lu pour les rôles
   // qui clôturent ; la base refuse les autres.
   const peutAnnuler = ['consultant', 'patron'].includes(user?.role);
@@ -435,10 +437,15 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const ajustParTable = React.useMemo(() => ajustementsDuService(ajustements, service), [ajustements, service]);
   const tablesVues = React.useMemo(() => tablesDuService(tables, ajustParTable), [tables, ajustParTable]);
   const tablees = React.useMemo(() => tableesDe(tablesVues.filter((t) => t.actif !== false)), [tablesVues]);
-  const sansTicket = reservationsSansTicket(reservations, {
-    jour, maintenantMinutes: zurichNowMinutes(), delaiMinutes: reglages.delai_no_show_min, tickets,
+  // Réservations du service rangées pour le bandeau et « À faire maintenant »
+  // (26.11.2026) : arrivées, prévues, en retard, no-show.
+  const resasService = reservationsDuService(reservations, {
+    jour, service, tickets, maintenantMinutes: zurichNowMinutes(), delaiMinutes: reglages.delai_no_show_min,
   });
   const nomsTables = nomsParTable(reservations, { jour, tickets });
+  const nomsDesTables = React.useMemo(() => new Map(tables.map((t) => [t.id, t.nom])), [tables]);
+  // Boissons : une boisson partie ne tient pas une table « en cuisine ».
+  const boissonsEnVente = React.useMemo(() => new Set(articles.filter((a) => a.boisson).map((a) => a.id)), [articles]);
 
   // Ticket envoyé à l'encaissement depuis ce poste : la liste rechargée ne le
   // contient plus (il n'est plus ouvert), mais l'écran de fin (numéro, rendu,
@@ -462,7 +469,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   membresDe.forEach((membres, id) => {
     if (ticketsParTable[id]) return;
     const r = reservationsPosees(reservations, { jour, service, tableIds: membres.map((m) => m.id), tickets })[0];
-    if (r) attendues[id] = { nom: r.nom, heure: heureCourte(r.heure_arrivee), couverts: r.nb_couverts };
+    if (r) attendues[id] = { nom: r.nom, heure: heureCourte(r.heure_arrivee), minutes: minutesDe(r.heure_arrivee), couverts: r.nb_couverts, statut: r.statut };
   });
   // Déplacer ou réunir des tables pour le service : le droit d'écrire dans
   // Réservations (case Modifier du module, comme la RLS de
@@ -497,11 +504,11 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     return () => { vivant = false; };
   }, [etabId, cleTest, poste, sortirDuTestIci]);
 
-  // « Réservations sans ticket » n'existe pas en mode test : un poste qui s'y
-  // trouvait (écran repris à l'ouverture) revient à l'accueil.
+  // L'écran « Réservations sans ticket » n'existe plus (26.11.2026) : un poste
+  // qui s'y trouvait revient à l'accueil, où le bandeau du service le remplace.
   React.useEffect(() => {
-    if (modeTest && ecran === 'sans_ticket') retourAccueil();
-  }, [modeTest, ecran, retourAccueil]);
+    if (ecran === 'sans_ticket') retourAccueil();
+  }, [ecran, retourAccueil]);
 
   // Entrée en mode test (18.11.2026) : un geste de cet écran, rendu au module
   // (menu « Plus »), pour les rôles de ROLES_MODE_TEST. Les autres réglages du
@@ -671,8 +678,10 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     }
   }
 
-  // « Réservations sans ticket » : un tap par ligne, rien n'est posé seul.
+  // Réservation en retard (bandeau du service, « À faire maintenant ») : un
+  // tap par ligne, rien n'est posé seul. Jamais en mode test.
   async function poserStatut(resa, statut) {
+    if (modeTest) return;
     if (statutEnCours) return;
     setStatutEnCours(resa.id);
     try {
@@ -774,10 +783,16 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       onReunir={reunirTables}
       onSeparer={(membres) => { const s = lignesSeparation(membres, ajustParTable); ecrireAjustements(s.lignes, s.effacer); }}
       onRemettre={remettrePlanDeBase}
+      retards={resasService.retard}
+      onPoserStatut={modeTest ? null : poserStatut}
+      statutEnCours={statutEnCours}
+      actionsResa={!modeTest}
+      delaiNoShow={reglages.delai_no_show_min}
+      boissons={boissonsEnVente}
     />
   );
 
-  if (ecran === ECRAN_ACCUEIL || (ecran === 'tables' && !deplacement)) {
+  if (ecran === ECRAN_ACCUEIL || ecran === 'sans_ticket' || (ecran === 'tables' && !deplacement)) {
     const enRetard = !modeTest && peutHabiller ? (etatJour?.a_cloturer || []) : [];
     const choixModeTest = peutActiverTest && !modeTest && {
       titre: 'Passer ce poste en mode test',
@@ -843,51 +858,42 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
             onTraitee={() => Promise.all([commandesQr.recharger(), rechargerTickets()])}
           />
         )}
+        {/* Barre (26.11.2026) : l'action principale, les tickets ouverts, et
+            le reste dans « Plus », au téléphone comme à l'ordinateur. Les
+            réservations en retard vivent dans le bandeau du service. */}
         <div className="module-actions caisse-actions no-print" data-caisse-actions="">
           <Btn variant="primary" onClick={venteDirecte} style={st.btn44}>Vente directe</Btn>
           <Btn onClick={() => setEcran('tickets')} style={st.btn44}>
             <span>{modeTest ? 'Tickets de test ouverts' : 'Tickets ouverts'}</span>
             <span style={st.compteBtn}>{tickets.length}</span>
           </Btn>
-          {/* Téléphone : les trois autres actions passent dans « Plus », la
-              barre tient sur une ligne et le plan garde la hauteur. Le compte
-              des réservations sans ticket reste lisible sur le bouton. */}
-          {telephone ? (
-            <BoutonActions
-              id="caisse-plus"
-              label={<><span>Plus</span>{!modeTest && sansTicket.length > 0 && <span style={st.compteBtn}>{sansTicket.length}</span>}</>}
-              style={st.plus}
-              titre="Caisse"
-              sections={[{ items: [
-                !modeTest && {
-                  titre: 'Réservations sans ticket',
-                  detail: sansTicket.length > 0 ? <><span style={st.num}>{sansTicket.length}</span> <span>en retard</span></> : null,
-                  onClick: () => setEcran('sans_ticket'),
-                },
-                !modeTest && { titre: 'Historique et quittances', onClick: () => setEcran('historique') },
-                !modeTest && { titre: 'Bons cadeaux', detail: 'Vendre, retrouver, suivre', onClick: () => setEcran('bons_cadeaux') },
-                !modeTest && peutHabiller && { titre: 'Clôture de caisse', onClick: () => setEcran('cloture') },
-                choixFinJournee,
-                choixModeTest,
-              ] }]}
-            />
-          ) : (
-            <>
-              {!modeTest && (
-                <Btn onClick={() => setEcran('sans_ticket')} style={st.btn44}>
-                  <span>Réservations sans ticket</span>
-                  {sansTicket.length > 0 && <span style={st.compteBtn}>{sansTicket.length}</span>}
-                </Btn>
-              )}
-              {!modeTest && <Btn onClick={() => setEcran('historique')} style={st.btn44}>Historique et quittances</Btn>}
-              {!modeTest && <Btn onClick={() => setEcran('bons_cadeaux')} style={st.btn44}>Bons cadeaux</Btn>}
-              {!modeTest && peutHabiller && <Btn onClick={() => setEcran('cloture')} style={st.btn44}>Clôture de caisse</Btn>}
-              {(choixFinJournee || choixModeTest) && (
-                <BoutonActions id="caisse-plus" label="Plus" style={st.plus} titre="Caisse" sections={[{ items: [choixFinJournee, choixModeTest] }]} />
-              )}
-            </>
-          )}
+          <BoutonActions
+            id="caisse-plus"
+            label="Plus"
+            style={st.plus}
+            titre="Caisse"
+            sections={[{ items: [
+              !modeTest && { titre: 'Historique et quittances', detail: 'Tickets encaissés, quittances', onClick: () => setEcran('historique') },
+              !modeTest && { titre: 'Bons cadeaux', detail: 'Vendre, retrouver, suivre', onClick: () => setEcran('bons_cadeaux') },
+              !modeTest && peutHabiller && { titre: 'Clôture de caisse', onClick: () => setEcran('cloture') },
+              choixFinJournee,
+              choixModeTest,
+            ] }]}
+          />
         </div>
+        {/* Bandeau du service : arrivées, prévues, en retard, no-show. En
+            mode test, il se lit sans geste (rien n'est écrit). */}
+        {(avecTables || reservations.length > 0) && (
+          <BandeauService
+            service={service}
+            resas={resasService}
+            nomsTables={nomsDesTables}
+            actions={!modeTest}
+            statutEnCours={statutEnCours}
+            onPoser={poserStatut}
+            delaiMinutes={reglages.delai_no_show_min}
+          />
+        )}
         {avecTables ? vuePlan : (
           <p style={st.vide}>Aucune table dans le plan de salle. Dessinez la salle dans Réservations, ou vendez sans table par « Vente directe ».</p>
         )}
@@ -922,46 +928,6 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         {avecTables ? vuePlan : <p style={st.vide}>Aucune table dans le plan de salle.</p>}
       </EcranTache>
       </>
-    );
-  }
-
-  // ── Réservations sans ticket : no-show ou arrivé, un tap par ligne ──
-  // Jamais en mode test : l'écran poserait de vrais statuts.
-  if (ecran === 'sans_ticket' && !modeTest) {
-    const maintenantMin = zurichNowMinutes();
-    return (
-      <EcranTache
-        titre="Réservations sans ticket"
-        etat={<span><span>Confirmées, attendues depuis plus de</span> <span style={st.num}>{reglages.delai_no_show_min}</span> <span>min, sans table ouverte</span></span>}
-        onRetour={retourAccueil}
-      >
-        {!sansTicket.length && <p style={st.vide}>Aucune réservation en retard. Rien n'est marqué no-show sans vous.</p>}
-        {sansTicket.length > 0 && (
-        <div className="caisse-liste" data-cadre="" style={st.listeTickets}>
-          {sansTicket.map((r) => {
-            const retard = maintenantMin - minutesDe(r.heure_arrivee);
-            const occupe = statutEnCours === r.id;
-            return (
-              <div key={r.id} data-sans-ticket={r.id} style={st.sansTicketRang}>
-                <span style={st.sansTicketInfos}>
-                  <span style={st.sansTicketNom}>
-                    <span style={st.num}>{heureCourte(r.heure_arrivee)}</span> <span data-no-translate>{r.nom}</span>
-                  </span>
-                  <span style={st.ticketInfosLigne}>
-                    <span><span style={st.num}>{r.nb_couverts}</span> <span>couverts</span></span>
-                    <span><span>attendue depuis</span> <span style={st.num}>{retard}</span> <span>min</span></span>
-                  </span>
-                </span>
-                <span style={st.sansTicketActions}>
-                  <Btn variant="ghost" disabled={occupe} onClick={() => poserStatut(r, 'arrive')} style={st.btn44}>Arrivé sans ticket</Btn>
-                  <Btn variant="danger" disabled={occupe} onClick={() => poserStatut(r, 'no_show')} style={st.btn44}>No-show</Btn>
-                </span>
-              </div>
-            );
-          })}
-        </div>
-        )}
-      </EcranTache>
     );
   }
 
@@ -1134,9 +1100,9 @@ const st = {
   erreur: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 12, color: 'var(--text)' },
   vide: { color: 'var(--text3)', fontSize: 'var(--t2)' },
   btn44: { minHeight: 44, flexShrink: 0 },
-  // Compte porté par un bouton de la barre (tickets ouverts, réservations sans ticket).
+  // Compte porté par un bouton de la barre (tickets ouverts).
   compteBtn: { fontFamily: 'var(--font-num)', color: 'var(--text2)' },
-  // « Plus » au téléphone : la pilule secondaire de Btn, écrite par les jetons.
+  // « Plus » : la pilule secondaire de Btn, écrite par les jetons.
   plus: {
     display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 44, padding: '0 16px', flexShrink: 0, cursor: 'pointer',
     borderRadius: 'var(--r-full)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
@@ -1160,16 +1126,6 @@ const st = {
   ticketInfos: { color: 'var(--text2)', fontSize: 'var(--t1)', flex: 1, display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 },
   ticketSuivre: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--text)', fontWeight: 'var(--g3)' },
   ticketClient: { color: 'var(--text)', fontWeight: 'var(--g3)', fontSize: 'var(--t2)', overflowWrap: 'anywhere' },
-  ticketInfosLigne: { display: 'flex', flexWrap: 'wrap', gap: '2px 12px', color: 'var(--text2)', fontSize: 'var(--t1)' },
-  // Une réservation sans ticket : son heure, son nom, et deux gestes.
-  sansTicketRang: {
-    display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, minHeight: 60, padding: '10px 0', boxSizing: 'border-box',
-    color: 'var(--text)', minWidth: 0,
-    borderWidth: 0, borderBottomWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
-  },
-  sansTicketInfos: { display: 'flex', flexDirection: 'column', gap: 3, flex: '1 1 200px', minWidth: 0 },
-  sansTicketNom: { fontSize: 'var(--t2)', fontWeight: 'var(--g3)', overflowWrap: 'anywhere' },
-  sansTicketActions: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   num: { fontFamily: 'var(--font-num)' },
   ticketPret: { display: 'inline-flex', alignItems: 'center', gap: 5, color: 'var(--success-text)', fontWeight: 'var(--g3)' },
   // Après la sortie du mode test : proposition de vider, pour un responsable.

@@ -71,3 +71,20 @@
 [data-caisse-coche]:focus-visible,
 [data-caisse-partage] button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 [data-caisse-partage] button:disabled { opacity: 0.65; cursor: default; }
+
+/* ─── Bandeau du service (26.11.2026) ────────────────────────────────────────
+   En tête du plan (BandeauService.jsx) : le nom du service puis quatre
+   chiffres, arrivées, prévues, en retard, no-show. Réglé par la largeur de
+   son conteneur : sous 560 px le nom du service part, sous 420 px le détail
+   (couverts, prochaine arrivée) aussi, les quatre chiffres restent. */
+.caisse-service { container-type: inline-size; margin-bottom: 4px; }
+.caisse-service-grille { grid-template-columns: auto repeat(4, minmax(0, 1fr)); }
+.caisse-service-grille > button:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.caisse-service-grille > button:hover { background-color: var(--selection); }
+@container (max-width: 559px) {
+  .caisse-service-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .caisse-service-titre { display: none; }
+}
+@container (max-width: 419px) {
+  .caisse-service-detail { display: none; }
+}
