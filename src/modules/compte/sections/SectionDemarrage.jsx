@@ -1,5 +1,4 @@
 import { st as fst } from '../../../components/ui/Fenetres.jsx';
-import { estTactile } from '../../../hooks/useShellMode.js';
 import { ecrirePreference, usePreferences } from '../../../services/preferencesAppareil.js';
 import { isPageActiveForEtab, navItems, peutOuvrirPage } from '../../moduleConfig.js';
 import { Ligne, ui } from './reglagesUi.jsx';
@@ -19,7 +18,9 @@ export default function SectionDemarrage({ user, permissions, etablissement, she
   ));
   const options = [
     { id: 'derniere', label: 'La dernière page ouverte' },
-    ...(estTactile(shellMode) ? [{ id: 'accueil', label: "La page d'accueil" }] : []),
+    // La page d'accueil à gros boutons n'existe plus qu'au téléphone : la
+    // tablette porte la barre latérale de tous les modules (26.11.2026).
+    ...(shellMode === 'telephone' ? [{ id: 'accueil', label: "La page d'accueil" }] : []),
     ...pages.map((item) => ({ id: item.id, label: item.label })),
   ];
   // Une page choisie qui n'est plus ouverte à la personne (droit retiré,
