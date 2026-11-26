@@ -641,6 +641,8 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire', ecranReglage = nu
     // Facture réglée, sans le droit de régler : son montant de TVA ne change
     // plus (déclencheur achats_documents_garde_tva), il n'est pas renvoyé.
     const tvaVerrouillee = !!avant.regleLe && !canRegler;
+    // Case « valider telle quelle » : la date de la première validation est gardée.
+    const tvaValideeLe = facture && v.tvaValidee ? (avant.tvaValideeLe || new Date().toISOString()) : null;
     const identite = {
       ...avant,
       fournisseurNom: v.fournisseurNom,
@@ -655,13 +657,13 @@ const Inventaire = ({ user, etablissement, vue = 'inventaire', ecranReglage = nu
       montantTva: tvaVerrouillee ? avant.montantTva : montantTvaAEnregistrer({ totalHT: v.totalHT, totalTTC: totalTTCApres }),
     };
     const apres = facture
-      ? { ...identite, totalTTC: v.totalTTC ?? avant.totalTTC, dateEcheance: v.dateEcheance === undefined ? avant.dateEcheance : v.dateEcheance }
+      ? { ...identite, tvaValideeLe, totalTTC: v.totalTTC ?? avant.totalTTC, dateEcheance: v.dateEcheance === undefined ? avant.dateEcheance : v.dateEcheance }
       : identite;
     achats.majDocs(liste => liste.map(d => (d.id === doc.id ? apres : d)));
     try {
       await legacySB.db.upsertAchatsDocument(identite);
       if (facture) {
-        const patch = { totalTTC: v.totalTTC };
+        const patch = { totalTTC: v.totalTTC, tvaValideeLe };
         if (!tvaVerrouillee) patch.montantTva = identite.montantTva;
         if (v.dateEcheance !== undefined) patch.dateEcheance = v.dateEcheance;
         // Le taux ne part que s'il a été choisi (champ réservé au droit de régler).

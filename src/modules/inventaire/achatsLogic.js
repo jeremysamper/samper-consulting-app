@@ -399,12 +399,14 @@ export function calculerConsommation({ inv, previousInv, documents, statuts, ctx
 // (doublon, pièce mise de côté) n'est plus à compléter.
 // La TVA ne compte que sur une facture : « Vérifier la lecture » n'offre ni
 // TTC ni taux sur un bon de livraison, un bon lu avec HT = TTC restait donc
-// signalé pour toujours, même enregistré complet.
+// signalé pour toujours, même enregistré complet. Une facture validée telle
+// quelle (tvaValideeLe : plusieurs taux sur la pièce) n'est plus à compléter ;
+// elle reste « à vérifier » dans l'export fiduciaire (tvaAVerifier).
 export const estACompleter = (d) => !d.exclu && (
   (d.typeDocument === 'facture' && d.totalTTC == null)
   || !String(d.fournisseurNom || '').trim()
   || !d.dateDocument
-  || (d.typeDocument === 'facture' && tvaIncoherente(d)));
+  || (d.typeDocument === 'facture' && tvaIncoherente(d) && !d.tvaValideeLe));
 
 // ── Rattachement : produit créé depuis une ligne lue, décision propagée ──
 

@@ -4150,6 +4150,7 @@ export const UI_GLOSSARY_IT = {
   "estimée depuis le taux": "stimata dall'aliquota",
   "Le taux ne correspond pas aux totaux : vérifiez sur le document.": "L'aliquota non corrisponde ai totali: verifichi sul documento.",
   "Le taux ne correspond pas aux totaux : à vérifier.": "L'aliquota non corrisponde ai totali: da verificare.",
+  "Les montants sont justes (plusieurs taux de TVA) : valider la facture telle quelle.": "Gli importi sono corretti (più aliquote IVA): convalidare la fattura così com’è.",
   "taux ou montant non lu": "aliquota o importo non letto",
   "Aucune facture à vérifier : HT, TTC et taux de TVA sont lus et s’accordent.": "Nessuna fattura da verificare: totali IVA esclusa e inclusa e aliquota IVA sono letti e concordano.",
   "Factures d’achat de tous les périmètres, une ligne par facture, TVA par taux.": "Fatture d'acquisto di tutti i perimetri, una riga per fattura, IVA per aliquota.",

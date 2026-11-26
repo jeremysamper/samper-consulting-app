@@ -2934,13 +2934,18 @@ export function installLegacySupabase() {
     // Montant à payer, échéance, date, taux ou montant de TVA d'une facture,
     // corrigés à la main depuis l'onglet Factures : seuls les champs passés
     // sont écrits.
-    async majFactureAchat(id, { totalTTC, dateEcheance, dateDocument, tvaTaux, montantTva }) {
+    async majFactureAchat(id, { totalTTC, dateEcheance, dateDocument, tvaTaux, montantTva, tvaValideeLe }) {
       const patch = {};
       if (totalTTC !== undefined) patch.total_ttc = totalTTC != null && totalTTC !== '' ? Number(totalTTC) : null;
       if (dateEcheance !== undefined) patch.date_echeance = dateEcheance || null;
       if (dateDocument !== undefined) patch.date_document = dateDocument || null;
       if (tvaTaux !== undefined) patch.tva_taux = tvaTaux != null && tvaTaux !== '' ? Number(tvaTaux) : null;
       if (montantTva !== undefined) patch.montant_tva = montantTva != null && montantTva !== '' ? Number(montantTva) : null;
+      // Validation « telle quelle » d'une TVA qui ne s'accorde pas (migration
+      // 20261126) : elle tombe dès que le TTC ou le taux change, sauf si
+      // l'appelant la pose lui-même (« Vérifier la lecture »).
+      if (tvaValideeLe !== undefined) patch.tva_validee_le = tvaValideeLe || null;
+      else if (totalTTC !== undefined || tvaTaux !== undefined) patch.tva_validee_le = null;
       const { data, error } = await client.from('achats_documents').update(patch).eq('id', id).select().single();
       if (error) throw error;
       return this.mapAchatsDocumentFromDB(data);
@@ -3046,6 +3051,7 @@ export function installLegacySupabase() {
         totalTTC: row.total_ttc != null ? Number(row.total_ttc) : null,
         tvaTaux: row.tva_taux != null ? Number(row.tva_taux) : null,
         montantTva: row.montant_tva != null ? Number(row.montant_tva) : null,
+        tvaValideeLe: row.tva_validee_le || null,
         dateEcheance: row.date_echeance || null,
         regleLe: row.regle_le || null, regleMode: row.regle_mode || '', regleNote: row.regle_note || '',
         lignes: row.lignes || [], exclu: !!row.exclu,

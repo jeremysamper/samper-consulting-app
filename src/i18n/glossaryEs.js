@@ -4303,6 +4303,7 @@ export const UI_GLOSSARY_ES = {
   'estimée depuis le taux': 'estimado a partir del tipo',
   'Le taux ne correspond pas aux totaux : vérifiez sur le document.': 'El tipo no coincide con los totales: compruébelo en el documento.',
   'Le taux ne correspond pas aux totaux : à vérifier.': 'El tipo no coincide con los totales: a comprobar.',
+  "Les montants sont justes (plusieurs taux de TVA) : valider la facture telle quelle.": "Los importes son correctos (varios tipos de IVA): validar la factura tal cual.",
   'taux ou montant non lu': 'tipo o importe no leído',
   'Aucune facture à vérifier : HT, TTC et taux de TVA sont lus et s’accordent.': 'Ninguna factura a comprobar: base, total con IVA y tipo de IVA están leídos y coinciden.',
   'Factures d’achat de tous les périmètres, une ligne par facture, TVA par taux.': 'Facturas de compra de todos los ámbitos, una línea por factura, IVA por tipo.',

@@ -49,6 +49,9 @@ export default function VerifierLecture({
     tvaTaux: doc.tvaTaux != null ? Number(doc.tvaTaux) : null,
     perimetre: (doc.perimetre || '').trim() || 'Général',
   }));
+  // Facture à plusieurs taux : HT, TTC et taux ne s'accordent jamais, la
+  // case la valide telle quelle et elle n'est plus « à compléter ».
+  const [tvaValidee, setTvaValidee] = React.useState(() => !!doc.tvaValideeLe);
   const [etape, setEtape] = React.useState('champs'); // 'champs' | 'rattachement'
   const [busy, setBusy] = React.useState(false);
   const [apercu, setApercu] = React.useState(false);
@@ -91,6 +94,7 @@ export default function VerifierLecture({
       // L'échéance et le taux de TVA restent à qui règle les factures.
       dateEcheance: facture && canRegler ? (v.dateEcheance || null) : undefined,
       tvaTaux: facture && canRegler ? v.tvaTaux : undefined,
+      tvaValidee: facture && tva.coherent === false && tvaValidee,
       perimetre: v.perimetre,
     });
     setBusy(false);
@@ -192,6 +196,12 @@ export default function VerifierLecture({
                 {tva.coherent === false && (
                   <span style={st.alerte}> Le taux ne correspond pas aux totaux : vérifiez sur le document.</span>
                 )}
+                {tva.coherent === false && (
+                  <label style={st.valider}>
+                    <input type="checkbox" checked={tvaValidee} onChange={e => setTvaValidee(e.target.checked)} style={st.case} />
+                    <span>Les montants sont justes (plusieurs taux de TVA) : valider la facture telle quelle.</span>
+                  </label>
+                )}
               </div>
             )}
             <div style={st.pied}>
@@ -253,6 +263,8 @@ const st = {
   nonLu: { fontSize: 'var(--t1)', fontWeight: 'var(--g2)', padding: '2px 8px', borderRadius: 'var(--r)', background: 'var(--warning-bg)', color: 'var(--warning-text)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--warning-bd)' },
   input: { padding: '9px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text)', fontSize: 'var(--t2)', fontFamily: 'var(--font)', minHeight: 44, boxSizing: 'border-box', width: '100%', minWidth: 0 },
   lecture: { display: 'flex', alignItems: 'center', minHeight: 44, fontSize: 'var(--t2)', color: 'var(--text)', fontFamily: 'var(--font-num)' },
+  valider: { display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, marginTop: 4, fontSize: 'var(--t2)', color: 'var(--text)', cursor: 'pointer' },
+  case: { width: 20, height: 20, flex: '0 0 auto', accentColor: 'var(--accent)' },
   tvaLigne: { fontSize: 'var(--t1)', color: 'var(--text)', lineHeight: 1.5 },
   pied: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' },
   aide: { fontSize: 'var(--t1)', color: 'var(--text2)', flex: '1 1 220px', minWidth: 0, lineHeight: 1.45 },

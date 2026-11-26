@@ -4259,6 +4259,7 @@ export const UI_GLOSSARY_DE = {
   "estimée depuis le taux": "aus dem Satz geschätzt",
   "Le taux ne correspond pas aux totaux : vérifiez sur le document.": "Der Satz passt nicht zu den Totalen: Prüfen Sie es auf dem Dokument.",
   "Le taux ne correspond pas aux totaux : à vérifier.": "Der Satz passt nicht zu den Totalen: zu prüfen.",
+  "Les montants sont justes (plusieurs taux de TVA) : valider la facture telle quelle.": "Die Beträge stimmen (mehrere MWST-Sätze): Rechnung so bestätigen.",
   "taux ou montant non lu": "Satz oder Betrag nicht gelesen",
   "Aucune facture à vérifier : HT, TTC et taux de TVA sont lus et s’accordent.": "Keine Rechnung zu prüfen: Beträge exkl. und inkl. MWST und MWST-Satz sind gelesen und stimmen überein.",
   "Factures d’achat de tous les périmètres, une ligne par facture, TVA par taux.": "Einkaufsrechnungen aller Bereiche, eine Zeile pro Rechnung, MWST nach Satz.",

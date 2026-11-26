@@ -4157,6 +4157,7 @@ export const UI_GLOSSARY_PT = {
   "estimée depuis le taux": "estimada a partir da taxa",
   "Le taux ne correspond pas aux totaux : vérifiez sur le document.": "A taxa não corresponde aos totais: verifique no documento.",
   "Le taux ne correspond pas aux totaux : à vérifier.": "A taxa não corresponde aos totais: a verificar.",
+  "Les montants sont justes (plusieurs taux de TVA) : valider la facture telle quelle.": "Os montantes estão corretos (várias taxas de IVA): validar a fatura tal como está.",
   "taux ou montant non lu": "taxa ou montante não lido",
   "Aucune facture à vérifier : HT, TTC et taux de TVA sont lus et s’accordent.": "Nenhuma fatura a verificar: sem IVA, com IVA e taxa de IVA estão lidos e batem certo.",
   "Factures d’achat de tous les périmètres, une ligne par facture, TVA par taux.": "Faturas de compra de todos os perímetros, uma linha por fatura, IVA por taxa.",

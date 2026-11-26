@@ -4328,6 +4328,7 @@ export const UI_GLOSSARY = {
   'estimée depuis le taux': 'estimated from the rate',
   'Le taux ne correspond pas aux totaux : vérifiez sur le document.': 'The rate does not match the totals: check on the document.',
   'Le taux ne correspond pas aux totaux : à vérifier.': 'The rate does not match the totals: to check.',
+  "Les montants sont justes (plusieurs taux de TVA) : valider la facture telle quelle.": "The amounts are correct (several VAT rates): validate the invoice as it is.",
   'taux ou montant non lu': 'rate or amount not read',
   'Aucune facture à vérifier : HT, TTC et taux de TVA sont lus et s’accordent.': 'No invoice to check: net and gross totals and VAT rate are read and agree.',
   'Factures d’achat de tous les périmètres, une ligne par facture, TVA par taux.': 'Purchase invoices of all scopes, one line per invoice, VAT by rate.',
