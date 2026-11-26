@@ -7063,4 +7063,11 @@ export const UI_GLOSSARY_IT = {
   "Cette chambre est choisie sur une autre ligne.": "Questa camera è scelta su un'altra riga.",
   "Les autres séjours du groupe": "Gli altri soggiorni del gruppo",
   "Les séjours sont créés. Le lien au groupe n'a pas pu être posé : reliez-le depuis une fiche.": "I soggiorni sono creati. Il collegamento al gruppo non è stato possibile: lo colleghi da una scheda.",
+  // Lot 16 du panel : plan d'occupation des chambres.
+  "Plan d'occupation": "Piano di occupazione",
+  "Libres": "Libere",
+  "Créer un séjour, chambre": "Crea un soggiorno, camera",
+  "Séjours sans chambre sur la période": "Soggiorni senza camera nel periodo",
+  "Quatorze nuits d'un coup d'oeil": "Quattordici notti a colpo d'occhio",
+  "Aucune chambre n'est encore créée. Les chambres se règlent dans les réglages.": "Non è ancora stata creata nessuna camera. Le camere si impostano nelle impostazioni.",
 };

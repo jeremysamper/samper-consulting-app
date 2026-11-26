@@ -1,5 +1,5 @@
 import React from 'react';
-import { BedDouble, BookOpen, Croissant, LogIn, LogOut, Plus, Receipt, Users } from 'lucide-react';
+import { BedDouble, BookOpen, CalendarRange, Croissant, LogIn, LogOut, Plus, Receipt, Users } from 'lucide-react';
 import AccueilModule from '../../components/parcours/AccueilModule.jsx';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { ECRAN_ACCUEIL, useEcranModule } from '../../components/parcours/useEcranModule.js';
@@ -24,6 +24,7 @@ import { estDirectionHotel } from './gardesHotel.js';
 import RegistreMois from './RegistreMois.jsx';
 import { etatRegistre } from './serieHotel.js';
 import TicketsAPorter, { useTicketsAPorter } from './TicketsAPorter.jsx';
+import PlanOccupation from './PlanOccupation.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Hébergement (branche Hôtel, lot H0) : l'accueil à tuiles du socle des
@@ -45,6 +46,7 @@ const TITRES = {
   tarifs: 'Tarifs et taxes',
   registre: 'Registre et statistiques',
   tickets: 'Tickets à porter',
+  plan: 'Plan d\'occupation',
 };
 
 // Date de Zurich, relue chaque minute : un écran ouvert à minuit change de jour.
@@ -122,11 +124,11 @@ export default function Hebergement({ user, etablissement }) {
   };
 
   const ecransRepris = [
-    ...(direction ? ['arrivees', 'departs', 'en_maison', 'chambres', 'hotes', 'tarifs', 'registre'] : ['arrivees', 'departs', 'en_maison', 'hotes']),
+    ...(direction ? ['arrivees', 'departs', 'en_maison', 'plan', 'chambres', 'hotes', 'tarifs', 'registre'] : ['arrivees', 'departs', 'en_maison', 'plan', 'hotes']),
     ...(avecCaisse ? ['tickets'] : []),
   ];
   const { ecran, setEcran, retourAccueil } = useEcranModule('hebergement', { repris: ecransRepris });
-  const [form, setForm] = React.useState(null); // { sejour: null | sejour, plusieurs?: true }
+  const [form, setForm] = React.useState(null); // { sejour: null | sejour, plusieurs?: true, initial?: { chambreId, arrivee, depart } }
   const [ficheId, setFicheId] = React.useState(null);
   const [hoteForm, setHoteForm] = React.useState(null); // { nomInitial, sejour }
   const [noteId, setNoteId] = React.useState(null);
@@ -213,6 +215,8 @@ export default function Hebergement({ user, etablissement }) {
       etat: <>{etat(presents.length, 'séjour', 'séjours')}<span aria-hidden="true"> </span><span>{couverts}</span> <span>{couverts === 1 ? 'couvert petit-déjeuner demain' : 'couverts petit-déjeuner demain'}</span></>,
       onClick: () => setEcran('en_maison'),
     },
+    // Lot 16 du panel : les quatorze prochaines nuits de toutes les chambres.
+    { id: 'plan', libelle: 'Plan d\'occupation', Icone: CalendarRange, etat: <span>Quatorze nuits d'un coup d'oeil</span>, onClick: () => setEcran('plan') },
     { id: 'nouveau', libelle: 'Nouveau séjour', Icone: Plus, visible: peutGerer, onClick: () => setForm({ sejour: null }) },
     { id: 'hotes', libelle: 'Hôtes', Icone: Users, etat: etat(hotes.rows.filter((x) => !x.archive).length, 'fiche', 'fiches'), onClick: () => setEcran('hotes') },
     { id: 'registre', libelle: 'Registre et statistiques', Icone: BookOpen, visible: direction, etat: <span>Nuitées, HESTA, taxes du mois</span>, onClick: () => setEcran('registre') },
@@ -236,9 +240,13 @@ export default function Hebergement({ user, etablissement }) {
       : <Vide>{vide}</Vide>
   );
 
-  const etatLecture = sejours.status === 'absent'
+  const etatLecture = sejours.status === 'absent' || chambres.status === 'absent'
     ? 'Le socle hôtel n\'est pas encore activé sur la base de données.'
-    : sejours.status === 'error' ? 'Les séjours n\'ont pas pu être lus. Nouvel essai en cours…' : null;
+    : sejours.status === 'error' ? 'Les séjours n\'ont pas pu être lus. Nouvel essai en cours…'
+      : chambres.status === 'error' ? 'Les chambres n\'ont pas pu être lues. Nouvel essai en cours…' : null;
+  // Lot 16 du panel : le plan ne se dessine que sur une lecture réussie des
+  // chambres et des séjours (une lecture en échec ne se lit jamais « libre »).
+  const planPret = chambres.status === 'ready' && sejours.status === 'ready';
 
   return (
     <section className="hebergement" style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 0, maxWidth: '100%' }}>
@@ -285,6 +293,13 @@ export default function Hebergement({ user, etablissement }) {
         </>
       )}
       {etabId && ecran === 'departs' && listeDe(departs, 'Aucun départ aujourd\'hui.')}
+      {etabId && ecran === 'plan' && (planPret ? (
+        <PlanOccupation
+          chambres={trierChambres(chambres.rows)} sejours={sejours.rows} aujourdhui={aujourdhui} peutGerer={peutGerer}
+          onOuvrirSejour={(s) => setFicheId(s.id)}
+          onCaseLibre={(initial) => setForm({ sejour: null, initial })}
+        />
+      ) : <Vide>{etatLecture || 'Chargement…'}</Vide>)}
       {etabId && ecran === 'tickets' && avecCaisse && (
         <TicketsAPorter etabId={etabId} tickets={ticketsAPorter} onPorte={lignes.reload} />
       )}
@@ -340,6 +355,7 @@ export default function Hebergement({ user, etablissement }) {
           forfaits={forfaits.rows}
           aujourdhui={aujourdhui}
           onEnregistrer={enregistrerSejour}
+          initial={form.initial || null}
           onPlusieurs={form.sejour ? null : () => setForm({ sejour: null, plusieurs: true })}
           onClose={() => setForm(null)}
         />

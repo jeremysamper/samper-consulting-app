@@ -7314,4 +7314,11 @@ export const UI_GLOSSARY_ES = {
   'Cette chambre est choisie sur une autre ligne.': 'Esta habitación está elegida en otra línea.',
   'Les autres séjours du groupe': 'Las demás estancias del grupo',
   "Les séjours sont créés. Le lien au groupe n'a pas pu être posé : reliez-le depuis une fiche.": 'Las estancias están creadas. No se pudo crear el vínculo con el grupo: vincúlelo desde una ficha.',
+  // Lot 16 du panel : plan d'occupation des chambres.
+  "Plan d'occupation": "Plano de ocupación",
+  "Libres": "Libres",
+  "Créer un séjour, chambre": "Crear una estancia, habitación",
+  "Séjours sans chambre sur la période": "Estancias sin habitación en el periodo",
+  "Quatorze nuits d'un coup d'oeil": "Catorce noches de un vistazo",
+  "Aucune chambre n'est encore créée. Les chambres se règlent dans les réglages.": "Todavía no se ha creado ninguna habitación. Las habitaciones se configuran en los ajustes.",
 };

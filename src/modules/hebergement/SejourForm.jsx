@@ -19,10 +19,10 @@ const vide = (aujourdhui) => ({
 // Lot 14 du panel : en création, « Plusieurs chambres » ouvre la saisie d'un groupe.
 const MODES = [{ id: 'une', label: 'Une chambre' }, { id: 'plusieurs', label: 'Plusieurs chambres' }];
 
-export default function SejourForm({ sejour, chambres, sejours, tarifs = [], forfaits = [], aujourdhui, onEnregistrer, onClose, onPlusieurs = null }) {
+export default function SejourForm({ sejour, chambres, sejours, tarifs = [], forfaits = [], aujourdhui, onEnregistrer, onClose, onPlusieurs = null, initial = null }) {
   const [f, setF] = React.useState(() => (sejour
     ? { ...sejour, chambreId: sejour.chambreId || '', tarifId: sejour.tarifId || '', prixNuit: sejour.prixNuit == null ? '' : String(sejour.prixNuit), forfaitId: sejour.forfaitId || '', identifiant: sejour.identifiant || '' }
-    : vide(aujourdhui)));
+    : { ...vide(aujourdhui), ...(initial || {}) }));
   const [erreur, setErreur] = React.useState('');
   const [enCours, setEnCours] = React.useState(false);
   const champ = (k) => (e) => setF((p) => ({ ...p, [k]: e.target.value }));

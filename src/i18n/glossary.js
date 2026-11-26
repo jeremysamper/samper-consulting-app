@@ -7334,6 +7334,13 @@ export const UI_GLOSSARY = {
   'Cette chambre est choisie sur une autre ligne.': 'This room is chosen on another line.',
   'Les autres séjours du groupe': "The group's other stays",
   "Les séjours sont créés. Le lien au groupe n'a pas pu être posé : reliez-le depuis une fiche.": 'The stays are created. The group link could not be set: link it from a record.',
+  // Lot 16 du panel : plan d'occupation des chambres.
+  "Plan d'occupation": "Occupancy plan",
+  "Libres": "Free",
+  "Créer un séjour, chambre": "Create a stay, room",
+  "Séjours sans chambre sur la période": "Stays without a room in this period",
+  "Quatorze nuits d'un coup d'oeil": "Fourteen nights at a glance",
+  "Aucune chambre n'est encore créée. Les chambres se règlent dans les réglages.": "No room has been created yet. Rooms are set up in the settings.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
