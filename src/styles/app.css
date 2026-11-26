@@ -2374,6 +2374,37 @@ html[data-mouvement="reduit"] .ui-card--clickable:active,
 .sc-nav-libelle { animation: sc-nav-libelle var(--mvt-2) var(--courbe) both; }
 .sc-titre-page { display: inline-block; animation: mvt-naissance var(--mvt-2) var(--courbe) both; }
 
+/* Barre de raccourcis de la tablette tenue en paysage (AppLayout). La pilule
+   du menu y glisse de cercle en cercle : elle passe devant les cercles et
+   sous le picto de l'entrée choisie, dont le cercle rend alors son aplat.
+   Le libellé tient sur deux lignes au plus, centré. Quand l'écran manque de
+   hauteur, le septième puis le sixième raccourci se retirent : « Tout » reste
+   en vue sans défilement. Elle défile en dernier recours, sans ascenseur. */
+.sc-raccourcis { scrollbar-width: none; }
+.sc-raccourcis::-webkit-scrollbar { display: none; }
+.sc-raccourcis .sc-nav-pilule { z-index: 1; }
+.sc-raccourci[aria-current="page"] { z-index: 2; }
+.sc-raccourcis[data-pilule] .sc-raccourci[aria-current="page"] .sc-raccourci-cercle { background: transparent !important; }
+.sc-raccourci-cercle { transition: background-color var(--mvt-1) var(--courbe), color var(--mvt-1) var(--courbe); }
+.sc-raccourci-libelle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  max-width: 100%;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+@media (hover: hover) {
+  .sc-raccourci:not([aria-current="page"]):hover .sc-raccourci-cercle {
+    background: var(--selection) !important;
+    color: var(--text);
+  }
+}
+.sc-raccourci:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--r); }
+@media (max-height: 699.98px) { .sc-raccourci[data-rang="7"] { display: none !important; } }
+@media (max-height: 619.98px) { .sc-raccourci[data-rang="6"] { display: none !important; } }
+
 /* Anneau hors de la pilule : posé dedans, il se perdrait sur l'aplat sombre
    de l'entrée choisie. */
 .sc-nav-item:focus-visible,
