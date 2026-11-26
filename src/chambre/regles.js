@@ -16,7 +16,6 @@ export const estJetonDemo = (jeton) => typeof jeton === 'string' && jeton.starts
 
 // Note de l'hôte : caractères de contrôle retirés, espaces resserrés,
 // coupée à 140 signes. Même règle que la fonction d'envoi.
-// eslint-disable-next-line no-control-regex
 const CONTROLE = /[\u0000-\u001f\u007f-\u009f]/g;
 export function notePropre(texte) {
   return String(texte ?? '')

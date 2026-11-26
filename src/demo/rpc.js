@@ -898,7 +898,35 @@ const RPC = {
     ctx.maj('caisse_commandes_qr', c, { statut: 'refusee', motif_refus: motif, traitee_par: ctx.uid, traitee_at: maintenant() });
     return { ok: true };
   },
+
+  // Lot 17 du panel : jetons des QR de chambre, mêmes réponses que
+  // demandes_qr_preparer et demandes_qr_renouveler (direction seule).
+  demandes_qr_preparer(ctx, a) {
+    if (!estDirection(ctx)) throw new ErreurRpc('DEMANDES_QR_REFUSE: réservé à la direction de l\'établissement', '42501');
+    const lignes = (ctx.db.demandes_qr_chambres ||= []);
+    const manquantes = (ctx.db.chambres || []).filter((c) => c.etablissement_id === a.p_etablissement_id && c.actif !== false
+      && !lignes.some((q) => q.chambre_id === c.id));
+    manquantes.forEach((c) => ctx.inserer('demandes_qr_chambres', {
+      chambre_id: c.id, etablissement_id: c.etablissement_id, jeton: jetonChambreDemo(), created_at: maintenant(), renouvele_at: null,
+    }));
+    return { crees: manquantes.length };
+  },
+  demandes_qr_renouveler(ctx, a) {
+    const c = (ctx.db.chambres || []).find((x) => x.id === a.p_chambre_id);
+    if (!c || !estDirection(ctx)) throw new ErreurRpc('DEMANDES_QR_REFUSE: réservé à la direction de l\'établissement', '42501');
+    const q = (ctx.db.demandes_qr_chambres ||= []).find((x) => x.chambre_id === c.id);
+    if (q) ctx.maj('demandes_qr_chambres', q, { jeton: jetonChambreDemo(), renouvele_at: maintenant() });
+    else ctx.inserer('demandes_qr_chambres', { chambre_id: c.id, etablissement_id: c.etablissement_id, jeton: jetonChambreDemo(), created_at: maintenant(), renouvele_at: null });
+    return { ok: true };
+  },
 };
+
+// Jeton d'une chambre : 32 signes hexadécimaux, comme
+// replace(gen_random_uuid()::text, '-', '') en base.
+function jetonChambreDemo() {
+  const u = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`.padEnd(36, '0');
+  return u.replace(/-/g, '').slice(0, 32).padEnd(32, '0');
+}
 
 export function executerRpc(ctx, nom, args) {
   const f = RPC[nom];

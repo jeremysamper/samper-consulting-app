@@ -52,7 +52,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // (« Résident de la commune ») dans le registre de la chambre 103.
 // v21 (lot 15 du panel, 26.11.2026) : accords des fiches salle reliés aux
 // boissons de la caisse (platId).
-const VERSION_BASE = 'v21-' + aujourdhui();
+// v22 (lot 17 du panel, 26.11.2026) : demande par le QR de la chambre
+// (demandes_qr_parametres, demandes_qr_chambres, une demande par_qr).
+const VERSION_BASE = 'v22-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.
@@ -153,7 +155,7 @@ export function oublierBase() {
 
 // Valeurs par défaut de la base, pour les insertions de l'app.
 const DEFAUTS = {
-  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres', 'reglages_modules', 'facturation_reglages', 'groupe_docs_compteurs'],
+  __sansId: ['user_settings', 'permissions', 'permissions_utilisateurs', 'planning_groupe_membres', 'planning_masques', 'pointage_postes', 'demarrage_etapes', 'achats_hausses_vues', 'compta_reglages', 'caisse_reglages', 'reglages_maison', 'objectifs_maison', 'pointage_codes', 'consultant_messages', 'points_reglages', 'reservation_en_ligne_parametres', 'spa_parametres', 'profile_contacts', 'app_settings', 'donnees_exemple', 'factures_compteurs', 'caisse_compteurs', 'hotel_reglages', 'caisse_commande_qr_parametres', 'demandes_qr_parametres', 'demandes_qr_chambres', 'reglages_modules', 'facturation_reglages', 'groupe_docs_compteurs'],
   reservations: { statut: 'confirme', origine: 'equipe', est_groupe: false, passeport_gourmand: false, created_by: () => sessionUid },
   shifts: { pause: 0, type_shift: 'simple', statut: 'confirmé', pointage_debut: null, pointage_fin: null, pointage_fin_auto: false },
   recettes: { statut: 'brouillon', version: 1, portions: 4, prix_vente: 0, allergenes_ids: [], ingredients: [], etapes: [], masquee: false, created_by: () => sessionUid },
@@ -195,7 +197,7 @@ const DEFAUTS = {
   objets_trouves: { statut: 'trouve', par: () => sessionUid },
   linge_mouvements: { sens: 'sale', quantite: 1, par: () => sessionUid },
   chambres_turndown: { fait_par: () => sessionUid, at: () => new Date().toISOString() },
-  demandes: { origine: 'hote', priorite: 'normale', statut: 'ouverte', escaladee: false, cree_par: () => sessionUid },
+  demandes: { origine: 'hote', priorite: 'normale', statut: 'ouverte', escaladee: false, par_qr: false, cree_par: () => sessionUid },
   hotes: { langue: 'fr', vip: false, consentement_marketing: false, archive: false, created_by: () => sessionUid },
   tarifs: { pension: 'petit_dejeuner', personnes_incluses: 2, prix_personne_sup: 0, prix_enfant: 0, actif: true, ordre: 0 },
   sejour_occupants: { exonere_taxe: false, created_by: () => sessionUid },
@@ -248,6 +250,8 @@ const CLES_PRIMAIRES = {
   factures_compteurs: ['etablissement_id', 'date'],
   caisse_compteurs: ['etablissement_id', 'cle'],
   caisse_commande_qr_parametres: ['etablissement_id'],
+  demandes_qr_parametres: ['etablissement_id'],
+  demandes_qr_chambres: ['chambre_id'],
   reglages_modules: ['etablissement_id', 'module'],
   hotel_reglages: ['etablissement_id'],
   facturation_reglages: ['etablissement_id'],

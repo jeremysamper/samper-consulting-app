@@ -420,6 +420,8 @@ export function mapDemande(r) {
     echeance: r.echeance || null, statut: r.statut || 'ouverte', escaladee: r.escaladee === true, escaladeeAt: r.escaladee_at || null,
     assigneeA: r.assignee_a || null, creePar: r.cree_par || null, faitePar: r.faite_par || null, faiteAt: r.faite_at || null,
     createdAt: r.created_at || null, updatedAt: r.updated_at || null,
+    // Lot 17 : demande née du QR de la chambre (lue, jamais écrite par l'app).
+    parQr: r.par_qr === true,
   };
 }
 export function mapDemandeJournal(r) {
