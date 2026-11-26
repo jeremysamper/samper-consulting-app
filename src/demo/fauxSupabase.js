@@ -13,6 +13,7 @@
 import { executer, erreurPg, uuid } from './postgrest.js';
 import { decompterPortions, executerRpc, portionsDeLigne } from './rpc.js';
 import { creerBase } from './donnees/index.js';
+import EMPREINTE_JEU from 'virtual:demo-empreinte';
 import { ETAB, EQUIPE, ROLES_DEMO, aujourdhui, jour, instant } from './donnees/base.js';
 import { STOCKAGE, PREFIXE } from './isolation.js';
 import { defaultPermissions } from '../modules/moduleConfig.js';
@@ -23,43 +24,13 @@ export const DEMO_URL = 'https://demo.invalid';
 const DEMO_HOTE = new URL(DEMO_URL).hostname;
 const CLE_BASE = PREFIXE + 'base';
 const CLE_ROLE = PREFIXE + 'role';
-// v2 (lot L3) : la commande par QR entre dans les jeux ; une base du jour en
-// cache dans l'onglet serait relue sans elle. v3 (Carte des boissons, lot A) :
-// plat_formats et cartes.genre. v4 (lot 1, chiffres justes) : type de groupe
-// valide, temps de service des fiches salle non inventé. v5 (lot 2a) : réglages
-// des modules, modèles de mise en place, stocks cibles, livraisons des fournisseurs.
-// v6 (lot 2a, D5) : messages des fils d'équipe (canaux_messages).
-// v7 (lot 6a, D4) : branche Hôtel et Spa, praticienne spa dans l'équipe.
-// v8 (lot 6b) : réglages des modules Étages, Demandes et Repas hôtel.
-// v9 (lot 4a) : commandes par fournisseur, réception, produits habituels,
-// pertes reliées, liste J+1, règles de Ventes POS, ingrédients à relier.
-// v10 (lot 5) : cadeaux demandés, procédures rappelée et commencée, fiches en
-// brouillon, alertes de cuisine, dossiers de Documents aux types de la base.
-// v11 (lot 4b, retrait du 23.11) : commandes par fournisseur, stocks cibles,
-// produits habituels et règles de Ventes POS retirés des jeux.
-// v12 (lot 4a, retrait du 23.11) : fournisseurs sans jours de livraison, heure
-// limite ni délai de commande ; correspondances de Ventes POS sans regle_id.
-// v13 (23.11.2026) : devis, factures et paiements des groupes.
-// v14 (23.11.2026) : coordonnées légales de la caisse ; sans elles, un vrai
-// ticket ne s'encaisse pas.
-// v15 (lot 05 du panel, 25.11.2026) : origine des lignes de note, deux tickets
-// payés « Chambre » (l'un porté sur une note, l'autre à porter).
-// v16 (lot 06 du panel, 25.11.2026) : sources de la prévision des couverts
-// (pension allumée) et un séjour en demi-pension relié à une réservation.
-// v17 (lot 09 du panel, 25.11.2026) : une « Formule midi » à trois étapes.
-// v18 (lot 11 du panel, 26.11.2026) : règle de partage des pourboires dans
-// les réglages de la caisse (Salle 70, Cuisine 30).
-// v20 (lot 13 du panel, 26.11.2026) : un exonéré de la taxe de séjour
-// (« Résident de la commune ») dans le registre de la chambre 103.
-// v21 (lot 15 du panel, 26.11.2026) : accords des fiches salle reliés aux
-// boissons de la caisse (platId).
-// v22 (lot 17 du panel, 26.11.2026) : demande par le QR de la chambre
-// (demandes_qr_parametres, demandes_qr_chambres, une demande par_qr).
-// v23 (lot 18 du panel, 26.11.2026) : question « Formule » de la réservation
-// en ligne (questions_en_ligne), réponse et étiquette sur les demandes.
-// v24 (lot 07 du panel, 26.11.2026) : réglage « espèces sans réseau » allumé
-// et journal des rejeux (caisse_encaissements_hors_ligne).
-const VERSION_BASE = 'v24-' + aujourdhui();
+// Clé de la base gardée dans l'onglet : l'empreinte du jeu de départ
+// (src/demo/donnees/, calculée par le plugin samper-demo-empreinte de
+// vite.config.js) et le jour. Un jeu changé par un lot se recharge seul chez
+// qui a déjà ouvert la démo dans la journée, au banc comme en production, sans
+// numéro de version à monter à la main (le dernier était v24, 26.11.2026).
+// Le préfixe « s » ne change que si la forme de la sauvegarde change.
+const VERSION_BASE = 's1-' + EMPREINTE_JEU + '-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.
@@ -350,7 +321,30 @@ function avantLecture(table, lignes) {
   if (table === 'permissions' && !lignes.length) {
     return Object.entries(defaultPermissions).map(([role_key, perms]) => ({ role_key, perms, updated_at: '2026-11-01T08:00:00Z' }));
   }
+  if (table === 'resa_clients_stats') return statsClients();
   return lignes;
+}
+
+// Vue resa_clients_stats (migration 20261001_resa_clients) : chiffres de
+// chaque fiche client, tirés de ses réservations au moment de la lecture.
+function statsClients() {
+  const jourJ = aujourdhui();
+  const venue = (r) => ['confirme', 'arrive', 'parti'].includes(r.statut) && r.date_service <= jourJ;
+  return (db.resa_clients || []).map((c) => {
+    const resas = (db.reservations || []).filter((r) => r.client_id === c.id);
+    const venues = resas.filter(venue);
+    const avenir = resas.filter((r) => ['confirme', 'demande'].includes(r.statut) && r.date_service >= jourJ).map((r) => r.date_service).sort();
+    return {
+      client_id: c.id,
+      etablissement_id: c.etablissement_id,
+      nb_reservations: resas.filter((r) => r.statut !== 'annule').length,
+      nb_venues: venues.length,
+      nb_no_show: resas.filter((r) => r.statut === 'no_show').length,
+      derniere_venue: venues.map((r) => r.date_service).sort().pop() || null,
+      prochaine: avenir[0] || null,
+      couverts_total: venues.reduce((s, r) => s + (Number(r.nb_couverts) || 0), 0),
+    };
+  });
 }
 
 // ── Realtime simulé ─────────────────────────────────────────────────────────
