@@ -43,15 +43,17 @@ export default function PlanOccupation({ chambres, sejours, aujourdhui, peutGere
   return (
     <div className="hotel-plan" style={{ display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0, maxWidth: '100%' }}>
       <div style={s.periode}>
+        <div style={s.periodeGroupe}>
         <button type="button" className="hotel-plan-fleche" aria-label="Semaine précédente" onClick={() => setDebut((d) => zurichAjouterJours(d, -PAS))}>
           <span className="hotel-plan-fleche-rond"><ChevronLeft size={20} strokeWidth={1.75} aria-hidden="true" /></span>
         </button>
         <div style={s.periodeTexte}>
-          <span>Du</span> <span data-no-translate>{dateCourte(nuits[0])}</span> <span>au</span> <span data-no-translate>{dateCourte(nuits[n - 1])}</span>
+          <span>Nuits du</span> <span data-no-translate>{dateCourte(nuits[0])}</span> <span>jusqu'au</span> <span data-no-translate>{dateCourte(nuits[n - 1])}</span>
         </div>
         <button type="button" className="hotel-plan-fleche" aria-label="Semaine suivante" onClick={() => setDebut((d) => zurichAjouterJours(d, PAS))}>
           <span className="hotel-plan-fleche-rond"><ChevronRight size={20} strokeWidth={1.75} aria-hidden="true" /></span>
         </button>
+        </div>
         {debut !== aujourdhui && (
           <Btn variant="ghost" onClick={() => setDebut(aujourdhui)} style={{ minHeight: 44 }}>Aujourd'hui</Btn>
         )}
@@ -88,7 +90,7 @@ export default function PlanOccupation({ chambres, sejours, aujourdhui, peutGere
                     <th scope="row" className="hotel-plan-tete" title={ligne.horsService && c.horsServiceMotif ? c.horsServiceMotif : undefined}>
                       <span id={idNumero} style={s.numero} data-no-translate>{c.numero}</span>
                       {c.categorie && <span style={s.categorie} data-no-translate>{c.categorie}</span>}
-                      {ligne.horsService && <span style={s.categorie}>Hors service</span>}
+                      {ligne.horsService && <span style={s.horsService}>Hors service</span>}
                     </th>
                     {ligne.cellules.map((cel) => {
                       const i = k;
@@ -180,11 +182,13 @@ export default function PlanOccupation({ chambres, sejours, aujourdhui, peutGere
 
 const s = {
   periode: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', minWidth: 0 },
-  periodeTexte: { fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
+  periodeGroupe: { display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, flex: '0 1 auto' },
+  periodeTexte: { minWidth: 0, lineHeight: 1.35, fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   jour: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text2)' },
   quantieme: { display: 'block', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', color: 'var(--text)', fontVariantNumeric: 'tabular-nums' },
   numero: { display: 'block', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', fontVariantNumeric: 'tabular-nums' },
   categorie: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g1)', color: 'var(--text3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  horsService: { display: 'block', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', color: 'var(--text3)', lineHeight: 1.25 },
   nomBarre: { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 },
   libre: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t2)', fontVariantNumeric: 'tabular-nums' },
   legende: { display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', fontSize: 'var(--t1)', color: 'var(--text2)' },

@@ -60,7 +60,7 @@
 .hotel-plan th { font-weight: var(--g2); }
 .hotel-plan th.hotel-plan-tete {
   position: sticky; left: 0; z-index: 2; width: 84px;
-  padding: 2px 8px 2px 18px; text-align: left; font-size: var(--t2);
+  padding: 4px 6px 4px 14px; text-align: left; font-size: var(--t2);
   background: var(--zone);
 }
 .hotel-plan thead th.hotel-plan-tete, .hotel-plan tfoot th.hotel-plan-tete { color: var(--text2); font-size: var(--t1); }
@@ -107,3 +107,10 @@
 }
 .hotel-plan .hotel-plan-fleche:hover .hotel-plan-fleche-rond { background: var(--selection); }
 .hotel-plan .hotel-plan-fleche:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 0; }
+
+/* Au doigt, la règle globale des cibles porte chaque bouton à 44 px : la barre
+   prend 44 px et toutes les lignes s'alignent sur 52 px, avec ou sans barre. */
+@media (pointer: coarse) {
+  .hotel-plan tbody th, .hotel-plan tbody td { height: 52px; }
+  .hotel-plan .hotel-plan-case { height: 51px; }
+}

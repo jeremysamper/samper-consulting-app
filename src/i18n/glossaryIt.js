@@ -7064,6 +7064,7 @@ export const UI_GLOSSARY_IT = {
   "Les autres séjours du groupe": "Gli altri soggiorni del gruppo",
   "Les séjours sont créés. Le lien au groupe n'a pas pu être posé : reliez-le depuis une fiche.": "I soggiorni sono creati. Il collegamento al gruppo non è stato possibile: lo colleghi da una scheda.",
   // Lot 16 du panel : plan d'occupation des chambres.
+  "Nuits du": "Notti dal",
   "Plan d'occupation": "Piano di occupazione",
   "Libres": "Libere",
   "Créer un séjour, chambre": "Crea un soggiorno, camera",

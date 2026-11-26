@@ -7265,6 +7265,7 @@ export const UI_GLOSSARY_DE = {
   "Les autres séjours du groupe": "Die anderen Aufenthalte der Gruppe",
   "Les séjours sont créés. Le lien au groupe n'a pas pu être posé : reliez-le depuis une fiche.": "Die Aufenthalte sind angelegt. Die Verknüpfung mit der Gruppe konnte nicht gesetzt werden: Verknüpfen Sie sie über eine Karte.",
   // Lot 16 du panel : plan d'occupation des chambres.
+  "Nuits du": "Nächte vom",
   "Plan d'occupation": "Belegungsplan",
   "Libres": "Frei",
   "Créer un séjour, chambre": "Aufenthalt anlegen, Zimmer",

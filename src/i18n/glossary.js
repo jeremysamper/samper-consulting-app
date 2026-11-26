@@ -7335,6 +7335,7 @@ export const UI_GLOSSARY = {
   'Les autres séjours du groupe': "The group's other stays",
   "Les séjours sont créés. Le lien au groupe n'a pas pu être posé : reliez-le depuis une fiche.": 'The stays are created. The group link could not be set: link it from a record.',
   // Lot 16 du panel : plan d'occupation des chambres.
+  "Nuits du": "Nights from",
   "Plan d'occupation": "Occupancy plan",
   "Libres": "Free",
   "Créer un séjour, chambre": "Create a stay, room",
