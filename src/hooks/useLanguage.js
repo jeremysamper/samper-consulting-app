@@ -15,14 +15,14 @@ function readInitialLang() {
   return normalizeLang(readText(UI_STORAGE_KEYS.lang, 'fr'));
 }
 
-// Glossaire de la langue mémorisée (espagnol, allemand, italien) demandé dès le
+// Glossaire de la langue mémorisée (espagnol, allemand, italien, portugais) demandé dès le
 // chargement de l'app : il arrive pendant le démarrage, et initTranslator le
 // trouve prêt. Un appareil en Original ou en English ne charge rien.
 preloadGlossary(readInitialLang());
 
 /**
  * Mode d'affichage « Original » (français, tel que saisi), « English »,
- * « Español », « Deutsch » ou « Italiano » (traduction à la volée du DOM). Voir src/i18n/domTranslator.js
+ * « Español », « Deutsch », « Italiano » ou « Português » (traduction à la volée du DOM). Voir src/i18n/domTranslator.js
  */
 export function useLanguage(etablissementId) {
   const [state, setState] = useState(() => ({ lang: getLanguage(), translating: false, degraded: false }));

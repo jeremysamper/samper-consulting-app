@@ -7,22 +7,23 @@ const DEGRADED_MSG = 'Traduction partielle : le service de traduction est injoig
 
 // Chaque mode s'annonce dans sa propre langue : un cuisinier hispanophone doit
 // reconnaître « Español », un germanophone « Deutsch », un italophone
-// « Italiano », sans lire le français.
+// « Italiano », un lusophone « Português », sans lire le français.
 const MODES = [
   { id: 'fr', label: 'Original', code: 'FR', title: 'Afficher le texte original, tel que saisi' },
   { id: 'en', label: 'English', code: 'EN', title: 'Translate this app to English' },
   { id: 'es', label: 'Español', code: 'ES', title: 'Traducir la aplicación al español' },
   { id: 'de', label: 'Deutsch', code: 'DE', title: 'App auf Deutsch übersetzen' },
   { id: 'it', label: 'Italiano', code: 'IT', title: "Tradurre l'app in italiano" },
+  { id: 'pt', label: 'Português', code: 'PT', title: 'Traduzir a aplicação para português' },
 ];
 
 // Sélecteur de langue d'affichage : Original (français, tel que saisi),
-// English, Español, Deutsch ou Italiano (traduction à la volée du DOM). Le composant porte
+// English, Español, Deutsch, Italiano ou Português (traduction à la volée du DOM). Le composant porte
 // data-no-translate : ses propres libellés ne doivent jamais être traduits,
 // sinon on ne sait plus dans quel mode on est.
 //
 // Header (desktop et mobile) : variante compacte, un bouton 44×44 comme le
-// thème et la cloche, qui déroule la liste des cinq modes. Les segments
+// thème et la cloche, qui déroule la liste des six modes. Les segments
 // explicites (non compacts) restent disponibles pour d'autres écrans.
 export default function LanguageToggle({ compact = false, etablissementId = null }) {
   const { lang, translating, degraded, setLang } = useLanguage(etablissementId);
@@ -161,7 +162,7 @@ const s = {
     justifyContent: 'center',
     gap: 6,
     padding: '0 12px',
-    // 44 px au doigt, même réduit à son code (FR, EN, ES, DE, IT) sur un téléphone.
+    // 44 px au doigt, même réduit à son code (FR, EN, ES, DE, IT, PT) sur un téléphone.
     minWidth: 44,
     height: 44,
     flexShrink: 0,

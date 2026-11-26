@@ -128,8 +128,8 @@ export const SECTIONS = [
     charger: () => import('./sections/SectionApparence.jsx'),
   },
   {
-    id: 'langue', libelle: 'Langue', detail: "Original, English, Español, Deutsch ou Italiano, pour l'affichage",
-    motsCles: 'traduction anglais espagnol allemand italien', groupe: 'appareil', portee: 'appareil', garde: toutLeMonde,
+    id: 'langue', libelle: 'Langue', detail: "Original, English, Español, Deutsch, Italiano ou Português, pour l'affichage",
+    motsCles: 'traduction anglais espagnol allemand italien portugais', groupe: 'appareil', portee: 'appareil', garde: toutLeMonde,
     charger: () => import('./sections/SectionLangue.jsx'),
   },
   {

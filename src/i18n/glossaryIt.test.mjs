@@ -81,7 +81,7 @@ test('charte : ni tiret long, ni point médian, ni traduction vide', () => {
   assert.deepEqual(fautes, []);
 });
 
-test("l'italien est une cible du moteur, le portugais n'en est pas une", async () => {
+test("l'italien est une cible du moteur, une langue sans glossaire n'en est pas une", async () => {
   assert.ok(TARGET_LANGS.includes('it'));
-  await assert.rejects(loadGlossary('pt'));
+  await assert.rejects(loadGlossary('nl'));
 });
