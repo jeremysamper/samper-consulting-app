@@ -397,11 +397,14 @@ export function calculerConsommation({ inv, previousInv, documents, statuts, ctx
 // du module, écran « Vérifier la lecture », liste des documents) jusqu'à ce
 // qu'on le complète ou qu'on corrige le taux. Un document exclu à la main
 // (doublon, pièce mise de côté) n'est plus à compléter.
+// La TVA ne compte que sur une facture : « Vérifier la lecture » n'offre ni
+// TTC ni taux sur un bon de livraison, un bon lu avec HT = TTC restait donc
+// signalé pour toujours, même enregistré complet.
 export const estACompleter = (d) => !d.exclu && (
   (d.typeDocument === 'facture' && d.totalTTC == null)
   || !String(d.fournisseurNom || '').trim()
   || !d.dateDocument
-  || tvaIncoherente(d));
+  || (d.typeDocument === 'facture' && tvaIncoherente(d)));
 
 // ── Rattachement : produit créé depuis une ligne lue, décision propagée ──
 
