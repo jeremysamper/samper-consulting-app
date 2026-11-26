@@ -43,9 +43,9 @@ import {
 //     va tout à la fin du rail et laisse la place aux autres directs ;
 //   - il revient de lui-même dans la file quand la salle réclame la suite, et
 //     il se retrouve en glissant, ou d'un toucher sur « en attente » ;
-//   - gros caractères, lignes hautes, plein écran de base (21.11.2026) : le
-//     passe s'ouvre en plein écran à chaque arrivée sur le module, et
-//     « Quitter le plein écran » ne vaut que pour la visite en cours.
+//   - gros caractères, lignes hautes (21.11.2026). Le passe s'ouvre dans la
+//     coque comme les autres modules ; le plein écran se demande au bouton
+//     « Plein écran » et ne vaut que pour la visite en cours (26.11.2026).
 // Lot L4 (22.11.2026) :
 //   - un bandeau de récap compte chaque plat à sortir sur tous les bons, en
 //     deux colonnes, « En direct » (à faire) et « À suivre » (tenu) ;
@@ -169,7 +169,7 @@ const Kds = ({ user, etablissement, isActive = true }) => {
   const [lightspeed, setLightspeed] = React.useState(null);
   // figes : bons qui viennent d'être validés ici (clé -> { jusqua, depuis }).
   const [figes, setFiges] = React.useState(() => new Map());
-  const [plein, setPlein] = React.useState(true);
+  const [plein, setPlein] = React.useState(false);
   // aDroite : bons à faire cachés à droite de l'écran (file plus longue que lui).
   const [aDroite, setADroite] = React.useState(0);
   const [, setTick] = React.useState(0); // re-render 1 s pour les chronos
@@ -489,13 +489,14 @@ const Kds = ({ user, etablissement, isActive = true }) => {
     if (rail) rail.scrollBy({ left: rail.clientWidth * 0.9, behavior: 'smooth' });
   };
 
-  // ── Plein écran : un calque au-dessus de la coque, de base à chaque
-  // arrivée sur le module (le module reste monté quand on part ailleurs) ──
+  // ── Plein écran : un calque au-dessus de la coque, sur demande seulement.
+  // Chaque arrivée sur le module repart dans la coque (le module reste monté
+  // quand on part ailleurs) ──
   const immersif = plein && isActive;
   // Chaque arrivée sur le module ouvre aussi sur « En cours ».
   React.useEffect(() => {
-    if (!isActive) return;
-    setPlein(true);
+    if (!isActive) { sortirPleinNatif(); return; }
+    setPlein(false);
     ongletRef.current = 'cours';
     setOnglet('cours');
   }, [isActive]);
