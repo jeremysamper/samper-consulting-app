@@ -789,6 +789,16 @@ const RPC = {
   caisse_vider_tests() { return { supprimes: 0 }; },
   caisse_corriger_reservation(ctx, a) {
     const r = ctx.db.reservations.find((x) => x.id === a.p_reservation_id);
+    // Libérer la table (20261126_caisse_liberer_table.sql) : depuis arrive,
+    // sans ticket, quand plus aucun ticket ouvert ne porte la réservation.
+    if (r && a.p_statut === 'parti') {
+      if (a.p_ticket_id) throw new ErreurRpc('caisse: une table se libere sans ticket ouvert');
+      if (r.statut === 'parti') return { modifie: false, reservation_id: r.id, statut: r.statut };
+      if (r.statut !== 'arrive') throw new ErreurRpc('caisse: le statut de cette reservation ne se change pas ici');
+      if (ctx.db.caisse_tickets.some((t) => t.reservation_id === r.id && t.statut === 'ouvert')) {
+        throw new ErreurRpc('caisse: un ticket ouvert porte encore cette reservation');
+      }
+    }
     if (r) ctx.maj('reservations', r, { ...(a.p_nom ? { nom: a.p_nom } : {}), ...(a.p_couverts ? { nb_couverts: a.p_couverts } : {}), ...(a.p_statut ? { statut: a.p_statut } : {}) });
     return r ? { ...r } : null;
   },

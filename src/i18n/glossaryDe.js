@@ -7404,4 +7404,14 @@ export const UI_GLOSSARY_DE = {
   "Sens du plan": "Ausrichtung des Plans",
   "Adapté à l'écran": "An den Bildschirm angepasst",
   "Comme dessiné": "Wie gezeichnet",
+  // Caisse : libérer la table (26.11.2026).
+  "Annuler, garder la table": "Stornieren, Tisch behalten",
+  "Annuler et libérer la table": "Stornieren und Tisch freigeben",
+  "La table reste au nom du client. Un toucher sur la table rouvre un ticket.": "Der Tisch bleibt auf den Namen des Gastes. Ein Tippen auf den Tisch öffnet wieder einen Bon.",
+  "La table redevient libre. Le client reste compté dans les arrivées.": "Der Tisch ist wieder frei. Der Gast zählt weiter zu den Anreisen.",
+  "Libérer la table": "Tisch freigeben",
+  "Table libérée": "Tisch freigegeben",
+  "Ticket annulé, table libérée": "Bon storniert, Tisch freigegeben",
+  "Annulez ou encaissez d'abord le ticket de cette table.": "Stornieren oder kassieren Sie zuerst den Bon dieses Tisches.",
+  "Un ticket ouvert porte encore cette réservation : la table reste occupée.": "Ein offener Bon gehört noch zu dieser Reservation: Der Tisch bleibt besetzt.",
 };

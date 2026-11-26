@@ -9,8 +9,11 @@ import { heureCourte } from './clients.js';
 // du moment, avec leurs couverts. Un toucher sur un chiffre ouvre la liste.
 // Dans la liste « En retard », la salle pose « Arrivé » ou, passé le délai
 // réglé, « No-show » : un toucher par réservation, jamais rien de seul (RPC
-// caisse_corriger_reservation, appelée par Caisse.jsx). En mode test, les
-// listes se lisent sans geste : le poste n'écrit rien dans les réservations.
+// caisse_corriger_reservation, appelée par Caisse.jsx). Dans la liste
+// « Arrivées », une arrivée qu'aucun ticket ouvert ne porte (ticket annulé,
+// arrivée cochée sans ticket) peut libérer sa table : la réservation passe à
+// parti et reste comptée dans les arrivées. En mode test, les listes se lisent
+// sans geste : le poste n'écrit rien dans les réservations.
 // Les comptes viennent de reservationsDuService (accueilCaisse.js).
 // Les noms des clients et des tables sont des données : data-no-translate.
 // ─────────────────────────────────────────────────────────────────────────────
@@ -107,6 +110,16 @@ export default function BandeauService({ service, resas, nomsTables = new Map(),
                     </span>
                     {volet === 'retard' && actions && (
                       <GestesRetard resa={r} onPoser={onPoser} enCours={statutEnCours === r.id} delaiMinutes={delaiMinutes} />
+                    )}
+                    {volet === 'arrivees' && actions && r.peutLiberer && (
+                      <Btn
+                        variant="ghost"
+                        disabled={statutEnCours === r.id}
+                        onClick={() => onPoser(r, 'parti')}
+                        style={st.geste}
+                      >
+                        Libérer la table
+                      </Btn>
                     )}
                   </div>
                 );

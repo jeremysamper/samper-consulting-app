@@ -54,6 +54,9 @@ const MESSAGES_RPC = {
   'caisse: le statut de cette reservation ne se change pas ici': 'Le statut de cette réservation se change dans Réservations.',
   'caisse: reservation de groupe, nom et couverts se corrigent dans Groupes': "Réservation d'un groupe : le nom et les couverts se corrigent dans Groupes.",
   'caisse: correction non enregistree': "La correction n'a pas été enregistrée. Réessayez.",
+  // Libérer la table (migration 20261126_caisse_liberer_table).
+  'caisse: une table se libere sans ticket ouvert': "Annulez ou encaissez d'abord le ticket de cette table.",
+  'caisse: un ticket ouvert porte encore cette reservation': 'Un ticket ouvert porte encore cette réservation : la table reste occupée.',
   // v6 : mode test, annonce des suites, retour « prêt ».
   [MODE_TEST_INACTIF]: "Le mode test n'est plus actif sur ce poste.",
   'caisse: poste invalide': 'Ce poste est mal identifié. Rechargez la page.',
@@ -305,9 +308,10 @@ export async function listJournalTests(etablissementId, limite = 30) {
 }
 
 // Correction d'une réservation par le service : rattachement du ticket, nom,
-// couverts, statut vers 'arrive' ou 'no_show'. Rien d'autre ne s'écrit par ce
-// chemin, et chaque correction laisse une ligne au Journal d'activité.
-// Sans ticket (liste « Réservations sans ticket ») : ticketId absent.
+// couverts, statut vers 'arrive' ou 'no_show', ou vers 'parti' pour libérer la
+// table (sans ticket, quand plus aucun ticket ouvert ne porte la réservation).
+// Rien d'autre ne s'écrit par ce chemin, et chaque correction laisse une ligne
+// au Journal d'activité. Sans ticket (bandeau du service) : ticketId absent.
 export async function corrigerReservation({ etablissementId, reservationId, ticketId = null, nom = null, couverts = null, statut = null }) {
   const { data, error } = await supabase.rpc('caisse_corriger_reservation', {
     p_etablissement_id: etablissementId,

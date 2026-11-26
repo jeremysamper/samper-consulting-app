@@ -4,7 +4,7 @@ import {
   Minimize2, Minus, MoreHorizontal, Pencil, Plus, Search, Send, Trash2, TriangleAlert, Layers, X,
 } from 'lucide-react';
 import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
-import { BoutonActions, Fenetre, st as fen } from '../../components/ui/Fenetres.jsx';
+import { BoutonActions, Choix, Fenetre, st as fen } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
 import { useBackLayer } from '../../hooks/useBackLayer.js';
 import { makeSearchMatcher } from '../../utils/searchText.js';
@@ -147,6 +147,8 @@ export default function TicketEcran({
   const [ficheLigneId, setFicheLigneId] = React.useState(null);
   const [sansRecents, setSansRecents] = React.useState([]);
   const [libreOuvert, setLibreOuvert] = React.useState(false);
+  const [annulerOuvert, setAnnulerOuvert] = React.useState(false);
+  const [annulationEnCours, setAnnulationEnCours] = React.useState(false);
   const [libreNom, setLibreNom] = React.useState('');
   const [librePrix, setLibrePrix] = React.useState('');
   const [paiementOuvert, setPaiementOuvert] = React.useState(false);
@@ -604,12 +606,41 @@ export default function TicketEcran({
     onFusionne();
   }
 
-  async function annuler() {
-    if (!window.confirm('Annuler ce ticket ? Les lignes déjà envoyées restent en cuisine.')) return;
-    const { error } = await caisse.majTicket(ticket.id, { statut: 'annule', closed_at: new Date().toISOString() });
-    if (erreur(error)) return;
-    notify('Ticket annulé', 'info');
-    onClos();
+  // Annuler le ticket, depuis la fenêtre « Annuler le ticket » : la table
+  // reste au nom du client (comportement d'avant), ou se libère. Libérer
+  // passe la réservation à parti par la RPC, une fois le ticket annulé : elle
+  // reste comptée dans les arrivées et les couverts. Un verrou en ref évite
+  // deux annulations ; la fenêtre se ferme toujours, l'écriture continue.
+  const verrouAnnulation = React.useRef(false);
+  const peutLiberer = !modeTest && Boolean(ticket.reservation_id);
+  async function annuler(liberer = false) {
+    if (verrouAnnulation.current) return;
+    verrouAnnulation.current = true;
+    setAnnulationEnCours(true);
+    try {
+      const reservationId = liberer && peutLiberer ? ticket.reservation_id : null;
+      const { error } = await caisse.majTicket(ticket.id, { statut: 'annule', closed_at: new Date().toISOString() });
+      if (erreur(error)) return;
+      if (reservationId) {
+        const { error: refus } = await caisse.corrigerReservation({
+          etablissementId: ticket.etablissement_id, reservationId, statut: 'parti',
+        });
+        if (refus) {
+          notify('Ticket annulé', 'info');
+          notify(refus, 'error');
+        } else {
+          notify('Ticket annulé, table libérée', 'success');
+        }
+        await onReservationsChange?.();
+      } else {
+        notify('Ticket annulé', 'info');
+      }
+      setAnnulerOuvert(false);
+      onClos();
+    } finally {
+      verrouAnnulation.current = false;
+      setAnnulationEnCours(false);
+    }
   }
 
   // Rupture (L2) : met en rupture ou remet en vente un ou plusieurs produits.
@@ -907,7 +938,7 @@ export default function TicketEcran({
           },
           { titre: 'Déplacer vers une autre table', onClick: onDeplacer },
           ticketsMemeTable.length > 0 && { titre: 'Fusionner les tickets de la table', onClick: fusionner },
-          { titre: 'Annuler le ticket', detail: 'Les articles déjà envoyés restent en cuisine', danger: true, onClick: annuler },
+          { titre: 'Annuler le ticket', detail: 'Les articles déjà envoyés restent en cuisine', danger: true, onClick: () => setAnnulerOuvert(true) },
         ] },
       ]}
     />
@@ -1499,6 +1530,36 @@ export default function TicketEcran({
               <span style={fen.label}>Prix</span>
               <Input value={librePrix} onChange={(e) => setLibrePrix(e.target.value)} type="text" inputMode="decimal" style={{ minHeight: 44, width: '100%' }} />
             </label>
+          </div>
+        </Fenetre>
+      )}
+      {annulerOuvert && (
+        <Fenetre
+          id="caisse-annuler-ticket"
+          titre="Annuler le ticket"
+          sousTitre="Les articles déjà envoyés restent en cuisine."
+          onClose={() => setAnnulerOuvert(false)}
+          largeur={420}
+          pied={<button type="button" style={fen.secondaire} onClick={() => setAnnulerOuvert(false)}>Fermer</button>}
+        >
+          <div style={fen.options} data-caisse-annuler="">
+            {/* Sans réservation, rien ne tient la table : un seul choix. */}
+            <Choix
+              titre={peutLiberer ? 'Annuler, garder la table' : 'Annuler le ticket'}
+              detail={peutLiberer ? 'La table reste au nom du client. Un toucher sur la table rouvre un ticket.' : null}
+              danger
+              disabled={annulationEnCours}
+              onClick={() => annuler(false)}
+            />
+            {peutLiberer && (
+              <Choix
+                titre="Annuler et libérer la table"
+                detail="La table redevient libre. Le client reste compté dans les arrivées."
+                danger
+                disabled={annulationEnCours}
+                onClick={() => annuler(true)}
+              />
+            )}
           </div>
         </Fenetre>
       )}

@@ -7474,6 +7474,16 @@ export const UI_GLOSSARY = {
   "Sens du plan": "Plan orientation",
   "Adapté à l'écran": "Fit to screen",
   "Comme dessiné": "As drawn",
+  // Caisse : libérer la table (26.11.2026).
+  "Annuler, garder la table": "Cancel, keep the table",
+  "Annuler et libérer la table": "Cancel and free up the table",
+  "La table reste au nom du client. Un toucher sur la table rouvre un ticket.": "The table stays under the guest's name. A tap on the table reopens a ticket.",
+  "La table redevient libre. Le client reste compté dans les arrivées.": "The table becomes free again. The guest still counts among the arrivals.",
+  "Libérer la table": "Free up the table",
+  "Table libérée": "Table freed up",
+  "Ticket annulé, table libérée": "Ticket cancelled, table freed up",
+  "Annulez ou encaissez d'abord le ticket de cette table.": "Cancel or settle this table's ticket first.",
+  "Un ticket ouvert porte encore cette réservation : la table reste occupée.": "An open ticket still carries this booking: the table stays occupied.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.

@@ -108,7 +108,9 @@ const parHeure = (a, b) => String(a.heure_arrivee || '').localeCompare(String(b.
 // (heure passée, personne assis) et no-show. Les demandes en ligne pas encore
 // confirmées et les annulées n'y entrent pas : elles ne sont pas attendues.
 // Une réservation en retard depuis `delaiMinutes` peut être marquée no-show :
-// la caisse le propose, elle ne le pose jamais seule.
+// la caisse le propose, elle ne le pose jamais seule. Une arrivée qu'aucun
+// ticket ouvert ne porte (ticket annulé, arrivée cochée sans ticket) peut
+// libérer sa table : peutLiberer, la base passe la réservation à parti.
 export function reservationsDuService(reservations, { jour, service, tickets = [], maintenantMinutes, delaiMinutes = 30 }) {
   const prises = new Set((tickets || []).map((t) => t.reservation_id).filter(Boolean));
   const arrivees = [];
@@ -119,7 +121,10 @@ export function reservationsDuService(reservations, { jour, service, tickets = [
     .filter((r) => r.date_service === jour && serviceAffiche(r.service) === service)
     .sort(parHeure)
     .forEach((r) => {
-      if (r.statut === 'arrive' || r.statut === 'parti' || (r.statut === 'confirme' && prises.has(r.id))) { arrivees.push(r); return; }
+      if (r.statut === 'arrive' || r.statut === 'parti' || (r.statut === 'confirme' && prises.has(r.id))) {
+        arrivees.push({ ...r, peutLiberer: r.statut === 'arrive' && !prises.has(r.id) });
+        return;
+      }
       if (r.statut === 'no_show') { noShow.push(r); return; }
       if (r.statut !== 'confirme') return;
       const m = minutesDe(r.heure_arrivee);

@@ -108,6 +108,12 @@ const dateCH = (jour) => { const [a, m, j] = String(jour || '').split('-'); retu
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
 const totalTicket = (t) => (t.lignes || []).reduce((s, l) => s + Number(l.quantite) * Number(l.prix_unitaire), 0);
+// Message de chaque statut posé depuis le bandeau du service.
+const MESSAGES_STATUT = {
+  arrive: 'Réservation marquée arrivée',
+  no_show: 'Réservation marquée no-show',
+  parti: 'Table libérée',
+};
 
 export default function Caisse({ user, etablissement, legacyVersion }) {
   const etabId = etablissement?.id;
@@ -698,8 +704,9 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
     }
   }
 
-  // Réservation en retard (bandeau du service, « À faire maintenant ») : un
-  // tap par ligne, rien n'est posé seul. Jamais en mode test.
+  // Réservation en retard (bandeau du service, « À faire maintenant ») et
+  // arrivée à libérer (liste « Arrivées », statut parti) : un tap par ligne,
+  // rien n'est posé seul. Jamais en mode test.
   async function poserStatut(resa, statut) {
     if (modeTest) return;
     if (statutEnCours) return;
@@ -709,7 +716,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         etablissementId: etabId, reservationId: resa.id, statut,
       });
       if (error) { notify(error, 'error'); return; }
-      notify(statut === 'no_show' ? 'Réservation marquée no-show' : 'Réservation marquée arrivée', 'success');
+      notify(MESSAGES_STATUT[statut] || 'Réservation marquée arrivée', 'success');
       await rechargerReservations();
     } finally {
       setStatutEnCours(null);

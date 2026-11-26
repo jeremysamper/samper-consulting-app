@@ -81,6 +81,8 @@ test('reservationsDuService range le service du moment, rien d\'autre', () => {
     jour: JOUR, service: 'soir', tickets: [{ reservation_id: 'j' }], maintenantMinutes: 19 * 60 + 45, delaiMinutes: 30,
   });
   assert.deepEqual(s.arrivees.map((r) => r.id), ['b', 'a', 'j']);
+  // Seule une arrivée sans ticket ouvert libère sa table (pas une partie).
+  assert.deepEqual(s.arrivees.map((r) => [r.id, r.peutLiberer]), [['b', false], ['a', true], ['j', false]]);
   assert.deepEqual(s.prevues.map((r) => r.id), ['d']);
   assert.deepEqual(s.retard.map((r) => [r.id, r.retard, r.peutNoShow]), [['e', 35, true], ['c', 15, false]]);
   assert.deepEqual(s.noShow.map((r) => r.id), ['f']);

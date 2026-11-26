@@ -7198,4 +7198,14 @@ export const UI_GLOSSARY_PT = {
   "Sens du plan": "Orientação da planta",
   "Adapté à l'écran": "Adaptado ao ecrã",
   "Comme dessiné": "Como desenhado",
+  // Caisse : libérer la table (26.11.2026).
+  "Annuler, garder la table": "Anular, manter a mesa",
+  "Annuler et libérer la table": "Anular e libertar a mesa",
+  "La table reste au nom du client. Un toucher sur la table rouvre un ticket.": "A mesa fica em nome do cliente. Um toque na mesa reabre uma conta.",
+  "La table redevient libre. Le client reste compté dans les arrivées.": "A mesa volta a ficar livre. O cliente continua contado nas chegadas.",
+  "Libérer la table": "Libertar a mesa",
+  "Table libérée": "Mesa libertada",
+  "Ticket annulé, table libérée": "Conta anulada, mesa libertada",
+  "Annulez ou encaissez d'abord le ticket de cette table.": "Anule ou cobre primeiro a conta desta mesa.",
+  "Un ticket ouvert porte encore cette réservation : la table reste occupée.": "Uma conta aberta ainda está ligada a esta reserva: a mesa continua ocupada.",
 };
