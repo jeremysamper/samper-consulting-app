@@ -17,7 +17,7 @@ const CHOIX = [
   { id: 'en_vente', titre: 'En vente', aide: 'Le produit se commande normalement sur toutes les caisses.' },
   { id: 'rupture_jour', titre: 'Rupture aujourd\'hui', aide: 'La case est grisée jusqu\'à demain matin. Le produit revient en vente tout seul.' },
   { id: 'epuise', titre: 'Épuisé jusqu\'à nouvel arrivage', aide: 'La case reste grisée les jours suivants, jusqu\'à ce que vous le remettiez en vente.' },
-  { id: 'portions', titre: 'Il en reste', aide: 'Chaque vente retire une portion. À zéro, le produit passe en rupture jusqu\'à demain matin.' },
+  { id: 'portions', titre: "Il en reste aujourd'hui", aide: 'Chaque vente retire une portion. À zéro, le produit passe en rupture jusqu\'à demain matin.' },
 ];
 
 // État de la règle pure (etatDisponibilite) vers le choix de la feuille.

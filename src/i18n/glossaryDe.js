@@ -7180,6 +7180,7 @@ export const UI_GLOSSARY_DE = {
   'Règle de partage enregistrée.': 'Verteilregel gespeichert.',
   'Règle de partage retirée.': 'Verteilregel entfernt.',
   // Lot 12 du panel : disponibilité d'un produit de la caisse (rupture, épuisé, portions du jour).
+  "Il en reste aujourd'hui": "Heute noch einige übrig",
   "Disponibilité du produit": "Verfügbarkeit des Produkts",
   "En vente": "Im Verkauf",
   "Rupture aujourd'hui": "Heute ausverkauft",

@@ -94,7 +94,7 @@ const categorieDe = (pl) => CAISSE_CATEGORIES.find((c) => c.nom === pl.categorie
 export function genererCaisse() {
   const tousPlats = [...PLATS, ...BOISSONS];
   const PLAT_COMPTE = 'pl-tarte';
-  const VIN_EPUISE = 'pl-b-pinot-blanc-travaletti';
+  const VIN_EPUISE = 'pl-b-cornalin-btl';
   const boutons = tousPlats.map((pl, i) => ({
     id: uid('8002', i + 1),
     etablissement_id: ETAB,
@@ -112,7 +112,7 @@ export function genererCaisse() {
     // montre une case grisée et le compteur.
     rupture_le: pl.id === 'pl-fera' ? aujourdhui() : pl.id === VIN_EPUISE ? jour(-2) : null,
     // Lot 12 du panel : la tarte au compteur (il en reste 3 aujourd'hui), le
-    // pinot blanc épuisé depuis deux jours, jusqu'à nouvel arrivage.
+    // cornalin en bouteille épuisé depuis deux jours, jusqu'à nouvel arrivage.
     epuise_durable: pl.id === VIN_EPUISE,
     portions_le: pl.id === PLAT_COMPTE ? aujourdhui() : null,
     portions_restantes: pl.id === PLAT_COMPTE ? 3 : null,

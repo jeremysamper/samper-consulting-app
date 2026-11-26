@@ -7250,6 +7250,7 @@ export const UI_GLOSSARY = {
   'Règle de partage enregistrée.': 'Sharing rule saved.',
   'Règle de partage retirée.': 'Sharing rule removed.',
   // Lot 12 du panel : disponibilité d'un produit de la caisse (rupture, épuisé, portions du jour).
+  "Il en reste aujourd'hui": "A few left today",
   "Disponibilité du produit": "Product availability",
   "En vente": "On sale",
   "Rupture aujourd'hui": "Sold out today",

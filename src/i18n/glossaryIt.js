@@ -6979,6 +6979,7 @@ export const UI_GLOSSARY_IT = {
   'Règle de partage enregistrée.': 'Regola di ripartizione salvata.',
   'Règle de partage retirée.': 'Regola di ripartizione rimossa.',
   // Lot 12 du panel : disponibilité d'un produit de la caisse (rupture, épuisé, portions du jour).
+  "Il en reste aujourd'hui": "Ne restano alcune oggi",
   "Disponibilité du produit": "Disponibilità del prodotto",
   "En vente": "In vendita",
   "Rupture aujourd'hui": "Esaurito oggi",
