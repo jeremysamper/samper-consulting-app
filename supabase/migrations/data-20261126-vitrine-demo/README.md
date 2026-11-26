@@ -7,13 +7,15 @@
 - Conversion (`02-convertir.mjs`) : identifiants réécrits (suffixe `-vitrine` pour les identifiants texte, uuid dérivé pour les autres), adresses en `.example` et `.test` (aucun envoi possible), onze personnes fictives sans compte de connexion (profils seuls). Écartés : préférences liées à un compte, POS (module à supprimer, une connexion fictive serait synchronisée), traçabilité HACCP (photo obligatoire), alertes (règle obligatoire). Valeurs refusées par les CHECK de la base corrigées (maladie en absence, TWINT en « autre » avec libellé, assurance en assurances, source de prix en scan, heure de rappel d'une procédure).
 - Gardés tels quels dans Démo : les 1 175 fiches de l'import du 15.11, les cinq fiches homonymes du jeu (frites, gratin, fond brun, pickles, mousse) reliées aux fiches existantes (une fiche par nom), les groupes de planning Salle et Cuisine, les réglages de points et des demandes par QR, la chambre 1, les deux personnes réelles.
 - Semis (`03-semer.sql`) : 4 159 lignes sur 114 tables, inscrites au registre `vitrine.lignes`, déclencheurs coupés. Tickets renumérotés de 1 à 192, clôtures recalculées par `caisse_totaux_jour`, chaîne d'intégrité de 204 maillons scellée par `vitrine.resceller()` (contrôle : 0 maillon faux). Type de l'établissement passé à Hôtel-Restaurant.
+- Historique (`04-historique.sql`, le 27.11 à 0 h) : les jours passés du jeu recopiés en arrière par blocs de semaines entières, une part des lignes gardée par copie (tirage par empreinte) pour que les périodes diffèrent. Réservations, prévisions, horaires, relevés et contrôles HACCP sur 3 semaines x 4 copies ; caisse (tickets, lignes, paiements, clôtures) et pertes sur 2 semaines x 6 ; achats sur 6 semaines x 2 ; ventes du jour sur 8 semaines x 1 ; séjours terminés de l'hôtel avec occupants et prestations sur 3 semaines x 4. Registre porté à 16 993 lignes. Réservations depuis le 13.08, caisse depuis le 20.08 (1 210 tickets renumérotés de 1 à 1 210, 84 clôtures), chaîne reconstruite dans l'ordre du temps : 1 294 maillons, 0 faux.
 
 ## Tous les jours
 `vitrine.rattraper()` tourne chaque heure (pg_cron `vitrine-demo-rattraper`, minute 11) : au premier passage d'un jour neuf, toutes les dates des lignes du registre avancent d'autant de jours (`vitrine.avancer`), puis la chaîne de la caisse est rescellée. La vitrine montre donc toujours le même jour type : midi en cours, soir à venir, historique derrière, semaine devant. Ce qui est saisi à la main dans Démo ne bouge jamais. Journal : `select * from vitrine.journal order by le desc;` (colonne `echecs`).
 
 ## Limites connues
 - Le jour est figé à midi : à 16 h, les tables ouvertes de midi le sont toujours, et le soir passe « en retard » après l'heure des réservations.
-- Historique court : trois semaines de réservations, deux de caisse, deux mois de ventes. Les comparaisons des Statistiques sur 30 jours n'ont pas de période précédente.
+- Historique de trois mois et demi au plus, qui ne s'allonge pas : la fenêtre avance avec le jour. Le spa, la mise en place, les demandes et le journal gardent la profondeur du jeu.
+- Les ventes du jour (comptabilité) et les clôtures de caisse ne concordent pas jour par jour : c'était déjà le cas dans le jeu de la démo publique.
 - Documents : les fichiers ne sont pas dans le stockage, leur ouverture échoue.
 - KDS vide (les commandes en cuisine naissent d'un déclencheur, coupé au semis).
 - Un ticket encaissé à la main dans Démo prend la suite de la chaîne, mais ses dates ne bougent pas : les tickets semés le dépassent dans le temps.
@@ -25,4 +27,4 @@
 1. `node 01-generer-jeu.mjs <racine du dépôt> <dossier>/base-demo.json 2026-11-26T11:15:00Z`
 2. Schéma de production : colonnes de chaque table (requête sur `information_schema.columns`) dans `<dossier>/schema-prod.json`, puis `node 02-convertir.mjs <dossier>` : un fichier JSON par lot dans `<dossier>/depots/`.
 3. Le connecteur ne peut pas porter 2 Mo. Envoi fait le 26.11 : table `vitrine.depot` et fonction temporaire `public.vitrine_depot_recevoir`, gardée par l'empreinte sha256 d'un secret tiré sur le poste, appelée par curl avec la clé publique de l'app ; supprimées après le semis. Avec la CLI (`npx supabase db query -f`), les lots peuvent passer par fichier.
-4. `03-semer.sql`, d'abord avec `rollback` à la place de `commit`.
+4. `03-semer.sql`, puis `04-historique.sql`, chacun d'abord avec `rollback` à la place de `commit`.
