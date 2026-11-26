@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import PlancheMouvement from './PlancheMouvement.jsx';
+import { installerAppui } from '../utils/mouvement.js';
 import '../styles/fonts.css';
 import '../styles/app.css';
 
@@ -16,6 +17,8 @@ function lireCle(cle) {
 const theme = lireCle('sc_theme');
 if (theme === 'light' || theme === 'dark') document.documentElement.setAttribute('data-theme', theme);
 if (lireCle('sc_pref_mouvement') === 'reduit') document.documentElement.setAttribute('data-mouvement', 'reduit');
+
+installerAppui();
 
 createRoot(document.getElementById('root')).render(
   <React.StrictMode>

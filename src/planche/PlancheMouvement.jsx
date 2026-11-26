@@ -573,7 +573,7 @@ const st = {
 };
 
 export default function PlancheMouvement() {
-  const [dose, setDose] = React.useState('sobre');
+  const [dose, setDose] = React.useState('marque');
   const reduit = mouvementReduit();
   return (
     <div className="planche" data-dose={dose}>
