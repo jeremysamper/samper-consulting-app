@@ -277,7 +277,10 @@ export default defineConfig({
         commande: 'commande.html',
         // Demande de l'hôte par le QR de la chambre (/chambre/<jeton>, lot 17),
         // sans le bundle de l'app.
-        chambre: 'chambre.html'
+        chambre: 'chambre.html',
+        // Planche de mouvement : page de décision du chantier mouvement, sur
+        // sa branche de démonstration seulement (elle ne part pas sur main).
+        planche: 'planche-mouvement.html'
       },
       output: {
         manualChunks: {

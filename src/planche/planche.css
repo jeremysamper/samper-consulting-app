@@ -1,0 +1,453 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   Planche de mouvement (planche-mouvement.html). Page de décision, hors de
+   l'app : la mise en page des exemples et les deux dosages. Les mouvements
+   eux-mêmes sont ceux du socle (section « Mouvement (socle) » d'app.css,
+   src/utils/mouvement.js) ; rien ne se redéfinit ici que les jetons.
+   ───────────────────────────────────────────────────────────────────────────── */
+
+.planche {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 16px 96px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--t2);
+}
+
+/* Les deux dosages. « Sobre » est celui de :root. « Marqué » allonge les
+   durées, creuse l'enfoncement, allonge le trajet et donne du ressort. */
+.planche[data-dose="marque"] {
+  --mvt-1: 140ms;
+  --mvt-2: 260ms;
+  --mvt-3: 420ms;
+  --courbe-ressort: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --mvt-enfonce: 0.94;
+  --mvt-trajet: 16px;
+}
+/* Animations réduites : les deux dosages s'éteignent, comme dans l'app. */
+@media (prefers-reduced-motion: reduce) {
+  .planche[data-dose] { --mvt-1: 0.01ms; --mvt-2: 0.01ms; --mvt-3: 0.01ms; --mvt-enfonce: 1; --mvt-trajet: 0px; }
+}
+html[data-mouvement="reduit"] .planche[data-dose] { --mvt-1: 0.01ms; --mvt-2: 0.01ms; --mvt-3: 0.01ms; --mvt-enfonce: 1; --mvt-trajet: 0px; }
+
+.planche-tete { margin-bottom: 8px; }
+.planche-titre { margin: 0; font-size: var(--t6); font-weight: var(--g2); }
+.planche-chapeau { margin: 8px 0 0; max-width: 60ch; color: var(--text2); }
+.planche-dose {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  padding: 10px 0;
+  background: var(--bg);
+}
+.planche-note {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--r);
+  background: var(--piste);
+  color: var(--text);
+}
+
+.planche-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: 24px;
+}
+.planche-carte {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--r-lg);
+  background: var(--zone);
+  box-shadow: var(--sh);
+}
+.planche-carte--large { grid-column: 1 / -1; }
+.planche-carte-titre { margin: 0; font-size: var(--t3); font-weight: var(--g3); }
+.planche-carte-texte { margin: 6px 0 0; color: var(--text2); }
+.planche-scene { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; margin-top: 16px; }
+.planche-rang { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.planche-rang--serre { flex-wrap: nowrap; gap: 8px; }
+.planche-rang--fin { justify-content: flex-end; margin-top: 20px; }
+.planche-colonne { display: flex; flex-direction: column; gap: 12px; width: 100%; min-width: 0; }
+
+/* ── Boutons : l'enfoncement. Ici sur tous les boutons de la planche ; dans
+   l'app, la même règle rejoindra « Affordance cliquable généralisée ». ── */
+.planche button {
+  transition:
+    transform var(--mvt-1) var(--courbe-ressort),
+    filter 0.12s ease,
+    background-color var(--mvt-1) ease,
+    color var(--mvt-1) ease;
+}
+.planche button:not(:disabled):active { transform: scale(var(--mvt-enfonce)); }
+.planche-rond {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--btn-bord);
+  border-radius: var(--r-full);
+  background: var(--btn-fond);
+  color: var(--btn-texte);
+  cursor: pointer;
+}
+.planche-tourne {
+  width: 14px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: var(--r-full);
+  animation: spin 0.7s linear infinite;
+}
+
+/* ── Onglets ── */
+.planche-onglets {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+  padding: 4px;
+  border-radius: var(--r-full);
+  background: var(--piste);
+}
+.planche-onglets-pilule {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 0;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  transition: transform var(--mvt-2) var(--courbe-ressort), width var(--mvt-2) var(--courbe);
+}
+.planche-onglet {
+  position: relative;
+  min-height: var(--controle);
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text2);
+  font: inherit;
+  font-weight: var(--g2);
+  cursor: pointer;
+}
+.planche-onglet.is-actif { color: var(--on-accent); }
+
+/* ── Interrupteur et case ── */
+.planche-inter,
+.planche-case {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.planche-inter-piste {
+  position: relative;
+  flex-shrink: 0;
+  width: 46px;
+  height: 28px;
+  border-radius: var(--r-full);
+  background: var(--champ-bord);
+  transition: background-color var(--mvt-2) var(--courbe);
+}
+.planche-inter-bouton {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-full);
+  background: var(--surface);
+  transition: transform var(--mvt-2) var(--courbe-ressort), background-color var(--mvt-2) var(--courbe);
+}
+.planche-inter[aria-checked="true"] .planche-inter-piste { background: var(--accent); }
+.planche-inter[aria-checked="true"] .planche-inter-bouton { transform: translateX(18px); background: var(--on-accent); }
+.planche-case-boite {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 1.5px solid var(--champ-bord);
+  border-radius: var(--r-sm);
+  color: var(--on-accent);
+  transition: background-color var(--mvt-1) ease, border-color var(--mvt-1) ease;
+}
+.planche-case[aria-checked="true"] .planche-case-boite { border-color: var(--accent); background: var(--accent); }
+
+/* ── Liste ── */
+.planche-liste {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--r);
+}
+.planche-liste:empty { display: none; }
+.planche-ligne {
+  display: flex;
+  align-items: center;
+  min-height: var(--ligne-aeree);
+  border-bottom: 1px solid var(--rule-soft);
+  background: var(--surface);
+  transition: background-color var(--mvt-1) ease;
+}
+.planche-ligne:last-child { border-bottom: 0; }
+.planche-ligne[data-choisie] { background: var(--selection); }
+.planche-ligne-corps {
+  flex: 1;
+  min-width: 0;
+  min-height: var(--ligne-aeree);
+  padding: 0 14px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* Une ligne répond par son fond, pas par son échelle. */
+.planche .planche-ligne-corps:not(:disabled):active { transform: none; }
+.planche-ligne-retirer {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text3);
+  cursor: pointer;
+}
+
+/* ── Validation ── */
+.planche-label { color: var(--text2); font-size: var(--t1); }
+.planche-champ {
+  flex: 1;
+  min-width: 0;
+  height: var(--controle);
+  padding: 0 12px;
+  border: 1px solid var(--champ-bord);
+  border-radius: var(--r);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+}
+.planche-champ[data-erreur] { border-color: var(--danger-text); }
+.planche-verdict { min-height: 22px; margin: 0; font-size: var(--t1); }
+.planche-erreur,
+.planche-ok { display: inline-flex; align-items: center; gap: 6px; }
+.planche-erreur { color: var(--danger-text); }
+.planche-ok { color: var(--success-text); }
+
+/* ── Message ── */
+.planche-messages { display: flex; flex-direction: column; gap: 8px; width: 100%; min-height: 48px; }
+.planche-message {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r);
+  background: var(--toast-fond);
+  color: var(--toast-texte);
+}
+.planche-message-picto { display: grid; color: var(--toast-succes); }
+
+/* ── Fenêtre et feuille ── */
+.planche-voile {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.45);
+}
+.planche-voile--bas { align-items: flex-end; padding: 0; }
+.planche-fenetre {
+  width: min(420px, 100%);
+  padding: 24px;
+  border-radius: var(--r-xl);
+  background: var(--surface);
+  box-shadow: var(--sh-lg);
+}
+.planche-fenetre-titre { margin: 0; font-size: var(--t4); font-weight: var(--g2); }
+.planche-feuille {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: min(520px, 100%);
+  padding: 28px 24px calc(24px + env(safe-area-inset-bottom));
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  background: var(--surface);
+  box-shadow: var(--sh-lg);
+  text-align: center;
+}
+.planche-feuille-libelle { margin: 0; color: var(--text3); }
+.planche-feuille-chiffre {
+  margin: 0;
+  font-family: var(--font-num);
+  font-size: var(--t6);
+  font-weight: var(--g-chiffre);
+}
+.planche-moyens { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; margin: 8px 0; }
+.planche-moyen {
+  min-height: 64px;
+  border: 1px solid var(--btn-bord);
+  border-radius: var(--r-lg);
+  background: var(--btn-fond);
+  color: var(--btn-texte);
+  font: inherit;
+  font-size: var(--t3);
+  font-weight: var(--g2);
+  cursor: pointer;
+}
+.planche-paye { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+.planche-paye-rond {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: var(--r-full);
+  background: var(--success-bg-soft);
+  color: var(--success-text);
+  animation: planche-rond var(--mvt-3) var(--courbe-ressort) both;
+}
+@keyframes planche-rond { from { opacity: 0; transform: scale(0.6); } }
+/* La coche se trace une fois le rond posé ; le texte suit. */
+.planche-paye-rond .mvt-coche path { animation-delay: var(--mvt-2); }
+.planche-paye .mvt-naissance { animation-delay: var(--mvt-2); }
+.planche-paye-titre { margin: 4px 0 0; font-size: var(--t4); font-weight: var(--g2); }
+
+/* ── Glisser-déposer ── */
+.planche-tri { position: relative; width: 100%; }
+.planche-tri-rang {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 44px;
+  transition: transform var(--mvt-2) var(--courbe-ressort);
+}
+.planche-tri-rang[data-prise] { z-index: 2; transition: none; }
+.planche-tri-corps {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  padding-right: 12px;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--r);
+  background: var(--surface);
+  transition: transform var(--mvt-2) var(--courbe-ressort);
+}
+/* L'ombre de l'objet soulevé vit sur un calque à part : seule son opacité
+   change, l'ombre n'est jamais redessinée pendant le geste. */
+.planche-tri-corps::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--sh-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--mvt-2) var(--courbe);
+}
+.planche-tri-rang[data-prise] .planche-tri-corps { transform: scale(calc(2 - var(--mvt-enfonce))); }
+.planche-tri-rang[data-prise] .planche-tri-corps::after { opacity: 1; }
+.planche-tri-poignee {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 44px;
+  height: 42px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r);
+  background: transparent;
+  color: var(--text3);
+  cursor: grab;
+  touch-action: none;
+}
+.planche-tri-rang[data-prise] .planche-tri-poignee { cursor: grabbing; }
+.planche .planche-tri-poignee:not(:disabled):active { transform: none; }
+
+/* ── Caisse ── */
+.planche-caisse { display: grid; grid-template-columns: 1fr; gap: 16px; width: 100%; }
+@media (min-width: 720px) {
+  .planche-caisse { grid-template-columns: 1.2fr 1fr; }
+}
+.planche-articles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; align-content: start; }
+@media (min-width: 420px) {
+  .planche-articles { grid-template-columns: repeat(3, 1fr); }
+}
+.planche-article {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: 88px;
+  padding: 12px;
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.planche-article-prix { color: var(--text3); font-family: var(--font-num); font-size: var(--t1); }
+.planche-ticket {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 280px;
+  padding: 14px;
+  border-radius: var(--r-lg);
+  background: var(--piste);
+}
+.planche-ticket-lignes { position: relative; display: flex; flex-direction: column; }
+.planche-ticket-ligne {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  border-bottom: 1px solid var(--rule-soft);
+}
+.planche-ticket-qte { display: inline-block; font-family: var(--font-num); text-align: center; }
+.planche-ticket-nom { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.planche-ticket-prix { font-family: var(--font-num); }
+.planche-ticket-vide { flex: 1; margin: 0; color: var(--text3); }
+.planche-etat { display: inline-flex; align-items: center; align-self: flex-start; gap: 6px; color: var(--text3); font-size: var(--t1); }
+.planche-etat-point {
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--text3);
+  border-radius: var(--r-full);
+}
+.planche-etat[data-etat="envoye"] { color: var(--success-text); }
+.planche-etat[data-etat="envoye"] .planche-etat-point { border-color: var(--success-text); background: var(--success-text); }
+.planche-total { display: flex; align-items: baseline; justify-content: space-between; margin-top: auto; }
+.planche-total-chiffre {
+  display: inline-block;
+  font-family: var(--font-num);
+  font-size: var(--t5);
+  font-weight: var(--g-chiffre);
+  transform-origin: right center;
+}
