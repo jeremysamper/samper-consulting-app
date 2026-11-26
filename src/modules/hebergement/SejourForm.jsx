@@ -1,5 +1,6 @@
 import React from 'react';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
+import { SegmentedTabs } from '../../components/ui/index.jsx';
 import { zurichAjouterJours } from '../../utils/zurichTime.js';
 import { Champ, h } from './hotelUi.jsx';
 import { PENSIONS, chf, dateCourte, sejourEnConflit, tarifsApplicables, trierChambres } from './hotelData.js';
@@ -15,7 +16,10 @@ const vide = (aujourdhui) => ({
   pension: 'petit_dejeuner', chambreId: '', origine: '', demandesSpeciales: '', notes: '', tarifId: '', prixNuit: '', forfaitId: '', identifiant: '',
 });
 
-export default function SejourForm({ sejour, chambres, sejours, tarifs = [], forfaits = [], aujourdhui, onEnregistrer, onClose }) {
+// Lot 14 du panel : en création, « Plusieurs chambres » ouvre la saisie d'un groupe.
+const MODES = [{ id: 'une', label: 'Une chambre' }, { id: 'plusieurs', label: 'Plusieurs chambres' }];
+
+export default function SejourForm({ sejour, chambres, sejours, tarifs = [], forfaits = [], aujourdhui, onEnregistrer, onClose, onPlusieurs = null }) {
   const [f, setF] = React.useState(() => (sejour
     ? { ...sejour, chambreId: sejour.chambreId || '', tarifId: sejour.tarifId || '', prixNuit: sejour.prixNuit == null ? '' : String(sejour.prixNuit), forfaitId: sejour.forfaitId || '', identifiant: sejour.identifiant || '' }
     : vide(aujourdhui)));
@@ -81,6 +85,9 @@ export default function SejourForm({ sejour, chambres, sejours, tarifs = [], for
         </>
       )}
     >
+      {!sejour && onPlusieurs && (
+        <SegmentedTabs tabs={MODES} active="une" onChange={(id) => { if (id === 'plusieurs') onPlusieurs(); }} />
+      )}
       <div style={h.grille}>
         <Champ label="Nom de l'hôte" large>
           <input style={h.saisie} value={f.nomHote} onChange={champ('nomHote')} autoFocus />

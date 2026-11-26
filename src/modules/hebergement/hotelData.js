@@ -294,6 +294,16 @@ export function useTableHotel(table, etabId, { map, filtres = [], cle = '', orde
         if (error) return { data: null, error: messageErreur(error) };
         return { data: remplacer(data), error: null };
       },
+      // Lot 14 du panel : plusieurs lignes en une seule requête. En base, c'est
+      // une seule instruction : tout est créé, ou rien.
+      async insererPlusieurs(listeDeValeurs) {
+        const liste = Array.isArray(listeDeValeurs) ? listeDeValeurs : [];
+        if (!liste.length) return { data: [], error: null };
+        const { data, error } = await supabase.from(table)
+          .insert(liste.map((v) => ({ ...v, etablissement_id: etabId }))).select();
+        if (error) return { data: null, error: messageErreur(error) };
+        return { data: (data || []).map((row) => remplacer(row)), error: null };
+      },
       async modifier(id, valeurs) {
         const { data, error } = await supabase.from(table).update(valeurs).eq(colonneId, id).select().single();
         if (error) return { data: null, error: messageErreur(error) };

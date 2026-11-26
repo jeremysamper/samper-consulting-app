@@ -15,6 +15,7 @@ import {
 } from './hotelData.js';
 import { LigneSejour, Liste, PageHotel, ReperesHotel, Vide, h } from './hotelUi.jsx';
 import SejourForm from './SejourForm.jsx';
+import SejourGroupeForm from './SejourGroupeForm.jsx';
 import SejourFiche from './SejourFiche.jsx';
 import HotesGestion, { HoteForm } from './HotesGestion.jsx';
 import SejourNote from './SejourNote.jsx';
@@ -100,9 +101,19 @@ export default function Hebergement({ user, etablissement }) {
       return { ...l, libelle: cible ? (l.type === 'groupe' ? libelleGroupe(cible) : libelleReservation(cible)) : l.cibleId };
     });
     const dejaLies = new Set(mesLiens.map((l) => l.cibleId));
+    // Lot 14 du panel : les autres séjours reliés au même groupe.
+    const groupesDuSejour = new Set(mesLiens.filter((l) => l.type === 'groupe').map((l) => l.cibleId));
+    const idsFreres = new Set(liens.rows.filter((l) => l.type === 'groupe' && groupesDuSejour.has(l.cibleId) && l.sejourId !== s.id).map((l) => l.sejourId));
+    const numeroDe = (x) => chambres.rows.find((c) => c.id === x.chambreId)?.numero ?? null;
+    const freres = sejours.rows.filter((x) => idsFreres.has(x.id) && x.statut !== 'annule')
+      .map((x) => ({ sejour: x, numero: numeroDe(x) }))
+      .sort((a, b) => (a.numero == null) - (b.numero == null)
+        || String(a.numero ?? '').localeCompare(String(b.numero ?? ''), 'fr', { numeric: true })
+        || String(a.sejour.nomHote).localeCompare(String(b.sejour.nomHote), 'fr'));
     const autour = (d) => d >= s.arrivee && d <= s.depart;
     return {
       liens: mesLiens,
+      freres,
       reservations: reservations.rows.filter((r) => !dejaLies.has(r.id) && autour(r.dateService) && r.statut !== 'annulee').slice(0, 100).map((r) => ({ id: r.id, libelle: libelleReservation(r) })),
       groupes: groupes.rows.filter((g) => !dejaLies.has(g.id) && !g.annule && autour(g.dateEvenement)).slice(0, 100).map((g) => ({ id: g.id, libelle: libelleGroupe(g) })),
       onLier: async (type, cibleId) => { const r = await liens.inserer({ sejour_id: s.id, type, cible_id: cibleId }); if (r.error) notify(r.error, 'error'); else notify(type === 'groupe' ? 'Groupe relié au séjour.' : 'Réservation reliée au séjour.', 'success'); },
@@ -115,7 +126,7 @@ export default function Hebergement({ user, etablissement }) {
     ...(avecCaisse ? ['tickets'] : []),
   ];
   const { ecran, setEcran, retourAccueil } = useEcranModule('hebergement', { repris: ecransRepris });
-  const [form, setForm] = React.useState(null); // { sejour: null | sejour }
+  const [form, setForm] = React.useState(null); // { sejour: null | sejour, plusieurs?: true }
   const [ficheId, setFicheId] = React.useState(null);
   const [hoteForm, setHoteForm] = React.useState(null); // { nomInitial, sejour }
   const [noteId, setNoteId] = React.useState(null);
@@ -143,6 +154,23 @@ export default function Hebergement({ user, etablissement }) {
       : await sejours.inserer({ ...valeurs, created_by: user?.id || null });
     if (!res.error) notify(form?.sejour ? 'Séjour modifié.' : 'Séjour créé.', 'success');
     return res;
+  };
+  // Lot 14 du panel : plusieurs séjours en une requête (tout ou rien), puis
+  // les liens au groupe dans une seconde requête. Si seuls les liens échouent,
+  // les séjours restent et la fenêtre se ferme quand même (D14).
+  const enregistrerGroupe = async ({ sejours: valeurs, groupeId }) => {
+    const res = await sejours.insererPlusieurs(valeurs.map((v) => ({ ...v, created_by: user?.id || null })));
+    if (res.error) return res;
+    const crees = res.data || [];
+    if (groupeId && crees.length) {
+      const resLiens = await liens.insererPlusieurs(crees.map((x) => ({ sejour_id: x.id, type: 'groupe', cible_id: groupeId })));
+      if (resLiens.error) {
+        notify('Les séjours sont créés. Le lien au groupe n\'a pas pu être posé : reliez-le depuis une fiche.', 'warning');
+        return { error: null };
+      }
+    }
+    notify(`${crees.length} séjours créés.`, 'success');
+    return { error: null };
   };
   const affecter = async (s, chambreId) => {
     const res = await sejours.modifier(s.id, { chambre_id: chambreId });
@@ -289,7 +317,21 @@ export default function Hebergement({ user, etablissement }) {
         />
       )}
 
-      {form && (
+      {form && form.plusieurs && (
+        <SejourGroupeForm
+          chambres={trierChambres(chambres.rows)}
+          sejours={sejours.rows}
+          tarifs={tarifs.rows}
+          groupes={groupes.rows}
+          groupesLisibles={groupes.status === 'ready' && liens.status === 'ready'}
+          lectureComplete={chambres.status === 'ready' && sejours.status === 'ready'}
+          aujourdhui={aujourdhui}
+          onEnregistrer={enregistrerGroupe}
+          onUneSeule={() => setForm({ sejour: null })}
+          onClose={() => setForm(null)}
+        />
+      )}
+      {form && !form.plusieurs && (
         <SejourForm
           sejour={form.sejour}
           chambres={trierChambres(chambres.rows)}
@@ -298,6 +340,7 @@ export default function Hebergement({ user, etablissement }) {
           forfaits={forfaits.rows}
           aujourdhui={aujourdhui}
           onEnregistrer={enregistrerSejour}
+          onPlusieurs={form.sejour ? null : () => setForm({ sejour: null, plusieurs: true })}
           onClose={() => setForm(null)}
         />
       )}
@@ -323,6 +366,7 @@ export default function Hebergement({ user, etablissement }) {
           onStatut={changerStatut}
           onCheckOut={checkOut}
           onClose={() => setFicheId(null)}
+          onOuvrirSejour={(x) => setFicheId(x.id)}
         />
       )}
       {sejourNote && peutGerer && (

@@ -7307,6 +7307,28 @@ export const UI_GLOSSARY = {
   "séjour n'a aucune personne inscrite au registre.": "stay has no guest in the register.",
   "Leurs nuitées sont comptées d'après le nombre de personnes du séjour.": "Their nights are counted from the number of guests of the stay.",
   "Ses nuitées sont comptées d'après le nombre de personnes du séjour.": "Its nights are counted from the number of guests of the stay.",
+  // Lot 14 du panel : plusieurs chambres en une saisie (groupe, séminaire).
+  'Une chambre': 'One room',
+  'Plusieurs chambres': 'Several rooms',
+  'Nom du groupe': 'Group name',
+  'Groupe à relier': 'Group to link',
+  'Aucun groupe': 'No group',
+  'Nombre de chambres': 'Number of rooms',
+  'Proposer les chambres': 'Suggest rooms',
+  'séjours': 'stays',
+  'chambre libre sur ces nuits.': 'room free on these nights.',
+  'chambres libres sur ces nuits.': 'rooms free on these nights.',
+  'Il manque': 'Missing:',
+  "chambre : la ligne sans chambre s'affectera depuis la fiche.": 'room. The line without a room will be assigned from its record.',
+  "chambres : les lignes sans chambre s'affecteront depuis la fiche.": 'rooms. Lines without a room will be assigned from their records.',
+  "Les chambres libres n'ont pas pu être lues. Affectez les chambres depuis chaque fiche.": 'Free rooms could not be read. Assign the rooms from each record.',
+  'Le nom du groupe est obligatoire.': 'The group name is required.',
+  'Choisissez entre 2 et 20 chambres.': 'Choose between 2 and 20 rooms.',
+  "Corrigez les lignes signalées avant d'enregistrer.": 'Correct the flagged lines before saving.',
+  'Au moins un adulte par chambre.': 'At least one adult per room.',
+  'Cette chambre est choisie sur une autre ligne.': 'This room is chosen on another line.',
+  'Les autres séjours du groupe': "The group's other stays",
+  "Les séjours sont créés. Le lien au groupe n'a pas pu être posé : reliez-le depuis une fiche.": 'The stays are created. The group link could not be set: link it from a record.',
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
