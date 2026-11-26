@@ -2471,7 +2471,7 @@ export const UI_GLOSSARY_PT = {
   "Ce créneau chevauche un horaire déjà prévu ce jour-là.": "Este horário sobrepõe-se a um horário já previsto nesse dia.",
   "horaires copiés": "horários copiados",
   "horaire copié": "horário copiado",
-  "Copier plutôt": "Copiar antes",
+  "Copier plutôt": "Copiar em vez disso",
   "Copier ici": "Copiar aqui",
   "Fermer le message": "Fechar a mensagem",
   "Copie impossible.": "Cópia impossível.",
