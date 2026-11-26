@@ -13,6 +13,7 @@ import { supabase } from '../../services/supabase.js';
 import { useReglageModifie } from '../../services/reglagesSignal.js';
 import { zurichToday } from '../../utils/zurichTime.js';
 import { lienGmail, lienMailto } from '../spa/integration.js';
+import { nettoyerQuestions } from '../../reservation/questionsEnLigne.js';
 
 export { lienGmail, lienMailto };
 
@@ -53,6 +54,8 @@ export const PARAMETRES_DEFAUT = {
   // Choix de la table sur le plan (lot L9) : non par défaut.
   choixTable: false,
   sallesChoixTable: [],
+  // Questions à choix posées au visiteur (lot 18) : aucune par défaut.
+  questionsEnLigne: [],
 };
 
 function depuisBase(r) {
@@ -79,6 +82,10 @@ function depuisBase(r) {
     // Faux quand la base n'a pas encore les colonnes (migration
     // 20261122_reservation_choix_table) : rien n'y est alors écrit.
     choixTableDispo: Object.prototype.hasOwnProperty.call(r, 'choix_table'),
+    questionsEnLigne: nettoyerQuestions(r.questions_en_ligne),
+    // Faux quand la base n'a pas encore la colonne (migration
+    // 20261125_resa_questions_en_ligne) : rien n'y est alors écrit.
+    questionsDispo: Object.prototype.hasOwnProperty.call(r, 'questions_en_ligne'),
   };
 }
 
@@ -133,6 +140,9 @@ function versBase(p) {
       choix_table: Boolean(p.choixTable),
       salles_choix_table: [...new Set((p.sallesChoixTable || []).filter((x) => typeof x === 'string' && x))],
     }),
+    // Toujours repassées par le nettoyage : rien de ce que l'écran tient en
+    // mémoire ne part en base tel quel.
+    ...(p.questionsDispo === false ? {} : { questions_en_ligne: nettoyerQuestions(p.questionsEnLigne) }),
     updated_at: new Date().toISOString(),
   };
 }

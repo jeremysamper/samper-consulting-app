@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import BoiteEnvoiReservations from './BoiteEnvoiReservations.jsx';
 import ChoixTableReglage from './ChoixTableReglage.jsx';
+import QuestionsEnLigneReglage from './QuestionsEnLigneReglage.jsx';
+import { erreurQuestion } from '../../reservation/questionsEnLigne.js';
 import { encadreStyle } from '../../components/ui/index.jsx';
 import { notify } from '../../components/toast/index.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
@@ -145,6 +147,9 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
       if (activer && !pret) { notify('Choisissez au moins un jour et un service avant d\'ouvrir la réservation.', 'error'); return; }
       const incoherent = Object.values(form.horaires || {}).some((j) => Object.values(j || {}).some((x) => x && x.de > x.a));
       if (incoherent) { notify('Une heure de fin est avant l\'heure de début : corrigez les horaires.', 'error'); return; }
+      const erreurQuestions = form.questionsDispo === false ? null
+        : (form.questionsEnLigne || []).map(erreurQuestion).find(Boolean);
+      if (erreurQuestions) { notify(erreurQuestions, 'error'); return; }
       setEnCours(true);
       try {
         const joursFermes = joursFermesEnLigne(maison.fermetures, joursHerites, aujourdhui);
@@ -463,6 +468,15 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
                 </Champ>
               </div>
             </div>
+
+            {/* ── Questions au client (lot 18), quand la base connaît le réglage ── */}
+            {form.questionsDispo !== false && (
+              <QuestionsEnLigneReglage
+                questions={form.questionsEnLigne || []}
+                onChange={(v) => set('questionsEnLigne', v)}
+                styles={s}
+              />
+            )}
 
             {/* ── Jours fermés ── */}
             <div style={s.carte}>

@@ -54,7 +54,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // boissons de la caisse (platId).
 // v22 (lot 17 du panel, 26.11.2026) : demande par le QR de la chambre
 // (demandes_qr_parametres, demandes_qr_chambres, une demande par_qr).
-const VERSION_BASE = 'v22-' + aujourdhui();
+// v23 (lot 18 du panel, 26.11.2026) : question « Formule » de la réservation
+// en ligne (questions_en_ligne), réponse et étiquette sur les demandes.
+const VERSION_BASE = 'v23-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.

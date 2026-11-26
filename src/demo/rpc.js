@@ -3,6 +3,7 @@
 // hors production rend une erreur claire au lieu d'un faux succès.
 import { uuid } from './postgrest.js';
 import { planEnLigne } from '../reservation/choixTable.js';
+import { nettoyerQuestions } from '../reservation/questionsEnLigne.js';
 import { repartirFormule } from '../modules/caisse/formules.js';
 
 const heureZurich = () => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
@@ -818,6 +819,13 @@ const RPC = {
       jour: a.p_jour, heure: String(a.p_heure).slice(0, 5), personnes: a.p_personnes, service: a.p_service || null,
       aujourdhui: jourZurich(), maintenant: h * 60 + m,
     });
+  },
+  // Questions à choix de la maison (lot 18) : celles d'une adresse ouverte,
+  // nettoyées comme le fait la fonction de la base.
+  table_en_ligne_questions(ctx, a) {
+    const params = (ctx.db.reservation_en_ligne_parametres || [])
+      .find((p) => p.slug === String(a.p_adresse || '').trim().toLowerCase() && p.en_ligne_actif);
+    return params ? nettoyerQuestions(params.questions_en_ligne) : [];
   },
   caisse_tpe_rapport() { return { transactions: [], bouclements: [] }; },
   caisse_tpe_bouclement_poser() { throw new ErreurRpc('Aucun terminal de paiement n\'est relié dans la démo.'); },

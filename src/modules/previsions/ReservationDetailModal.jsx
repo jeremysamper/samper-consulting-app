@@ -5,6 +5,7 @@ import { ouvrirGroupe } from '../../services/navigationService.js';
 import { formatDateLongue } from '../../utils/dateHelpers.js';
 import { STATUTS, metaStatut } from './statutsReservation.js';
 import ClientFiche from './ClientFiche.jsx';
+import { couleursTag } from './couleursTags.js';
 import { supabase } from '../../services/supabase.js';
 
 export default function ReservationDetailModal({
@@ -276,18 +277,25 @@ export default function ReservationDetailModal({
                 Tags
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                {tags.map((t) => (
-                  <span
-                    key={`${t.type_tag}-${t.valeur}`}
-                    style={{
-                      padding: '2px 8px', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)',
-                      background: 'var(--danger-bg-soft)', color: 'var(--danger-text)', border: '1px solid var(--danger-bd)',
-                      fontFamily: 'var(--font)',
-                    }}
-                  >
-                    {t.valeur}
-                  </span>
-                ))}
+                {tags.map((t) => {
+                  // Couleur par type : l'allergène reste rouge, une réponse à
+                  // une question de la maison (« autre ») est neutre.
+                  const c = couleursTag(t.type_tag);
+                  return (
+                    <span
+                      key={`${t.type_tag}-${t.valeur}`}
+                      data-tag-type={t.type_tag}
+                      style={{
+                        padding: '2px 8px', borderRadius: 'var(--r-full)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)',
+                        background: c.bg, color: c.color,
+                        borderWidth: 1, borderStyle: 'solid', borderColor: c.border,
+                        fontFamily: 'var(--font)',
+                      }}
+                    >
+                      {t.valeur}
+                    </span>
+                  );
+                })}
               </div>
             </div>
           )}

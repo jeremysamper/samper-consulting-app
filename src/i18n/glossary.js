@@ -7368,6 +7368,27 @@ export const UI_GLOSSARY = {
   "Les réglages des QR ne se lisent pas.": "The QR settings cannot be read.",
   "Chargement des réglages": "Loading settings",
   "QR de la chambre": "Room QR code",
+  // Lot 18 du panel : questions à choix de la réservation en ligne.
+  "Questions au client": "Questions for the guest",
+  "Une ou deux questions à choix, posées avant l'envoi de la réservation. La réponse s'affiche comme une étiquette sur la réservation.": "One or two multiple-choice questions, asked before the booking is sent. The answer shows as a tag on the booking.",
+  "Question": "Question",
+  "Choix proposés": "Choices offered",
+  "Choix proposé": "Choice offered",
+  "Ajouter un choix": "Add a choice",
+  "Réponse obligatoire": "Answer required",
+  "Retirer la question": "Remove the question",
+  "Ajouter une question": "Add a question",
+  "Menu du marché": "Market menu",
+  "À la carte": "À la carte",
+  "Donnez un nom à cette question.": "Give this question a name.",
+  "Ce nom de question est réservé : choisissez-en un autre.": "This question name is reserved: choose another one.",
+  "Le nom de la question dépasse 40 caractères.": "The question name is longer than 40 characters.",
+  "Retirez le signe deux-points du nom de la question.": "Remove the colon from the question name.",
+  "Ajoutez au moins deux choix à cette question.": "Add at least two choices to this question.",
+  "Six choix au plus par question.": "Six choices at most per question.",
+  "Un choix dépasse 40 caractères.": "A choice is longer than 40 characters.",
+  "Retirez le signe deux-points des choix.": "Remove the colon from the choices.",
+  "Deux choix portent le même nom.": "Two choices have the same name.",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
