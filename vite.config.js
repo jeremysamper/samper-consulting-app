@@ -63,6 +63,10 @@ function reservationPubliqueDevPlugin() {
         if (/^\/commande\/[a-z0-9-]+\/?$/i.test(chemin)) {
           req.url = `/commande.html${requete ? `?${requete}` : ''}`;
         }
+        // /chambre/<jeton> : demande de l'hôte par le QR de la chambre (lot 17), entrée à part.
+        if (/^\/chambre\/[a-z0-9]+\/?$/.test(chemin)) {
+          req.url = `/chambre.html${requete ? `?${requete}` : ''}`;
+        }
         // /demo : l'application sur un Supabase simulé (src/demo), comme
         // cleanUrls le sert en production.
         if (/^\/demo\/?$/i.test(chemin)) {
@@ -127,7 +131,7 @@ export default defineConfig({
         // restaurants ; entrée à part), jamais remplacées par l'app shell.
         // /demo : la démo publique (src/demo) ne passe jamais par l'app shell.
         // /commande/ : la commande par QR (lot L3), page publique à part.
-        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//, /^\/commande\//, /^\/confidentialite/, /^\/demo/],
+        navigateFallbackDenylist: [/^\/api\//, /^\/reserver\//, /^\/table\//, /^\/commande\//, /^\/chambre\//, /^\/confidentialite/, /^\/demo/],
         cleanupOutdatedCaches: true,
         // Caches runtime : l'ordre compte (première route qui matche gagne).
         // Les clés de cache sont les URL PostgREST complètes : le filtre
@@ -256,7 +260,10 @@ export default defineConfig({
         demo: 'demo.html',
         // Commande de boissons par QR (/commande/<adresse>, lot L3), sans le
         // bundle de l'app.
-        commande: 'commande.html'
+        commande: 'commande.html',
+        // Demande de l'hôte par le QR de la chambre (/chambre/<jeton>, lot 17),
+        // sans le bundle de l'app.
+        chambre: 'chambre.html'
       },
       output: {
         manualChunks: {
