@@ -213,6 +213,20 @@ export default defineConfig({
             },
           },
           {
+            // Groupes (lot 24) : groupes, menus de groupe et catalogue des
+            // produits (liste de courses ; plats et fiches sont déjà dans
+            // sb-recettes). Une fiche de groupe ouverte avec le réseau se
+            // rouvre sans réseau chez le client, en lecture seule, sur sa
+            // dernière lecture des sept derniers jours. Lectures seulement (GET).
+            urlPattern: /^https:\/\/[^/]+\.supabase\.co\/rest\/v1\/(groupe_evenements|groupe_menus|produits)\b/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'sb-groupes',
+              networkTimeoutSeconds: 6,
+              expiration: { maxEntries: 60, maxAgeSeconds: 7 * 24 * 60 * 60 },
+            },
+          },
+          {
             // Reste des lectures REST : filet court (micro-coupures).
             urlPattern: /^https:\/\/[^/]+\.supabase\.co\/rest\/v1\/.*/i,
             handler: 'NetworkFirst',

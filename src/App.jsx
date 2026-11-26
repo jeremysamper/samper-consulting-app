@@ -332,11 +332,18 @@ export default function App() {
   }
 
   async function handleSelectEtablissement(id) {
+    // Purge des caches de données scopés établissement (défense en profondeur,
+    // les clés d'URL portent déjà etablissement_id). Avec le réseau, elle part
+    // AVANT la bascule (lot 24) : selectEtablissement bascule l'écran tout de
+    // suite et les premières lectures du nouvel établissement finissaient avant
+    // la persistance du choix ; purgées après coup, elles manquaient au cache
+    // et une fiche ouverte juste après ne se rouvrait pas hors ligne. Sans
+    // réseau, rien ne change : la purge suit une bascule réussie.
+    const purgeAvant = typeof navigator === 'undefined' || navigator.onLine !== false;
+    if (purgeAvant) await purgeEtabDataCaches();
     try {
       await currentEtablissement.selectEtablissement(id);
-      // Purge des caches de données scopés établissement (défense en profondeur,
-      // les clés d'URL portent déjà etablissement_id).
-      purgeEtabDataCaches();
+      if (!purgeAvant) purgeEtabDataCaches();
       notify('Établissement changé.', 'info');
     } catch (err) {
       notify(messageErreur(err, 'établissement', "Impossible de changer d'établissement. Réessayez."), 'error');
