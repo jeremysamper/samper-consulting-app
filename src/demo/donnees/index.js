@@ -9,7 +9,7 @@ import {
   genererReservations, genererGroupes, genererPrevisions,
 } from './salle.js';
 import {
-  PLANNING_GROUPES, PLANNING_GROUPE_MEMBRES, ABSENCES, CONTRATS_TRAVAIL, PLANNING_MODELES, genererShifts,
+  PLANNING_GROUPES, PLANNING_GROUPE_MEMBRES, ABSENCES, CONTRATS_TRAVAIL, PLANNING_MODELES, genererShifts, genererEchanges,
   HACCP_ZONES, HACCP_CRENEAUX, HACCP_CTRL_TEMPLATES, HACCP_TRACABILITE, ETIQUETTES_PERSO, genererHaccp,
   genererInventaires, PERTES, COMMANDE_ITEMS, MEP_LISTES, MEP_ITEMS, SOPS, DOCUMENTS, genererMessages,
   PROFILE_CONTACTS, POINTS_REGLAGES, POINTS_CADEAUX, genererPointsMouvements, COMPTA_REGLAGES, CHARGES_FIXES,
@@ -102,6 +102,7 @@ function baseUneMaison() {
   const mep = mepLot4a(MEP_LISTES, MEP_ITEMS);
   const pos = genererPos();
   const facturation = genererFacturation();
+  const shifts = genererShifts();
   return {
     etablissements: [ETABLISSEMENT],
     profiles: EQUIPE.map((u) => ({ ...u })),
@@ -110,6 +111,8 @@ function baseUneMaison() {
     permissions_utilisateurs: [],
     user_settings: reglagesUtilisateurs(),
     app_settings: [],
+    // Libellés de modules renommés : aucun dans la démo, les noms d'origine s'affichent.
+    module_labels: [],
     fournisseurs: fournisseursEtab,
     produits: PRODUITS,
     produit_fournisseurs: PRODUIT_FOURNISSEURS,
@@ -128,6 +131,8 @@ function baseUneMaison() {
     salle_elements: SALLE_ELEMENTS,
     salle_tables_service: [],
     resa_clients: RESA_CLIENTS,
+    // Vue de la base, recalculée à chaque lecture (avantLecture de fauxSupabase.js).
+    resa_clients_stats: [],
     reservations,
     reservation_tags: tags,
     reservation_tables: liens,
@@ -145,10 +150,10 @@ function baseUneMaison() {
     planning_masques: [],
     planning_modeles: PLANNING_MODELES,
     pointage_postes: [],
-    shifts: genererShifts(),
+    shifts,
     absences: ABSENCES,
     contrats_travail: CONTRATS_TRAVAIL,
-    echanges_horaires: [],
+    echanges_horaires: genererEchanges(shifts),
     haccp_zones: HACCP_ZONES,
     haccp_creneaux: HACCP_CRENEAUX,
     haccp_ctrl_templates: HACCP_CTRL_TEMPLATES,

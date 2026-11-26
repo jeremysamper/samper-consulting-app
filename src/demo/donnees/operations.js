@@ -77,6 +77,23 @@ export function genererShifts() {
   return shifts;
 }
 
+// Échanges de services (lot C2, migration 20261119) : Hugo propose un de ses
+// services à venir, et un service d'Inès est repris par Anna, en attente de
+// la validation de qui gère le planning. Pris dans les horaires générés.
+export function genererEchanges(shifts) {
+  const futur = (uid, depuis) => shifts.find((s) => s.user_id === uid && s.date >= jour(depuis));
+  const propose = futur('demo-cuis-2', 2);
+  const repris = futur('demo-cuisinier', 4);
+  const echange = (id, s, valeurs) => ({
+    id, etablissement_id: ETAB, shift_id: s.id, demandeur: s.user_id, repreneur: null, statut: 'propose',
+    message: null, decide_par: null, decide_le: null, created_at: instant(jour(-1), '15:10'), updated_at: instant(jour(-1), '15:10'), ...valeurs,
+  });
+  return [
+    propose && echange('00000000-0000-4000-8000-0000000ec001', propose, { message: 'Rendez-vous chez le médecin ce jour-là. Merci à qui peut me remplacer.' }),
+    repris && echange('00000000-0000-4000-8000-0000000ec002', repris, { repreneur: 'demo-cuis-3', statut: 'repris', message: 'Mariage de ma sœur.', updated_at: instant(jour(0), '08:40') }),
+  ].filter(Boolean);
+}
+
 export const ABSENCES = [
   { id: 'abs-1', etablissement_id: ETAB, user_id: 'demo-serv-2', motif: 'conge', date_debut: jour(4), date_fin: jour(8), statut: 'acceptee', created_by: 'demo-patron', created_at: instant(jour(-10), '10:00'), updated_at: instant(jour(-10), '10:00') },
   { id: 'abs-2', etablissement_id: ETAB, user_id: 'demo-cuis-2', motif: 'maladie', date_debut: jour(-9), date_fin: jour(-8), statut: 'acceptee', created_by: 'demo-chef', created_at: instant(jour(-9), '07:40'), updated_at: instant(jour(-9), '07:40') },

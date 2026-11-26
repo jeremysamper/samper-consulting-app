@@ -1023,7 +1023,137 @@ const RPC = {
     else ctx.inserer('demandes_qr_chambres', { chambre_id: c.id, etablissement_id: c.etablissement_id, jeton: jetonChambreDemo(), created_at: maintenant(), renouvele_at: null });
     return { ok: true };
   },
+
+  // Échanges de services (lot C2, migration 20261119_echanges_horaires) :
+  // mêmes gardes et mêmes messages que les fonctions de la base.
+  echange_proposer(ctx, a) {
+    const s = ctx.db.shifts.find((x) => x.id === a.p_shift_id);
+    if (!s) throw new ErreurRpc('Horaire introuvable.', 'P0002');
+    if (s.user_id !== ctx.uid) throw new ErreurRpc('Seul votre propre horaire peut être proposé.', '42501');
+    if (!accesEtab(ctx, s.etablissement_id)) throw new ErreurRpc('Accès refusé.', '42501');
+    if (s.date < jourZurich()) throw new ErreurRpc('Cet horaire est passé.', '22023');
+    if ((ctx.db.echanges_horaires || []).some((e) => e.shift_id === s.id && OUVERTS.includes(e.statut))) {
+      throw new ErreurRpc('duplicate key value violates unique constraint "echanges_horaires_un_ouvert_par_horaire"', '23505');
+    }
+    const e = ctx.inserer('echanges_horaires', {
+      id: uuid(), etablissement_id: s.etablissement_id, shift_id: s.id, demandeur: ctx.uid, repreneur: null, statut: 'propose',
+      message: String(a.p_message || '').trim() || null, decide_par: null, decide_le: null, created_at: maintenant(), updated_at: maintenant(),
+    });
+    return e.id;
+  },
+  echange_reprendre(ctx, a) {
+    const e = echangeDe(ctx, a.p_id);
+    if (!accesEtab(ctx, e.etablissement_id)) throw new ErreurRpc('Accès refusé.', '42501');
+    if (e.demandeur === ctx.uid) throw new ErreurRpc('Vous ne pouvez pas reprendre votre propre horaire.', '42501');
+    if (e.statut !== 'propose') throw new ErreurRpc('Cet horaire a déjà été repris.', '22023');
+    ctx.maj('echanges_horaires', e, { repreneur: ctx.uid, statut: 'repris', updated_at: maintenant() });
+    return null;
+  },
+  echange_retirer(ctx, a) {
+    const e = echangeDe(ctx, a.p_id);
+    if (!OUVERTS.includes(e.statut)) throw new ErreurRpc('Cet échange est déjà tranché.', '22023');
+    if (e.demandeur === ctx.uid) ctx.maj('echanges_horaires', e, { statut: 'annule', updated_at: maintenant() });
+    else if (e.repreneur === ctx.uid) ctx.maj('echanges_horaires', e, { statut: 'propose', repreneur: null, updated_at: maintenant() });
+    else throw new ErreurRpc('Accès refusé.', '42501');
+    return null;
+  },
+  echange_decider(ctx, a) {
+    const e = echangeDe(ctx, a.p_id);
+    if (!accesEtab(ctx, e.etablissement_id) || !gere(ctx)) throw new ErreurRpc('Seules les personnes qui gèrent le planning valident un échange.', '42501');
+    if (e.statut !== 'repris' || !e.repreneur) throw new ErreurRpc('Cet échange attend encore un collègue.', '22023');
+    if (a.p_accepter) {
+      const s = ctx.db.shifts.find((x) => x.id === e.shift_id && x.user_id === e.demandeur);
+      if (!s) throw new ErreurRpc('L\'horaire a changé depuis la proposition.', '22023');
+      ctx.maj('shifts', s, { user_id: e.repreneur, updated_at: maintenant() });
+    }
+    ctx.maj('echanges_horaires', e, { statut: a.p_accepter ? 'valide' : 'refuse', decide_par: ctx.uid, decide_le: maintenant(), updated_at: maintenant() });
+    return null;
+  },
+
+  // Export et effacement des données d'une personne (lot SI3, migration
+  // 20261104_export_effacement_personne_2) : consultant et patron actifs de
+  // l'établissement du client ; l'effacement anonymise, les lignes restent.
+  export_personne(ctx, a) {
+    const c = clientDe(ctx, a);
+    const de = (table, ...cles) => trier((ctx.db[table] || []).filter((x) => x.client_id === c.id), cles);
+    const client = { ...c };
+    delete client.desinscription_token;
+    if (a.p_type === 'spa') {
+      return {
+        type: 'client_spa', exporte_le: maintenant(), client,
+        rendez_vous: de('spa_reservations', 'date_rdv', 'heure_debut'), seances: de('spa_seances', 'date_seance'),
+        bons: de('spa_bons', 'created_at'), envois: de('spa_envois', 'created_at'),
+      };
+    }
+    delete client.email_cle;
+    delete client.telephone_cle;
+    const tags = ctx.db.reservation_tags || [];
+    return {
+      type: 'client_reservation', exporte_le: maintenant(), client,
+      reservations: de('reservations', 'date_service', 'heure_arrivee').map((r) => ({
+        ...r, tags: tags.filter((t) => t.reservation_id === r.id).map((t) => ({ type: t.type_tag, valeur: t.valeur, libre: t.libre })),
+      })),
+      sejours: de('sejours', 'arrivee'),
+    };
+  },
+  effacer_personne(ctx, a) {
+    const c = clientDe(ctx, a);
+    const h = maintenant();
+    const vider = (table, champs, valeurs) => {
+      const lignes = (ctx.db[table] || []).filter((x) => x.client_id === c.id && (!champs || champs.some((k) => x[k] != null)));
+      for (const l of lignes) ctx.maj(table, l, { ...valeurs });
+      return lignes.length;
+    };
+    if (a.p_type === 'spa') {
+      ctx.maj('spa_clients', c, {
+        prenom: '', nom: 'Client effacé', email: null, telephone: null, date_naissance: null, adresse: null, notes_sante: null,
+        preferences: null, notes: null, consentement_marketing: false, consentement_at: null, archive: true, updated_at: h,
+      });
+      return {
+        type: 'client_spa', client: 1,
+        rendez_vous: vider('spa_reservations', ['notes'], { notes: null, updated_at: h }),
+        seances: vider('spa_seances', ['observations', 'ressenti', 'recommandations'], { observations: null, ressenti: null, recommandations: null, updated_at: h }),
+        bons: vider('spa_bons', ['message'], { message: null }),
+        envois: vider('spa_envois', ['email', 'erreur'], { email: null, erreur: null }),
+      };
+    }
+    ctx.maj('resa_clients', c, {
+      prenom: '', nom: 'Client effacé', email: null, telephone: null, date_naissance: null, allergies: null, preferences: null,
+      notes: null, consentement_marketing: false, consentement_at: null, consentement_source: null, desinscrit_at: null,
+      desinscription_token: uuid(), lightspeed_customer_id: null, archive: true, updated_at: h,
+    });
+    const ids = new Set((ctx.db.reservations || []).filter((r) => r.client_id === c.id).map((r) => r.id));
+    const reservations = vider('reservations', null, { nom: 'Client effacé', telephone: null, email: null, notes_libres: null, updated_at: h });
+    const tags = (ctx.db.reservation_tags || []).filter((t) => ids.has(t.reservation_id) && !(t.type_tag === 'occasion' && !t.libre));
+    for (const t of tags) ctx.supprimer('reservation_tags', t);
+    const sejours = vider('sejours', null, { nom_hote: 'Client effacé', notes: null, demandes_speciales: null, updated_at: h });
+    return { type: 'client_reservation', client: 1, reservations, tags: tags.length, sejours };
+  },
 };
+
+const OUVERTS = ['propose', 'repris'];
+const accesEtab = (ctx, etab) => (profilDe(ctx)?.etablissement_ids || []).includes(etab);
+
+function echangeDe(ctx, id) {
+  const e = (ctx.db.echanges_horaires || []).find((x) => x.id === id);
+  if (!e) throw new ErreurRpc('Échange introuvable.', 'P0002');
+  return e;
+}
+
+function clientDe(ctx, a) {
+  const p = profilDe(ctx);
+  if (!p || p.actif === false || !['consultant', 'patron'].includes(p.role)) throw new ErreurRpc('ACCES_REFUSE');
+  const table = { spa: 'spa_clients', resa: 'resa_clients' }[a.p_type];
+  if (!table) throw new ErreurRpc('TYPE_INCONNU');
+  const c = (ctx.db[table] || []).find((x) => x.id === a.p_client_id);
+  if (!c || !(p.etablissement_ids || []).includes(c.etablissement_id)) throw new ErreurRpc('CLIENT_INTROUVABLE');
+  return c;
+}
+
+function trier(lignes, cles) {
+  const cle = (l) => cles.map((k) => String(l[k] ?? '')).join('|');
+  return [...lignes].sort((x, y) => (cle(x) < cle(y) ? -1 : cle(x) > cle(y) ? 1 : 0));
+}
 
 // Jeton d'une chambre : 32 signes hexadécimaux, comme
 // replace(gen_random_uuid()::text, '-', '') en base.
@@ -1031,6 +1161,15 @@ function jetonChambreDemo() {
   const u = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `${Date.now().toString(16)}${Math.random().toString(16).slice(2)}`.padEnd(36, '0');
   return u.replace(/-/g, '').slice(0, 32).padEnd(32, '0');
 }
+
+// Noms des RPC simulées, lus par `npm run lint:demo` (scripts/check-demo-coverage.mjs).
+export const RPC_DEMO = Object.keys(RPC);
+
+// RPC appelées par l'application qui ne s'exécutent jamais dans la démo, avec
+// la raison. Elles répondent « Cette action n'est pas disponible dans la
+// démo. ». Une RPC neuve entre dans RPC, ou ici : sinon `npm run lint` échoue.
+export const RPC_HORS_DEMO = {
+};
 
 export function executerRpc(ctx, nom, args) {
   const f = RPC[nom];

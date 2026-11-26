@@ -26,8 +26,9 @@ npm.cmd run dev
 npm.cmd run build
 
 # Lint (src/ only, no test suite): eslint, then the border-shorthand check,
-# the glossary parity check (EN/ES), the capture-colors check and the on-color check
-# (lint:borders, lint:glossary, lint:capture, lint:on-color)
+# the glossary parity check (EN/ES), the capture-colors check, the on-color check and
+# the /demo coverage check: every table, RPC and Edge Function the app calls is served
+# by src/demo/ (lint:borders, lint:glossary, lint:capture, lint:on-color, lint:demo)
 npm.cmd run lint
 
 # Border check alone. Fails when a style object keeps the `border` shorthand
