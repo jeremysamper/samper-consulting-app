@@ -6,10 +6,10 @@
 // le site copie exactement ce que le spa voit dans l'app.
 //
 // L'origine est toujours la production : le site du spa doit pointer vers
-// samperconsulting-app.com, même si le réglage est fait depuis une préversion.
+// jouanet.com, même si le réglage est fait depuis une préversion.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const ORIGINE_PUBLIQUE = 'https://samperconsulting-app.com';
+export const ORIGINE_PUBLIQUE = 'https://jouanet.com';
 export const COULEUR_DEFAUT = '#2f6f77';
 
 const COULEUR_OK = /^#[0-9a-f]{6}$/i;

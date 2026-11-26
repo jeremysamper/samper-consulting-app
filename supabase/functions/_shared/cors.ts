@@ -4,8 +4,14 @@
 // Garde reprise de create-user (L0, 27.10.2026). Sans effet hors navigateur :
 // un appel de serveur à serveur (cron Vercel, déclencheur base, agent local)
 // ne porte pas d'en-tête Origin et ignore les en-têtes CORS.
+//
+// Deux noms pendant le passage à jouanet.com (27.11.2026) : l'ancienne adresse
+// reste admise tant qu'un appareil s'en sert (docs/PLAN-BASCULE-JOUANET-2026-11-27.md, étape 5).
 
-const ORIGINES = ['https://samperconsulting-app.com', 'https://www.samperconsulting-app.com'];
+const ORIGINES = [
+  'https://jouanet.com', 'https://www.jouanet.com',
+  'https://samperconsulting-app.com', 'https://www.samperconsulting-app.com',
+];
 const ORIGINE_PREVIEW = /^https:\/\/sc-app-[a-z0-9-]+-samper-consulting\.vercel\.app$/;
 const ORIGINE_LOCALE = /^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/;
 

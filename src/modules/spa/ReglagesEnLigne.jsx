@@ -195,7 +195,7 @@ export default function ReglagesEnLigne({ etablissement, soins, praticiens, onMo
           <div style={st.carte}>
             <TitreSection>Adresse de réservation</TitreSection>
             <div style={{ display: 'flex', alignItems: 'center', gap: 0, minWidth: 0 }}>
-              <span style={s.prefixe} data-no-translate>samperconsulting-app.com/reserver/</span>
+              <span style={s.prefixe} data-no-translate>jouanet.com/reserver/</span>
               <input
                 aria-label="Adresse de réservation"
                 style={{ ...st.champ, borderTopLeftRadius: 0, borderBottomLeftRadius: 0, flex: '1 1 120px', minWidth: 0 }}

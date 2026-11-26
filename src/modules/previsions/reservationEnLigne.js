@@ -19,7 +19,7 @@ export { lienGmail, lienMailto };
 
 const RELATION_ABSENTE = new Set(['42P01', 'PGRST205', 'PGRST202']);
 
-export const ORIGINE_PUBLIQUE = 'https://samperconsulting-app.com';
+export const ORIGINE_PUBLIQUE = 'https://jouanet.com';
 export const COULEUR_DEFAUT = '#003042';
 export const SLUG_OK = /^[a-z0-9](?:[a-z0-9-]{1,38}[a-z0-9])$/;
 
@@ -297,7 +297,7 @@ export async function envoyerConfirmation(resa, evenement = 'creation') {
 
 // ── Liens et codes à mettre sur le site du restaurant ──────────────────────
 // L'origine est toujours la production : le site du restaurant doit pointer
-// vers samperconsulting-app.com, même si le réglage est fait depuis une préversion.
+// vers jouanet.com, même si le réglage est fait depuis une préversion.
 const COULEUR_OK = /^#[0-9a-f]{6}$/i;
 const attrCouleur = (couleur) => (
   couleur && COULEUR_OK.test(couleur) && couleur.toLowerCase() !== COULEUR_DEFAUT ? ` data-couleur="${couleur.toLowerCase()}"` : ''

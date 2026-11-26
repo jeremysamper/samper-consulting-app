@@ -3,7 +3,7 @@
  * Même fonctionnement que widget-spa.js, pour la page /table/<adresse>.
  *
  * À coller sur le site du restaurant :
- *   <script src="https://samperconsulting-app.com/widget-table.js" data-table="mon-restaurant" async></script>
+ *   <script src="https://jouanet.com/widget-table.js" data-table="mon-restaurant" async></script>
  *
  * Attributs :
  *   data-table     adresse de réservation du restaurant (obligatoire)
@@ -17,11 +17,11 @@
  *                  ouvrent la réservation (voir plus bas)
  *
  * Dans tous les cas, ouvrent la réservation par-dessus le site : les liens du
- * site vers https://samperconsulting-app.com/table/<adresse> et les
- * éléments portant l'attribut data-table-reserver.
+ * site vers https://jouanet.com/table/<adresse> (ou l'ancienne adresse
+ * samperconsulting-app.com) et les éléments portant l'attribut data-table-reserver.
  *
  * Aucune donnée n'est lue sur le site hôte. La réservation vit dans une iframe
- * servie par samperconsulting-app.com ; seuls sa hauteur et deux événements
+ * servie par l'app ; seuls sa hauteur et deux événements
  * (fermer, réservation envoyée) remontent par postMessage.
  */
 (function () {
@@ -29,6 +29,11 @@
   var script = document.currentScript;
   if (!script) return;
   var origine = new URL(script.src).origin;
+  // L'app répond sous deux noms : jouanet.com, et samperconsulting-app.com qui y
+  // renvoie. Une page chargée sous l'un peut donc parler depuis l'autre.
+  var ORIGINES_APP = ['https://jouanet.com', 'https://www.jouanet.com', 'https://samperconsulting-app.com', 'https://www.samperconsulting-app.com'];
+  var admises = ORIGINES_APP.indexOf(origine) >= 0 ? ORIGINES_APP : [origine];
+  function origineAdmise(o) { return admises.indexOf(o) >= 0; }
   var slug = (script.getAttribute('data-table') || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
   if (!slug) { console.warn('[widget-table] attribut data-table manquant'); return; }
 
@@ -65,7 +70,7 @@
     cadre.style.cssText = 'display:block;width:100%;max-width:680px;margin:0 auto;border:0;height:720px;background:transparent;color-scheme:light;';
     place.parent.insertBefore(cadre, place.avant);
     window.addEventListener('message', function (e) {
-      if (e.origin !== origine || e.source !== cadre.contentWindow || !e.data || e.data.source !== 'table-reservation') return;
+      if (!origineAdmise(e.origin) || e.source !== cadre.contentWindow || !e.data || e.data.source !== 'table-reservation') return;
       if (e.data.type === 'hauteur' && e.data.valeur > 200) cadre.style.height = Math.min(e.data.valeur + 8, 4000) + 'px';
     });
     return;
@@ -131,7 +136,7 @@
 
     window.addEventListener('message', function ecoute(ev) {
       if (!voile) { window.removeEventListener('message', ecoute); return; }
-      if (ev.origin !== origine || ev.source !== cadre.contentWindow || !ev.data || ev.data.source !== 'table-reservation') return;
+      if (!origineAdmise(ev.origin) || ev.source !== cadre.contentWindow || !ev.data || ev.data.source !== 'table-reservation') return;
       if (ev.data.type === 'fermer') fermer();
     });
   }
@@ -144,7 +149,7 @@
   function versCeRestaurant(lien) {
     try {
       var u = new URL(lien.href, window.location.href);
-      return u.origin === origine && cheminTable.test(u.pathname);
+      return origineAdmise(u.origin) && cheminTable.test(u.pathname);
     } catch (err) { return false; }
   }
   document.addEventListener('click', function (e) {

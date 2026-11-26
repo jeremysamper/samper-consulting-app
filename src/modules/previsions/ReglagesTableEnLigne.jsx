@@ -256,7 +256,7 @@ export default function ReglagesTableEnLigne({ etablissement, consultant = false
             <div style={s.carte}>
               <div style={s.titre}>Adresse de réservation</div>
               <div style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
-                <span style={s.prefixe} data-no-translate>samperconsulting-app.com/table/</span>
+                <span style={s.prefixe} data-no-translate>jouanet.com/table/</span>
                 <input
                   aria-label="Adresse de réservation"
                   style={{ ...s.champ, borderTopLeftRadius: 0, borderBottomLeftRadius: 0, flex: '1 1 120px', minWidth: 0 }}
