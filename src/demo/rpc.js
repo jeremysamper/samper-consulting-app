@@ -669,17 +669,75 @@ const RPC = {
     if (r) ctx.maj('reservations', r, { ...(a.p_nom ? { nom: a.p_nom } : {}), ...(a.p_couverts ? { nb_couverts: a.p_couverts } : {}), ...(a.p_statut ? { statut: a.p_statut } : {}) });
     return r ? { ...r } : null;
   },
+  // Même forme que la fonction de la base (20261110_caisse_v8.sql, reprise
+  // par 20261123_carte_boissons_droits.sql), alignée au lot 11 du panel :
+  // refus hors gestionnaires, niveau par le rôle (direction : tout ; cuisine :
+  // ni paiements, ni personnes, ni auteurs), jour d'exploitation sous la clé
+  // jour (tickets et clôtures), tickets annulés dans la période, jour_courant,
+  // premier_jour et noms des personnes. Options réduites à l'élément format
+  // (lot C).
   caisse_rapport_donnees(ctx, a) {
-    const tickets = ctx.db.caisse_tickets.filter((t) => t.etablissement_id === a.p_etablissement_id && !t.test && t.jour_exploitation >= a.p_debut && t.jour_exploitation <= a.p_fin && t.statut !== 'ouvert');
-    const ids = new Set(tickets.map((t) => t.id));
-    // Même forme que la fonction de la base : le jour d'exploitation sous la
-    // clé jour, et options réduit à l'élément format (lot C).
+    if (!gere(ctx)) throw new ErreurRpc('caisse: acces refuse', '42501');
+    const etab = a.p_etablissement_id;
+    const direction = estDirection(ctx);
+    const dans = (j) => j && j >= a.p_debut && j <= a.p_fin;
+    const pieces = ctx.db.caisse_tickets.filter((t) => t.etablissement_id === etab && !t.test && t.numero != null
+      && (dans(t.jour_exploitation) || dans(t.annule_jour)));
+    const ids = new Set(pieces.map((t) => t.id));
+    const lignes = ctx.db.caisse_lignes.filter((l) => ids.has(l.ticket_id));
+    const paiements = direction ? ctx.db.caisse_paiements.filter((p) => ids.has(p.ticket_id)) : [];
+    const abandons = direction
+      ? ctx.db.caisse_tickets.filter((t) => t.etablissement_id === etab && !t.test && t.numero == null && t.statut === 'annule' && dans(t.jour_exploitation))
+      : [];
+    const acteurs = new Set([
+      ...pieces.flatMap((t) => [t.ouvert_par, t.annule_par]), ...lignes.map((l) => l.remise_par),
+      ...paiements.map((p) => p.encaisse_par), ...abandons.map((t) => t.ouvert_par),
+    ].filter(Boolean));
+    const nomDe = (p) => [p.prenom, p.nom].filter((x) => String(x || '').trim()).join(' ').trim() || 'Sans nom';
+    // Jour d'exploitation courant : la veille avant la fin de journée réglée.
+    const fin = String(ctx.db.caisse_reglages.find((r) => r.etablissement_id === etab)?.config?.fin_journee || '04:00');
+    let jourCourant = jourZurich();
+    if (heureZurich().slice(0, 5) < fin) {
+      const d = new Date(`${jourCourant}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - 1);
+      jourCourant = d.toISOString().slice(0, 10);
+    }
+    const premiers = ctx.db.caisse_tickets.filter((t) => t.etablissement_id === etab && !t.test && t.numero != null).map((t) => t.jour_exploitation).filter(Boolean).sort();
     return {
-      tickets: tickets.map((t) => ({ ...t, jour: t.jour_exploitation })),
-      lignes: ctx.db.caisse_lignes.filter((l) => ids.has(l.ticket_id))
-        .map((l) => ({ ...l, options: (Array.isArray(l.options) ? l.options : []).filter((o) => o?.type === 'format') })),
-      paiements: ctx.db.caisse_paiements.filter((p) => ids.has(p.ticket_id)),
-      clotures: ctx.db.caisse_clotures.filter((c) => c.etablissement_id === a.p_etablissement_id && c.jour_exploitation >= a.p_debut && c.jour_exploitation <= a.p_fin),
+      niveau: direction ? 'direction' : 'cuisine',
+      etablissement_id: etab,
+      debut: a.p_debut,
+      fin: a.p_fin,
+      jour_courant: jourCourant,
+      premier_jour: premiers[0] || null,
+      tickets: pieces.map((t) => ({
+        ...t,
+        jour: t.jour_exploitation,
+        annule_motif: direction ? t.annule_motif : null,
+        annule_par: direction ? t.annule_par : null,
+        ouvert_par: direction ? t.ouvert_par : null,
+        sur_table: t.table_id != null,
+        origine: t.reservation_id ? 'reservation' : (t.table_id ? 'passage' : 'direct'),
+        compte_client: t.client_id != null,
+      })),
+      lignes: lignes.map((l) => ({
+        ...l,
+        remise_motif: direction ? l.remise_motif : null,
+        remise_par: direction ? l.remise_par : null,
+        options: (Array.isArray(l.options) ? l.options : []).filter((o) => o?.type === 'format'),
+      })),
+      paiements,
+      clotures: ctx.db.caisse_clotures.filter((c) => c.etablissement_id === etab && dans(c.jour_exploitation))
+        .map((c) => (direction ? { ...c, jour: c.jour_exploitation } : {
+          id: c.id, jour: c.jour_exploitation, numero: c.numero, complement_de: c.complement_de, cloture_at: c.cloture_at,
+        })),
+      ventes_jour: [],
+      personnes: direction
+        ? Object.fromEntries(ctx.db.profiles.filter((p) => acteurs.has(p.id)).map((p) => [p.id, nomDe(p)]))
+        : {},
+      abandons: abandons.map((t) => ({ id: t.id, jour: t.jour_exploitation, closed_at: t.closed_at, ouvert_par: t.ouvert_par, montant: totalTicket(ctx, t.id) })),
+      corrections: [],
+      tests: [],
       bons: [],
       tpe: [],
     };

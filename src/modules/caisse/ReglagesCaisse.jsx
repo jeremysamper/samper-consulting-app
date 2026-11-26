@@ -9,6 +9,8 @@ import ListeTriable from './ListeTriable.jsx';
 import SectionTerminal from './tpe/SectionTerminal.jsx';
 import SectionCommandeQr from './commandeQr/SectionCommandeQr.jsx';
 import SectionFormules from './SectionFormules.jsx';
+import SectionPourboires from './SectionPourboires.jsx';
+import { peutReglerPourboires } from './gardesCaisse.js';
 import { pictoParId } from './boutons.js';
 import { ChoixCouleur, ChoixPicto } from './ChoixHabillage.jsx';
 import {
@@ -66,6 +68,9 @@ const SECTIONS = [
   { id: 'test', label: 'Mode test' },
   // L3 : commande de boissons par QR, réglée par la direction.
   { id: 'qr', label: 'Commande par QR' },
+  // Lot 11 du panel : partage des pourboires, direction seulement
+  // (peutReglerPourboires) ; retirée de la liste pour les autres rôles.
+  { id: 'pourboires', label: 'Pourboires', direction: true },
 ];
 
 const chf = (n) => (Math.round(Number(n || 0) * 100) / 100).toFixed(2);
@@ -76,9 +81,10 @@ export default function ReglagesCaisse({
   etablissementId, articles, boutons, categories, cartes = [], config, onChange,
   poste = null, peutLireJournalTests = false, onTestsVides,
   role = null, terminaux = [], lectureTerminaux = 'lue', onTerminauxChange, nomEtablissement = '',
-  formules = [], lectureFormules = 'lue',
+  formules = [], lectureFormules = 'lue', groupes = [], statutGroupes = 'ready',
 }) {
   const [section, setSection] = React.useState('categories');
+  const sections = React.useMemo(() => SECTIONS.filter((x) => !x.direction || peutReglerPourboires(role)), [role]);
   // Copie locale de la config : l'écran suit le geste sans attendre la base.
   const [brouillon, setBrouillon] = React.useState(config || {});
   React.useEffect(() => { setBrouillon(config || {}); }, [config]);
@@ -135,7 +141,7 @@ export default function ReglagesCaisse({
 
   return (
       <div role="region" aria-label="Réglages de la caisse" data-reglages-caisse="" style={st.section}>
-        <SegmentedTabs className="caisse-onglets" tabs={SECTIONS} active={section} onChange={setSection} retourLigne />
+        <SegmentedTabs className="caisse-onglets" tabs={sections} active={section} onChange={setSection} retourLigne />
 
         <div style={st.corps}>
           {section === 'categories' && (
@@ -190,6 +196,9 @@ export default function ReglagesCaisse({
             />
           )}
           {section === 'paiement' && <SectionPaiement reglages={reglages} regler={regler} />}
+          {section === 'pourboires' && peutReglerPourboires(role) && (
+            <SectionPourboires reglages={reglages} regler={regler} groupes={groupes} statutGroupes={statutGroupes} />
+          )}
           {section === 'terminal' && (
             <SectionTerminal
               etablissementId={etablissementId}

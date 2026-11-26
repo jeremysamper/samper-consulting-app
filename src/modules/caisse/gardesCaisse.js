@@ -9,3 +9,9 @@ export const peutHabillerCaisse = (role) => ROLES_HABILLAGE.includes(role);
 // caisse_poser_rupture, qui refuse les autres.
 export const ROLES_RUPTURE = [...ROLES_HABILLAGE, 'serveur'];
 export const peutMettreEnRupture = (role) => ROLES_RUPTURE.includes(role);
+
+// Qui règle le partage des pourboires (lot 11 du panel) : la direction. La
+// base laisse aussi le responsable de cuisine écrire caisse_reglages ; la
+// section ne lui est pas montrée, la règle étant une décision de direction.
+export const ROLES_POURBOIRES = ['consultant', 'patron'];
+export const peutReglerPourboires = (role) => ROLES_POURBOIRES.includes(role);

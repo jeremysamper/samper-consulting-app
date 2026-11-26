@@ -214,7 +214,7 @@ export const SECTIONS = [
   // ── Les modules ──
   {
     id: 'caisse', libelle: 'Caisse', detail: 'Catégories, produits, modes, paiement, terminal, TVA, clôture et commande par QR',
-    motsCles: 'mode test tpe ticket qr commande boissons formule menu', groupe: 'modules', portee: 'maison', module: 'caisse',
+    motsCles: 'mode test tpe ticket qr commande boissons formule menu pourboires partage', groupe: 'modules', portee: 'maison', module: 'caisse',
     garde: (ctx) => ouvreLeModule('caisse')(ctx) && peutHabillerCaisse(ctx.user?.role),
     charger: () => import('../caisse/SectionReglagesCaisse.jsx'),
   },

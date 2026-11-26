@@ -22,6 +22,7 @@ import { classeurXlsx, csvFeuille, feuilleXml } from '../../comptabilite/exportC
 import { centimes, detailTva } from '../tva.js';
 import { LIBELLES_SERVICES, libelleMoyen, numeroDe, piecesRapport, trierPlats } from './calculRapports.js';
 import { clePeriode, libellePeriodeCaisse } from './periodesCaisse.js';
+import { PHRASES_REGLE } from '../pourboires.js';
 
 const ISO = /^\d{4}-\d{2}-\d{2}/;
 export const dateCH = (iso) => (ISO.test(String(iso || '')) ? `${iso.slice(8, 10)}.${iso.slice(5, 7)}.${iso.slice(0, 4)}` : '');
@@ -99,6 +100,25 @@ function feuilleMoyens(r) {
   return {
     id: 'moyens', nom: 'Moyens de paiement', fichier: 'moyens-de-paiement.csv',
     colonnes: [T('Moyen', 40), M('Paiements', 11), M('Ventes'), M('Annulations'), M('Net encaissé', 14), M('Pourboires')],
+    rangs,
+  };
+}
+
+// Pourboires (lot 11 du panel) : le partage calculé à l'écran
+// (repartirPourboires), à l'état 'ok' seulement. Mêmes montants qu'à
+// l'écran ; hors chiffre d'affaires, rien n'est une écriture.
+export function feuillePourboires(partage, rapport) {
+  const p = partage;
+  const totalC = centimes(p.total);
+  const partDe = (montant) => (totalC ? Math.round((centimes(montant) / totalC) * 1000) / 10 : 0);
+  const rangs = p.lignes.map((l) => rang([l.nom, l.groupeNom, Math.round(l.heures * 100) / 100, partDe(l.montant), l.montant]));
+  if (centimes(p.nonReparti)) rangs.push(rang(['Non réparti', null, null, partDe(p.nonReparti), p.nonReparti]));
+  rangs.push(rang(['Total des pourboires', null, null, totalC ? 100 : 0, p.total], true));
+  rangs.push(vide(), rang([PHRASES_REGLE[p.mode] || '', null, null, null, null]));
+  if (rapport?.provisoire) rangs.push(rang(['Rapport provisoire : un jour non clôturé peut encore changer.', null, null, null, null]));
+  return {
+    id: 'pourboires', nom: 'Pourboires', fichier: 'pourboires.csv',
+    colonnes: [T('Personne', 32), T('Groupe', 18), M('Heures pointées', 14), M('Part en pour cent', 14), M('Montant')],
     rangs,
   };
 }
@@ -198,12 +218,15 @@ function feuilleClients(r, { noShow = null } = {}) {
 }
 
 // Les feuilles que le niveau du rapport peut lire, dans l'ordre de l'écran.
-//   options : { tri } pour les plats, { noShow: { tables, couverts } }
-export function feuillesRapport(rapport, { tri = 'qte', noShow = null } = {}) {
+//   options : { tri } pour les plats, { noShow: { tables, couverts } },
+//   { pourboires } : le partage des pourboires (lot 11), sorti seulement à
+//   l'état 'ok'.
+export function feuillesRapport(rapport, { tri = 'qte', noShow = null, pourboires = null } = {}) {
   const direction = rapport.niveau === 'direction';
   return [
     direction && feuilleSynthese(rapport, { noShow }),
     direction && feuilleMoyens(rapport),
+    direction && pourboires?.etat === 'ok' && feuillePourboires(pourboires, rapport),
     direction && rapport.bons && feuilleBons(rapport),
     feuillePlats(rapport, tri),
     feuilleServices(rapport),

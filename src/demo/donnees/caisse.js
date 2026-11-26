@@ -271,7 +271,16 @@ export function genererCaisse() {
     // tickets de test. Numéro de TVA fictif, à la clé de contrôle juste.
     caisse_reglages: [{
       etablissement_id: ETAB,
-      config: { legal: { raison_sociale: 'Brasserie Démo SA', adresse: 'Place des Mélèzes 1', localite: '1950 Sion', numero_tva: 'CHE-123.456.788 TVA' } },
+      config: {
+        legal: { raison_sociale: 'Brasserie Démo SA', adresse: 'Place des Mélèzes 1', localite: '1950 Sion', numero_tva: 'CHE-123.456.788 TVA' },
+        // Lot 11 du panel : partage des pourboires par groupe, Salle 70 et
+        // Cuisine 30 (identifiants de PLANNING_GROUPES) ; le Spa n'est pas
+        // retenu, sa praticienne est nommée « Hors partage ».
+        pourboires: {
+          mode: 'cle',
+          groupes: [{ id: '00000000-0000-4000-8000-0000000000c2', part: 70 }, { id: '00000000-0000-4000-8000-0000000000c1', part: 30 }],
+        },
+      },
       updated_at: '2026-10-01T08:00:00Z',
     }],
     caisse_tickets: tickets,

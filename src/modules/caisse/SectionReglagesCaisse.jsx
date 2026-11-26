@@ -1,5 +1,6 @@
 import React from 'react';
 import { Btn } from '../../components/ui/index.jsx';
+import { usePlanningGroupes } from '../../hooks/usePlanningGroupes.js';
 import { dbService } from '../../services/dbService.js';
 import * as caisse from '../../services/caisseService.js';
 import * as tpe from '../../services/caisseTpeService.js';
@@ -37,6 +38,9 @@ export default function SectionReglagesCaisse({ user, etablissement, signaler })
   const [lectureTerminaux, setLectureTerminaux] = React.useState('lecture');
   const [formules, setFormules] = React.useState([]);
   const [lectureFormules, setLectureFormules] = React.useState('lecture');
+  // Lot 11 du panel : les groupes du Planning, pour la règle de partage des
+  // pourboires (section montrée à la direction seulement).
+  const planning = usePlanningGroupes(etabId);
 
   const rechargerGrille = React.useCallback(async () => {
     if (!etabId) return false;
@@ -119,6 +123,8 @@ export default function SectionReglagesCaisse({ user, etablissement, signaler })
       onTerminauxChange={surTerminaux}
       formules={formules}
       lectureFormules={lectureFormules}
+      groupes={planning.groupes}
+      statutGroupes={planning.status}
     />
   );
 }

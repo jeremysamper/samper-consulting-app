@@ -46,7 +46,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // v16 (lot 06 du panel, 25.11.2026) : sources de la prévision des couverts
 // (pension allumée) et un séjour en demi-pension relié à une réservation.
 // v17 (lot 09 du panel, 25.11.2026) : une « Formule midi » à trois étapes.
-const VERSION_BASE = 'v17-' + aujourdhui();
+// v18 (lot 11 du panel, 26.11.2026) : règle de partage des pourboires dans
+// les réglages de la caisse (Salle 70, Cuisine 30).
+const VERSION_BASE = 'v18-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.
