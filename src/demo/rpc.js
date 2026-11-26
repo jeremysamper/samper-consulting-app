@@ -957,8 +957,11 @@ const RPC = {
       throw new ErreurRpc('INSPECTION_RESERVEE: passer une chambre « inspectée » demande le droit Inspecter les chambres', '42501');
     }
     const at = Math.min(geste, now);
+    // Le journal de démo est semé à heures fixes du jour : une heure encore à
+    // venir ne compte pas (en base, aucune heure de statut n'est dans le futur).
     const dernierJournal = (ctx.db.chambres_statut_journal || []).filter((j) => j.chambre_id === c.id)
-      .reduce((m, j) => Math.max(m, Date.parse(j.at) || 0), 0);
+      .map((j) => Date.parse(j.at) || 0).filter((t) => t <= now)
+      .reduce((m, t) => Math.max(m, t), 0);
     const actuel = c.statut_menage_at ? Date.parse(c.statut_menage_at) : (dernierJournal || Date.parse(c.created_at) || 0);
     const resultat = actuel && at <= actuel ? 'ignore' : 'applique';
     gestes.push({ cle: a.p_cle, etablissement_id: c.etablissement_id, chambre_id: c.id, statut: a.p_statut, geste_at: new Date(geste).toISOString(), resultat, par: ctx.uid, recu_at: maintenant() });

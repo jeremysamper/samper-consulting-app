@@ -17,7 +17,7 @@ import {
   useObjetsTrouves, useSejours, useTurndown,
 } from '../hebergement/hotelData.js';
 import { changerStatutOuGarder, getPendingGesteCount, listPendingGestes, subscribePendingGestes } from '../../services/offline/etagesSync.js';
-import { PHRASE_GARDE, appliquerEnAttente } from './statutsHorsLigne.js';
+import { PHRASE_GARDE, PHRASE_IGNORE, appliquerEnAttente } from './statutsHorsLigne.js';
 import { Champ, Liste, Vide, h } from '../hebergement/hotelUi.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -169,7 +169,8 @@ export default function Etages({ user, etablissement }) {
     }
     await Promise.all([chambres.reload(), journal.reload()]);
     setEnCours('');
-    if (message) notify(message, 'success');
+    if (res.resultat === 'ignore') notify(PHRASE_IGNORE, 'info');
+    else if (message) notify(message, 'success');
     return { error: null };
   };
   const changerStatut = (c, statut) => {
