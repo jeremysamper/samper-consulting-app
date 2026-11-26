@@ -1,4 +1,6 @@
+import React from 'react';
 import { RotateCw, TriangleAlert } from 'lucide-react';
+import useSoulevement from '../../hooks/useSoulevement.js';
 import { chaises, numeroSeul } from '../salle/planVue.js';
 import { hhmm, minutesDe } from '../salle/planTemps.js';
 import { libelleTagAllergene } from '../../utils/allergenes.js';
@@ -41,6 +43,9 @@ export default function PlanTable({
   cible = false, convient = false, proposee = false, choisie = false, enGlisse = false,
   onPointerDown, onClick, onDoubleClick, onTourner = null,
 }) {
+  // Mouvement : la table tenue se soulève, la table lâchée se pose.
+  const blocRef = React.useRef(null);
+  useSoulevement(blocRef, enGlisse);
   const tabouret = t.forme === 'tabouret';
   const ronde = t.forme === 'ronde' || tabouret;
   const w = Math.max(tabouret ? 30 : 40, Number(t.largeur) * k);
@@ -105,10 +110,13 @@ export default function PlanTable({
 
   return (
     <div
+      ref={blocRef}
       data-plan-table={t.id}
       style={{
         position: 'absolute', left: Number(t.pos_x) * k, top: Number(t.pos_y) * k, width: w, height: h,
         zIndex: enGlisse ? 6 : choisie || cible ? 4 : 2,
+        // Tenue, la table se soulève ; lâchée, elle se pose (useSoulevement).
+        scale: enGlisse ? 'var(--mvt-souleve)' : undefined,
       }}
     >
       {chaises(t, w, h, k).map((ch, i) => (

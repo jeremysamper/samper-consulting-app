@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, GripVertical, Plus, X } from 'lucide-react';
 import { Btn } from '../../../components/ui/index.jsx';
 import { Fenetre, st } from '../../../components/ui/Fenetres.jsx';
 import { useBackLayer } from '../../../hooks/useBackLayer.js';
+import useGlissement from '../../../hooks/useGlissement.js';
 import { NOMS_TAILLES } from './catalogue.js';
 import { REGISTRE_PAR_ID } from './registre.js';
 import {
@@ -194,6 +195,9 @@ function ModePersonnaliser({ t, poste, ctx, vu, disposition, listeDepart, enregi
   };
 
   const visibles = liste.filter((x) => vu(x.id));
+  // Mouvement : un widget déplacé, agrandi, ajouté ou retiré, et les autres
+  // glissent à leur nouvelle place au lieu de sauter.
+  useGlissement(grilleRef, visibles.map((x) => `${x.id}:${x.taille}`).join('|'));
 
   return (
     <>

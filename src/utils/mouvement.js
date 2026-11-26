@@ -55,40 +55,53 @@ export function reglages(el) {
     ressort: lire('--courbe-ressort').trim() || 'ease-out',
     enfonce: enNombre(lire('--mvt-enfonce'), 0.98),
     trajet: enNombre(lire('--mvt-trajet'), 6),
+    souleve: enNombre(lire('--mvt-souleve'), 1.04),
   };
 }
 
 // Les mouvements qui se rejouent sur un élément déjà à l'écran. Chacun rend
-// ses images, sa durée et sa courbe d'après les réglages de l'élément.
+// ses images, sa durée et sa courbe d'après les réglages de l'élément. Ils
+// s'écrivent par les propriétés scale et translate, jamais par transform :
+// elles se composent avec une transformation que l'élément porte déjà (table
+// tournée du plan, rang qui suit le doigt), au lieu de la remplacer le temps
+// du mouvement.
 const CATALOGUE = {
   // Un chiffre qui vient de changer (quantité, total) : il bat une fois.
   battement: (r) => ({
-    images: [{ transform: 'scale(1)' }, { transform: `scale(${1 + (1 - r.enfonce) * 3})` }, { transform: 'scale(1)' }],
+    images: [{ scale: 1 }, { scale: 1 + (1 - r.enfonce) * 3 }, { scale: 1 }],
     duree: r.d2 * 1.4,
     courbe: r.courbe,
   }),
   // Une saisie refusée : le champ se secoue une fois, de gauche à droite.
   secousse: (r) => ({
-    images: [0, -1, 1, -0.6, 0.6, 0].map((k) => ({ transform: `translateX(${k * r.trajet}px)` })),
+    images: [0, -1, 1, -0.6, 0.6, 0].map((k) => ({ translate: `${k * r.trajet}px 0` })),
     duree: r.d3 * 1.2,
     courbe: 'linear',
   }),
-  // Un objet posé : il arrive un peu plus grand et se cale.
+  // Un objet pris en main : il se soulève. Son échelle tenue (--mvt-souleve)
+  // est posée par l'écran, en style ou par data-mvt-tenu ; ce mouvement n'en
+  // joue que l'arrivée.
+  souleve: (r) => ({
+    images: [{ scale: 1 }, { scale: r.souleve }],
+    duree: r.d2,
+    courbe: r.ressort,
+  }),
+  // Un objet posé : il revient à sa taille et se cale.
   pose: (r) => ({
-    images: [{ transform: `scale(${2 - r.enfonce})` }, { transform: 'scale(1)' }],
+    images: [{ scale: r.souleve }, { scale: 1 }],
     duree: r.d2,
     courbe: r.ressort,
   }),
   // Une ligne ajoutée : elle monte en place.
   naissance: (r) => ({
-    images: [{ opacity: 0, transform: `translateY(${r.trajet}px)` }, { opacity: 1, transform: 'translateY(0)' }],
+    images: [{ opacity: 0, translate: `0 ${r.trajet}px` }, { opacity: 1, translate: '0 0' }],
     duree: r.d2,
     courbe: r.courbe,
   }),
   // Une ligne retirée : elle s'efface, et reste effacée jusqu'à son retrait
   // du DOM (sans cela elle réapparaîtrait le temps d'une image).
   depart: (r) => ({
-    images: [{ opacity: 1, transform: 'scale(1)' }, { opacity: 0, transform: 'scale(0.98)' }],
+    images: [{ opacity: 1, scale: 1 }, { opacity: 0, scale: 0.98 }],
     duree: r.d1,
     courbe: r.depart,
     garde: true,
@@ -180,30 +193,61 @@ export function installerRefus() {
 // (dans un effet de mise en page) : chaque enfant resté glisse de son ancienne
 // place à la nouvelle, un enfant neuf naît. offsetLeft et offsetTop donnent la
 // place de mise en page, sans la transformation d'un mouvement encore en cours.
-export function releverPlaces(conteneur) {
+// Avec un `selecteur`, ce ne sont plus les enfants directs qui glissent mais
+// les descendants qu'il désigne (les modules d'un menu rangé en rubriques) ;
+// leur place est alors lue à l'écran, par rapport au conteneur. `sauf` écarte
+// un élément du glissement : celui qu'on tient suit déjà le doigt.
+function elementsDe(conteneur, selecteur) {
+  return selecteur ? [...conteneur.querySelectorAll(selecteur)] : [...conteneur.children];
+}
+
+function placeDe(el, conteneur, selecteur) {
+  if (!selecteur) return { x: el.offsetLeft, y: el.offsetTop };
+  const a = el.getBoundingClientRect();
+  const b = conteneur.getBoundingClientRect();
+  return { x: a.left - b.left + conteneur.scrollLeft, y: a.top - b.top + conteneur.scrollTop };
+}
+
+export function releverPlaces(conteneur, selecteur) {
   const places = new Map();
   if (!conteneur) return places;
-  for (const el of conteneur.children) places.set(el, { x: el.offsetLeft, y: el.offsetTop });
+  for (const el of elementsDe(conteneur, selecteur)) places.set(el, placeDe(el, conteneur, selecteur));
   return places;
 }
 
-export function glisserDepuis(conteneur, places) {
+export function glisserDepuis(conteneur, places, { selecteur, sauf } = {}) {
   if (!conteneur || !places || mouvementReduit()) return;
   let r;
   try { r = reglages(conteneur); } catch { return; }
-  for (const el of conteneur.children) {
-    if (typeof el.animate !== 'function') continue;
+  for (const el of elementsDe(conteneur, selecteur)) {
+    if (typeof el.animate !== 'function' || sauf?.(el)) continue;
     const avant = places.get(el);
     if (!avant) { jouer(el, 'naissance'); continue; }
-    const dx = avant.x - el.offsetLeft;
-    const dy = avant.y - el.offsetTop;
+    const maintenant = placeDe(el, conteneur, selecteur);
+    const dx = Math.round(avant.x - maintenant.x);
+    const dy = Math.round(avant.y - maintenant.y);
     if (!dx && !dy) continue;
     try {
       el.animate(
-        [{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }],
+        [{ translate: `${dx}px ${dy}px` }, { translate: '0 0' }],
         { duration: r.d2, easing: r.courbe }
       );
     } catch { /* un mouvement qui échoue ne casse rien */ }
+  }
+}
+
+// Un objet lâché rejoint sa case : il part de là où le doigt l'a laissé
+// (décalage en pixels) et se pose à sa taille, avec le ressort.
+export function deposer(el, { dx = 0, dy = 0 } = {}) {
+  if (!el || typeof el.animate !== 'function' || mouvementReduit()) return null;
+  try {
+    const r = reglages(el);
+    return el.animate(
+      [{ translate: `${dx}px ${dy}px`, scale: r.souleve }, { translate: '0 0', scale: 1 }],
+      { duration: r.d2, easing: r.ressort }
+    );
+  } catch {
+    return null;
   }
 }
 

@@ -927,7 +927,9 @@ const st = {
     padding: '2px 4px', fontFamily: 'var(--font)', lineHeight: 1.2, overflow: 'hidden',
     WebkitTapHighlightColor: 'transparent',
   },
-  tableDrag: { boxShadow: 'var(--sh-lg)', opacity: 0.9 },
+  // Tenue, la table se soulève ; la transition des boutons (app.css) porte
+  // l'arrivée et la pose, avec le ressort du socle.
+  tableDrag: { boxShadow: 'var(--sh-lg)', opacity: 0.9, scale: 'var(--mvt-souleve)' },
   tableCible: { outlineWidth: 3, outlineStyle: 'solid', outlineColor: 'var(--onglet)', outlineOffset: 3 },
   tableNom: { fontWeight: 'var(--g3)', fontFamily: 'var(--font-num)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' },
   tableEtat: { fontWeight: 'var(--g3)', display: 'inline-flex', maxWidth: '100%' },

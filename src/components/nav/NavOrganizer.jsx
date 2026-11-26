@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronDown, ChevronUp, GripVertical, Pencil } from 'lucide-react';
+import useGlissement from '../../hooks/useGlissement.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Mode « Organiser le menu » (consultant) : remplace la liste de navigation de
@@ -61,6 +62,9 @@ export default function NavOrganizer({ items, getLabel, onSave, onCancel, onRese
   const [slot, setSlot] = React.useState(null); // { g, i } emplacement de dépôt
   const [saving, setSaving] = React.useState(false);
   const listRef = React.useRef(null);
+  // Mouvement : quand l'ordre change (dépôt, flèches), les modules glissent à
+  // leur nouvelle place au lieu de sauter.
+  useGlissement(listRef, groups.map((g) => g.ids.join(',')).join('|'), { selecteur: '[data-item-id]' });
   const byId = React.useMemo(() => new Map(items.map((i) => [i.id, i])), [items]);
 
   const locate = (id) => {

@@ -7,12 +7,18 @@ import { glisserDepuis, releverPlaces } from '../utils/mouvement.js';
 // joints) ; le mouvement joue à chaque fois qu'elle change, jamais au premier
 // rendu. Le conteneur peut arriver après un écran de chargement : tant que la
 // référence est vide, rien n'est relevé, et le premier relevé ne joue rien.
-export default function useGlissement(ref, cle) {
+// Options : `selecteur` pour faire glisser des descendants plutôt que les
+// enfants directs, `sauf` pour écarter l'élément qu'on tient (il suit déjà le
+// doigt). Elles sont lues au moment du glissement, sans le relancer.
+export default function useGlissement(ref, cle, options) {
   const places = React.useRef(null);
+  const reglage = React.useRef(options);
+  React.useEffect(() => { reglage.current = options; });
   React.useLayoutEffect(() => {
     const conteneur = ref.current;
     if (!conteneur) { places.current = null; return; }
-    if (places.current) glisserDepuis(conteneur, places.current);
-    places.current = releverPlaces(conteneur);
+    const { selecteur, sauf } = reglage.current || {};
+    if (places.current) glisserDepuis(conteneur, places.current, { selecteur, sauf });
+    places.current = releverPlaces(conteneur, selecteur);
   }, [ref, cle]);
 }

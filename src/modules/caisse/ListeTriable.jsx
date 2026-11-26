@@ -1,5 +1,12 @@
 import React from 'react';
 import { GripVertical } from 'lucide-react';
+import useGlissement from '../../hooks/useGlissement.js';
+import { deposer, jouer } from '../../utils/mouvement.js';
+
+// Le rang d'un identifiant, parmi les enfants de la liste.
+function rangDans(liste, id) {
+  return [...(liste?.children || [])].find((el) => el.dataset.rangTriable === String(id)) || null;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Liste verticale réordonnable au glisser (réglages de la caisse : ordre des
@@ -34,6 +41,13 @@ export default function ListeTriable({ items, cle, onOrdonner, rendu, desactive 
   // Rang en cours de glisser : { id, decalage } pour le suivre sous le doigt.
   const [glisse, setGlisse] = React.useState(null);
   const geste = React.useRef(null);
+  // Mouvement : les rangs voisins glissent quand l'ordre change, le rang pris
+  // en main se soulève, et il rejoint sa case avec un ressort quand on le
+  // lâche. Le rendu seul change : l'ordre et son écriture restent ceux d'avant.
+  const listeRef = React.useRef(null);
+  const tenu = React.useRef(null);
+  const lache = React.useRef(null);
+  const dernier = React.useRef(0);
 
   // La liste suit ses données, sauf pendant un geste.
   React.useEffect(() => {
@@ -42,6 +56,14 @@ export default function ListeTriable({ items, cle, onOrdonner, rendu, desactive 
 
   const parId = new Map((items || []).map((x) => [String(cle(x)), x]));
   const visibles = ordre.filter((id) => parId.has(String(id)));
+  useGlissement(listeRef, visibles.join('|'), { sauf: (el) => tenu.current != null && el.dataset.rangTriable === String(tenu.current) });
+  const idTenu = glisse?.id ?? null;
+  React.useLayoutEffect(() => {
+    if (idTenu != null) { jouer(rangDans(listeRef.current, idTenu), 'souleve'); return; }
+    const l = lache.current;
+    lache.current = null;
+    if (l) deposer(rangDans(listeRef.current, l.id), { dy: l.decalage });
+  }, [idTenu]);
 
   function appui(e, id) {
     if (desactive || (e.button != null && e.button !== 0)) return;
@@ -49,10 +71,12 @@ export default function ListeTriable({ items, cle, onOrdonner, rendu, desactive 
     if (!rang) return;
     e.preventDefault();
     const depart = visibles.indexOf(id);
+    dernier.current = 0;
     geste.current = {
       id, y0: e.clientY, depart, index: depart,
       pas: rang.offsetHeight + ECART, ordre: [...visibles], initial: JSON.stringify(visibles),
     };
+    tenu.current = id;
     setGlisse({ id, decalage: 0 });
 
     const bouge = (ev) => {
@@ -65,7 +89,8 @@ export default function ListeTriable({ items, cle, onOrdonner, rendu, desactive 
         g.index = cible;
         setOrdre(g.ordre);
       }
-      setGlisse({ id: g.id, decalage: dy - (g.index - g.depart) * g.pas });
+      dernier.current = dy - (g.index - g.depart) * g.pas;
+      setGlisse({ id: g.id, decalage: dernier.current });
     };
     const fin = () => {
       window.removeEventListener('pointermove', bouge);
@@ -73,6 +98,9 @@ export default function ListeTriable({ items, cle, onOrdonner, rendu, desactive 
       window.removeEventListener('pointercancel', fin);
       const g = geste.current;
       geste.current = null;
+      tenu.current = null;
+      // Là où le doigt a laissé le rang, pour qu'il rejoigne sa case de là.
+      if (g) lache.current = { id: g.id, decalage: dernier.current };
       setGlisse(null);
       if (g && JSON.stringify(g.ordre) !== g.initial) onOrdonner?.(g.ordre);
     };
@@ -93,7 +121,7 @@ export default function ListeTriable({ items, cle, onOrdonner, rendu, desactive 
   }
 
   return (
-    <div style={st.liste}>
+    <div ref={listeRef} style={st.liste}>
       {visibles.map((id) => {
         const item = parId.get(String(id));
         const enMain = glisse?.id === id;
@@ -103,7 +131,7 @@ export default function ListeTriable({ items, cle, onOrdonner, rendu, desactive 
             data-rang-triable={id}
             style={{
               ...st.rang,
-              ...(enMain ? { transform: `translateY(${glisse.decalage}px)`, zIndex: 2, boxShadow: 'var(--sh-lg)', background: 'var(--surface)' } : null),
+              ...(enMain ? { transform: `translateY(${glisse.decalage}px)`, scale: 'var(--mvt-souleve)', zIndex: 2, boxShadow: 'var(--sh-lg)', background: 'var(--surface)' } : null),
             }}
           >
             {!desactive && (

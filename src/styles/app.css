@@ -153,6 +153,8 @@
   --mvt-enfonce: 0.94;
   --mvt-creux: 8px;
   --mvt-trajet: 16px;
+  /* Échelle d'un objet tenu pendant un glisser-déposer (table, rang, widget). */
+  --mvt-souleve: 1.04;
 
   /* ─── Jetons par rôle ─────────────────────────────────────────────────
      btn-*      bouton secondaire : fond, texte, contour
@@ -768,10 +770,10 @@ html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45;
    - une vue capturée en PDF : html2canvas photographie l'instant, une
      animation en cours sortirait à moitié jouée. */
 @media (prefers-reduced-motion: reduce) {
-  :root { --mvt-1: 0.01ms; --mvt-2: 0.01ms; --mvt-3: 0.01ms; --mvt-enfonce: 1; --mvt-trajet: 0px; }
+  :root { --mvt-1: 0.01ms; --mvt-2: 0.01ms; --mvt-3: 0.01ms; --mvt-enfonce: 1; --mvt-trajet: 0px; --mvt-souleve: 1; }
 }
 html[data-mouvement="reduit"],
-.pdf-render-root { --mvt-1: 0.01ms; --mvt-2: 0.01ms; --mvt-3: 0.01ms; --mvt-enfonce: 1; --mvt-trajet: 0px; }
+.pdf-render-root { --mvt-1: 0.01ms; --mvt-2: 0.01ms; --mvt-3: 0.01ms; --mvt-enfonce: 1; --mvt-trajet: 0px; --mvt-souleve: 1; }
 
 /* Entrées et sorties : une classe posée sur un élément qui vient d'être
    monté (entrée) ou qui va être retiré (sortie). Ce qui se rejoue sur un
