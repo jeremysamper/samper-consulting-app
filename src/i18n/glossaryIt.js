@@ -5971,6 +5971,11 @@ export const UI_GLOSSARY_IT = {
   "Produit en rupture": "Prodotto esaurito",
   "Produits en rupture": "Prodotti esauriti",
   "En rupture aujourd'hui": "Esaurito oggi",
+  // Lot 15 du panel : accords reliés à la carte des boissons.
+  "Choisir dans la carte": "Scegli dalla carta",
+  "Cette boisson n'est plus à la carte.": "Questa bevanda non è più in carta.",
+  "Aucune boisson ne correspond à votre recherche.": "Nessuna bevanda corrisponde alla Sua ricerca.",
+  "en rupture": "esaurito",
   "Mettre en rupture": "Segna come esaurito",
   "Remettre en vente": "Rimetti in vendita",
   "Tout remettre en vente": "Rimetti tutto in vendita",

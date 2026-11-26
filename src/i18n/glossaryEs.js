@@ -6205,6 +6205,11 @@ export const UI_GLOSSARY_ES = {
   "Produit en rupture": "Producto agotado",
   "Produits en rupture": "Productos agotados",
   "En rupture aujourd'hui": "Agotado hoy",
+  // Lot 15 du panel : accords reliés à la carte des boissons.
+  "Choisir dans la carte": "Elegir de la carta",
+  "Cette boisson n'est plus à la carte.": "Esta bebida ya no está en la carta.",
+  "Aucune boisson ne correspond à votre recherche.": "Ninguna bebida coincide con su búsqueda.",
+  "en rupture": "agotado",
   "Mettre en rupture": "Marcar como agotado",
   "Remettre en vente": "Poner de nuevo a la venta",
   "Tout remettre en vente": "Poner todo de nuevo a la venta",

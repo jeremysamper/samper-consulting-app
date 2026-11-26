@@ -6225,6 +6225,11 @@ export const UI_GLOSSARY = {
   "Produit en rupture": "Product sold out",
   "Produits en rupture": "Products sold out",
   "En rupture aujourd'hui": "Sold out today",
+  // Lot 15 du panel : accords reliés à la carte des boissons.
+  "Choisir dans la carte": "Choose from the menu",
+  "Cette boisson n'est plus à la carte.": "This drink is no longer on the menu.",
+  "Aucune boisson ne correspond à votre recherche.": "No drink matches your search.",
+  "en rupture": "sold out",
   "Mettre en rupture": "Mark as sold out",
   "Remettre en vente": "Put back on sale",
   "Tout remettre en vente": "Put all back on sale",

@@ -291,6 +291,17 @@ const VINS = {
   tartare: 'Fendant du Valais',
   risotto: 'Pinot noir du Valais',
 };
+// Lot 15 du panel : chaque accord est relié à une boisson de la caisse de
+// démonstration (BOISSONS de caisse.js, identifiants écrits en toutes lettres :
+// caisse.js importe déjà ce fichier). Le nom gardé reste le texte d'avant.
+const VINS_RELIES = {
+  boeuf: 'pl-b-cornalin-btl',
+  volaille: 'pl-b-pinot-verre',
+  risotto: 'pl-b-pinot-verre',
+  fera: 'pl-b-fendant-verre',
+  croute: 'pl-b-fendant-verre',
+  tartare: 'pl-b-fendant-verre',
+};
 
 export const FICHES_SALLE = PLATS.map((p) => {
   const k = p.id.slice(3);
@@ -306,7 +317,7 @@ export const FICHES_SALLE = PLATS.map((p) => {
     temperature_service: p.categorie === 'Desserts' && k !== 'tarte' ? 'Froid' : 'Chaud',
     dressage_notes: recettes[0]?.dressage || '',
     allergenes,
-    accords: VINS[k] ? [{ nom: VINS[k], type: 'vin', note: 'Au verre ou en bouteille.' }] : [],
+    accords: VINS[k] ? [{ nom: VINS[k], type: 'vin', note: 'Au verre ou en bouteille.', platId: VINS_RELIES[k] }] : [],
     infos_service: k === 'boeuf' ? 'Demander la cuisson. Saignant par défaut.' : '',
     // Temps de service saisi pour un seul plat : les autres n'en ont pas, et
     // l'écran ne l'affiche pas (plus de « 15 min » par défaut partout).

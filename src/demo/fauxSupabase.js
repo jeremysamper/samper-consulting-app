@@ -50,7 +50,9 @@ const CLE_ROLE = PREFIXE + 'role';
 // les réglages de la caisse (Salle 70, Cuisine 30).
 // v20 (lot 13 du panel, 26.11.2026) : un exonéré de la taxe de séjour
 // (« Résident de la commune ») dans le registre de la chambre 103.
-const VERSION_BASE = 'v20-' + aujourdhui();
+// v21 (lot 15 du panel, 26.11.2026) : accords des fiches salle reliés aux
+// boissons de la caisse (platId).
+const VERSION_BASE = 'v21-' + aujourdhui();
 // Lot 02 du panel : ?maisons=2 sème une seconde maison. Sa base gardée porte
 // un suffixe, pour qu'un onglet ouvert sans le paramètre puis avec lui ne
 // relise pas la base à une maison, et l'inverse.
