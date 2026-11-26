@@ -1,8 +1,7 @@
 import React from 'react';
-import { createPortal } from 'react-dom';
 import {
-  ArrowLeft, Check, ChevronDown, ChevronUp, ConciergeBell, FlaskConical, Hourglass, LayoutGrid, Megaphone,
-  Minus, MoreHorizontal, Pencil, Plus, Search, Send, Trash2, TriangleAlert, Layers, X,
+  ArrowLeft, Check, ChevronDown, ChevronUp, ConciergeBell, FlaskConical, Hourglass, LayoutGrid, Maximize2, Megaphone,
+  Minimize2, Minus, MoreHorizontal, Pencil, Plus, Search, Send, Trash2, TriangleAlert, Layers, X,
 } from 'lucide-react';
 import { Btn, Input, SegmentedTabs } from '../../components/ui/index.jsx';
 import { BoutonActions, Fenetre, st as fen } from '../../components/ui/Fenetres.jsx';
@@ -47,9 +46,12 @@ import { libelleAvecFormat, ligneNueDuFormat, optionFormat, prixAffiche } from '
 //               l'action principale ; le résumé fait monter la commande dans
 //               une feuille, pour vérifier, modifier ou retirer d'un toucher ;
 //   tablette  : la commande dans un panneau à droite, même contenu.
-// L'écran est rendu dans body (portail) : la coque et ses conteneurs ne le
-// cadrent pas. Les fenêtres partagées (Fenetre, z-index 1000) et les feuilles
-// de la caisse (1200) passent au-dessus de lui (900).
+// Depuis le 26.11.2026, l'écran est une carte posée dans la zone de contenu de
+// la coque, sous la barre du haut et à côté des raccourcis de la tablette :
+// on change de module sans repasser par le plan. Le bouton « Plein écran » de
+// l'en-tête demande à la coque de retirer sa barre et ses raccourcis
+// (Caisse.jsx, setPleinEcran). Les fenêtres partagées (Fenetre, z-index 1000)
+// et les feuilles de la caisse (1200) passent au-dessus de lui.
 //
 // Modes (v4) : « En direct », « À suivre », « À suivre 2 »... sont les suites
 // 1, 2, 3 de caisse_lignes, sans changement de schéma. On choisit le mode,
@@ -123,6 +125,9 @@ export default function TicketEcran({
   modeTest = false, onQuittance,
   terminaux = [], role = null, hebergementActif = false, userId = null, poste = null,
   titre = null, onRetour, bandeau = null,
+  // Plein écran de la caisse (Caisse.jsx) : la coque retire sa barre du haut
+  // et ses raccourcis ; l'en-tête porte le bouton qui bascule.
+  plein = false, onBasculerPlein = null,
 }) {
   const [recherche, setRecherche] = React.useState('');
   const [rechercheOuverte, setRechercheOuverte] = React.useState(false);
@@ -1184,8 +1189,8 @@ export default function TicketEcran({
 
   const sortieFeuille = feuille === 'fermeture';
 
-  return createPortal(
-    <div ref={racineRef} style={st.plein} className="caisse-plein no-print" data-caisse-ecran={tablette ? 'tablette' : 'telephone'}>
+  return (
+    <div ref={racineRef} style={st.plein} className="caisse-plein no-print" data-cadre="" data-caisse-ecran={tablette ? 'tablette' : 'telephone'}>
       {bandeau}
 
       {/* ── En-tête : retour, modes, loupe, actions ── */}
@@ -1214,6 +1219,21 @@ export default function TicketEcran({
           <Search size={20} strokeWidth={1.75} aria-hidden="true" />
           <span style={st.horsEcran}>Chercher un article</span>
         </button>
+        {onBasculerPlein && (
+          <button
+            type="button"
+            style={{ ...st.rond, ...(plein ? st.rondActif : null) }}
+            aria-pressed={plein}
+            title="Plein écran"
+            onClick={onBasculerPlein}
+            data-caisse-plein-ecran=""
+          >
+            {plein
+              ? <Minimize2 size={20} strokeWidth={1.75} aria-hidden="true" />
+              : <Maximize2 size={20} strokeWidth={1.75} aria-hidden="true" />}
+            <span style={st.horsEcran}>Plein écran</span>
+          </button>
+        )}
         {menuActions}
       </header>
 
@@ -1565,8 +1585,7 @@ export default function TicketEcran({
           onClose={() => setCorrigerOuvert(false)}
         />
       )}
-    </div>,
-    document.body,
+    </div>
   );
 }
 
@@ -1580,15 +1599,22 @@ const st = {
   },
   formatLibelle: { fontSize: 'var(--t3)', fontWeight: 'var(--g2)' },
   formatPrix: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)', fontSize: 'var(--t3)' },
-  // L'écran entier, posé sur la coque (portail dans body).
+  // L'écran, posé dans la zone de contenu de la coque à la place du plan
+  // (26.11.2026 : il couvrait la coque entière ; la caisse s'ouvre désormais
+  // avec la barre du haut et les raccourcis, et le plein écran se demande au
+  // bouton de l'en-tête). Une carte à la hauteur de la zone ; position
+  // relative : le voile et la feuille de la commande au téléphone s'y posent.
+  // #root porte les zones de sécurité : l'écran n'en ajoute aucune.
   plein: {
-    position: 'fixed', inset: 0, zIndex: 900, display: 'flex', flexDirection: 'column', minWidth: 0,
+    position: 'relative', height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', minWidth: 0,
+    boxSizing: 'border-box', overflow: 'hidden',
     background: 'var(--bg)', color: 'var(--text)', fontFamily: 'var(--font)',
-    paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)',
+    borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
   },
   entete: {
     display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, minWidth: 0, boxSizing: 'border-box',
-    padding: 'calc(8px + env(safe-area-inset-top)) 10px 8px', background: 'var(--surface)',
+    padding: '8px 10px', background: 'var(--surface)',
     borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--rule-soft)',
   },
   // Bouton à picto seul : un cercle de 40 px dans une cible de 44 px.
@@ -1771,7 +1797,7 @@ const st = {
   },
   ligneRetraitSupprimer: { color: 'var(--danger-text)' },
   commandePied: {
-    display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0, padding: '12px 16px calc(14px + env(safe-area-inset-bottom))',
+    display: 'flex', flexDirection: 'column', gap: 10, flexShrink: 0, padding: '12px 16px 14px',
     borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--rule-soft)',
   },
   totalRang: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' },
@@ -1790,7 +1816,7 @@ const st = {
   // Téléphone : barre du bas, le résumé en tuile, l'action dessous.
   barre: {
     display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0,
-    padding: '10px 12px calc(10px + env(safe-area-inset-bottom))', background: 'var(--surface)', boxShadow: 'var(--sh-lg)',
+    padding: '10px 12px', background: 'var(--surface)', boxShadow: 'var(--sh-lg)',
     borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--rule-soft)',
   },
   resume: {

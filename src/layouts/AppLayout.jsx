@@ -19,8 +19,9 @@ import HomeScreenIconBanner from '../components/HomeScreenIconBanner.jsx';
 import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
+import TiroirModules from './TiroirModules.jsx';
 import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
-import { Bell, Grip, House, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Search, Sun } from 'lucide-react';
+import { Bell, House, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Search, Sun } from 'lucide-react';
 import { useCanGoBack } from '../hooks/useBackLayer.js';
 import { goBack, goHome as goHomeHistory } from '../services/historyNav.js';
 import NavOrganizer from '../components/nav/NavOrganizer.jsx';
@@ -60,15 +61,17 @@ const LARGEUR_CONTENU = 1440;
 const PAGES_PLEINE_LARGEUR = new Set(['caisse', 'kds']);
 
 // Barre de raccourcis de la tablette tenue en paysage : les premiers modules
-// de la personne, dans l'ordre du menu de l'ordinateur, et « Tout » qui ramène
-// à l'accueil en tuiles. Sept au plus ; la feuille en retire un ou deux quand
-// l'écran manque de hauteur (.sc-raccourci, app.css). Les écrans de travail
-// qui gardent toute la largeur (plan de la caisse, passe du KDS) ne la
-// portent pas : une colonne de moins leur retirerait des tables ou des bons.
+// de la personne, dans l'ordre du menu de l'ordinateur. La liste complète
+// monte du bas de l'écran d'un glissé vers le haut (TiroirModules), à la place
+// de l'ancien bouton « Tout » (26.11.2026). Sept au plus ; la feuille en
+// retire un ou deux quand l'écran manque de hauteur (.sc-raccourci, app.css).
+// Le passe du KDS ne la porte pas : une colonne de moins lui retirerait des
+// bons. La caisse la porte depuis le 26.11.2026, pour en sortir d'un toucher,
+// et la retire avec la barre du haut quand on la met en plein écran.
 // La borne de pointage est rendue hors de la coque (main.jsx).
 const NB_RACCOURCIS = 7;
 const LARGEUR_RACCOURCIS = 88;
-const PAGES_SANS_RACCOURCIS = PAGES_PLEINE_LARGEUR;
+const PAGES_SANS_RACCOURCIS = new Set(['kds']);
 
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
 // la mise en route (widget du tableau de bord) et la page d'accueil de la
@@ -115,7 +118,13 @@ export default function AppLayout({
   // au téléphone ni en portrait, jamais sur un écran de travail en pleine
   // largeur. Elle suit la page affichée, comme la marge de page.
   const paysageLarge = usePaysageLarge();
-  const avecRaccourcis = shellMode === 'tablette' && paysageLarge && !PAGES_SANS_RACCOURCIS.has(pageAffichee);
+  // Plein écran demandé par un module (la caisse, setPleinEcran du
+  // ShellContext) : la coque retire sa barre du haut, ses raccourcis et le
+  // menu de l'ordinateur tant que la page qui l'a demandé est à l'écran. Le
+  // module reste monté au même endroit de l'arbre : rien ne se recharge.
+  const [pleinEcranPage, setPleinEcranPage] = React.useState(null);
+  const pleinEcran = pleinEcranPage != null && pleinEcranPage === pageAffichee;
+  const avecRaccourcis = shellMode === 'tablette' && paysageLarge && !pleinEcran && !PAGES_SANS_RACCOURCIS.has(pageAffichee);
   const { isDark, toggleTheme } = useTheme();
   const legacySB = dbService.getBridge();
   const DEMO_DATA = getDemoData();
@@ -421,6 +430,7 @@ export default function AppLayout({
     openAccount: ouvrirMonCompte,
     openCompte: ouvrirCompte, compteActif: currentPage === 'compte',
     carteAlertes: tactile ? carteAlertes : null,
+    pleinEcran, setPleinEcran: setPleinEcranPage,
   };
 
   // ── Raccourcis clavier, palette Ctrl/⌘+K, Échap ───────────────
@@ -817,22 +827,10 @@ export default function AppLayout({
                 </button>
               );
             })}
-            <button
-              type="button"
-              className="sc-raccourci sc-raccourci-tout"
-              style={currentPage === 'accueil' ? mls.raccourciToutActif : mls.raccourciTout}
-              aria-current={currentPage === 'accueil' ? 'page' : undefined}
-              onClick={goHome}
-            >
-              <span className="sc-raccourci-cercle" style={currentPage === 'accueil' ? mls.raccourciCercleActif : mls.raccourciCercle} aria-hidden="true">
-                <Grip size={20} strokeWidth={1.75} />
-              </span>
-              <span className="sc-raccourci-libelle">Tout</span>
-            </button>
           </nav>
         ) : null}
-        <div style={mls.stage}>
-          <header style={mls.topbar} className="app-glass-bar">
+        <div style={pleinEcran ? mls.stagePlein : mls.stage}>
+          <header style={pleinEcran ? mls.topbarPlein : mls.topbar} className="app-glass-bar">
             <button
               type="button"
               className="app-bar-btn"
@@ -896,6 +894,9 @@ export default function AppLayout({
 
         {passwordModal}
         {shortcutsLayer}
+        {/* Tablette : la liste des modules monte d'un glissé vers le haut,
+            plein écran compris. */}
+        <TiroirModules actif={shellMode === 'tablette'} page={currentPage} />
       </div>
       <PopupPoints actif={points.actif && points.participant} />
       <Nouveautes user={user} etablissement={etablissement} donneesPretes={donneesPretes} page={currentPage} modules={visibleNav} points={points} pointsAttendus={perms.points !== false} />
@@ -923,7 +924,7 @@ export default function AppLayout({
       <aside
         id="app-sidebar"
         aria-label="Menu principal"
-        style={{ ...ls.sidebar, width: menuLarge ? 234 : 76 }}
+        style={{ ...ls.sidebar, width: menuLarge ? 234 : 76, ...(pleinEcran ? { display: 'none' } : null) }}
       >
         <div style={menuLarge ? ls.sidebarTop : ls.sidebarTopRail}>
           <div style={{ position: 'relative' }}>
@@ -958,8 +959,8 @@ export default function AppLayout({
         {rappelTotp}
         {/* Scène : le header « verre » est posé en absolu sur la zone qui
             défile, le contenu passe dessous (--app-header-h, app.css). */}
-        <div style={ls.stage}>
-          <header style={ls.topbar} className="topbar-desktop app-glass-bar">
+        <div style={pleinEcran ? ls.stagePlein : ls.stage}>
+          <header style={pleinEcran ? ls.topbarPlein : ls.topbar} className="topbar-desktop app-glass-bar">
             <div style={ls.topbarLeft}>
               {/* Un seul bouton, toujours au même endroit, pour replier et
                   rouvrir la barre (remplace ❮ dans la barre et la languette). */}
@@ -1129,6 +1130,9 @@ const ls = {
     scrollPaddingTop: 'var(--app-header-h)',
   },
 };
+// Plein écran : ni barre du haut ni menu, <main> remonte.
+ls.stagePlein = { ...ls.stage, '--app-header-h': '0px' };
+ls.topbarPlein = { ...ls.topbar, display: 'none' };
 ls.contentCentre = {
   ...ls.content,
   paddingLeft: `max(var(--marge), calc((100% - ${LARGEUR_CONTENU}px) / 2))`,
@@ -1206,6 +1210,7 @@ const mls = {
 // Entrée choisie : le cercle prend l'aplat sombre, le libellé l'encre du texte.
 mls.raccourciActif = { ...mls.raccourci, color: 'var(--text)' };
 mls.raccourciCercleActif = { ...mls.raccourciCercle, background: 'var(--nav-active)', color: 'var(--nav-text-active)' };
-// « Tout » se pose au pied de la barre.
-mls.raccourciTout = { ...mls.raccourci, marginTop: 'auto' };
-mls.raccourciToutActif = { ...mls.raccourciActif, marginTop: 'auto' };
+// Plein écran (pleinEcran) : la barre du haut part, <main> remonte (son
+// padding haut lit --app-header-h).
+mls.stagePlein = { ...mls.stage, '--app-header-h': '0px' };
+mls.topbarPlein = { ...mls.topbar, display: 'none' };

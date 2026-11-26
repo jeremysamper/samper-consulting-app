@@ -2413,8 +2413,9 @@ html[data-mouvement="reduit"] .ui-card--clickable:active,
    du menu y glisse de cercle en cercle : elle passe devant les cercles et
    sous le picto de l'entrée choisie, dont le cercle rend alors son aplat.
    Le libellé tient sur deux lignes au plus, centré. Quand l'écran manque de
-   hauteur, le septième puis le sixième raccourci se retirent : « Tout » reste
-   en vue sans défilement. Elle défile en dernier recours, sans ascenseur. */
+   hauteur, le septième puis le sixième raccourci se retirent : la barre tient
+   sans défilement. Elle défile en dernier recours, sans ascenseur. La liste
+   complète monte du bas d'un glissé vers le haut (TiroirModules). */
 .sc-raccourcis { scrollbar-width: none; }
 .sc-raccourcis::-webkit-scrollbar { display: none; }
 .sc-raccourcis .sc-nav-pilule { z-index: 1; }
@@ -2439,6 +2440,23 @@ html[data-mouvement="reduit"] .ui-card--clickable:active,
 .sc-raccourci:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--r); }
 @media (max-height: 699.98px) { .sc-raccourci[data-rang="7"] { display: none !important; } }
 @media (max-height: 619.98px) { .sc-raccourci[data-rang="6"] { display: none !important; } }
+
+/* Tiroir des modules de la tablette (TiroirModules.jsx) : la poignée qui
+   signale le glissé vers le haut, posée au-dessus de la zone de sécurité du
+   bas. Elle ne capte aucun doigt : le contenu dessous reste touchable. */
+.sc-tiroir-indice {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 6px);
+  width: 56px;
+  height: 5px;
+  margin-left: -28px;
+  border-radius: var(--r-full);
+  background: var(--text3);
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 60;
+}
 
 /* Anneau hors de la pilule : posé dedans, il se perdrait sur l'aplat sombre
    de l'entrée choisie. */
