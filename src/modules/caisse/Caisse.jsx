@@ -1,7 +1,9 @@
 import React from 'react';
-import { ChevronsRight, ConciergeBell } from 'lucide-react';
+import { ChevronsRight, ConciergeBell, Maximize2, Minimize2 } from 'lucide-react';
 import EcranTache from '../../components/parcours/EcranTache.jsx';
 import { useEcranModule, ECRAN_ACCUEIL } from '../../components/parcours/useEcranModule.js';
+import { usePageActive } from '../../components/parcours/pageActive.js';
+import { useShell } from '../../layouts/ShellContext.js';
 import { Btn } from '../../components/ui/index.jsx';
 import { BoutonActions } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
@@ -115,6 +117,24 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
   const { ecran, setEcran, retourAccueil } = useEcranModule('caisse', {
     repris: ['tickets'],
   });
+
+  // Plein écran (26.11.2026) : la caisse s'ouvre dans la coque, avec la barre
+  // du haut et les raccourcis de la tablette, pour passer d'un module à
+  // l'autre. Le bouton « Plein écran » du plan et de l'écran de commande les
+  // retire, le même bouton les rend. Le choix vaut pour la visite : chaque
+  // arrivée sur la caisse repart dans la coque, comme le KDS.
+  const setPleinCoque = useShell()?.setPleinEcran;
+  const pageActive = usePageActive();
+  const [plein, setPlein] = React.useState(false);
+  React.useEffect(() => { if (!pageActive) setPlein(false); }, [pageActive]);
+  React.useEffect(() => {
+    if (!setPleinCoque) return undefined;
+    const voulu = plein && pageActive;
+    setPleinCoque((p) => (voulu ? 'caisse' : (p === 'caisse' ? null : p)));
+    return undefined;
+  }, [plein, pageActive, setPleinCoque]);
+  React.useEffect(() => () => setPleinCoque?.((p) => (p === 'caisse' ? null : p)), [setPleinCoque]);
+  const basculerPlein = React.useCallback(() => setPlein((v) => !v), []);
 
   // Tickets ouverts tels que lus en base ; `tickets`, plus bas, en retire ceux
   // dont la vente attend son envoi sur cet appareil (lot 07 du panel).
@@ -880,6 +900,19 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
               choixModeTest,
             ] }]}
           />
+          <button
+            type="button"
+            style={plein ? st.pleinActif : st.plein}
+            aria-pressed={plein}
+            aria-label="Plein écran"
+            title="Plein écran"
+            onClick={basculerPlein}
+            data-caisse-plein-ecran=""
+          >
+            {plein
+              ? <Minimize2 size={20} strokeWidth={1.75} aria-hidden="true" />
+              : <Maximize2 size={20} strokeWidth={1.75} aria-hidden="true" />}
+          </button>
         </div>
         {/* Bandeau du service : arrivées, prévues, en retard, no-show. En
             mode test, il se lit sans geste (rien n'est écrit). */}
@@ -1087,6 +1120,8 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         hebergementActif={isModuleActiveForEtab(etablissement, 'hebergement')}
         userId={user?.id || null}
         poste={poste}
+        plein={plein}
+        onBasculerPlein={basculerPlein}
       />
     );
   }
@@ -1108,6 +1143,14 @@ const st = {
     borderRadius: 'var(--r-full)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
     fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap',
+  },
+  // Plein écran : un cercle à picto au bout de la barre, en aplat sombre
+  // quand il est pris.
+  plein: {
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, minHeight: 44,
+    padding: 0, marginLeft: 'auto', flexShrink: 0, cursor: 'pointer', boxSizing: 'border-box',
+    borderRadius: 'var(--r-full)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
   },
   // Liste dans une carte blanche (direction Galet) : les lignes se séparent
   // par leur filet doux, la dernière n'en porte pas (caisse.css).
@@ -1141,3 +1184,4 @@ const st = {
   ticketHeure: { color: 'var(--text2)', fontSize: 'var(--t1)', fontFamily: 'var(--font-num)' },
   ticketTotal: { fontFamily: 'var(--font-num)', fontWeight: 'var(--g-chiffre)' },
 };
+st.pleinActif = { ...st.plein, background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' };
