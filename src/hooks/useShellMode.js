@@ -67,3 +67,13 @@ export function useShellMode() {
 }
 
 export const estTactile = (mode) => mode === 'tablette' || mode === 'telephone';
+
+// Tablette tenue en paysage : au moins 1024 px de large ET plus large que
+// haute. La largeur seule ne suffit pas, le grand iPad fait 1024 px de large en
+// portrait. La coque y pose sa barre de raccourcis (AppLayout), en mode
+// tablette seulement ; un forçage de coque ne change pas cette lecture.
+const QUERY_PAYSAGE_LARGE = '(min-width: 1024px) and (orientation: landscape)';
+
+export function usePaysageLarge() {
+  return useMediaQuery(QUERY_PAYSAGE_LARGE);
+}

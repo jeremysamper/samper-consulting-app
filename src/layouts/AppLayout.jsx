@@ -6,6 +6,7 @@ import usePiluleGlissante from '../hooks/usePiluleGlissante.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { useAlertInstances } from '../hooks/useAlertInstances.js';
 import { useVisibleNav } from '../hooks/useVisibleNav.js';
+import { usePaysageLarge } from '../hooks/useShellMode.js';
 import { usePointsRetour } from '../modules/points/usePointsRetour.js';
 import { IndicateursPointsProvider } from '../modules/points/IndicateursPoints.jsx';
 import PopupPoints from '../modules/points/PopupPoints.jsx';
@@ -19,7 +20,7 @@ import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
 import { CommandPalette, ShortcutsHelp, MOD_LABEL, buildPaletteEntries, useGlobalShortcuts } from '../components/shortcuts/KeyboardShortcuts.jsx';
-import { Bell, House, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Search, Sun } from 'lucide-react';
+import { Bell, Grip, House, Moon, PanelLeftClose, PanelLeftOpen, Pencil, Search, Sun } from 'lucide-react';
 import { useCanGoBack } from '../hooks/useBackLayer.js';
 import { goBack, goHome as goHomeHistory } from '../services/historyNav.js';
 import NavOrganizer from '../components/nav/NavOrganizer.jsx';
@@ -57,6 +58,17 @@ const PAGES_MARGE_SERREE = new Set(['spa', 'caisse']);
 // bornée leur retirerait des produits ou des bons par écran.
 const LARGEUR_CONTENU = 1440;
 const PAGES_PLEINE_LARGEUR = new Set(['caisse', 'kds']);
+
+// Barre de raccourcis de la tablette tenue en paysage : les premiers modules
+// de la personne, dans l'ordre du menu de l'ordinateur, et « Tout » qui ramène
+// à l'accueil en tuiles. Sept au plus ; la feuille en retire un ou deux quand
+// l'écran manque de hauteur (.sc-raccourci, app.css). Les écrans de travail
+// qui gardent toute la largeur (plan de la caisse, passe du KDS) ne la
+// portent pas : une colonne de moins leur retirerait des tables ou des bons.
+// La borne de pointage est rendue hors de la coque (main.jsx).
+const NB_RACCOURCIS = 7;
+const LARGEUR_RACCOURCIS = 88;
+const PAGES_SANS_RACCOURCIS = PAGES_PLEINE_LARGEUR;
 
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
 // la mise en route (widget du tableau de bord) et la page d'accueil de la
@@ -99,6 +111,11 @@ export default function AppLayout({
   // Tablette et téléphone partagent la coque tactile (page d'accueil, bouton
   // Accueil) ; l'ordinateur garde barre latérale et raccourcis.
   const tactile = shellMode !== 'ordinateur';
+  // Barre de raccourcis : tablette en paysage seulement (media query), jamais
+  // au téléphone ni en portrait, jamais sur un écran de travail en pleine
+  // largeur. Elle suit la page affichée, comme la marge de page.
+  const paysageLarge = usePaysageLarge();
+  const avecRaccourcis = shellMode === 'tablette' && paysageLarge && !PAGES_SANS_RACCOURCIS.has(pageAffichee);
   const { isDark, toggleTheme } = useTheme();
   const legacySB = dbService.getBridge();
   const DEMO_DATA = getDemoData();
@@ -468,6 +485,19 @@ export default function AppLayout({
     cle: currentPage,
     forme: `${sidebarOpen}|${organizing}|${visibleNav.length}|${tactile}`,
   });
+  // Raccourcis de la tablette : l'ordre du menu de l'ordinateur (rubrique par
+  // rubrique), la même pilule qui glisse, posée sur le cercle du module ouvert.
+  const raccourcis = React.useMemo(
+    () => groupedNav.flatMap((groupe) => groupe.items).slice(0, NB_RACCOURCIS),
+    [groupedNav],
+  );
+  const raccourcisRef = React.useRef(null);
+  const raccourcisPiluleRef = React.useRef(null);
+  usePiluleGlissante(raccourcisRef, raccourcisPiluleRef, {
+    selecteur: '.sc-raccourci[aria-current="page"] .sc-raccourci-cercle',
+    cle: currentPage,
+    forme: `${avecRaccourcis}|${raccourcis.map((item) => item.id).join(',')}`,
+  });
   const mainRef = React.useRef(null);
   const positionsRef = React.useRef(new Map());
   const pageAfficheeRef = React.useRef(pageAffichee);
@@ -745,18 +775,62 @@ export default function AppLayout({
   // COQUE TACTILE (tablette et téléphone)
   // ════════════════════════════════
   // Ni barre latérale ni tiroir : la liste des modules est la page d'accueil
-  // (AccueilTactile, rendue par LegacyModuleHost). Header « verre » : bouton
+  // (AccueilTactile, rendue par LegacyModuleHost). La tablette tenue en
+  // paysage y ajoute une barre de raccourcis à gauche (avecRaccourcis) : un
+  // toucher pour changer de module au lieu de deux. Header « verre » : bouton
   // Accueil à gauche, titre et établissement au centre, langue, thème et
   // alertes à droite. Les bandeaux restent au-dessus du header.
   if (tactile) {
     return (
       <ShellProvider value={shellValue}>
       <IndicateursPointsProvider etabId={etablissement?.id} userId={user?.id} actif={points.actif && points.participant}>
-      <div style={mls.root}>
+      <div style={avecRaccourcis ? { ...mls.root, '--largeur-menu': `${LARGEUR_RACCOURCIS}px` } : mls.root}>
         <OfflineBanner />
         <HomeScreenIconBanner />
         {rappelTotp}
 
+        {/* La scène garde sa place dans l'arbre, avec ou sans la barre : un
+            iPad qu'on tourne ne remonte aucun module. */}
+        <div style={mls.corps}>
+        {avecRaccourcis ? (
+          <nav ref={raccourcisRef} style={mls.raccourcis} className="sc-raccourcis" aria-label="Raccourcis">
+            <span ref={raccourcisPiluleRef} className="mvt-pilule sc-nav-pilule" aria-hidden="true" />
+            {raccourcis.map((item, rang) => {
+              const actif = currentPage === item.id;
+              const Icone = getModuleIcon(item.id);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="sc-raccourci"
+                  data-rang={rang + 1}
+                  data-module-id={item.id}
+                  style={actif ? mls.raccourciActif : mls.raccourci}
+                  aria-current={actif ? 'page' : undefined}
+                  onClick={() => handleSetPage(item.id)}
+                >
+                  <span className="sc-raccourci-cercle" style={actif ? mls.raccourciCercleActif : mls.raccourciCercle} aria-hidden="true">
+                    <Icone size={20} strokeWidth={1.75} />
+                  </span>
+                  <span className="sc-raccourci-libelle">{getLabelForModule(item.id, item.mobileLabel || item.label)}</span>
+                  <NavBadge itemId={item.id} badges={badges} style={mls.raccourciBadge} />
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              className="sc-raccourci sc-raccourci-tout"
+              style={currentPage === 'accueil' ? mls.raccourciToutActif : mls.raccourciTout}
+              aria-current={currentPage === 'accueil' ? 'page' : undefined}
+              onClick={goHome}
+            >
+              <span className="sc-raccourci-cercle" style={currentPage === 'accueil' ? mls.raccourciCercleActif : mls.raccourciCercle} aria-hidden="true">
+                <Grip size={20} strokeWidth={1.75} />
+              </span>
+              <span className="sc-raccourci-libelle">Tout</span>
+            </button>
+          </nav>
+        ) : null}
         <div style={mls.stage}>
           <header style={mls.topbar} className="app-glass-bar">
             <button
@@ -817,6 +891,7 @@ export default function AppLayout({
           <main ref={mainRef} style={mls.content} className="mobile-module-content" data-marge={PAGES_MARGE_SERREE.has(pageAffichee) ? 'serree' : undefined} onClick={fermerPanneaux}>
             {children}
           </main>
+        </div>
         </div>
 
         {passwordModal}
@@ -1074,8 +1149,34 @@ const mls = {
   // 100vh déborderait par le bas de la hauteur de l'indicateur d'accueil.
   root: { height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column', background: 'transparent', fontFamily: 'var(--font)' },
 
-  // Scène du header « verre » (voir ls.stage).
-  stage: { position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', '--app-header-h': '60px' },
+  // Rangée de la barre de raccourcis et de la scène. Sans barre, la scène y
+  // est seule et garde toute la largeur.
+  corps: { flex: 1, minHeight: 0, minWidth: 0, display: 'flex' },
+
+  // Scène du header « verre » (voir ls.stage). minWidth 0 : enfant d'une
+  // rangée, elle ne s'élargit pas au contenu d'un module.
+  stage: { position: 'relative', flex: 1, minHeight: 0, minWidth: 0, display: 'flex', flexDirection: 'column', '--app-header-h': '60px' },
+
+  // Barre de raccourcis (tablette en paysage) : posée sur le fond de page
+  // comme le menu de l'ordinateur, un cercle de 44 px par module à la couleur
+  // des cartes, son libellé court dessous, l'entrée choisie en aplat sombre
+  // (--nav-active, porté par la pilule qui glisse dès qu'elle est posée).
+  // position relative : la barre est le repère de la pilule. Le premier
+  // cercle s'aligne sur les boutons de la barre du haut (8 px). Les états, le
+  // libellé sur deux lignes et les rangs retirés quand la hauteur manque sont
+  // dans app.css (.sc-raccourci).
+  raccourcis: {
+    position: 'relative', width: LARGEUR_RACCOURCIS, flexShrink: 0, minHeight: 0, boxSizing: 'border-box',
+    display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 4px 12px',
+    overflowY: 'auto', overflowX: 'hidden', background: 'var(--nav)',
+  },
+  raccourci: {
+    position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, flexShrink: 0,
+    width: '100%', minHeight: 44, padding: 0, border: 'none', background: 'none', color: 'var(--nav-text)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', lineHeight: 1.2, cursor: 'pointer',
+  },
+  raccourciCercle: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0, borderRadius: '50%', background: 'var(--surface)' },
+  raccourciBadge: { position: 'absolute', top: -4, left: '50%', marginLeft: 8, padding: '1px 5px' },
 
   // Header « verre » posé en absolu sur la zone qui défile. Fond, flou et
   // filet : classe .app-glass-bar (app.css).
@@ -1102,3 +1203,9 @@ const mls = {
     scrollPaddingTop: 'var(--app-header-h)',
   },
 };
+// Entrée choisie : le cercle prend l'aplat sombre, le libellé l'encre du texte.
+mls.raccourciActif = { ...mls.raccourci, color: 'var(--text)' };
+mls.raccourciCercleActif = { ...mls.raccourciCercle, background: 'var(--nav-active)', color: 'var(--nav-text-active)' };
+// « Tout » se pose au pied de la barre.
+mls.raccourciTout = { ...mls.raccourci, marginTop: 'auto' };
+mls.raccourciToutActif = { ...mls.raccourciActif, marginTop: 'auto' };
