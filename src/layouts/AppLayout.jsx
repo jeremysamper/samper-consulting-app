@@ -2,6 +2,7 @@ import React from 'react';
 import { navItems as NAV_ITEMS, ENTREE_COMPTE, peutOuvrirCompte, pageAccueil } from '../modules/moduleConfig.js';
 import { getDemoData } from '../data/demoData.js';
 import { useTheme } from '../hooks/useTheme.js';
+import usePiluleGlissante from '../hooks/usePiluleGlissante.js';
 import { useModuleLabels } from '../hooks/useModuleLabels.js';
 import { useAlertInstances } from '../hooks/useAlertInstances.js';
 import { useVisibleNav } from '../hooks/useVisibleNav.js';
@@ -356,7 +357,7 @@ export default function AppLayout({
             onClick={() => handleSetPage(item.id)}
           >
             {Icone ? <Icone size={20} strokeWidth={1.75} aria-hidden="true" /> : null}
-            <span style={rail ? ls.navLabelCache : ls.navLabel}>{libelle}</span>
+            <span key={rail ? 'cache' : 'libelle'} className={rail ? undefined : 'sc-nav-libelle'} style={rail ? ls.navLabelCache : ls.navLabel}>{libelle}</span>
             {rail ? <NavBadge itemId={item.id} badges={badges} style={ls.railBadge} /> : renderNavBadge(item.id)}
           </button>
         );
@@ -457,6 +458,16 @@ export default function AppLayout({
   // reprend sa place : gardée montée par App.jsx, elle est restée telle quelle.
   // La remise suit la page affichée et non la page demandée : la page quittée
   // reste à l'écran le temps que le module demandé charge, sans sauter en haut.
+  // Mouvement de la coque : la pilule du menu glisse vers l'entrée choisie
+  // (.mvt-pilule et .sc-nav-pilule, app.css). Posé avant le retour de la
+  // coque tactile, qui n'a pas de menu : ses références restent vides.
+  const navRef = React.useRef(null);
+  const navPiluleRef = React.useRef(null);
+  usePiluleGlissante(navRef, navPiluleRef, {
+    selecteur: '.sc-nav-item[aria-current="page"]',
+    cle: currentPage,
+    forme: `${sidebarOpen}|${organizing}|${visibleNav.length}|${tactile}`,
+  });
   const mainRef = React.useRef(null);
   const positionsRef = React.useRef(new Map());
   const pageAfficheeRef = React.useRef(pageAffichee);
@@ -845,7 +856,8 @@ export default function AppLayout({
           </div>
         </div>
 
-        <nav style={menuLarge ? ls.nav : ls.navRail} className={menuLarge ? undefined : 'sc-nav-rail'} aria-label="Modules" data-nav-scroll>
+        <nav ref={navRef} style={menuLarge ? ls.nav : ls.navRail} className={menuLarge ? undefined : 'sc-nav-rail'} aria-label="Modules" data-nav-scroll>
+          <span ref={navPiluleRef} className="mvt-pilule sc-nav-pilule" aria-hidden="true" />
           {organizing ? renderOrganizer() : renderNavGroups(menuLarge
             ? { itemStyle: ls.navItem, activeStyle: ls.navActive, dividerStyle: ls.navDivider }
             : { itemStyle: ls.railItem, activeStyle: ls.navActive, dividerStyle: ls.railDivider, rail: true })}
@@ -979,19 +991,20 @@ const ls = {
   // Haut de barre : le logo seul, aligné sur le texte des modules.
   sidebarTop: { display: 'flex', alignItems: 'center', padding: '18px 16px 12px', flexShrink: 0 },
   sidebarTopRail: { display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px 0 12px', flexShrink: 0 },
-  nav: { flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 7px 12px', overflowY: 'auto' },
+  // position relative : le menu est le repère de la pilule qui glisse.
+  nav: { position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 7px 12px', overflowY: 'auto' },
   // Rail d'icônes : un cercle de 44 px par module, à la couleur des cartes ;
   // l'entrée choisie prend l'aplat sombre (navActive). Le libellé reste dans
   // le bouton, hors de vue (navLabelCache), et en info-bulle.
-  navRail: { flex: 1, display: 'flex', flexDirection: 'column', padding: '8px 0 12px', overflowY: 'auto', overflowX: 'hidden' },
-  railItem: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0, margin: '0 auto 6px', padding: 0, borderRadius: '50%', border: 'none', background: 'var(--surface)', color: 'var(--nav-text)', cursor: 'pointer', position: 'relative', transition: 'background .15s,color .15s' },
+  navRail: { position: 'relative', flex: 1, display: 'flex', flexDirection: 'column', padding: '8px 0 12px', overflowY: 'auto', overflowX: 'hidden' },
+  railItem: { display: 'flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, flexShrink: 0, margin: '0 auto 6px', padding: 0, borderRadius: '50%', border: 'none', background: 'var(--surface)', color: 'var(--nav-text)', cursor: 'pointer', position: 'relative', transition: 'background .15s,color .15s,scale var(--mvt-1) var(--courbe-ressort)' },
   // Les rubriques du rail se séparent par un espace, sans filet.
   railDivider: { height: 14 },
   railBadge: { position: 'absolute', top: -4, right: -6, padding: '1px 5px' },
   navLabelCache: { position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap', border: 0 },
   // Filet entre deux rubriques, à la place de leur intitulé.
   navDivider: { height: 1, background: 'var(--nav-border)', margin: '7px 10px' },
-  navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderRadius: 'var(--r-full)', border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 'var(--g2)', position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
+  navItem: { display: 'flex', alignItems: 'center', gap: 9, padding: '9px 14px', borderRadius: 'var(--r-full)', border: 'none', background: 'none', color: 'var(--nav-text)', cursor: 'pointer', fontSize: 13, fontWeight: 'var(--g2)', position: 'relative', transition: 'background .15s,color .15s,box-shadow .15s,scale var(--mvt-1) var(--courbe-ressort)', fontFamily: 'var(--font)', width: '100%', textAlign: 'left', marginBottom: 1 },
   navActive: { background: 'var(--nav-active)', color: 'var(--nav-text-active)', fontWeight: 'var(--g2)' },
   navLabel: { flex: 1, minWidth: 0, textAlign: 'left', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
   // Pied de barre : le nom de l'utilisateur (menu de compte, UserMenu.jsx).
