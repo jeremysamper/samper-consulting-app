@@ -1117,7 +1117,10 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], plats
     setFiche(f => ({ ...f, accords: (f.accords || []).map((a, idx) => (idx === i ? lierAccord(a, b) : a)) }));
     setChoixOuvert(null);
   };
-  const delier = (i) => setFiche(f => ({ ...f, accords: (f.accords || []).map((a, idx) => (idx === i ? delierAccord(a) : a)) }));
+  const delier = (i) => setFiche(f => ({ ...f, accords: (f.accords || []).map((a, idx) => (idx === i ? delierAccord({ ...a, nom: nomDeBoisson(a) }) : a)) }));
+  // Nom affiché d'un accord relié : le nom actuel de la boisson (comme le
+  // détail), le nom gardé si le plat n'est pas lu.
+  const nomDeBoisson = (a) => (plats || []).find(p => p && p.id === a.platId)?.nom || a.nom;
   const boissonsTrouvees = React.useMemo(() => {
     const trouve = makeSearchMatcher(rechercheBoisson);
     const groupes = [];
@@ -1319,10 +1322,7 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], plats
                   <div style={{display:'grid',gridTemplateColumns:'auto 1fr 110px 28px',gap:8,alignItems:'center'}}>
                     <span style={{fontSize: 'var(--t1)',color:'var(--text2)'}}>{accordLabel(a.type)}</span>
                     {typeof a.platId === 'string' && a.platId ? (
-                      <div style={fss.accordLie}>
-                        <span style={fss.accordLieNom} data-no-translate="">{a.nom}</span>
-                        <button type="button" style={fss.choixBtn} onClick={() => delier(i)}>Délier</button>
-                      </div>
+                      <span style={fss.accordLieNom} data-no-translate="">{nomDeBoisson(a)}</span>
                     ) : (
                       <input style={fss.fInput} placeholder="Nom (référence précise)" value={a.nom} onChange={e=>updateAccord(i,'nom',e.target.value)}/>
                     )}
@@ -1337,9 +1337,12 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], plats
                     <input style={fss.fInput} placeholder="Type général (ex. Vin blanc sec)" value={a.alternative||''} onChange={e=>updateAccord(i,'alternative',e.target.value)}/>
                     <input style={fss.fInput} placeholder="Notes d'accord" value={a.notes} onChange={e=>updateAccord(i,'notes',e.target.value)}/>
                   </div>
-                  {boissons.length > 0 && (
+                  {(boissons.length > 0 || (typeof a.platId === 'string' && a.platId)) && (
                     <div style={{marginTop:6}}>
-                      <button type="button" style={fss.choixBtn} aria-expanded={choixOuvert === i} onClick={() => basculerChoix(i)}>Choisir dans la carte</button>
+                      <div style={fss.choixBoutons}>
+                        {boissons.length > 0 && <button type="button" style={fss.choixBtn} aria-expanded={choixOuvert === i} onClick={() => basculerChoix(i)}>Choisir dans la carte</button>}
+                        {typeof a.platId === 'string' && a.platId && <button type="button" style={fss.choixBtn} onClick={() => delier(i)}>Délier</button>}
+                      </div>
                       {choixOuvert === i && (
                         <div style={fss.choixZone}>
                           <input style={fss.fInput} type="search" placeholder="Rechercher" value={rechercheBoisson} onChange={e => setRechercheBoisson(e.target.value)} />
@@ -1347,7 +1350,10 @@ const FicheFormModal = ({ fiche, setFiche, onSave, onClose, recettes = [], plats
                             {boissonsTrouvees.length === 0 && <p style={fss.choixVide}>Aucune boisson ne correspond à votre recherche.</p>}
                             {boissonsTrouvees.map(g => (
                               <div key={g.carteNom || '__sans_carte__'}>
-                                {g.carteNom && <div style={fss.choixCarte} data-no-translate="">{g.carteNom}</div>}
+                                {/* Sans carte : seules les boissons de catégorie « Boissons » arrivent ici. */}
+                                {g.carteNom
+                                  ? <div style={fss.choixCarte} data-no-translate="">{g.carteNom}</div>
+                                  : <div style={fss.choixCarte}>Boissons</div>}
                                 {g.items.map(b => (
                                   <button key={b.platId} type="button" style={fss.choixLigne} onClick={() => choisirBoisson(i, b)}>
                                     <span data-no-translate="">{b.nom}</span>
@@ -1509,8 +1515,8 @@ const fss = {
   vide: { margin: '12px 0', fontSize: 'var(--t2)', color: 'var(--text2)' },
   fInput:{padding:'9px 12px',borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--champ-bord)',borderRadius: 'var(--r)',fontSize: 'var(--t2)',color:'var(--text)',background: 'var(--surface)',fontFamily:'var(--font)',outline:'none',width:'100%',boxSizing:'border-box'},
   // Lot 15 du panel : choix d'une boisson de la carte dans le bloc d'un accord.
-  accordLie:{display:'flex',alignItems:'center',gap:8,minWidth:0},
-  accordLieNom:{flex:1,minWidth:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',padding:'9px 12px',borderRadius:'var(--r)',background:'var(--piste)',fontSize:'var(--t2)',color:'var(--text)'},
+  choixBoutons:{display:'flex',flexWrap:'wrap',gap:8},
+  accordLieNom:{minWidth:0,overflowWrap:'anywhere',padding:'9px 12px',borderRadius:'var(--r)',background:'var(--piste)',fontSize:'var(--t2)',color:'var(--text)'},
   choixBtn:{minHeight:44,padding:'0 14px',background:'var(--btn-fond)',borderWidth:1,borderStyle:'solid',borderColor:'var(--btn-bord)',borderRadius:'var(--r-full)',fontSize:'var(--t2)',fontWeight:'var(--g2)',color:'var(--btn-texte)',cursor:'pointer',fontFamily:'var(--font)',flexShrink:0},
   choixZone:{display:'flex',flexDirection:'column',gap:6,marginTop:6,minWidth:0},
   choixListe:{maxHeight:240,overflowY:'auto',overflowX:'hidden',borderRadius:'var(--r)',background:'var(--piste)'},
