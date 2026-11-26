@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -78,6 +79,41 @@ function reservationPubliqueDevPlugin() {
   };
 }
 
+// Démo (/demo) : empreinte du jeu de départ (src/demo/donnees/ et les modèles
+// de procédures qu'il reprend), lue par src/demo/fauxSupabase.js dans la clé de
+// sa base gardée. Un jeu changé se recharge seul chez qui a déjà ouvert la démo
+// dans la journée. En dev, un fichier du jeu modifié invalide l'empreinte.
+function demoEmpreintePlugin() {
+  const ID = 'virtual:demo-empreinte';
+  const RESOLU = '\0' + ID;
+  const sources = () => {
+    const dossier = path.join(rootDir, 'src', 'demo', 'donnees');
+    return [
+      ...fs.readdirSync(dossier).filter((f) => f.endsWith('.js')).sort().map((f) => path.join(dossier, f)),
+      path.join(rootDir, 'src', 'data', 'sopTemplates.js'),
+    ];
+  };
+  const empreinte = () => {
+    const h = crypto.createHash('sha256');
+    for (const f of sources()) h.update(path.basename(f)).update(fs.readFileSync(f));
+    return h.digest('hex').slice(0, 12);
+  };
+  return {
+    name: 'samper-demo-empreinte',
+    resolveId(id) {
+      return id === ID ? RESOLU : null;
+    },
+    load(id) {
+      return id === RESOLU ? `export default ${JSON.stringify(empreinte())};` : null;
+    },
+    handleHotUpdate({ file, server }) {
+      if (!sources().some((f) => path.resolve(f) === path.resolve(file))) return;
+      const m = server.moduleGraph.getModuleById(RESOLU);
+      if (m) server.moduleGraph.invalidateModule(m);
+    },
+  };
+}
+
 function productionIndexPlugin() {
   return {
     name: 'samper-production-index',
@@ -98,6 +134,7 @@ export default defineConfig({
   plugins: [
     legacyRawComponentsPlugin(),
     reservationPubliqueDevPlugin(),
+    demoEmpreintePlugin(),
     react(),
     VitePWA({
       // 'prompt' : le nouveau SW reste en attente, l'UI (bandeau) propose
