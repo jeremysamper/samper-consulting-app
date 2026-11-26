@@ -2342,6 +2342,8 @@ export const UI_GLOSSARY_DE = {
   "Pas enregistré. Réessayez.": "Nicht gespeichert. Versuchen Sie es erneut.",
   "Gardé sur cet appareil.": "Auf diesem Gerät gespeichert.",
   "En attente d'envoi": "Wartet auf Versand",
+  "Gardé sur cet appareil. Il partira au retour du réseau.": "Auf diesem Gerät gespeichert. Es wird gesendet, sobald das Netz zurück ist.",
+  "Une chambre a été changée par quelqu'un d'autre pendant que vous étiez hors ligne. Le changement le plus récent est gardé.": "Ein Zimmer wurde von jemand anderem geändert, während Sie offline waren. Die neueste Änderung bleibt bestehen.",
   "Hors ligne : dernière lecture connue.": "Offline: zuletzt bekannter Stand.",
   "Hors ligne : pointages, comptages d'inventaire, relevés HACCP et fiches déjà chargées restent disponibles": "Offline: Stempelungen, Inventurzählungen, HACCP-Messungen und bereits geladene Karten bleiben verfügbar",
   "relevés attendent le réseau. Ils partiront seuls.": "Messungen warten auf das Netz. Sie werden automatisch gesendet.",

@@ -16,15 +16,16 @@
 // ─────────────────────────────────────────────────────────────
 
 const DB_NAME = 'samper-offline';
-// 3 est réservé au lot 07 (caisse-queue, branche non fusionnée) : il devra
-// passer à 5 à sa fusion, pour qu'aucun appareil ne garde deux schémas
-// différents sous le même numéro.
-const DB_VERSION = 4;
+// 5 est réservé au lot 07 (caisse-queue, branche non fusionnée) : le lot 23
+// (etages-queue) a pris 6, le lot 07 devra passer à 7 à sa fusion, pour
+// qu'aucun appareil ne garde deux schémas différents sous le même numéro.
+const DB_VERSION = 6;
 
 export const STORES = {
   PUNCH: 'punch-queue',
   INVENTAIRE: 'inventaire-queue',
   HACCP_RELEVES: 'haccp-releve-queue',
+  ETAGES: 'etages-queue',
 };
 
 let dbPromise = null;
@@ -65,6 +66,11 @@ function openDb() {
         // sert aussi de clé d'idempotence au rejeu (insertion si absent).
         if (!db.objectStoreNames.contains(STORES.HACCP_RELEVES)) {
           db.createObjectStore(STORES.HACCP_RELEVES, { keyPath: 'id' });
+        }
+        // etages-queue : clé = clé du geste, posée sur l'appareil, qui sert
+        // aussi de clé d'idempotence à la RPC chambre_statut_geste (lot 23).
+        if (!db.objectStoreNames.contains(STORES.ETAGES)) {
+          db.createObjectStore(STORES.ETAGES, { keyPath: 'cle' });
         }
       };
       request.onsuccess = () => {

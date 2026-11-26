@@ -2379,6 +2379,8 @@ export const UI_GLOSSARY = {
   'Pas enregistré. Réessayez.': 'Not saved. Try again.',
   "Gardé sur cet appareil.": "Kept on this device.",
   "En attente d'envoi": "Waiting to be sent",
+  "Gardé sur cet appareil. Il partira au retour du réseau.": "Kept on this device. It will be sent when the network is back.",
+  "Une chambre a été changée par quelqu'un d'autre pendant que vous étiez hors ligne. Le changement le plus récent est gardé.": "A room was changed by someone else while you were offline. The most recent change is kept.",
   "Hors ligne : dernière lecture connue.": "Offline: last known reading.",
   "Hors ligne : pointages, comptages d'inventaire, relevés HACCP et fiches déjà chargées restent disponibles": "Offline: clock-ins, stock counts, HACCP readings and sheets already loaded remain available",
   "relevés attendent le réseau. Ils partiront seuls.": "readings are waiting for the network. They will be sent automatically.",

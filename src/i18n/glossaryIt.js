@@ -2271,6 +2271,8 @@ export const UI_GLOSSARY_IT = {
   "Pas enregistré. Réessayez.": "Non salvato. Riprovi.",
   "Gardé sur cet appareil.": "Conservato su questo dispositivo.",
   "En attente d'envoi": "In attesa di invio",
+  "Gardé sur cet appareil. Il partira au retour du réseau.": "Salvato su questo dispositivo. Partirà al ritorno della rete.",
+  "Une chambre a été changée par quelqu'un d'autre pendant que vous étiez hors ligne. Le changement le plus récent est gardé.": "Una camera è stata cambiata da un'altra persona mentre eravate offline. Viene mantenuta la modifica più recente.",
   "Hors ligne : dernière lecture connue.": "Offline: ultima lettura nota.",
   "Hors ligne : pointages, comptages d'inventaire, relevés HACCP et fiches déjà chargées restent disponibles": "Offline: timbrature, conteggi d'inventario, rilevazioni HACCP e schede già caricate restano disponibili",
   "relevés attendent le réseau. Ils partiront seuls.": "rilevazioni attendono la rete. Partiranno da sole.",

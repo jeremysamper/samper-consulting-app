@@ -27,6 +27,7 @@ import { pushPage, replacePage, startHistory } from './services/historyNav.js';
 import { getPendingPunchCount, startPunchSync } from './services/offline/punchSync.js';
 import { startInventaireSync } from './services/offline/inventaireSync.js';
 import { startHaccpReleveSync } from './services/offline/haccpReleveSync.js';
+import { startEtagesSync } from './services/offline/etagesSync.js';
 import { purgeAllDataCaches, purgeEtabDataCaches } from './services/offline/offlineCaches.js';
 import { clearTranslationCache } from './i18n/domTranslator.js';
 import { messageErreur } from './utils/messageErreur.js';
@@ -156,6 +157,7 @@ export default function App() {
     startPunchSync();
     startInventaireSync();
     startHaccpReleveSync();
+    startEtagesSync();
   }, []);
 
   useEffect(() => {

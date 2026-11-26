@@ -3,6 +3,8 @@ import { useOnlineStatus } from '../hooks/useOnlineStatus.js';
 import { getPendingPunchCount, subscribePendingPunches } from '../services/offline/punchSync.js';
 import { getPendingSaisieCount, subscribePendingSaisies } from '../services/offline/inventaireSync.js';
 import { getPendingReleveCount, subscribePendingReleves } from '../services/offline/haccpReleveSync.js';
+import { getPendingGesteCount, subscribePendingGestes } from '../services/offline/etagesSync.js';
+import { libelleBandeau } from '../modules/etages/statutsHorsLigne.js';
 import { applyPwaUpdate, isPwaUpdateReady, subscribePwaUpdate } from '../pwa/registerPwa.js';
 import UpdatePrompt from './UpdatePrompt.jsx';
 
@@ -28,6 +30,7 @@ export default function OfflineBanner() {
   const pending = useSyncExternalStore(subscribePendingPunches, getPendingPunchCount, () => 0);
   const saisies = useSyncExternalStore(subscribePendingSaisies, getPendingSaisieCount, () => 0);
   const relevesHaccp = useSyncExternalStore(subscribePendingReleves, getPendingReleveCount, () => 0);
+  const gestesEtages = useSyncExternalStore(subscribePendingGestes, getPendingGesteCount, () => 0);
   const updateReady = useSyncExternalStore(subscribePwaUpdate, isPwaUpdateReady, () => false);
 
   const punchLabel = `${pending} pointage${pending > 1 ? 's' : ''} en attente de synchronisation`;
@@ -35,7 +38,12 @@ export default function OfflineBanner() {
   const releveLabel = `${relevesHaccp} relevé${relevesHaccp > 1 ? 's' : ''} HACCP en attente de synchronisation`;
   // Les deux files coexistent : on annonce ce qui attend réellement plutôt
   // qu'un compteur agrégé, qui ne dirait pas à qui s'adresser en cas de blocage.
-  const enAttente = [pending > 0 ? punchLabel : null, saisies > 0 ? saisieLabel : null, relevesHaccp > 0 ? releveLabel : null].filter(Boolean).join(', ');
+  const enAttente = [
+    pending > 0 ? punchLabel : null,
+    saisies > 0 ? saisieLabel : null,
+    relevesHaccp > 0 ? releveLabel : null,
+    gestesEtages > 0 ? libelleBandeau(gestesEtages) : null,
+  ].filter(Boolean).join(', ');
 
   if (!online) {
     return (

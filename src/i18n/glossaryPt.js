@@ -2278,6 +2278,8 @@ export const UI_GLOSSARY_PT = {
   "Pas enregistré. Réessayez.": "Não guardado. Tente novamente.",
   "Gardé sur cet appareil.": "Guardado neste aparelho.",
   "En attente d'envoi": "À espera de envio",
+  "Gardé sur cet appareil. Il partira au retour du réseau.": "Guardado neste dispositivo. Será enviado quando a rede voltar.",
+  "Une chambre a été changée par quelqu'un d'autre pendant que vous étiez hors ligne. Le changement le plus récent est gardé.": "Um quarto foi alterado por outra pessoa enquanto estava sem ligação. É mantida a alteração mais recente.",
   "Hors ligne : dernière lecture connue.": "Offline: última leitura conhecida.",
   "Hors ligne : pointages, comptages d'inventaire, relevés HACCP et fiches déjà chargées restent disponibles": "Offline: registos de ponto, contagens de inventário, registos HACCP e fichas já carregadas continuam disponíveis",
   "relevés attendent le réseau. Ils partiront seuls.": "registos à espera da rede. Seguem sozinhos.",

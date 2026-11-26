@@ -12,10 +12,12 @@ import { zurichToday } from '../../utils/zurichTime.js';
 import { dureeLisible, etapeSuivante, natureMenage, ordreTournee } from './tournee.js';
 import { Puce } from '../dashboard/tableauUi.jsx';
 import {
-  STATUTS_MENAGE, STATUTS_OBJET, TYPES_LINGE, dateCourte, dateHeureZurich, equipeDe, libelleDe, nomPersonne,
+  STATUTS_MENAGE, STATUTS_OBJET, TYPES_LINGE, dateCourte, dateHeureZurich, equipeDe, libelleDe, messageErreur, nomPersonne,
   sejourDeLaChambre, tonDe, totauxLinge, trierChambres, useChambres, useJournalChambres, useLinge, useMinibar,
   useObjetsTrouves, useSejours, useTurndown,
 } from '../hebergement/hotelData.js';
+import { changerStatutOuGarder, getPendingGesteCount, listPendingGestes, subscribePendingGestes } from '../../services/offline/etagesSync.js';
+import { PHRASE_GARDE, appliquerEnAttente } from './statutsHorsLigne.js';
 import { Champ, Liste, Vide, h } from '../hebergement/hotelUi.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -71,7 +73,27 @@ export default function Etages({ user, etablissement }) {
   // Lot 6b : temps de ménage et linge par type de chambre (Réglages, Étages).
   const { reglages: reglagesEtages } = useReglagesModule(etabId, 'etages');
 
-  const actives = trierChambres(chambres.rows.filter((c) => c.actif));
+  // Lot 23 : statuts changés sans réseau, gardés sur l'appareil. Ils passent
+  // par-dessus la lecture du serveur jusqu'à leur envoi ; quand la file
+  // diminue (envoyé, ou plus ancien qu'un autre changement), l'écran relit.
+  const [attente, setAttente] = React.useState([]);
+  const reloadChambres = chambres.reload;
+  const reloadJournal = journal.reload;
+  React.useEffect(() => {
+    if (!etabId) { setAttente([]); return undefined; }
+    let actif = true;
+    let dernier = getPendingGesteCount();
+    const relire = () => listPendingGestes(etabId).then((items) => { if (actif) setAttente(items); });
+    relire();
+    const unsub = subscribePendingGestes((n) => {
+      relire();
+      if (n < dernier) { reloadChambres(); reloadJournal(); }
+      dernier = n;
+    });
+    return () => { actif = false; unsub(); };
+  }, [etabId, reloadChambres, reloadJournal]);
+
+  const actives = trierChambres(appliquerEnAttente(chambres.rows, attente, etabId).filter((c) => c.actif));
   const sejourDe = (c) => sejourDeLaChambre(sejours.rows, c.id, aujourdhui);
   const arriveAujourdhui = (c) => sejours.rows.some((s) => s.chambreId === c.id && s.statut === 'prevu' && s.arrivee === aujourdhui);
   const enTete = actives.filter(arriveAujourdhui);
@@ -114,10 +136,46 @@ export default function Etages({ user, etablissement }) {
     }
     return res;
   };
+  // Lot 23 : le statut passe par la RPC chambre_statut_geste, avec une clé
+  // posée sur l'appareil. Sans réseau, le geste est gardé et part seul au
+  // retour ; la base garde le changement le plus récent.
+  // Verrou en référence : deux touchers rapides ne font qu'un geste (un état
+  // React n'est relu qu'au rendu suivant, cf. lot 08).
+  const verrouStatut = React.useRef(false);
+  const ecrireStatut = async (c, statut, motif, message) => {
+    if (verrouStatut.current) return { error: null };
+    verrouStatut.current = true;
+    setEnCours(c.id);
+    let res;
+    try {
+      res = await changerStatutOuGarder({ etablissementId: etabId, chambreId: c.id, numero: c.numero, statut, motif, userId: user?.id || null });
+    } catch (err) {
+      console.error('[etages] geste non gardé', err);
+      res = { mode: 'online', error: { message: String(err?.message || err), code: 'local' } };
+    } finally {
+      verrouStatut.current = false;
+    }
+    if (res.mode === 'queued') {
+      setAttente((liste) => [...liste, res.geste]);
+      setEnCours('');
+      notify(PHRASE_GARDE, 'info');
+      return { error: null };
+    }
+    if (res.error) {
+      setEnCours('');
+      const texte = res.error.code === 'local' ? 'Pas enregistré. Réessayez.' : messageErreur(res.error);
+      notify(texte, 'error');
+      return { error: texte };
+    }
+    await Promise.all([chambres.reload(), journal.reload()]);
+    setEnCours('');
+    if (message) notify(message, 'success');
+    return { error: null };
+  };
   const changerStatut = (c, statut) => {
     if (statut === c.statutMenage) return;
     if (statut === 'hors_service') { setMotifPour(c); return; }
-    changer(c, { statut_menage: statut, hors_service_motif: null }, `Chambre ${c.numero} : ${libelleDe(STATUTS_MENAGE, statut).toLowerCase()}.`);
+    ecrireStatut(c, statut, null, `Chambre ${c.numero} : ${libelleDe(STATUTS_MENAGE, statut).toLowerCase()}.`);
   };
   const attribuer = (c, userId) => changer(c, { attribuee_a: userId || null }, userId ? `Chambre ${c.numero} attribuée.` : `Chambre ${c.numero} : attribution retirée.`);
   const basculerTurndown = async (c) => {
@@ -227,7 +285,7 @@ export default function Etages({ user, etablissement }) {
           chambre={motifPour}
           onClose={() => setMotifPour(null)}
           onValider={async (motif) => {
-            const res = await changer(motifPour, { statut_menage: 'hors_service', hors_service_motif: motif || null }, `Chambre ${motifPour.numero} hors service.`);
+            const res = await ecrireStatut(motifPour, 'hors_service', motif || null, `Chambre ${motifPour.numero} hors service.`);
             if (!res.error) setMotifPour(null);
           }}
         />
@@ -306,6 +364,7 @@ function CarteChambre({ chambre: c, sejour: s, aujourdhui, peutGerer, peutInspec
         </span>
       )}
       {occupant}
+      {c.enAttente && <span style={h.detail} data-geste-attente="">En attente d'envoi</span>}
       {c.statutMenage === 'hors_service' && c.horsServiceMotif && (
         <span style={h.detail}><span>Motif :</span> <span data-no-translate>{c.horsServiceMotif}</span></span>
       )}

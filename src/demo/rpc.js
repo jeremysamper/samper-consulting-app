@@ -146,6 +146,12 @@ const tablesBorne = (ctx) => {
 
 const estDirection = (ctx) => ['consultant', 'patron'].includes(profilDe(ctx)?.role);
 
+// Lot 23 : rôles par défaut de la policy chambres_update (Hébergement ou
+// Étages) et du droit Inspecter les chambres.
+const STATUTS_CHAMBRE = ['a_faire', 'en_cours', 'propre', 'inspectee', 'hors_service'];
+const ROLES_ETAGES = ['consultant', 'patron', 'gouvernante', 'femme_de_chambre', 'receptionniste'];
+const ROLES_INSPECTION = ['consultant', 'patron', 'gouvernante'];
+
 function borneSeulement(ctx, etab) {
   const r = (ctx.db.reglages_maison || []).find((x) => x.etablissement_id === etab);
   return r?.pointage?.borne_seulement === true;
@@ -930,6 +936,40 @@ const RPC = {
       chambre_id: c.id, etablissement_id: c.etablissement_id, jeton: jetonChambreDemo(), created_at: maintenant(), renouvele_at: null,
     }));
     return { crees: manquantes.length };
+  },
+  // Lot 23 du panel : statut d'une chambre par geste (chambre_statut_geste,
+  // migration 20261126_lot23). Le plus récent gagne ; même clé, une seule
+  // écriture ; heure du geste bornée (+5 min, -48 h).
+  chambre_statut_geste(ctx, a) {
+    if (!a.p_cle || !a.p_chambre_id) throw new ErreurRpc('GESTE_INCOMPLET: clé et chambre requises', '22023');
+    if (!STATUTS_CHAMBRE.includes(a.p_statut)) throw new ErreurRpc('STATUT_INCONNU: statut de chambre inconnu', '23514');
+    const now = Date.now();
+    const geste = a.p_geste_at ? Date.parse(a.p_geste_at) : now;
+    if (!Number.isFinite(geste) || geste > now + 5 * 60000) throw new ErreurRpc('GESTE_HEURE_REFUSEE: heure du geste dans le futur', '22007');
+    if (geste < now - 48 * 3600000) throw new ErreurRpc('GESTE_HEURE_REFUSEE: geste de plus de 48 heures', '22007');
+    const gestes = (ctx.db.chambres_statut_gestes ||= []);
+    if (gestes.some((g) => g.cle === a.p_cle)) return 'deja_recu';
+    const c = (ctx.db.chambres || []).find((x) => x.id === a.p_chambre_id);
+    if (!c) throw new ErreurRpc('CHAMBRE_INCONNUE: chambre introuvable', 'P0002');
+    const role = profilDe(ctx)?.role;
+    if (!ROLES_ETAGES.includes(role)) throw new ErreurRpc('ETAGES_RESERVE: changer le statut d\'une chambre demande le droit Modifier d\'Étages', '42501');
+    if (a.p_statut === 'inspectee' && c.statut_menage !== 'inspectee' && !ROLES_INSPECTION.includes(role)) {
+      throw new ErreurRpc('INSPECTION_RESERVEE: passer une chambre « inspectée » demande le droit Inspecter les chambres', '42501');
+    }
+    const at = Math.min(geste, now);
+    const dernierJournal = (ctx.db.chambres_statut_journal || []).filter((j) => j.chambre_id === c.id)
+      .reduce((m, j) => Math.max(m, Date.parse(j.at) || 0), 0);
+    const actuel = c.statut_menage_at ? Date.parse(c.statut_menage_at) : (dernierJournal || Date.parse(c.created_at) || 0);
+    const resultat = actuel && at <= actuel ? 'ignore' : 'applique';
+    gestes.push({ cle: a.p_cle, etablissement_id: c.etablissement_id, chambre_id: c.id, statut: a.p_statut, geste_at: new Date(geste).toISOString(), resultat, par: ctx.uid, recu_at: maintenant() });
+    if (resultat === 'ignore') return 'ignore';
+    const ancien = c.statut_menage;
+    const motif = a.p_statut === 'hors_service' ? (String(a.p_motif || '').trim() || null) : null;
+    ctx.maj('chambres', c, { statut_menage: a.p_statut, hors_service_motif: motif, statut_menage_at: new Date(at).toISOString(), updated_at: maintenant() });
+    if (ancien !== a.p_statut) {
+      ctx.inserer('chambres_statut_journal', { etablissement_id: c.etablissement_id, chambre_id: c.id, ancien, nouveau: a.p_statut, par: ctx.uid, at: maintenant() });
+    }
+    return 'applique';
   },
   demandes_qr_renouveler(ctx, a) {
     const c = (ctx.db.chambres || []).find((x) => x.id === a.p_chambre_id);

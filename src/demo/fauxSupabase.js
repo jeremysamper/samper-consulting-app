@@ -194,7 +194,7 @@ const DEFAUTS = {
   mep_items: { quantite_suggeree: null, origine: null },
   // Lot 6a (D4) : branche Hôtel et Spa. Défauts des migrations hotel_h0 à h8 et
   // spa_module ; l'auteur est posé par les déclencheurs de la base.
-  chambres: { statut_menage: 'a_faire', ordre: 0, actif: true },
+  chambres: { statut_menage: 'a_faire', ordre: 0, actif: true, statut_menage_at: () => new Date().toISOString() },
   sejours: { statut: 'prevu', pension: 'aucune', nb_adultes: 1, nb_enfants: 0, created_by: () => sessionUid },
   chambres_minibar: { quantite: 1, par: () => sessionUid },
   objets_trouves: { statut: 'trouve', par: () => sessionUid },
@@ -303,6 +303,11 @@ function gardeEcriture(type, table, nouvelle, ancienne) {
 
 function avantEcriture(type, table, ligne, avant) {
   const maintenant = new Date().toISOString();
+  // Lot 23 : déclencheur trg_chambres_statut_at. Une écriture directe qui
+  // change le statut l'horodate ; personne ne pose cette heure à la main.
+  if (table === 'chambres' && type === 'UPDATE') {
+    ligne.statut_menage_at = ligne.statut_menage !== avant?.statut_menage ? maintenant : (avant?.statut_menage_at ?? null);
+  }
   if (table === 'caisse_lignes') {
     const delta = portionsDeLigne(ligne.quantite) - (type === 'INSERT' ? 0 : portionsDeLigne(avant?.quantite));
     try {

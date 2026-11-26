@@ -2354,6 +2354,8 @@ export const UI_GLOSSARY_ES = {
   'Pas enregistré. Réessayez.': 'No guardado. Vuelva a intentarlo.',
   "Gardé sur cet appareil.": "Guardado en este dispositivo.",
   "En attente d'envoi": "Pendiente de envío",
+  "Gardé sur cet appareil. Il partira au retour du réseau.": "Guardado en este dispositivo. Se enviará cuando vuelva la red.",
+  "Une chambre a été changée par quelqu'un d'autre pendant que vous étiez hors ligne. Le changement le plus récent est gardé.": "Otra persona cambió una habitación mientras usted estaba sin conexión. Se conserva el cambio más reciente.",
   "Hors ligne : dernière lecture connue.": "Sin conexión: última lectura conocida.",
   "Hors ligne : pointages, comptages d'inventaire, relevés HACCP et fiches déjà chargées restent disponibles": "Sin conexión: los fichajes, los recuentos de inventario, los registros HACCP y las fichas ya cargadas siguen disponibles",
   "relevés attendent le réseau. Ils partiront seuls.": "registros esperan la red. Se enviarán solos.",
