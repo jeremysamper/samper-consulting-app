@@ -7371,4 +7371,17 @@ export const UI_GLOSSARY_ES = {
   "Un choix dépasse 40 caractères.": "Una opción supera los 40 caracteres.",
   "Retirez le signe deux-points des choix.": "Quite los dos puntos de las opciones.",
   "Deux choix portent le même nom.": "Dos opciones tienen el mismo nombre.",
+  // Lot 20 du panel : fin de journée de la caisse (portions du jour).
+  "Fin de journée": "Fin de jornada",
+  "Les portions qui restent : en perte ou remises à zéro.": "Raciones que quedan: a pérdidas o puestas a cero.",
+  "Les portions qui restent aujourd'hui": "Raciones que quedan hoy",
+  "Voici les produits comptés qui gardent des portions aujourd'hui. Pour chacun, passez le reste en perte ou remettez la case à zéro. Rien n'est écrit en perte sans votre validation.": "Estos son los productos contados que aún tienen raciones hoy. Para cada uno, pase lo que queda a pérdidas o ponga la casilla a cero. Nada se registra como pérdida sin su validación.",
+  "Vous ne déclarez pas les pertes : la remise à zéro reste possible.": "Usted no declara pérdidas: puede seguir poniendo a cero.",
+  "Aucun produit compté ne garde de portion aujourd'hui.": "Ningún producto contado conserva raciones hoy.",
+  "Passer le reste en perte": "Pasar el resto a pérdidas",
+  "La perte s'ouvre préremplie. Vous la validez.": "La pérdida se abre ya rellenada. Usted la valida.",
+  "La case revient en vente, sans nombre. Aucune perte n'est écrite.": "La casilla vuelve a la venta, sin número. No se registra ninguna pérdida.",
+  "La case est remise à zéro.": "La casilla se ha puesto a cero.",
+  "La perte est déclarée, mais la case n'a pas pu être remise à zéro. Choisissez « Remettre à zéro ».": "La pérdida está declarada, pero la casilla no se ha podido poner a cero. Elija «Poner a cero».",
+  "Fin de journée de la caisse": "Fin de jornada de la caja",
 };

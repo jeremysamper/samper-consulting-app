@@ -174,7 +174,7 @@ const DEFAUTS = {
   caisse_tickets: { statut: 'ouvert', test: false, a_emporter: false, ouvert_par: () => sessionUid, retrait_nom: null, retrait_heure: null, retrait_numero: null },
   caisse_lignes: { quantite: 1, prix_unitaire: 0, suite: 1, statut: 'en_attente', options: [], a_emporter: false, remise_montant: 0, offert: false, formule_id: null, formule_groupe: null, formule_nom: null },
   // Lot 12 du panel (migration 20261126_panel_lot12_caisse_disponibilite).
-  caisse_boutons: { epuise_durable: false, portions_le: null, portions_restantes: null },
+  caisse_boutons: { epuise_durable: false, portions_le: null, portions_restantes: null, portions_posees_a: null },
   // Lot 09 du panel (migration 20261125_panel_lot09_caisse_formules).
   caisse_formules: { actif: true, archivee: false, ordre: 0, created_by: () => sessionUid },
   inventaires: { statut: 'en cours', valeur_totale: 0, lignes: [], nom: 'Général' },
@@ -306,7 +306,7 @@ function avantEcriture(type, table, ligne, avant) {
   if (table === 'caisse_lignes') {
     const delta = portionsDeLigne(ligne.quantite) - (type === 'INSERT' ? 0 : portionsDeLigne(avant?.quantite));
     try {
-      decompterPortions(db, [{ plat_id: ligne.plat_id, ticket_id: ligne.ticket_id, delta }], majBouton);
+      decompterPortions(db, [{ plat_id: ligne.plat_id, ticket_id: ligne.ticket_id, delta, created_at: avant?.created_at ?? ligne.created_at }], majBouton);
     } catch (e) {
       // PATCH : postgrest.js a déjà copié les valeurs neuves, la base n'écrit rien.
       if (avant) { Object.keys(ligne).forEach((k) => { if (!(k in avant)) delete ligne[k]; }); Object.assign(ligne, avant); }
@@ -407,7 +407,7 @@ function apresEcriture(evt) {
   // d'une ligne retirée est rendue ici.
   if (evt.type === 'DELETE' && evt.table === 'caisse_lignes' && evt.old_record) {
     const o = evt.old_record;
-    decompterPortions(db, [{ plat_id: o.plat_id, ticket_id: o.ticket_id, delta: -portionsDeLigne(o.quantite) }], majBouton);
+    decompterPortions(db, [{ plat_id: o.plat_id, ticket_id: o.ticket_id, delta: -portionsDeLigne(o.quantite), created_at: o.created_at }], majBouton);
   }
   journaliser(evt);
   diffuser(evt);

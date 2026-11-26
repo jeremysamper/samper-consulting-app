@@ -7321,4 +7321,17 @@ export const UI_GLOSSARY_DE = {
   "Un choix dépasse 40 caractères.": "Eine Auswahl ist länger als 40 Zeichen.",
   "Retirez le signe deux-points des choix.": "Entfernen Sie den Doppelpunkt aus der Auswahl.",
   "Deux choix portent le même nom.": "Zwei Auswahlmöglichkeiten tragen denselben Namen.",
+  // Lot 20 du panel : fin de journée de la caisse (portions du jour).
+  "Fin de journée": "Tagesabschluss",
+  "Les portions qui restent : en perte ou remises à zéro.": "Verbleibende Portionen: als Verlust buchen oder auf null zurücksetzen.",
+  "Les portions qui restent aujourd'hui": "Heute verbleibende Portionen",
+  "Voici les produits comptés qui gardent des portions aujourd'hui. Pour chacun, passez le reste en perte ou remettez la case à zéro. Rien n'est écrit en perte sans votre validation.": "Hier sind die gezählten Produkte, von denen heute noch Portionen übrig sind. Buchen Sie für jedes den Rest als Verlust oder setzen Sie die Taste auf null zurück. Ohne Ihre Bestätigung wird kein Verlust gebucht.",
+  "Vous ne déclarez pas les pertes : la remise à zéro reste possible.": "Sie buchen keine Verluste: Das Zurücksetzen auf null bleibt möglich.",
+  "Aucun produit compté ne garde de portion aujourd'hui.": "Kein gezähltes Produkt hat heute noch Portionen.",
+  "Passer le reste en perte": "Rest als Verlust buchen",
+  "La perte s'ouvre préremplie. Vous la validez.": "Der Verlust öffnet sich vorausgefüllt. Sie bestätigen ihn.",
+  "La case revient en vente, sans nombre. Aucune perte n'est écrite.": "Die Taste ist wieder im Verkauf, ohne Anzahl. Es wird kein Verlust gebucht.",
+  "La case est remise à zéro.": "Die Taste ist auf null zurückgesetzt.",
+  "La perte est déclarée, mais la case n'a pas pu être remise à zéro. Choisissez « Remettre à zéro ».": "Der Verlust ist gebucht, aber die Taste konnte nicht auf null zurückgesetzt werden. Wählen Sie „Auf null zurücksetzen“.",
+  "Fin de journée de la caisse": "Tagesabschluss der Kasse",
 };

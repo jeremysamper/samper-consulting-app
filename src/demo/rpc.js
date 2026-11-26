@@ -5,6 +5,7 @@ import { uuid } from './postgrest.js';
 import { planEnLigne } from '../reservation/choixTable.js';
 import { nettoyerQuestions } from '../reservation/questionsEnLigne.js';
 import { repartirFormule } from '../modules/caisse/formules.js';
+import { portionRendue } from '../modules/caisse/rupture.js';
 
 const heureZurich = () => new Intl.DateTimeFormat('fr-CH', { timeZone: 'Europe/Zurich', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).format(new Date());
 const jourZurich = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -47,6 +48,12 @@ export function decompterPortions(db, mouvements, maj) {
     if (!m.plat_id || !m.delta) continue;
     const t = (db.caisse_tickets || []).find((x) => x.id === m.ticket_id);
     if (!t || t.test) continue;
+    // Lot 20 : une portion n'est rendue que pour une ligne créée le jour du
+    // compteur et après sa dernière pose (portionRendue, rupture.js).
+    if (m.delta < 0) {
+      const b = (db.caisse_boutons || []).find((x) => x.plat_id === m.plat_id && String(x.portions_le || '').slice(0, 10) === jour);
+      if (!b || !portionRendue(m.created_at, b, jour)) continue;
+    }
     parPlat.set(m.plat_id, (parPlat.get(m.plat_id) || 0) + m.delta);
   }
   const plan = [];
@@ -530,12 +537,17 @@ const RPC = {
       epuise_durable: a.p_etat === 'epuise',
       portions_le: a.p_etat === 'portions' ? jour : null,
       portions_restantes: a.p_etat === 'portions' ? n : null,
+      portions_posees_a: a.p_etat === 'portions' ? maintenant() : null,
     };
     const b = ctx.db.caisse_boutons.find((x) => x.plat_id === a.p_plat_id);
     if (b && b.etablissement_id !== a.p_etablissement_id) throw new ErreurRpc('caisse: plat inconnu pour cet etablissement');
     if (b) ctx.maj('caisse_boutons', b, { ...valeurs, updated_at: maintenant() });
     else ctx.inserer('caisse_boutons', { etablissement_id: a.p_etablissement_id, plat_id: a.p_plat_id, ...valeurs });
-    return { etat: a.p_etat, ...valeurs };
+    // Même retour que la vraie fonction : l'instant de la pose n'en sort pas.
+    return {
+      etat: a.p_etat, rupture_le: valeurs.rupture_le, epuise_durable: valeurs.epuise_durable,
+      portions_le: valeurs.portions_le, portions_restantes: valeurs.portions_restantes,
+    };
   },
   // Formules à prix fixe (lot 09) : mêmes refus que la vraie fonction, et
   // la même répartition du prix (repartirFormule, D3). La démo ne rejoue pas

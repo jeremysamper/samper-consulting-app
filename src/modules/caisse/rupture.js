@@ -35,6 +35,22 @@ export function etatDisponibilite(bouton, jourZurich) {
   return { etat: 'en_vente', restant: null };
 }
 
+// Lot 20 : une ligne retirée (ou baissée) rend sa portion au compteur du jour
+// seulement si elle a été créée ce jour-là à Zurich, jour du compteur, et pas
+// avant la dernière pose du compteur (portions_posees_a, ignoré quand il
+// manque : compteur posé avant le lot 20). Même règle que le déclencheur
+// caisse_ligne_portions ; lue par la démo (decompterPortions de rpc.js).
+const JOUR_ZURICH = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Zurich', year: 'numeric', month: '2-digit', day: '2-digit' });
+export function portionRendue(creeeLe, bouton, jourZurich) {
+  if (!bouton || !creeeLe || !JOUR.test(String(jourZurich || ''))) return false;
+  if (!memeJour(bouton.portions_le, jourZurich)) return false;
+  const t = new Date(creeeLe);
+  if (Number.isNaN(t.getTime()) || JOUR_ZURICH.format(t) !== jourZurich) return false;
+  if (!bouton.portions_posees_a) return true;
+  const pose = new Date(bouton.portions_posees_a);
+  return Number.isNaN(pose.getTime()) || t.getTime() >= pose.getTime();
+}
+
 // Mot de la case : « Rupture », « Épuisé », « Reste » (suivi du nombre).
 export function motEtat(etat) {
   if (etat === 'rupture') return 'Rupture';

@@ -7120,4 +7120,17 @@ export const UI_GLOSSARY_IT = {
   "Un choix dépasse 40 caractères.": "Una scelta supera i 40 caratteri.",
   "Retirez le signe deux-points des choix.": "Tolga i due punti dalle scelte.",
   "Deux choix portent le même nom.": "Due scelte hanno lo stesso nome.",
+  // Lot 20 du panel : fin de journée de la caisse (portions du jour).
+  "Fin de journée": "Fine giornata",
+  "Les portions qui restent : en perte ou remises à zéro.": "Porzioni rimaste: a perdita o azzerate.",
+  "Les portions qui restent aujourd'hui": "Porzioni rimaste oggi",
+  "Voici les produits comptés qui gardent des portions aujourd'hui. Pour chacun, passez le reste en perte ou remettez la case à zéro. Rien n'est écrit en perte sans votre validation.": "Ecco i prodotti contati che hanno ancora porzioni oggi. Per ciascuno, registri il resto come perdita o azzeri il tasto. Nessuna perdita viene registrata senza la sua conferma.",
+  "Vous ne déclarez pas les pertes : la remise à zéro reste possible.": "Lei non registra le perdite: l'azzeramento resta possibile.",
+  "Aucun produit compté ne garde de portion aujourd'hui.": "Nessun prodotto contato ha porzioni rimaste oggi.",
+  "Passer le reste en perte": "Registrare il resto come perdita",
+  "La perte s'ouvre préremplie. Vous la validez.": "La perdita si apre precompilata. Lei la conferma.",
+  "La case revient en vente, sans nombre. Aucune perte n'est écrite.": "Il tasto torna in vendita, senza numero. Nessuna perdita viene registrata.",
+  "La case est remise à zéro.": "Il tasto è azzerato.",
+  "La perte est déclarée, mais la case n'a pas pu être remise à zéro. Choisissez « Remettre à zéro ».": "La perdita è registrata, ma il tasto non è stato azzerato. Scelga «Azzera».",
+  "Fin de journée de la caisse": "Fine giornata della cassa",
 };

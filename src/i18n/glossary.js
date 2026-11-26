@@ -7391,6 +7391,19 @@ export const UI_GLOSSARY = {
   "Un choix dépasse 40 caractères.": "A choice is longer than 40 characters.",
   "Retirez le signe deux-points des choix.": "Remove the colon from the choices.",
   "Deux choix portent le même nom.": "Two choices have the same name.",
+  // Lot 20 du panel : fin de journée de la caisse (portions du jour).
+  "Fin de journée": "End of day",
+  "Les portions qui restent : en perte ou remises à zéro.": "Portions left: recorded as waste or reset to zero.",
+  "Les portions qui restent aujourd'hui": "Portions left today",
+  "Voici les produits comptés qui gardent des portions aujourd'hui. Pour chacun, passez le reste en perte ou remettez la case à zéro. Rien n'est écrit en perte sans votre validation.": "These are the counted products that still have portions today. For each one, record what is left as waste or reset the button to zero. Nothing is recorded as waste without your confirmation.",
+  "Vous ne déclarez pas les pertes : la remise à zéro reste possible.": "You do not record waste: you can still reset to zero.",
+  "Aucun produit compté ne garde de portion aujourd'hui.": "No counted product has portions left today.",
+  "Passer le reste en perte": "Record the rest as waste",
+  "La perte s'ouvre préremplie. Vous la validez.": "The waste entry opens pre-filled. You confirm it.",
+  "La case revient en vente, sans nombre. Aucune perte n'est écrite.": "The button goes back on sale, without a count. No waste is recorded.",
+  "La case est remise à zéro.": "The button is reset to zero.",
+  "La perte est déclarée, mais la case n'a pas pu être remise à zéro. Choisissez « Remettre à zéro ».": "The waste is recorded, but the button could not be reset to zero. Choose \"Reset\".",
+  "Fin de journée de la caisse": "Till end of day",
 };
 
 // Chaînes à ne JAMAIS traduire : marques, sigles métier, unités.
