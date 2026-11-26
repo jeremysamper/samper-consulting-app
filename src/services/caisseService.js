@@ -119,6 +119,8 @@ const MESSAGES_RPC = {
   // Lot 12 du panel : disponibilité d'un produit (caisse_poser_disponibilite).
   'caisse: nombre de portions invalide': 'Le nombre de portions va de 1 à 999.',
   'caisse: etat de disponibilite inconnu': "Cet état n'existe pas. Rechargez la caisse.",
+  // Lot 19 du panel : garde de la clé « pourboires » de caisse_reglages.
+  'caisse: seuls le consultant et le patron changent la regle des pourboires': 'Seuls le consultant et le patron peuvent changer la règle des pourboires.',
 };
 
 // v9 : les refus qui parlent d'un terminal de paiement sont dits par

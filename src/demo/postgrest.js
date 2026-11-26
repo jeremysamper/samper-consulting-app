@@ -335,7 +335,9 @@ export function erreurPg(status, message, code = 'P0001', details = null) {
  * Exécute une requête REST sur la base en mémoire.
  * @param {object} db         tables : { nom: [lignes] }
  * @param {object} req        { methode, table, params (URLSearchParams), entetes (Headers), corps }
- * @param {object} options    { defauts, clesPrimaires, avantLecture(table, lignes), avantEcriture(type, table, ligne, avant), apresEcriture(evt) }
+ * @param {object} options    { defauts, clesPrimaires, avantLecture(table, lignes), garde(type, table, nouvelle, ancienne), avantEcriture(type, table, ligne, avant), apresEcriture(evt) }
+ *   garde : déclencheur de la base qui refuse (il lève) ; appelée sur toutes les
+ *   lignes visées avant d'en écrire une, une instruction passe entière ou pas.
  * @returns {{status:number, corps:any, entetes:object}}
  */
 export function executer(db, req, options = {}) {
@@ -401,11 +403,19 @@ export function executer(db, req, options = {}) {
     const conflit = params.get('on_conflict');
     const pk = options.clesPrimaires?.[table] || ['id'];
     const cles = conflit ? conflit.split(',').map((s) => s.trim()) : pk;
+    const trouver = (brut) => ((fusion || ignorer)
+      ? db[table].find((r) => cles.every((c) => brut[c] !== undefined && String(r[c]) === String(brut[c])))
+      : null);
+    if (options.garde) {
+      for (const brut of liste) {
+        const existante = trouver(brut);
+        if (existante && fusion) options.garde('UPDATE', table, { ...existante, ...brut }, existante);
+        else if (!existante) options.garde('INSERT', table, avecDefauts(table, brut, options.defauts), null);
+      }
+    }
     const crees = [];
     for (const brut of liste) {
-      const existante = (fusion || ignorer)
-        ? db[table].find((r) => cles.every((c) => brut[c] !== undefined && String(r[c]) === String(brut[c])))
-        : null;
+      const existante = trouver(brut);
       if (existante) {
         if (fusion) {
           const avant = { ...existante };
@@ -432,6 +442,7 @@ export function executer(db, req, options = {}) {
 
   if (methode === 'PATCH') {
     const cibles = filtrer(db[table]);
+    for (const r of cibles) options.garde?.('UPDATE', table, { ...r, ...(req.corps || {}) }, r);
     for (const r of cibles) {
       const avant = { ...r };
       Object.assign(r, req.corps || {});
@@ -444,6 +455,7 @@ export function executer(db, req, options = {}) {
 
   if (methode === 'DELETE') {
     const cibles = filtrer(db[table]);
+    for (const r of cibles) options.garde?.('DELETE', table, null, r);
     const set = new Set(cibles);
     db[table] = db[table].filter((r) => !set.has(r));
     for (const r of cibles) options.apresEcriture?.({ type: 'DELETE', table, record: null, old_record: { ...r } });

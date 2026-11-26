@@ -7248,6 +7248,8 @@ export const UI_GLOSSARY = {
   'Groupes qui partagent': 'Groups that share',
   'Part du groupe en pour cent': 'Group\'s share in percent',
   'Total des parts :': 'Total of the shares:',
+  // Lot 19 du panel : refus de la garde des pourboires.
+  'Seuls le consultant et le patron peuvent changer la règle des pourboires.': 'Only the consultant and the owner can change the tips rule.',
   'Cochez au moins un groupe.': 'Tick at least one group.',
   'Les parts des groupes doivent faire 100 %.': 'The group shares must add up to 100 %.',
   'Enregistrer la règle': 'Save the rule',

@@ -17,6 +17,7 @@ import { ETAB, EQUIPE, ROLES_DEMO, aujourdhui, jour, instant } from './donnees/b
 import { STOCKAGE, PREFIXE } from './isolation.js';
 import { defaultPermissions } from '../modules/moduleConfig.js';
 import { totaux } from '../modules/groupes/facturation/calculs.js';
+import { ROLES_POURBOIRES, REFUS_POURBOIRES, changementPourboiresRefuse } from '../modules/caisse/gardesCaisse.js';
 
 export const DEMO_URL = 'https://demo.invalid';
 const DEMO_HOTE = new URL(DEMO_URL).hostname;
@@ -280,6 +281,24 @@ function majBouton(b, valeurs) {
   const avant = { ...b };
   Object.assign(b, valeurs);
   diffuser({ type: 'UPDATE', table: 'caisse_boutons', record: { ...b }, old_record: avant });
+}
+
+// Déclencheurs de la base qui refusent une écriture, rejoués avant qu'elle
+// touche la base en mémoire (postgrest.js, option garde). Lot 19 : la clé
+// « pourboires » de caisse_reglages, consultant et patron actifs seulement
+// (trg_caisse_reglages_garde_pourboires), même message que la production.
+function gardeEcriture(type, table, nouvelle, ancienne) {
+  if (table !== 'caisse_reglages') return;
+  const profil = (db.profiles || []).find((p) => p.id === sessionUid);
+  const estDirection = (etab) => Boolean(profil && profil.actif !== false
+    && ROLES_POURBOIRES.includes(profil.role) && (profil.etablissement_ids || []).includes(etab));
+  // En insertion, la garde relit la règle déjà en base pour l'établissement.
+  const avant = type === 'INSERT'
+    ? (db.caisse_reglages || []).find((r) => r.etablissement_id === nouvelle?.etablissement_id) || null
+    : ancienne;
+  if (changementPourboiresRefuse({ type, nouvelle, ancienne: avant, estDirection })) {
+    throw Object.assign(new Error(REFUS_POURBOIRES), { code: '42501' });
+  }
 }
 
 function avantEcriture(type, table, ligne, avant) {
@@ -662,12 +681,13 @@ async function servir(url, input, init) {
   if (chemin.startsWith('/rest/v1/')) {
     const table = decodeURIComponent(chemin.slice('/rest/v1/'.length));
     try {
-      const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, avantEcriture, apresEcriture });
+      const r = executer(db, { methode, table, params: url.searchParams, entetes, corps }, { defauts: DEFAUTS, clesPrimaires: CLES_PRIMAIRES, avantLecture, garde: gardeEcriture, avantEcriture, apresEcriture });
       return reponse(r.status, r.corps, r.entetes);
     } catch (e) {
-      // Refus levé par un déclencheur simulé (compteur de portions, lot 12).
+      // Refus levé par un déclencheur simulé (compteur de portions, lot 12 ;
+      // règle des pourboires, lot 19). PostgREST rend 403 pour un 42501.
       if (!e?.code) throw e;
-      return reponse(400, { code: e.code, message: e.message, details: null, hint: null });
+      return reponse(e.code === '42501' ? 403 : 400, { code: e.code, message: e.message, details: null, hint: null });
     }
   }
   const e = erreurPg(404, 'Chemin inconnu de la démo : ' + chemin);

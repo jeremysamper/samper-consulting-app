@@ -104,7 +104,19 @@ export default function ReglagesCaisse({
     const apres = { ...avant, ...partiel };
     Object.keys(partiel).forEach((k) => { if (partiel[k] == null) delete apres[k]; });
     setBrouillon(apres);
-    const { error } = await caisse.saveReglages(etablissementId, apres);
+    // Lot 19 : la base refuse un changement de la clé « pourboires » hors
+    // direction. Un autre rôle renvoie la règle telle qu'elle est en base, au
+    // cas où la direction l'aurait changée depuis l'ouverture de l'écran.
+    let envoi = apres;
+    if (!peutReglerPourboires(role)) {
+      const frais = await caisse.getReglages(etablissementId);
+      if (!frais.error) {
+        envoi = { ...apres };
+        delete envoi.pourboires;
+        if (frais.data && Object.prototype.hasOwnProperty.call(frais.data, 'pourboires')) envoi.pourboires = frais.data.pourboires;
+      }
+    }
+    const { error } = await caisse.saveReglages(etablissementId, envoi);
     if (error) { setBrouillon(avant); notify(error, 'error'); return false; }
     onChange?.();
     return true;

@@ -7228,6 +7228,8 @@ export const UI_GLOSSARY_ES = {
   'Groupes qui partagent': 'Grupos que reparten',
   'Part du groupe en pour cent': 'Parte del grupo en porcentaje',
   'Total des parts :': 'Total de las partes:',
+  // Lot 19 du panel : refus de la garde des pourboires.
+  'Seuls le consultant et le patron peuvent changer la règle des pourboires.': 'Solo el consultor y el patrón pueden cambiar la regla de las propinas.',
   'Cochez au moins un groupe.': 'Marque al menos un grupo.',
   'Les parts des groupes doivent faire 100 %.': 'Las partes de los grupos deben sumar 100 %.',
   'Enregistrer la règle': 'Guardar la regla',
