@@ -127,6 +127,28 @@
      juste après ce bloc. */
   --marge: 24px;
 
+  /* ─── Mouvement (ne change pas avec le thème) ─────────────────────────
+     Trois durées, trois courbes et deux ampleurs, lues par tout ce qui
+     bouge (section « Mouvement (socle) », src/utils/mouvement.js) :
+     --mvt-1  retour d'un toucher (bouton qui s'enfonce, ligne choisie)
+     --mvt-2  changement d'état (pilule qui glisse, ligne qui naît)
+     --mvt-3  ce qui entre à l'écran (fenêtre, feuille, coche qui se trace)
+     --courbe          arrivée douce, pour ce qui entre ou se déplace
+     --courbe-depart   accélération, pour ce qui sort
+     --courbe-ressort  arrivée avec un léger dépassement (pose d'un objet)
+     --mvt-enfonce     échelle d'un bouton sous le doigt
+     --mvt-trajet      distance d'une entrée ou d'une secousse
+     Seules la position, l'échelle et l'opacité bougent. Les animations
+     réduites et la capture PDF mettent ces jetons à zéro, plus bas. */
+  --mvt-1: 110ms;
+  --mvt-2: 180ms;
+  --mvt-3: 260ms;
+  --courbe: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --courbe-depart: cubic-bezier(0.4, 0, 1, 1);
+  --courbe-ressort: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --mvt-enfonce: 0.98;
+  --mvt-trajet: 6px;
+
   /* ─── Jetons par rôle ─────────────────────────────────────────────────
      btn-*      bouton secondaire : fond, texte, contour
      selection  survol, ligne choisie dans une liste
@@ -730,6 +752,59 @@ html[data-densite] .pdf-render-root {
 }
 html[data-contraste] .pdf-render-root { --rule-soft: #d6dce0; --champ-bord: #b4bdc4; --btn-bord: #c2cad0; }
 html[data-theme="dark"][data-contraste] .pdf-render-root { --rule-soft: #223a45; --champ-bord: #66838f; --btn-bord: #4f6d79; }
+
+/* ─── Mouvement (socle) ─────────────────────────────────────────────────────
+   Les jetons --mvt-* et --courbe-* sont posés dans :root. Tout mouvement neuf
+   les lit : il suit alors, sans une ligne de plus, les trois coupe-circuits
+   ci-dessous. Durées quasi nulles plutôt qu'absentes : les fins d'animation
+   attendues par le code arrivent.
+   - la préférence du système (prefers-reduced-motion) ;
+   - la préférence de l'appareil (data-mouvement="reduit") ;
+   - une vue capturée en PDF : html2canvas photographie l'instant, une
+     animation en cours sortirait à moitié jouée. */
+@media (prefers-reduced-motion: reduce) {
+  :root { --mvt-1: 0.01ms; --mvt-2: 0.01ms; --mvt-3: 0.01ms; --mvt-enfonce: 1; --mvt-trajet: 0px; }
+}
+html[data-mouvement="reduit"],
+.pdf-render-root { --mvt-1: 0.01ms; --mvt-2: 0.01ms; --mvt-3: 0.01ms; --mvt-enfonce: 1; --mvt-trajet: 0px; }
+
+/* Entrées et sorties : une classe posée sur un élément qui vient d'être
+   monté (entrée) ou qui va être retiré (sortie). Ce qui se rejoue sur un
+   élément déjà là (battement, secousse, pose, glissement) passe par
+   jouer() et glisserDepuis() de src/utils/mouvement.js. */
+@keyframes mvt-naissance { from { opacity: 0; transform: translateY(var(--mvt-trajet)); } }
+@keyframes mvt-depart { to { opacity: 0; transform: scale(0.98); } }
+@keyframes mvt-voile { from { opacity: 0; } }
+@keyframes mvt-voile-sort { to { opacity: 0; } }
+@keyframes mvt-fenetre { from { opacity: 0; transform: translateY(var(--mvt-trajet)) scale(0.98); } }
+@keyframes mvt-feuille { from { transform: translateY(100%); } }
+@keyframes mvt-feuille-sort { to { transform: translateY(100%); } }
+@keyframes mvt-trait { from { stroke-dashoffset: 1; } }
+
+.mvt-naissance { animation: mvt-naissance var(--mvt-2) var(--courbe) both; }
+.mvt-depart { animation: mvt-depart var(--mvt-1) var(--courbe-depart) both; }
+.mvt-voile { animation: mvt-voile var(--mvt-2) var(--courbe) both; }
+.mvt-voile-sort { animation: mvt-voile-sort var(--mvt-2) var(--courbe-depart) both; }
+.mvt-fenetre { animation: mvt-fenetre var(--mvt-3) var(--courbe-ressort) both; }
+.mvt-feuille { animation: mvt-feuille var(--mvt-3) var(--courbe) both; }
+.mvt-feuille-sort { animation: mvt-feuille-sort var(--mvt-2) var(--courbe-depart) both; }
+/* Coche qui se trace (Coche de src/components/ui) : le tracé porte
+   pathLength="1", le trait part donc de 1 quelle que soit sa taille. */
+.mvt-coche path { stroke-dasharray: 1; animation: mvt-trait var(--mvt-3) var(--courbe) both; }
+/* Pastille qui vole d'un point à un autre (voler() de mouvement.js) : posée
+   sur le corps de la page, hors de tout écran, elle ne reçoit aucun toucher. */
+.mvt-vol {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2000;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  pointer-events: none;
+}
 
 @keyframes spin {
   to {

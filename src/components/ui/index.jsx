@@ -5,6 +5,7 @@ import SegmentedTabs from './SegmentedTabs.jsx';
 export { SegmentedTabs };
 export { Anneau, Arc, Barres } from './Graphiques.jsx';
 export { default as ChoixFiltre } from './ChoixFiltre.jsx';
+export { default as Coche } from './Coche.jsx';
 
 // Primitives de la direction Galet (.claude/rules/direction-galet.md). Elles
 // disent elles-mêmes leur fond, leur contour, leur rayon et leur graisse, par
