@@ -2,6 +2,7 @@ import { supabase } from './supabase.js';
 import { messageTpe } from '../modules/caisse/tpe/ecranTpe.js';
 import { listTransactionsTicket } from './caisseTpeService.js';
 import { MESSAGES_BONS_CADEAUX } from '../modules/caisse/bonsCadeaux/codeBon.js';
+import { messagePortions } from '../modules/caisse/rupture.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Caisse v1 : tickets, lignes, paiements (migration 20261105_caisse_v1).
@@ -129,6 +130,8 @@ function mapError(error, fallback) {
   if (/^caisse: /.test(brut) && REFUS_TERMINAL.test(brut)) return messageTpe(brut);
   if (/^caisse: ticket \w+ fige$/.test(brut)) return 'Ce ticket est clos : il ne se corrige plus.';
   if (/^caisse: les paiements ne font pas le total/.test(brut)) return 'Les paiements ne font pas le total du ticket. Rechargez le ticket et réessayez.';
+  const portions = messagePortions(brut);
+  if (portions) return portions;
   if (/^caisse: chaine d'integrite rompue/.test(brut)) return "La chaîne d'intégrité de la caisse est rompue. Prévenez le consultant avant d'encaisser.";
   const code = String(error.code || '');
   if (MESSAGES[code]) return MESSAGES[code];
@@ -502,6 +505,18 @@ export async function poserRupture({ etablissementId, platId, mettre }) {
     p_etablissement_id: etablissementId, p_plat_id: platId, p_rupture: Boolean(mettre),
   });
   if (error) return { error: mapError(error, mettre ? "La rupture n'a pas pu être enregistrée." : "Le produit n'a pas pu être remis en vente.") };
+  return { error: null, data: data ?? null };
+}
+
+// Lot 12 : pose l'un des quatre états d'un produit (RPC caisse_poser_disponibilite) :
+// 'en_vente', 'rupture_jour', 'epuise' ou 'portions' (portions de 1 à 999).
+// Le jour de Zurich est pris par la base. Mêmes rôles que poserRupture.
+export async function poserDisponibilite({ etablissementId, platId, etat, portions = null }) {
+  const { data, error } = await supabase.rpc('caisse_poser_disponibilite', {
+    p_etablissement_id: etablissementId, p_plat_id: platId, p_etat: etat,
+    p_portions: etat === 'portions' ? Number(portions) : null,
+  });
+  if (error) return { error: mapError(error, "La disponibilité n'a pas pu être enregistrée.") };
   return { error: null, data: data ?? null };
 }
 
