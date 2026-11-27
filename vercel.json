@@ -86,12 +86,12 @@
   ],
   "redirects": [
     {
-      "source": "/:chemin*",
+      "source": "/((?!sw\\.js$|workbox-[^/]*\\.js$).*)",
       "has": [
         { "type": "host", "value": "samperconsulting-app.com" },
         { "type": "header", "key": "sec-fetch-mode", "value": "navigate" }
       ],
-      "destination": "https://jouanet.com/:chemin*",
+      "destination": "https://jouanet.com/$1",
       "permanent": true
     }
   ],
