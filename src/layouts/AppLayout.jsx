@@ -69,6 +69,10 @@ const PAGES_PLEINE_LARGEUR = new Set(['caisse', 'kds']);
 // La borne de pointage est rendue hors de la coque (main.jsx).
 const LARGEUR_RACCOURCIS = 88;
 const PAGES_SANS_RACCOURCIS = new Set(['kds']);
+// Tablette : les modules du service sont des pilules de la barre du haut, à
+// côté de l'Accueil, et quittent la barre latérale. Toujours en vue, KDS
+// compris, qui n'a pas de barre latérale.
+const MODULES_BARRE_HAUT = ['kds', 'caisse'];
 
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
 // la mise en route (widget du tableau de bord) et la page d'accueil de la
@@ -234,6 +238,16 @@ export default function AppLayout({
   // (filtres de rôle et d'établissement, ordre du consultant). La page
   // d'accueil tactile lit la même liste par ShellContext.
   const { visibleNav, groupedNav, navOrder, saveNavOrder, badges, points } = useVisibleNav({ user, etablissement, perms });
+  // Pilules de la barre du haut (tablette) : les modules de MODULES_BARRE_HAUT
+  // que la personne a dans son menu ; la barre latérale ne les répète pas.
+  const modulesBarreHaut = shellMode === 'tablette'
+    ? MODULES_BARRE_HAUT.map((id) => visibleNav.find((item) => item.id === id)).filter(Boolean)
+    : [];
+  const navRaccourcis = modulesBarreHaut.length
+    ? groupedNav
+      .map((groupe) => ({ ...groupe, items: groupe.items.filter((item) => !MODULES_BARRE_HAUT.includes(item.id)) }))
+      .filter((groupe) => groupe.items.length > 0)
+    : groupedNav;
   // Retour immédiat « +N points » : un seul abonnement, posé ici, seulement
   // quand le système est allumé et que la personne y participe.
   usePointsRetour({ etabId: etablissement?.id, userId: user?.id, actif: points.actif && points.participant });
@@ -799,7 +813,7 @@ export default function AppLayout({
           <aside style={mls.barre} aria-label="Menu principal">
             <nav ref={raccourcisRef} style={mls.raccourcis} className="sc-raccourcis" aria-label="Modules" data-nav-scroll>
               <span ref={raccourcisPiluleRef} className="mvt-pilule sc-nav-pilule" aria-hidden="true" />
-              {groupedNav.map((groupe, index) => (
+              {navRaccourcis.map((groupe, index) => (
                 <div key={groupe.label} role="group" aria-label={groupe.label} style={mls.raccourcisGroupe}>
                   {index > 0 && <span style={mls.raccourcisFilet} aria-hidden="true" />}
                   {groupe.items.map((item) => {
@@ -849,17 +863,35 @@ export default function AppLayout({
         ) : null}
         <div style={pleinEcran ? mls.stagePlein : mls.stage}>
           <header style={pleinEcran ? mls.topbarPlein : mls.topbar} className="app-glass-bar">
-            <button
-              type="button"
-              className="app-bar-btn"
-              style={mls.iconBtn}
-              onClick={goHome}
-              aria-label="Accueil"
-              aria-current={currentPage === 'accueil' ? 'page' : undefined}
-              title="Accueil"
-            >
-              <House size={24} strokeWidth={2} aria-hidden="true" />
-            </button>
+            <div style={mls.barreGauche}>
+              <button
+                type="button"
+                className="app-bar-btn"
+                style={mls.iconBtn}
+                onClick={goHome}
+                aria-label="Accueil"
+                aria-current={currentPage === 'accueil' ? 'page' : undefined}
+                title="Accueil"
+              >
+                <House size={24} strokeWidth={2} aria-hidden="true" />
+              </button>
+              {modulesBarreHaut.map((item) => {
+                const actif = currentPage === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="app-bar-module"
+                    data-module-id={item.id}
+                    style={actif ? mls.moduleBarreActif : mls.moduleBarre}
+                    aria-current={actif ? 'page' : undefined}
+                    onClick={() => handleSetPage(item.id)}
+                  >
+                    {getLabelForModule(item.id, item.mobileLabel || item.label)}
+                  </button>
+                );
+              })}
+            </div>
 
             <EtabSwitcher
               variant="mobile"
@@ -1217,6 +1249,15 @@ const mls = {
     padding: '0 8px',
   },
   iconBtn: { width: 44, height: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: 'none', border: 'none', borderRadius: '50%', color: 'var(--text)', cursor: 'pointer', position: 'relative', padding: 0 },
+  // Accueil et pilules des modules du service (tablette).
+  barreGauche: { display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 },
+  moduleBarre: {
+    position: 'relative', display: 'inline-flex', alignItems: 'center', flexShrink: 0,
+    height: 'var(--controle)', padding: '0 16px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    borderRadius: 'var(--r-full)', background: 'var(--btn-fond)', color: 'var(--btn-texte)',
+    fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap', cursor: 'pointer',
+    transition: 'background-color var(--mvt-2) var(--courbe), color var(--mvt-2) var(--courbe), scale var(--mvt-1) var(--courbe-ressort)',
+  },
   notifDot: { position: 'absolute', top: 6, right: 6, background: 'var(--danger-fill)', color: 'var(--on-danger)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', minWidth: 16, height: 16, padding: '0 4px', boxSizing: 'border-box', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1 },
   notifPanel: { position: 'absolute', right: 0, top: 44, width: 300, background: 'var(--surface)', border: '1px solid var(--rule-soft)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh-lg)', zIndex: 100, maxHeight: 360, overflowY: 'auto' },
   notifHeader: { padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 'var(--t1)', fontWeight: 'var(--g3)', color: 'var(--text2)' },
@@ -1237,6 +1278,8 @@ const mls = {
 // Entrée choisie : le cercle prend l'aplat sombre, le libellé l'encre du texte.
 mls.raccourciActif = { ...mls.raccourci, color: 'var(--text)' };
 mls.raccourciCercleActif = { ...mls.raccourciCercle, background: 'var(--nav-active)', color: 'var(--nav-text-active)' };
+// Module ouvert : la pilule prend l'aplat sombre.
+mls.moduleBarreActif = { ...mls.moduleBarre, background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' };
 // Plein écran (pleinEcran) : la barre du haut part, <main> remonte (son
 // padding haut lit --app-header-h).
 mls.stagePlein = { ...mls.stage, '--app-header-h': '0px' };

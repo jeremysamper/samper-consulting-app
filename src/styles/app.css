@@ -2246,6 +2246,14 @@ html[data-mouvement="reduit"] .ui-card--clickable:active,
 }
 .app-bar-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
 
+/* Pilules des modules du service à côté de l'Accueil (tablette) : 40 px vus,
+   44 px au doigt ; survol et focus hors de l'aplat sombre. */
+.app-bar-module::after { content: ''; position: absolute; inset: -3px; }
+@media (hover: hover) {
+  .app-bar-module:not([aria-current]):hover { background-color: var(--selection) !important; }
+}
+.app-bar-module:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+
 /* Recherche de la barre du haut (ordinateur) : une pilule à la couleur des
    cartes, la loupe, « Aller à un module » et son raccourci. Sous 1180 px de
    large, la pilule se replie en cercle, comme les autres boutons. Elle ouvre
