@@ -82,6 +82,9 @@ function profilDe(ctx, id = ctx.uid) {
 }
 
 const gere = (ctx) => ['consultant', 'patron', 'resp_cuisine'].includes(profilDe(ctx)?.role);
+// Droit Modifier du planning : la gouvernante en plus depuis la revue des rôles
+// hôtel (migration 20261127_roles_hotel_droits).
+const gerePlanning = (ctx) => gere(ctx) || profilDe(ctx)?.role === 'gouvernante';
 
 // ── Points ───────────────────────────────────────────────────────────────────
 
@@ -151,6 +154,9 @@ const estDirection = (ctx) => ['consultant', 'patron'].includes(profilDe(ctx)?.r
 const STATUTS_CHAMBRE = ['a_faire', 'en_cours', 'propre', 'inspectee', 'hors_service'];
 const ROLES_ETAGES = ['consultant', 'patron', 'gouvernante', 'femme_de_chambre', 'receptionniste'];
 const ROLES_INSPECTION = ['consultant', 'patron', 'gouvernante'];
+// Remise en service d'une chambre (migration 20261127_roles_hotel_droits) :
+// Technique, Étages ou Hébergement.
+const ROLES_REMISE = [...new Set([...ROLES_ETAGES, 'technicien', 'gouvernante'])];
 
 function borneSeulement(ctx, etab) {
   const r = (ctx.db.reglages_maison || []).find((x) => x.etablissement_id === etab);
@@ -1025,6 +1031,20 @@ const RPC = {
     }
     return 'applique';
   },
+  // Revue des rôles hôtel (27.11.2026) : une chambre hors service repasse à
+  // « à faire », motif effacé, comme chambre_remettre_en_service en base.
+  chambre_remettre_en_service(ctx, a) {
+    if (!a.p_chambre_id) throw new ErreurRpc('CHAMBRE_INCONNUE: chambre requise', '22023');
+    const c = (ctx.db.chambres || []).find((x) => x.id === a.p_chambre_id);
+    if (!c || !accesEtab(ctx, c.etablissement_id)) throw new ErreurRpc('CHAMBRE_INCONNUE: chambre introuvable', 'P0002');
+    if (!ROLES_REMISE.includes(profilDe(ctx)?.role)) {
+      throw new ErreurRpc("REMISE_RESERVEE: remettre une chambre en service demande le droit Modifier de Technique, d'Étages ou d'Hébergement", '42501');
+    }
+    if (c.statut_menage !== 'hors_service') return 'deja_en_service';
+    ctx.maj('chambres', c, { statut_menage: 'a_faire', hors_service_motif: null, statut_menage_at: maintenant(), updated_at: maintenant() });
+    ctx.inserer('chambres_statut_journal', { etablissement_id: c.etablissement_id, chambre_id: c.id, ancien: 'hors_service', nouveau: 'a_faire', par: ctx.uid, at: maintenant() });
+    return 'remise';
+  },
   demandes_qr_renouveler(ctx, a) {
     const c = (ctx.db.chambres || []).find((x) => x.id === a.p_chambre_id);
     if (!c || !estDirection(ctx)) throw new ErreurRpc('DEMANDES_QR_REFUSE: réservé à la direction de l\'établissement', '42501');
@@ -1069,7 +1089,7 @@ const RPC = {
   },
   echange_decider(ctx, a) {
     const e = echangeDe(ctx, a.p_id);
-    if (!accesEtab(ctx, e.etablissement_id) || !gere(ctx)) throw new ErreurRpc('Seules les personnes qui gèrent le planning valident un échange.', '42501');
+    if (!accesEtab(ctx, e.etablissement_id) || !gerePlanning(ctx)) throw new ErreurRpc('Seules les personnes qui gèrent le planning valident un échange.', '42501');
     if (e.statut !== 'repris' || !e.repreneur) throw new ErreurRpc('Cet échange attend encore un collègue.', '22023');
     if (a.p_accepter) {
       const s = ctx.db.shifts.find((x) => x.id === e.shift_id && x.user_id === e.demandeur);

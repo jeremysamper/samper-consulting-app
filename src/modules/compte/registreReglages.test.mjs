@@ -34,9 +34,10 @@ const AVANT = {
   ordre_menu: ['consultant'],
   alertes: ['consultant'],
   caisse: ['consultant', 'patron', 'resp_cuisine'],
-  planning_modeles: ['consultant', 'patron', 'resp_cuisine'],
-  planning_groupes: ['consultant', 'patron', 'resp_cuisine'],
-  planning_contrats: ['consultant', 'patron', 'resp_cuisine'],
+  // 27.11.2026 : la gouvernante gère le planning par défaut (rôles hôtel).
+  planning_modeles: ['consultant', 'patron', 'resp_cuisine', 'gouvernante'],
+  planning_groupes: ['consultant', 'patron', 'resp_cuisine', 'gouvernante'],
+  planning_contrats: ['consultant', 'patron', 'resp_cuisine', 'gouvernante'],
   reservation_en_ligne: DIRECTION,
   comptabilite: DIRECTION,
   // 22.11.2026, décision D1 du plan 15 : la direction de la maison.
@@ -65,7 +66,8 @@ const AVANT = {
   factures_textes: ['consultant'],
   factures_email: ['consultant'],
   technique_plans: ['consultant', 'patron', 'gouvernante', 'technicien'],
-  plan_salle: ['consultant', 'patron', 'resp_cuisine', 'hote'],
+  // 27.11.2026 : la réception gère les réservations par défaut (rôles hôtel).
+  plan_salle: ['consultant', 'patron', 'resp_cuisine', 'hote', 'receptionniste'],
   // 14.11.2026 : la fenêtre « Gérer » de l'accueil de l'Inventaire (droit
   // « Modifier » du module, donné par défaut à ces trois rôles).
   inventaire_gerer: ['consultant', 'patron', 'resp_cuisine'],

@@ -44,11 +44,12 @@ export const defaultPermissions = {
   // table et les groupes ; la gouvernante et les femmes et valets de chambre
   // tiennent les étages (la gouvernante lit aussi les séjours pour préparer
   // les arrivées) ; la technique lit les étages (chambres hors service) en
-  // attendant son module (lot H8). Revue du 27.11.2026 : la réception et la
+  // attendant son module (lot H8). Revue du 27.11.2026 : la réception voit le
+  // Spa (elle y prend les rendez-vous des clients de l'hôtel) ; la réception et la
   // technique ouvrent les SOP (checklists d'ouverture et de fermeture, tournée
   // technique), comme les étages ; chacun des quatre rôles peut s'y voir
   // désigner une checklist (SectionReglagesSop).
-  receptionniste:   { caisse: false, boissons: false, dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: false, mep: false, kds: false, messages: true, groupes: true,  spa: false, journal: false, hebergement: true,  etages: true , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: false, points: true },
+  receptionniste:   { caisse: false, boissons: false, dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: true,  pos: false, commande: false, mep: false, kds: false, messages: true, groupes: true,  spa: true,  journal: false, hebergement: true,  etages: true , demandes: true, activites: true, passations: true, repas: true, technique: true, comptabilite: false, statistiques: false, points: true },
   gouvernante:      { caisse: false, boissons: false, dashboard: true,  planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: true,  etages: true , demandes: true, activites: false, passations: true, repas: false, technique: true, comptabilite: false, statistiques: false, points: true },
   femme_de_chambre: { caisse: false, boissons: false, dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true,  fiches_salle: false, documents: false, catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true , demandes: true, activites: false, passations: true, repas: false, technique: true, comptabilite: false, statistiques: false, points: true },
   technicien:       { caisse: false, boissons: false, dashboard: false, planning: true,  recettes: false, inventaire: false, pertes: false, haccp: false, sop: true, fiches_salle: false, documents: true,  catalogue: false, consultant_tools: false, faq: false, previsions: false, pos: false, commande: false, mep: false, kds: false, messages: true, groupes: false, spa: false, journal: false, hebergement: false, etages: true , demandes: true, activites: false, passations: true, repas: false, technique: true, comptabilite: false, statistiques: false, points: true },
@@ -68,7 +69,11 @@ export const defaultPermissions = {
 // commande (la génération = IA, consultant only), kds (écran opérationnel du
 // passe) et les pages consultant-only (garde dure par rôle dans LegacyModuleHost).
 export const manageableModules = [
-  { id: 'planning', label: 'Planning & Pointage', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
+  // planning : la gouvernante planifie les étages (revue des rôles hôtel,
+  // 27.11.2026) ; le droit couvre tout le planning de la maison, comme pour le
+  // responsable de cuisine. Mêmes rôles en base (migration
+  // 20261127_roles_hotel_droits).
+  { id: 'planning', label: 'Planning & Pointage', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'gouvernante'] },
   { id: 'recettes', label: 'Cartes & Recettes', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
   { id: 'inventaire', label: 'Inventaire', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
   { id: 'pertes', label: 'Pertes' },
@@ -77,13 +82,17 @@ export const manageableModules = [
   { id: 'fiches_salle', label: 'Fiches salle' },
   { id: 'documents', label: 'Documents' },
   { id: 'catalogue', label: 'Catalogue produits' },
-  { id: 'previsions', label: 'Réservations', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'hote'] },
-  { id: 'groupes', label: 'Groupes', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'hote'] },
+  // previsions et groupes : la réception tient aussi les réservations de table
+  // et les groupes (27.11.2026, même migration).
+  { id: 'previsions', label: 'Réservations', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'hote', 'receptionniste'] },
+  { id: 'groupes', label: 'Groupes', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'hote', 'receptionniste'] },
   { id: 'mep', label: 'Mise en place', defaultRoles: ['resp_cuisine', 'cuisinier'] },
   { id: 'pos', label: 'Ventes POS', defaultRoles: ['consultant', 'patron', 'resp_cuisine'] },
   // spa : prendre les rendez-vous, tenir les fiches clients, rédiger les
-  // comptes rendus de séance. Ouvert à toute l'équipe du spa par défaut.
-  { id: 'spa', label: 'Spa', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa'] },
+  // comptes rendus de séance. Ouvert à toute l'équipe du spa par défaut, et à
+  // la réception d'un hôtel (27.11.2026). La base ne filtre ces écritures que
+  // par établissement (spa_clients, spa_reservations, spa_seances).
+  { id: 'spa', label: 'Spa', defaultRoles: ['consultant', 'patron', 'resp_cuisine', 'cuisinier', 'serveur', 'hote', 'praticien_spa', 'receptionniste'] },
   // Branche Hôtel (lot H0). hebergement : créer et modifier les séjours, les
   // chambres et leurs catégories. etages : changer le statut de ménage d'une
   // chambre, l'attribuer à quelqu'un, noter un motif hors service. La base lit

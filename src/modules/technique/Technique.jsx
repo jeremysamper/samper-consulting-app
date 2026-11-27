@@ -8,6 +8,7 @@ import SearchToggle from '../../components/ui/SearchToggle.jsx';
 import { Btn } from '../../components/ui/index.jsx';
 import { Fenetre, st } from '../../components/ui/Fenetres.jsx';
 import { notify } from '../../components/toast/index.js';
+import { supabase } from '../../services/supabase.js';
 import { canManageModule } from '../../data/demoData.js';
 import EnTeteSection from '../../components/parcours/EnTeteSection.jsx';
 import { quandRetoursArrives } from '../../services/historyNav.js';
@@ -141,7 +142,7 @@ function OrdreForm({ ordre, prerempli, chambres, equipements, demandes, equipe, 
   );
 }
 
-function OrdreFiche({ ordre: o, chambres, equipements, plans, moi, peutGerer, peutEtages, ordres, onRemettreChambre, onApresFin, onModifier, onClose }) {
+function OrdreFiche({ ordre: o, chambres, equipements, plans, moi, peutGerer, peutRemettre, ordres, onRemettreChambre, onApresFin, onModifier, onClose }) {
   const [fin, setFin] = React.useState({ temps: o.tempsMinutes == null ? '' : String(o.tempsMinutes), cout: o.cout == null ? '' : String(o.cout), pieces: o.pieces, compteRendu: o.compteRendu, remettre: true });
   const [prevu, setPrevu] = React.useState(o.prevuLe || '');
   const [erreur, setErreur] = React.useState('');
@@ -167,7 +168,7 @@ function OrdreFiche({ ordre: o, chambres, equipements, plans, moi, peutGerer, pe
       pieces: fin.pieces.trim() || null, compte_rendu: fin.compteRendu.trim() || null,
     }, 'Ordre terminé.');
     if (r.error) return;
-    if (chambre && chambre.statutMenage === 'hors_service' && fin.remettre && peutEtages) await onRemettreChambre(chambre);
+    if (chambre && chambre.statutMenage === 'hors_service' && fin.remettre && peutRemettre) await onRemettreChambre(chambre);
     // Le plan préventif est daté par la base : on relit sans attendre le realtime.
     if (o.planId) onApresFin();
     onClose();
@@ -225,7 +226,7 @@ function OrdreFiche({ ordre: o, chambres, equipements, plans, moi, peutGerer, pe
             <Champ label="Pièces" large><input style={h.saisie} value={fin.pieces} onChange={(ev) => setFin((p) => ({ ...p, pieces: ev.target.value }))} placeholder="Joint, ampoule, fusible…" /></Champ>
             <Champ label="Compte rendu" large><textarea style={{ ...h.saisie, minHeight: 56 }} value={fin.compteRendu} onChange={(ev) => setFin((p) => ({ ...p, compteRendu: ev.target.value }))} /></Champ>
           </div>
-          {chambre && chambre.statutMenage === 'hors_service' && peutEtages && (
+          {chambre && chambre.statutMenage === 'hors_service' && peutRemettre && (
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, minHeight: 44, cursor: 'pointer' }}>
               <input type="checkbox" checked={fin.remettre} onChange={(ev) => setFin((p) => ({ ...p, remettre: ev.target.checked }))} style={{ width: 18, height: 18, accentColor: 'var(--accent)' }} />
               <span style={{ fontSize: 14, color: 'var(--text)' }}>Remettre la chambre à faire (les étages la nettoient)</span>
@@ -384,7 +385,10 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
   const peutGerer = peutGererTechnique(role);
   const enReglage = ecranReglage === 'equipements' || ecranReglage === 'plans';
   const enPlans = ecranReglage === 'plans';
-  const peutEtages = canManageModule(role, 'etages');
+  // Remettre une chambre hors service à faire : qui gère Technique, Étages ou
+  // Hébergement (revue des rôles hôtel, 27.11.2026). La base fait la même
+  // vérification dans la RPC chambre_remettre_en_service.
+  const peutRemettre = peutGerer || canManageModule(role, 'etages') || canManageModule(role, 'hebergement');
   const aujourdhui = useAujourdhui();
 
   const ordres = useOrdresTravail(etabId);
@@ -452,8 +456,16 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
   const creerDepuisDemande = (d) => setForm({ ordre: null, prerempli: { titre: d.titre, detail: d.detail || '', chambreId: d.chambreId || '', priorite: d.priorite || 'normale', demandeId: d.id } });
 
   const remettreChambre = async (c) => {
-    const r = await chambres.modifier(c.id, { statut_menage: 'a_faire', hors_service_motif: null });
-    if (r.error) notify(r.error, 'error'); else notify('Chambre remise à faire.', 'success');
+    const { error } = await supabase.rpc('chambre_remettre_en_service', { p_chambre_id: c.id });
+    if (error) {
+      console.error('[Technique] remise en service', error);
+      notify(String(error.code) === '42501'
+        ? "Remettre une chambre en service demande le droit Modifier de Technique, d'Étages ou d'Hébergement."
+        : "La chambre n'a pas pu être remise à faire. Réessayez.", 'error');
+      return;
+    }
+    notify('Chambre remise à faire.', 'success');
+    chambres.reload();
   };
   const creerDepuisPlan = (p) => setForm({ ordre: null, prerempli: { titre: p.titre, detail: p.detail, categorie: p.categorie, equipementId: p.equipementId || '', chambreId: p.chambreId || '', lieu: p.lieu || '', planId: p.id, prevuLe: p.prochaineFois > aujourdhui ? p.prochaineFois : aujourdhui } });
 
@@ -623,7 +635,7 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
                     {ordre
                       ? <Btn onClick={() => setFicheId(ordre.id)}><span>Ordre :</span> <span data-no-translate>{ordre.titre}</span></Btn>
                       : <Btn onClick={() => setForm({ ordre: null, prerempli: { titre: c.horsServiceMotif || `Chambre ${c.numero}`, chambreId: c.id, priorite: 'haute' } })}>Ouvrir un ordre</Btn>}
-                    {peutEtages && <Btn onClick={() => remettreChambre(c)}>Remettre à faire</Btn>}
+                    {peutRemettre && <Btn onClick={() => remettreChambre(c)}>Remettre à faire</Btn>}
                   </span>
                 </div>
               );
@@ -651,7 +663,7 @@ export default function Technique({ user, etablissement, ecranReglage = null, re
 
       {form && <OrdreForm ordre={form.ordre} prerempli={form.prerempli} chambres={chambres.rows} equipements={equipements.rows} demandes={demandes.rows} equipe={equipe} ordres={ordres} peutGerer={peutGerer} onClose={() => setForm(null)} />}
       {fiche && !form && (
-        <OrdreFiche ordre={fiche} chambres={chambres.rows} equipements={equipements.rows} plans={plans.rows} moi={moi} peutGerer={peutGerer} peutEtages={peutEtages} ordres={ordres} onRemettreChambre={remettreChambre} onApresFin={() => plans.reload()} onModifier={(o) => setForm({ ordre: o, prerempli: {} })} onClose={() => setFicheId(null)} />
+        <OrdreFiche ordre={fiche} chambres={chambres.rows} equipements={equipements.rows} plans={plans.rows} moi={moi} peutGerer={peutGerer} peutRemettre={peutRemettre} ordres={ordres} onRemettreChambre={remettreChambre} onApresFin={() => plans.reload()} onModifier={(o) => setForm({ ordre: o, prerempli: {} })} onClose={() => setFicheId(null)} />
       )}
       {planForm && <PlanForm plan={planForm.plan} equipements={equipements.rows} chambres={chambres.rows} plans={plans} onClose={fermerPlan} />}
       {equipForm && <EquipementForm equipement={equipForm.equipement} chambres={chambres.rows} equipements={equipements} onClose={() => setEquipForm(null)} />}
