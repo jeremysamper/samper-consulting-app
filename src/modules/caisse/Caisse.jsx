@@ -808,8 +808,11 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       colonne={colonne}
     />
   );
-  const vuePlan = (
+  // barreCaisse : la barre d'actions de l'accueil, que le plan pose sur sa
+  // ligne à lui (salle et gestes du plan) hors téléphone.
+  const vuePlan = (barreCaisse = null) => (
     <PlanTables
+      barreCaisse={barreCaisse}
       salles={salles}
       tables={tablesVues}
       tablees={tablees}
@@ -847,6 +850,47 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
       titre: 'Fin de journée',
       detail: 'Les portions qui restent : en perte ou remises à zéro.',
       onClick: () => setEcran('fin_journee'),
+    };
+    // La barre de l'accueil : l'action principale, les tickets ouverts et
+    // « Plus » d'un côté, le plein écran au bout de l'autre.
+    const barreAccueil = {
+      avant: (
+        <>
+          <Btn variant="primary" onClick={venteDirecte} style={st.btn44}>Vente directe</Btn>
+          <Btn onClick={() => setEcran('tickets')} style={st.btn44}>
+            <span>{modeTest ? 'Tickets de test ouverts' : 'Tickets ouverts'}</span>
+            <span style={st.compteBtn}>{tickets.length}</span>
+          </Btn>
+          <BoutonActions
+            id="caisse-plus"
+            label="Plus"
+            style={st.plus}
+            titre="Caisse"
+            sections={[{ items: [
+              !modeTest && { titre: 'Historique et quittances', detail: 'Tickets encaissés, quittances', onClick: () => setEcran('historique') },
+              !modeTest && { titre: 'Bons cadeaux', detail: 'Vendre, retrouver, suivre', onClick: () => setEcran('bons_cadeaux') },
+              !modeTest && peutHabiller && { titre: 'Clôture de caisse', onClick: () => setEcran('cloture') },
+              choixFinJournee,
+              choixModeTest,
+            ] }]}
+          />
+        </>
+      ),
+      apres: (
+        <button
+          type="button"
+          style={plein ? st.pleinActif : st.plein}
+          aria-pressed={plein}
+          aria-label="Plein écran"
+          title="Plein écran"
+          onClick={basculerPlein}
+          data-caisse-plein-ecran=""
+        >
+          {plein
+            ? <Minimize2 size={20} strokeWidth={1.75} aria-hidden="true" />
+            : <Maximize2 size={20} strokeWidth={1.75} aria-hidden="true" />}
+        </button>
+      ),
     };
     return (
       <>
@@ -903,44 +947,19 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         )}
         {/* Barre (26.11.2026) : l'action principale, les tickets ouverts, et
             le reste dans « Plus », au téléphone comme à l'ordinateur. Les
-            réservations en retard vivent dans le bandeau du service. */}
-        <div className="module-actions caisse-actions no-print" data-caisse-actions="">
-          <Btn variant="primary" onClick={venteDirecte} style={st.btn44}>Vente directe</Btn>
-          <Btn onClick={() => setEcran('tickets')} style={st.btn44}>
-            <span>{modeTest ? 'Tickets de test ouverts' : 'Tickets ouverts'}</span>
-            <span style={st.compteBtn}>{tickets.length}</span>
-          </Btn>
-          <BoutonActions
-            id="caisse-plus"
-            label="Plus"
-            style={st.plus}
-            titre="Caisse"
-            sections={[{ items: [
-              !modeTest && { titre: 'Historique et quittances', detail: 'Tickets encaissés, quittances', onClick: () => setEcran('historique') },
-              !modeTest && { titre: 'Bons cadeaux', detail: 'Vendre, retrouver, suivre', onClick: () => setEcran('bons_cadeaux') },
-              !modeTest && peutHabiller && { titre: 'Clôture de caisse', onClick: () => setEcran('cloture') },
-              choixFinJournee,
-              choixModeTest,
-            ] }]}
-          />
-          <button
-            type="button"
-            style={plein ? st.pleinActif : st.plein}
-            aria-pressed={plein}
-            aria-label="Plein écran"
-            title="Plein écran"
-            onClick={basculerPlein}
-            data-caisse-plein-ecran=""
-          >
-            {plein
-              ? <Minimize2 size={20} strokeWidth={1.75} aria-hidden="true" />
-              : <Maximize2 size={20} strokeWidth={1.75} aria-hidden="true" />}
-          </button>
-        </div>
-        {/* Sans plan dessiné, le bandeau du service se pose seul. */}
-        {!avecTables && reservations.length > 0 && rendreBandeau()}
-        {avecTables ? vuePlan : (
-          <p style={st.vide}>Aucune table dans le plan de salle. Dessinez la salle dans Réservations, ou vendez sans table par « Vente directe ».</p>
+            réservations en retard vivent dans le bandeau du service. Avec un
+            plan, c'est le plan qui pose la barre : la salle, « Déplacer des
+            tables » et l'affichage du plan y prennent place (27.11.2026). */}
+        {avecTables ? vuePlan(barreAccueil) : (
+          <>
+            <div className="module-actions caisse-actions no-print" data-caisse-actions="">
+              {barreAccueil.avant}
+              {barreAccueil.apres}
+            </div>
+            {/* Sans plan dessiné, le bandeau du service se pose seul. */}
+            {reservations.length > 0 && rendreBandeau()}
+            <p style={st.vide}>Aucune table dans le plan de salle. Dessinez la salle dans Réservations, ou vendez sans table par « Vente directe ».</p>
+          </>
         )}
         {quiTable && (
           <QuiEstLa
@@ -970,7 +989,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         titre="Choisir la nouvelle table"
         onRetour={() => { setModeTables('ouvrir'); setEcran('ticket'); }}
       >
-        {avecTables ? vuePlan : <p style={st.vide}>Aucune table dans le plan de salle.</p>}
+        {avecTables ? vuePlan() : <p style={st.vide}>Aucune table dans le plan de salle.</p>}
       </EcranTache>
       </>
     );

@@ -115,6 +115,9 @@ export default function PlanTables({
   boissons = null,
   // (colonne) => le bandeau du service ; colonne vrai en deux colonnes.
   rendreBandeau = null,
+  // { avant, apres } : les actions de la caisse (Vente directe, Tickets
+  // ouverts, Plus) et le plein écran, posés sur la barre du plan.
+  barreCaisse = null,
 }) {
   const [affichage, setAffichage] = React.useState(lireAffichage);
   // Filtre d'état touché au-dessus du plan, ou null (toutes les tables).
@@ -412,7 +415,16 @@ export default function PlanTables({
 
   const tableeChoisie = choisie ? tablesActives.filter((t) => (tablees?.get(t.id)?.principale?.id || t.id) === choisie) : [];
 
-  if (!tablesActives.length) return null;
+  // Sans table active, le plan ne rend rien ; la barre de la caisse, s'il la
+  // porte, reste à l'écran.
+  if (!tablesActives.length) {
+    return barreCaisse ? (
+      <div className="module-actions caisse-actions no-print" data-caisse-actions="">
+        {barreCaisse.avant}
+        {barreCaisse.apres}
+      </div>
+    ) : null;
+  }
 
   // Filtres : un par état présent, du plus pressant au plus calme. Au
   // téléphone, une seule ligne qui défile.
@@ -437,9 +449,21 @@ export default function PlanTables({
           ))}
         </div>
   );
+  // Barre de la caisse reçue de Caisse.jsx (barreCaisse) : hors téléphone,
+  // une seule ligne porte ses actions, la salle, les gestes du plan et le
+  // plein écran ; le réglage de l'affichage s'ouvre juste dessous, et les
+  // filtres d'état passent juste au-dessus du plan. Au téléphone, la barre
+  // de la caisse reste seule et le plan garde sa barre à lui. Sous 900 px
+  // (tablette debout), « Déplacer des tables » devient un cercle à picto
+  // pour que la barre tienne sur une ligne.
+  const barreUnique = Boolean(barreCaisse) && !tel;
+  const deplacerEnCercle = tel || (barreUnique && largeurRacine > 0 && largeurRacine < 900);
+  // Téléphone, plusieurs salles : le plein écran rejoint la ligne de la salle
+  // et des gestes du plan, la barre de la caisse tient sur une ligne.
+  const pleinSurPlan = Boolean(barreCaisse) && tel && onglets.length > 1;
   const actionsPlan = (
         <div style={st.actionsBarre}>
-          {peutDeplacer && !choixSeul && !deplacer && (tel ? (
+          {peutDeplacer && !choixSeul && !deplacer && (deplacerEnCercle ? (
             <button
               type="button"
               aria-label="Déplacer des tables"
@@ -462,6 +486,7 @@ export default function PlanTables({
           >
             <SlidersHorizontal size={18} strokeWidth={2} aria-hidden="true" />
           </button>
+          {pleinSurPlan && barreCaisse.apres}
         </div>
   );
 
@@ -500,14 +525,27 @@ export default function PlanTables({
   // La structure reste la même dans les deux présentations (les mesures du
   // plan suivent toujours les mêmes nœuds) ; seuls les emplacements changent.
   return (
-    <div ref={racineRef} style={st.racine} data-caisse-plan="" data-caisse-colonnes={deuxColonnes ? '2' : '1'}>
+    <div ref={racineRef} style={barreCaisse ? { ...st.racine, marginTop: 0 } : st.racine} data-caisse-plan="" data-caisse-colonnes={deuxColonnes ? '2' : '1'}>
+      {barreCaisse && (
+        <div className="module-actions caisse-actions no-print" data-caisse-actions="" style={st.barreCaisse}>
+          {barreCaisse.avant}
+          {barreUnique && onglets.length > 1 && <TabBar tabs={onglets} active={actif} onChange={choisirSalle} deroulant titre="Salles" />}
+          <div style={st.barreCaisseDroite}>
+            {barreUnique && actionsPlan}
+            {!pleinSurPlan && barreCaisse.apres}
+          </div>
+        </div>
+      )}
+      {barreUnique && panneauReglages}
+      {barreUnique && bandeauDeplacer}
       {!deuxColonnes && enTete}
+      {!deuxColonnes && barreUnique && <div style={st.barre}>{filtres}</div>}
       {/* Barre du plan, au-dessus de lui. Plusieurs salles : les salles et les
           gestes du plan sur une ligne, les filtres d'état sur la suivante.
           Une seule salle : les filtres et les gestes partagent la ligne. */}
       {/* Téléphone : au-dessus du plan, les salles et les gestes seulement ;
           les filtres passent dessous, le plan monte. */}
-      {!deuxColonnes && (onglets.length > 1 ? (
+      {!deuxColonnes && !barreUnique && (onglets.length > 1 ? (
         <>
           <div style={st.barre}>
             <TabBar tabs={onglets} active={actif} onChange={choisirSalle} deroulant titre="Salles" />
@@ -519,23 +557,24 @@ export default function PlanTables({
         !tel && <div style={st.barre}>{filtres}{actionsPlan}</div>
       ))}
       {/* Le réglage de l'affichage s'ouvre près de son bouton. */}
-      {!deuxColonnes && !(tel && onglets.length <= 1) && panneauReglages}
-      {!deuxColonnes && bandeauDeplacer}
+      {!deuxColonnes && !barreUnique && !(tel && onglets.length <= 1) && panneauReglages}
+      {!deuxColonnes && !barreUnique && bandeauDeplacer}
 
       <div style={deuxColonnes ? st.grille : st.corps}>
         <div style={deuxColonnes ? st.gauche : st.colPlan}>
-          {/* En deux colonnes, la barre du plan est au-dessus de lui, comme
-              en une colonne : la salle à gauche, les gestes du plan à droite
-              (le réglage de l'affichage s'ouvre juste dessous). Les filtres
-              d'état restent dans la colonne. */}
-          {deuxColonnes && (
+          {/* En deux colonnes, les filtres d'état sont juste au-dessus du plan
+              qu'ils filtrent. Sans la barre de la caisse, la barre du plan
+              porte la salle et les gestes, les filtres restent dans la
+              colonne. */}
+          {deuxColonnes && barreUnique && <div style={st.barre}>{filtres}</div>}
+          {deuxColonnes && !barreUnique && (
             <div style={st.barre}>
               {onglets.length > 1 && <TabBar tabs={onglets} active={actif} onChange={choisirSalle} deroulant titre="Salles" />}
               {actionsPlan}
             </div>
           )}
-          {deuxColonnes && panneauReglages}
-          {deuxColonnes && bandeauDeplacer}
+          {deuxColonnes && !barreUnique && panneauReglages}
+          {deuxColonnes && !barreUnique && bandeauDeplacer}
           <div ref={corpsRef}>
         <div ref={colRef}>
           <div className="caisse-plan-carte" data-cadre="" style={{ ...st.carte, padding: pad }}>
@@ -775,7 +814,7 @@ export default function PlanTables({
             })}
           </div>
         )}
-        {deuxColonnes && <div style={st.barreColonne}>{filtres}</div>}
+        {deuxColonnes && !barreUnique && <div style={st.barreColonne}>{filtres}</div>}
         </div>
         )}
       </div>
@@ -979,11 +1018,11 @@ function ReglagesAffichage({ affichage, onChange, tel = false }) {
 const st = {
   racine: { display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10, minWidth: 0 },
   barre: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, minWidth: 0 },
-  compteurs: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, flex: '1 1 auto', minWidth: 0 },
+  compteurs: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, flex: '1 1 auto', minWidth: 0 },
   // Filtre d'état : une pilule de 40 px dans une cible de 44 px, la choisie
   // en aplat sombre (direction Galet).
   compteur: {
-    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, margin: '2px 0', padding: '0 14px', borderRadius: 'var(--r-full)',
+    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, margin: '2px 0', padding: '0 12px', borderRadius: 'var(--r-full)',
     background: 'var(--zone)', color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0,
   },
@@ -1024,6 +1063,10 @@ const st = {
   gauche: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
   colonne: { display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 },
   barreColonne: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, minWidth: 0 },
+  // Barre de la caisse posée par le plan : sa marge basse vient de l'écart
+  // de la racine ; les gestes du plan et le plein écran, groupés à droite.
+  barreCaisse: { marginBottom: 0 },
+  barreCaisseDroite: { display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto', flexShrink: 0 },
   carte: {
     position: 'relative',
     display: 'flex', justifyContent: 'center', boxSizing: 'border-box', background: 'var(--zone)', borderRadius: 'var(--r-lg)',
