@@ -33,12 +33,12 @@ Si le Manager Infomaniak propose un pare-feu pour ce serveur, y ouvrir les même
 
 ## 2. Le nom du relais (DNS)
 
-1. Choisir un nom neutre, sans nom de client (il devient public dans les registres de transparence des certificats), par exemple `relais.samperconsulting-app.com`.
+1. Choisir un nom neutre, sans nom de client (il devient public dans les registres de transparence des certificats), par exemple `relais.jouanet.com`.
 2. Chez le gestionnaire DNS du domaine, créer un enregistrement **A** : nom `relais`, valeur l'adresse IPv4 du serveur, durée 3600 (ou 300 le temps de l'installation).
 3. Vérifier depuis ton ordinateur, quelques minutes plus tard :
 
 ```powershell
-nslookup relais.samperconsulting-app.com
+nslookup relais.jouanet.com
 ```
 
 La réponse doit être l'adresse du serveur. Aucun enregistrement AAAA n'est nécessaire.
@@ -56,7 +56,7 @@ Puis, sur le serveur :
 
 ```bash
 cd coturn
-sudo bash installer.sh relais.samperconsulting-app.com
+sudo bash installer.sh relais.jouanet.com
 ```
 
 - Remplacer `debian` par l'utilisateur noté à l'étape 1, et le nom du relais par le tien.
@@ -78,7 +78,7 @@ Au choix :
 - ou la commande affichée par le script, sur ton ordinateur, dans le dossier de l'app (PowerShell : `npx.cmd` au lieu de `npx`) :
 
 ```powershell
-npx.cmd supabase secrets set COTURN_DOMAINE=relais.samperconsulting-app.com COTURN_SECRET=LE_SECRET --project-ref ppmtoiqgajwcdkbnrcll
+npx.cmd supabase secrets set COTURN_DOMAINE=relais.jouanet.com COTURN_SECRET=LE_SECRET --project-ref ppmtoiqgajwcdkbnrcll
 ```
 
 Effet immédiat, sans redéploiement : la fonction `appel-turn` passe de « relais non configuré » (503) à des identifiants temporaires.
@@ -88,7 +88,7 @@ Effet immédiat, sans redéploiement : la fonction `appel-turn` passe de « rela
 Sur le serveur :
 
 ```bash
-sudo bash verifier.sh relais.samperconsulting-app.com
+sudo bash verifier.sh relais.jouanet.com
 ```
 
 Toutes les lignes doivent dire `ok`. Le script imprime ensuite trois valeurs valables dix minutes. Sur ton ordinateur, ouvrir `infra/coturn/essai-relais.html` (double clic, le fichier reste local), coller les trois valeurs, Tester : quatre lignes `ok` attendues (découverte d'adresse, relais UDP, TCP et TLS).
@@ -124,7 +124,7 @@ Tout le reste est fermé par le pare-feu du serveur (ufw).
 
 ```bash
 sudo rm /etc/relais-turn/auth-secret
-sudo bash installer.sh relais.samperconsulting-app.com
+sudo bash installer.sh relais.jouanet.com
 ```
 
   puis reposer `COTURN_SECRET` dans Supabase (étape 4).

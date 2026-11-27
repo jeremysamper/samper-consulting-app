@@ -15,7 +15,7 @@
 // écrit dans la page.
 //
 // Adresse à déclarer chez Google et Microsoft :
-//   https://samperconsulting-app.com/api/spa-oauth
+//   https://jouanet.com/api/spa-oauth
 // ================================================================
 
 export const config = {

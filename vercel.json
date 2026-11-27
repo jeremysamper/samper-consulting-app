@@ -84,6 +84,17 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/:chemin*",
+      "has": [
+        { "type": "host", "value": "samperconsulting-app.com" },
+        { "type": "header", "key": "sec-fetch-mode", "value": "navigate" }
+      ],
+      "destination": "https://jouanet.com/:chemin*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/reserver/:adresse", "destination": "/reserver" },

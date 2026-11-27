@@ -7,7 +7,7 @@ import {
 } from './codeBon.js';
 
 test('lienDuBon : le QR porte un lien de production qui rend son code', () => {
-  assert.equal(lienDuBon('K7M2-Q9TX'), 'https://samperconsulting-app.com/?bon=K7M2-Q9TX');
+  assert.equal(lienDuBon('K7M2-Q9TX'), 'https://jouanet.com/?bon=K7M2-Q9TX');
   assert.equal(normaliserCode(lienDuBon('K7M2-Q9TX')), 'K7M2-Q9TX');
   assert.equal(normaliserCode('https://sc-app-git-x-samper-consulting.vercel.app/?page=caisse&bon=k7m2q9tx'), 'K7M2-Q9TX');
   // Le domaine ne doit jamais passer pour un code (« STAGEPRV » ferait huit signes).

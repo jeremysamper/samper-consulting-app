@@ -16,7 +16,7 @@ const CODE_DANS_TEXTE = new RegExp(`(${SIGNE}{4})[\\s-]?(${SIGNE}{4})`);
 
 // L'origine publique de l'app, comme la réservation en ligne : un bon imprimé
 // depuis une préversion mène quand même à l'app de production.
-export const ORIGINE_APP = 'https://samperconsulting-app.com';
+export const ORIGINE_APP = 'https://jouanet.com';
 export const lienDuBon = (code) => `${ORIGINE_APP}/?bon=${encodeURIComponent(code)}`;
 
 // Le code porté par un lien (« ?bon= »), ou null : le paramètre passe avant

@@ -90,7 +90,7 @@
 // Secrets : RESEND_API_KEY + SPA_MAIL_FROM (repli Resend), CRON_SECRET,
 // GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET (connexion Gmail),
 // MS_CLIENT_ID + MS_CLIENT_SECRET (connexion Outlook / Microsoft 365),
-// APP_PUBLIC_URL (facultatif, défaut https://samperconsulting-app.com ; l'adresse
+// APP_PUBLIC_URL (facultatif, défaut https://jouanet.com ; l'adresse
 // de retour OAuth est <APP_PUBLIC_URL>/api/spa-oauth).
 // Les jetons des boîtes sont chiffrés (AES-GCM) avec une clé dérivée de
 // SUPABASE_SERVICE_ROLE_KEY : si cette clé change, les spas reconnectent leur
@@ -140,7 +140,7 @@ function admin(): Admin {
 function config() {
   const cle = Deno.env.get('RESEND_API_KEY') || '';
   const from = Deno.env.get('SPA_MAIL_FROM') || '';
-  const appUrl = (Deno.env.get('APP_PUBLIC_URL') || 'https://samperconsulting-app.com').replace(/\/+$/, '');
+  const appUrl = (Deno.env.get('APP_PUBLIC_URL') || 'https://jouanet.com').replace(/\/+$/, '');
   return {
     cle,
     from,
