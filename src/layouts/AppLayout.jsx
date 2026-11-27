@@ -15,6 +15,7 @@ import SamperMark from '../components/brand/SamperMark.jsx';
 import PosTokenAlertBanner from '../components/PosTokenAlertBanner.jsx';
 import OfflineBanner from '../components/OfflineBanner.jsx';
 import HomeScreenIconBanner from '../components/HomeScreenIconBanner.jsx';
+import DemenagementJouanet from '../components/DemenagementJouanet.jsx';
 import LanguageToggle from '../components/LanguageToggle.jsx';
 import ChangePasswordModal from '../modules/auth/ChangePasswordModal.jsx';
 import EdgeSwipeBack, { isEdgeSwipeEnabled } from '../components/EdgeSwipeBack.jsx';
@@ -788,6 +789,7 @@ export default function AppLayout({
       <div style={avecRaccourcis ? { ...mls.root, '--largeur-menu': `${LARGEUR_RACCOURCIS}px` } : mls.root}>
         <OfflineBanner />
         <HomeScreenIconBanner />
+        <DemenagementJouanet />
         {rappelTotp}
 
         {/* La scène garde sa place dans l'arbre, avec ou sans la barre : un
@@ -970,6 +972,7 @@ export default function AppLayout({
         {/* Bandeau d'état hors-ligne / sync pointages / mise à jour */}
         <OfflineBanner />
         <HomeScreenIconBanner />
+        <DemenagementJouanet />
         {rappelTotp}
         {/* Scène : le header « verre » est posé en absolu sur la zone qui
             défile, le contenu passe dessous (--app-header-h, app.css). */}

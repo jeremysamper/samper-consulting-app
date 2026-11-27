@@ -13,6 +13,8 @@ import { getBrowserWindow } from '../legacy/legacyApi.js';
 // Préfixe des brouillons, inchangé depuis l'éditeur des Outils consultant : un
 // brouillon laissé avant ce déplacement se retrouve à l'ouverture de sa fiche.
 const PREFIXE = 'sc_recipe_draft_';
+// Lu aussi par le passage à jouanet.com (DemenagementJouanet), qui compte les brouillons.
+export const PREFIXE_BROUILLON = PREFIXE;
 
 // Champs significatifs d'une recette (comparaison conflit / brouillon).
 export function empreinteRecette(r) {
