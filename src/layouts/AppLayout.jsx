@@ -63,15 +63,17 @@ const PAGES_PLEINE_LARGEUR = new Set(['caisse', 'kds']);
 // demande de Jérémy : plus de grille de modules sur la tablette) : tous les
 // modules de la personne, rubrique par rubrique dans l'ordre du menu de
 // l'ordinateur, un cercle et son libellé court chacun, la liste qui défile ;
-// les Réglages au pied, toujours en vue. Le passe du KDS ne la porte pas :
-// une colonne de moins lui retirerait des bons. La caisse la porte, et la
-// retire avec la barre du haut quand on la met en plein écran.
+// les Réglages au pied, toujours en vue. Le passe du KDS et la caisse ne la
+// portent pas : ils gardent toute la largeur (une colonne de moins retirerait
+// des bons au KDS, des tables au plan). Le plein écran de la caisse retire en
+// plus la barre du haut. La grille des modules (bouton Accueil) non plus :
+// elle montre déjà tous les modules.
 // La borne de pointage est rendue hors de la coque (main.jsx).
 const LARGEUR_RACCOURCIS = 88;
-const PAGES_SANS_RACCOURCIS = new Set(['kds']);
+const PAGES_SANS_RACCOURCIS = new Set(['kds', 'caisse', 'accueil']);
 // Tablette : les modules du service sont des pilules de la barre du haut, à
-// côté de l'Accueil, et quittent la barre latérale. Toujours en vue, KDS
-// compris, qui n'a pas de barre latérale.
+// côté de l'Accueil, et quittent la barre latérale. Toujours en vue, sur le
+// KDS et la caisse aussi, qui n'ont pas de barre latérale.
 const MODULES_BARRE_HAUT = ['kds', 'caisse'];
 
 // Pages hors navItems : réservées au consultant (ouvertes depuis le compte),
@@ -817,7 +819,7 @@ export default function AppLayout({
                 <div key={groupe.label} role="group" aria-label={groupe.label} style={mls.raccourcisGroupe}>
                   {index > 0 && <span style={mls.raccourcisFilet} aria-hidden="true" />}
                   {groupe.items.map((item) => {
-                    const actif = currentPage === item.id || (currentPage === 'accueil' && item.id === 'dashboard');
+                    const actif = currentPage === item.id;
                     const Icone = getModuleIcon(item.id);
                     return (
                       <button

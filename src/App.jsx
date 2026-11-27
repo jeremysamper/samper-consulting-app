@@ -250,7 +250,7 @@ export default function App() {
   useEffect(() => {
     if (!etabCourant || !roleCourant) return;
     if (page !== 'dashboard' && page !== 'accueil') return;
-    if (page === 'accueil' && shellMode === 'telephone') return;
+    if (page === 'accueil' && shellMode !== 'ordinateur') return;
     if (isModuleActiveForEtab(etabCourant, 'dashboard')) return;
     const accueil = pageAccueil(etabCourant, getPermissionsForRole(roleCourant), shellMode);
     if (accueil === page) return;
