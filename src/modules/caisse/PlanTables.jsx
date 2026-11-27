@@ -79,6 +79,8 @@ const AFFICHAGE_DEFAUT = { montant: true, minutes: true, couverts: true, nom: tr
 // côte (iPad en paysage, ordinateur), et largeur de la colonne.
 const COLONNES_DES = 900;
 const LARGEUR_COLONNE = 300;
+// Bande des marqueurs d'état dans le cadre du plan : 36 px et une marge.
+const RESERVE_FILTRES = 44;
 
 // Quart de tour dans le sens des aiguilles d'une montre, en unités du
 // canevas : le canevas tourné mesure PLAN_H de large sur PLAN_W de haut. Le
@@ -204,6 +206,10 @@ export default function PlanTables({
   // maintenant ».
   const deuxColonnes = largeurRacine >= COLONNES_DES && !choixSeul;
   const pad = tel ? 8 : 14;
+  // Marqueurs d'état posés dans le cadre du plan (27.11.2026), en haut de la
+  // tuile du sol, hors téléphone : la rangée au-dessus du plan disparaît et
+  // le plan prend sa hauteur. Ils se retirent pendant un déplacement.
+  const filtresDansPlan = Boolean(barreCaisse) && !tel && !deplacerActif;
   const dispoL = Math.max(0, largeurCol - pad * 2);
   const dispoH = hauteurDispo && largeurCol >= 560 ? Math.max(200, hauteurDispo - pad * 2) : null;
   const vueDessin = cadrage(deplacerActif ? null : [...visibles, ...decor]);
@@ -231,6 +237,16 @@ export default function PlanTables({
   let k = vue.w ? dispoL / vue.w : 0;
   if (dispoH) k = Math.min(k, dispoH / vue.h);
   k = Math.min(k, 1.6);
+  // Bande des marqueurs : en deux colonnes, prise seulement quand la salle,
+  // centrée, n'a pas déjà cette marge en haut ; en une colonne, la carte
+  // s'allonge d'autant.
+  let reserveHaut = 0;
+  if (filtresDansPlan && vue.h) {
+    if (!(deuxColonnes && dispoH && (dispoH - vue.h * k) / 2 >= RESERVE_FILTRES)) {
+      reserveHaut = RESERVE_FILTRES;
+      if (dispoH) k = Math.min(k, Math.max(0, dispoH - RESERVE_FILTRES) / vue.h);
+    }
+  }
   // kToute montre toute la salle au-dessus de la bande des boutons ; le zoom
   // multiplie cette échelle, jusqu'à 1,6 au plus. Le plan s'ouvre toujours
   // sur toute la salle : le zoom ne se garde pas d'une ouverture à l'autre.
@@ -242,7 +258,7 @@ export default function PlanTables({
   if (tel) k = kToute * zoom;
   const largeur = Math.round(dispoL);
   // En deux colonnes, la carte du plan descend jusqu'au bas de l'écran.
-  const hauteur = deuxColonnes && dispoH ? Math.round(dispoH) : Math.round(vue.h * k);
+  const hauteur = deuxColonnes && dispoH ? Math.round(dispoH) : Math.round(vue.h * k) + reserveHaut;
   // La surface qui porte la salle : celle de la vue à l'ordinateur ; au
   // téléphone, au moins la fenêtre, plus la bande des boutons de zoom.
   const surfaceW = tel ? Math.max(largeur, Math.ceil(vue.w * k)) : largeur;
@@ -250,7 +266,7 @@ export default function PlanTables({
   // Origine du canevas complet dans la vue : la salle est centrée en largeur
   // et en hauteur (au-dessus de la bande des boutons, au téléphone).
   const origineX = vue.x0 * k - (surfaceW - vue.w * k) / 2;
-  const origineY = vue.y0 * k - Math.max(0, (surfaceH - reserveZoom - vue.h * k) / 2);
+  const origineY = vue.y0 * k - reserveHaut - Math.max(0, (surfaceH - reserveHaut - reserveZoom - vue.h * k) / 2);
   const echelleTexte = affichage.grand ? 1.2 : 1;
   zoomEtat.current = { zoom, zoomMax, zoomLisible, k };
 
@@ -450,7 +466,7 @@ export default function PlanTables({
   // Filtres : un par état présent, du plus pressant au plus calme. Au
   // téléphone, une seule ligne qui défile.
   const filtres = (
-        <div style={{ ...st.compteurs, ...(tel ? st.compteursTel : null) }} aria-live="polite" data-caisse-filtres="">
+        <div style={{ ...st.compteurs, ...(tel ? st.compteursTel : null), ...(filtresDansPlan ? st.compteursPlan : null) }} aria-live="polite" data-caisse-filtres="">
           <button
             type="button"
             aria-pressed={!filtreActif}
@@ -560,7 +576,6 @@ export default function PlanTables({
       {barreUnique && panneauReglages}
       {barreUnique && bandeauDeplacer}
       {!deuxColonnes && enTete}
-      {!deuxColonnes && barreUnique && <div style={st.barre}>{filtres}</div>}
       {/* Barre du plan, au-dessus de lui. Plusieurs salles : les salles et les
           gestes du plan sur une ligne, les filtres d'état sur la suivante.
           Une seule salle : les filtres et les gestes partagent la ligne. */}
@@ -583,11 +598,9 @@ export default function PlanTables({
 
       <div style={deuxColonnes ? st.grille : st.corps}>
         <div style={deuxColonnes ? st.gauche : st.colPlan}>
-          {/* En deux colonnes, les filtres d'état sont juste au-dessus du plan
-              qu'ils filtrent. Sans la barre de la caisse, la barre du plan
-              porte la salle et les gestes, les filtres restent dans la
-              colonne. */}
-          {deuxColonnes && barreUnique && <div style={st.barre}>{filtres}</div>}
+          {/* Sans la barre de la caisse, la barre du plan porte la salle et
+              les gestes, les filtres restent dans la colonne. Avec elle, les
+              filtres sont dans le cadre du plan. */}
           {deuxColonnes && !barreUnique && (
             <div style={st.barre}>
               {boutonSalle}
@@ -599,6 +612,9 @@ export default function PlanTables({
           <div ref={corpsRef}>
         <div ref={colRef}>
           <div className="caisse-plan-carte" data-cadre="" style={{ ...st.carte, padding: pad }}>
+            {filtresDansPlan && (
+              <div style={{ ...st.filtresPlan, top: pad + 4, left: pad + 4, right: pad + 4 }}>{filtres}</div>
+            )}
             <div
               ref={fenetreRef}
               data-caisse-plan-fenetre={tel ? '' : undefined}
@@ -1050,6 +1066,10 @@ const st = {
     background: 'transparent', color: 'var(--text2)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap',
     borderWidth: 1, borderStyle: 'solid', borderColor: 'transparent', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0,
   },
+  // Posés sur la tuile du sol : la rangée ne prend que sa largeur, et seuls
+  // les marqueurs captent le toucher (le reste de la bande laisse passer).
+  compteursPlan: { flex: '0 1 auto', maxWidth: '100%', pointerEvents: 'auto' },
+  filtresPlan: { position: 'absolute', zIndex: 4, display: 'flex', pointerEvents: 'none' },
   compteurChoisi: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
   point: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
   actionsBarre: { display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' },

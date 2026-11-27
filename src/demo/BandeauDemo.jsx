@@ -101,13 +101,14 @@ export default function BandeauDemo() {
   const largeurMenu = useLargeurMenu();
   const etroit = useEtroit();
   const style = { ...styles.bandeau, left: `calc(${largeurMenu} + 12px)`, ...(etroit ? { gap: 6, padding: '4px 4px 4px 12px' } : null) };
-  // Au téléphone, le bandeau déplié prend le bas de l'écran : ce qui flotte en
-  // bas à droite (commandes QR de la caisse) remonte de --demo-bas.
+  // Le bandeau déplié s'étend loin vers la droite (au téléphone, sur toute la
+  // largeur) : ce qui flotte en bas à droite (commandes QR de la caisse)
+  // remonte de --demo-bas tant qu'il est déplié.
   useEffect(() => {
     const racine = document.documentElement;
-    racine.style.setProperty('--demo-bas', etroit && !replie ? '60px' : '0px');
+    racine.style.setProperty('--demo-bas', replie ? '0px' : '60px');
     return () => racine.style.removeProperty('--demo-bas');
-  }, [etroit, replie]);
+  }, [replie]);
 
   const changer = (suivant) => {
     setRole(suivant);
