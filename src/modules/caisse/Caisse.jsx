@@ -937,7 +937,7 @@ export default function Caisse({ user, etablissement, legacyVersion }) {
         )}
         {/* Hors mode test : un poste en essai ne s'abonne à rien. */}
         {!modeTest && <InvitationAvisPret user={user} etablissement={etablissement} />}
-        {/* L3 : commandes QR à valider, en tête du plan. */}
+        {/* L3 : commandes QR à valider, en carte flottante en bas à droite. */}
         {!modeTest && (
           <BandeauCommandesQr
             commandes={commandesQr.commandes}
