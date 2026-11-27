@@ -143,15 +143,6 @@ const Commande = ({ user, etablissement }) => {
     writeText(cleOnglet(etabId), id);
     setSearch('');
   };
-  // La bande d'onglets défile : l'onglet choisi reste en vue (au téléphone,
-  // une carte loin à droite s'ouvrirait hors champ).
-  const bandeRef = React.useRef(null);
-  React.useEffect(() => {
-    if (!tabsPrets) return;
-    const actif = bandeRef.current?.querySelector('[aria-selected="true"]');
-    actif?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
-  }, [onglet, tabsPrets]);
-
   const carteActive = cartes.find(c => c.id === onglet) || null;
   const besoins = React.useMemo(() => {
     if (onglet === ONGLET_FONDS) return besoinsFondsDeCuisine();
@@ -451,14 +442,19 @@ const Commande = ({ user, etablissement }) => {
         </div>
 
         <div className="commande-corps">
-          {tabsPrets && (
-            <div ref={bandeRef} style={{ minWidth: 0 }}>
-              <SegmentedTabs tabs={onglets} active={onglet} onChange={choisirOnglet} retourLigne />
-            </div>
-          )}
-          {/* La loupe, puis l'avancement de l'onglet : la barre est muette, le
-              compte est dit par le premier repère. */}
+          {/* Sur une ligne : la liste ouverte en pilule déroulante, la loupe,
+              puis l'avancement de l'onglet (la barre est muette, le compte est
+              dit par le premier repère). Dans la liste, un filet sépare
+              « Ma commande », les cartes et « Fonds de cuisine ». */}
           <div style={s.ligneEtat} className="no-print">
+            {tabsPrets && (
+              <SegmentedTabs
+                tabs={onglets.flatMap((o, i) => ((i === 1 || (i > 1 && i === onglets.length - 1)) ? [{ divider: true }, o] : [o]))}
+                active={onglet}
+                onChange={choisirOnglet}
+                deroulant
+              />
+            )}
             <SearchToggle
               value={search}
               onChange={setSearch}

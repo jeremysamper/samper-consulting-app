@@ -510,7 +510,7 @@ export default function PlanTables({
       {!deuxColonnes && (onglets.length > 1 ? (
         <>
           <div style={st.barre}>
-            <TabBar tabs={onglets} active={actif} onChange={choisirSalle} />
+            <TabBar tabs={onglets} active={actif} onChange={choisirSalle} deroulant titre="Salles" />
             {actionsPlan}
           </div>
           {!tel && <div style={st.barre}>{filtres}</div>}
@@ -524,7 +524,6 @@ export default function PlanTables({
 
       <div style={deuxColonnes ? st.grille : st.corps}>
         <div style={deuxColonnes ? st.gauche : st.colPlan}>
-          {deuxColonnes && onglets.length > 1 && <div style={st.barre}><TabBar tabs={onglets} active={actif} onChange={choisirSalle} /></div>}
           {deuxColonnes && panneauReglages}
           {deuxColonnes && bandeauDeplacer}
           <div ref={corpsRef}>
@@ -766,7 +765,15 @@ export default function PlanTables({
             })}
           </div>
         )}
-        {deuxColonnes && <div style={st.barreColonne}>{filtres}{actionsPlan}</div>}
+        {/* En deux colonnes, la salle se choisit avec les filtres et les gestes
+            du plan : le plan garde toute la hauteur de sa colonne. */}
+        {deuxColonnes && (
+          <div style={st.barreColonne}>
+            {onglets.length > 1 && <TabBar tabs={onglets} active={actif} onChange={choisirSalle} deroulant titre="Salles" />}
+            {filtres}
+            {actionsPlan}
+          </div>
+        )}
         </div>
         )}
       </div>

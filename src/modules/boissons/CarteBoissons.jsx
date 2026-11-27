@@ -155,7 +155,7 @@ export default function CarteBoissons({ user, etablissement, legacyVersion }) {
 
             <div style={s.barre}>
               {cartes.length > 1
-                ? <SegmentedTabs tabs={cartes.map((c) => ({ id: c.id, label: <span data-no-translate>{c.nom}</span> }))} active={carte.id} onChange={setCarteChoisie} retourLigne />
+                ? <SegmentedTabs tabs={cartes.map((c) => ({ id: c.id, label: <span data-no-translate>{c.nom}</span> }))} active={carte.id} onChange={setCarteChoisie} deroulant titre="Cartes" />
                 : <span style={s.nomCarte} data-no-translate>{carte.nom}</span>}
               <SearchToggle value={recherche} onChange={setRecherche} placeholder="Rechercher une boisson…" />
             </div>

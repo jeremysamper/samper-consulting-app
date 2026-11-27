@@ -1,8 +1,9 @@
 /* ─────────────────────────────────────────────────────────────
    Cartes & Recettes : l'écran d'arrivée.
 
-   Une barre (la recherche dans toutes les fiches, puis les actions), les
-   onglets de cartes, puis la carte affichée ou la bibliothèque.
+   Une barre (la recherche dans toutes les fiches, le choix de la carte en
+   pilule déroulante, puis les actions), puis la carte affichée ou la
+   bibliothèque.
    .rc-page est le conteneur de requêtes, .rc-tete porte la barre : la mise
    en page suit la place réellement donnée à l'écran (menu replié ou déplié,
    coque tactile), pas la fenêtre. Aucune fenêtre en position fixe n'est
@@ -23,6 +24,15 @@
   gap: 12px;
   flex-wrap: wrap;
   min-width: 0;
+}
+
+/* La carte affichée : une pilule déroulante posée entre le champ et les
+   actions, sur leur ligne ; jamais une ligne à elle seule. */
+.rc-cartes {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Le champ : contour --champ-bord, fond --surface, rayon --r, 44 px au doigt
@@ -102,11 +112,13 @@
   overflow-x: visible;
 }
 
-/* Place étroite (tablette debout, téléphone) : le champ prend sa ligne, les
-   actions suivent, alignées à gauche sous lui. */
+/* Place étroite (tablette debout, téléphone) : le champ partage sa ligne
+   avec la carte affichée et prend ce qui reste ; les actions suivent,
+   alignées à gauche sous eux. Un nom de carte trop long pour tenir à côté
+   du champ passe à la ligne avec les actions. */
 @container rc (max-width: 899px) {
   .rc-recherche {
-    flex: 1 1 100%;
+    flex: 1 1 160px;
     max-width: none;
   }
   .rc-actions.module-actions { margin-left: 0; }

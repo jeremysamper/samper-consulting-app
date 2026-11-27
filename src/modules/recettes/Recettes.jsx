@@ -2111,6 +2111,29 @@ const Recettes = ({ user, etablissement }) => {
             actions laissent la place à la barre de sélection. */}
         <div className="rc-tete no-print">
           <RechercheFiches value={search} onChange={setSearch} />
+          {/* La carte affichée, en pilule déroulante, à côté du champ : les
+              cartes puis la bibliothèque. Pendant une recherche, le choix
+              montré est la bibliothèque : c'est elle que l'écran affiche.
+              Ses fenêtres de gestion s'ouvrent depuis « Gérer ». */}
+          <div className="rc-cartes">
+            <CarteTabBar
+              cartes={cartes}
+              activeId={vueBiblio ? LIBRARY_TAB : activeTab}
+              onSelect={choisirOnglet}
+              extraTabs={cartes.length > 0 || cartesStatus !== 'loading' ? [{ id: LIBRARY_TAB, label: 'Bibliothèque recettes' }] : []}
+              canManage={canManageCartes}
+              onAddCarte={addCarte}
+              onRenameCarte={renameCarte}
+              onDeleteCarte={deleteCarte}
+              archivedCartes={archivedCartes}
+              onArchiveCarte={archiveCarte}
+              canHide={isConsultant}
+              onHideCarte={masquerCarte}
+              homeId={defaultCarteId}
+              onReorderCartes={reorderCartes}
+              commandesRef={barreCartesRef}
+            />
+          </div>
           {!selection.active && (
             <div className="module-actions rc-actions">
               {/* Deux entrées (lot 3, tablette) : « Nouvelle fiche » et un seul
@@ -2151,33 +2174,6 @@ const Recettes = ({ user, etablissement }) => {
               <BoutonRegler section="cartes" user={user} etablissement={etablissement} />
             </div>
           )}
-        </div>
-
-        {/* Onglets : une carte par onglet, puis la bibliothèque. La barre ne
-            rend que les onglets ; ses fenêtres de gestion s'ouvrent depuis
-            « Gérer ». Pendant une recherche, l'onglet montré est la
-            bibliothèque : c'est elle que l'écran affiche. L'onglet
-            Bibliothèque attend la première lecture des cartes : posé seul
-            puis repoussé par elles, il resterait le point d'accroche du
-            défilement et la bande s'ouvrirait sur sa fin au téléphone. */}
-        <div style={isMobile ? rs.tabsWrapMobile : rs.tabsWrap}>
-          <CarteTabBar
-            cartes={cartes}
-            activeId={vueBiblio ? LIBRARY_TAB : activeTab}
-            onSelect={choisirOnglet}
-            extraTabs={cartes.length > 0 || cartesStatus !== 'loading' ? [{ id: LIBRARY_TAB, label: 'Bibliothèque recettes' }] : []}
-            canManage={canManageCartes}
-            onAddCarte={addCarte}
-            onRenameCarte={renameCarte}
-            onDeleteCarte={deleteCarte}
-            archivedCartes={archivedCartes}
-            onArchiveCarte={archiveCarte}
-            canHide={isConsultant}
-            onHideCarte={masquerCarte}
-            homeId={defaultCarteId}
-            onReorderCartes={reorderCartes}
-            commandesRef={barreCartesRef}
-          />
         </div>
 
         {!vueBiblio ? (
@@ -2261,6 +2257,7 @@ const Recettes = ({ user, etablissement }) => {
                 active={catFilterEff}
                 onChange={setCatFilter}
                 tabs={cats.map(c => ({ id: c, label: c }))}
+                titre="Catégories"
               />
             )}
 
@@ -2378,8 +2375,6 @@ const Recettes = ({ user, etablissement }) => {
 
 const rs = {
   root: {display:'flex',flexDirection:'column',gap:16},
-  tabsWrap: {minWidth:0},
-  tabsWrapMobile: {width:'100%',minWidth:0},
   addBtn: {padding:'8px 16px',background:'var(--accent)',color:'var(--on-accent)',border:'none',borderRadius: 'var(--r)',fontSize: 'var(--t2)',fontWeight: 'var(--g2)',cursor:'pointer',fontFamily:'var(--font)'},
   carteWrap: {display:'flex',flexDirection:'column',gap:20},
   // Sans cadre (la règle « Plus de carrés » l'aplatissait déjà) ni retrait
