@@ -86,6 +86,15 @@
   ],
   "redirects": [
     {
+      "source": "/",
+      "has": [
+        { "type": "host", "value": "samperconsulting-app.com" },
+        { "type": "header", "key": "sec-fetch-mode", "value": "navigate" }
+      ],
+      "destination": "https://jouanet.com/",
+      "permanent": true
+    },
+    {
       "source": "/((?!sw\\.js$|workbox-[^/]*\\.js$).*)",
       "has": [
         { "type": "host", "value": "samperconsulting-app.com" },
