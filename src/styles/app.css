@@ -1298,6 +1298,100 @@ html[data-mouvement="reduit"],
   margin: 0 5px;
 }
 
+/* ─── Pilule déroulante (PiluleDeroulante, SegmentedTabs replié) ───────────
+   Une rangée de pilules qui s'allonge (cartes, salles, listes de la commande)
+   devient une seule pilule : le choix en cours et un chevron. La pilule est
+   un bouton secondaire ; la liste est un menu flottant, le choix en cours en
+   --selection avec sa coche, comme la liste des établissements. Le survol
+   des lignes passe par .sc-pop-item (barre latérale et titre, plus bas).
+   L'enveloppe d'une rangée repliée faute de place prend la place de la
+   rangée (toute la largeur qui reste) : c'est elle qui dit quand la place
+   revient. Une pilule toujours repliée (--fixe) garde sa largeur propre et
+   laisse la ligne aux contrôles voisins. */
+.segmented-tabs-replie {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}
+.segmented-tabs-replie--fixe { flex: 0 1 auto; }
+.pilule-deroulante {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  min-height: var(--controle);
+  padding: 0 12px 0 16px;
+  background: var(--btn-fond);
+  color: var(--btn-texte);
+  border-width: 1px;
+  border-style: solid;
+  border-color: var(--btn-bord);
+  border-radius: var(--r-full);
+  font-family: var(--font);
+  font-size: var(--t2);
+  font-weight: var(--g2);
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--mvt-1) var(--courbe), scale var(--mvt-1) var(--courbe-ressort);
+  -webkit-tap-highlight-color: transparent;
+}
+.pilule-deroulante--sm { min-height: 32px; padding: 0 10px 0 13px; font-size: var(--t1); gap: 6px; }
+@media (max-width: 767.98px), (max-width: 1399.98px) and (any-pointer: coarse), (pointer: coarse) {
+  .pilule-deroulante { min-height: max(var(--controle), 44px); }
+}
+@media (hover: hover) {
+  .pilule-deroulante:hover { background: var(--selection); }
+}
+.pilule-deroulante[aria-expanded="true"] { background: var(--selection); }
+.pilule-deroulante:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.pilule-deroulante-intitule { flex-shrink: 0; color: var(--text3); }
+.pilule-deroulante-valeur { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.pilule-deroulante-chevron { flex-shrink: 0; color: var(--text2); }
+
+.pilule-deroulante-menu {
+  position: fixed;
+  z-index: 1400;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border: 1px solid var(--rule-soft);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-lg);
+}
+.pilule-deroulante-titre { flex-shrink: 0; padding: 8px 12px 6px; font-size: var(--t1); font-weight: var(--g3); color: var(--text3); }
+.pilule-deroulante-filet { flex-shrink: 0; height: 1px; margin: 4px 8px; background: var(--rule-soft); }
+/* flex-shrink 0 : une colonne qui défile écraserait les lignes sinon. */
+.pilule-deroulante-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  width: 100%;
+  min-height: var(--ligne);
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  border-radius: var(--r);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: var(--t2);
+  font-weight: var(--g2);
+  text-align: left;
+  cursor: pointer;
+}
+.pilule-deroulante-item[aria-checked="true"] { background: var(--selection); font-weight: var(--g3); }
+.pilule-deroulante-nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pilule-deroulante-coche { flex-shrink: 0; }
+
 /* ─── Barre d'outils de module - tabs + actions, posée (jamais flottante) ───
    Remplace le duo « toolbar desktop cachée en mobile » + « barre d'actions
    flottante en bas ». Une seule barre : les onglets (SegmentedTabs) et les

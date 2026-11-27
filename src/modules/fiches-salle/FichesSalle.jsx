@@ -696,22 +696,23 @@ const FichesSalle = ({ user, etablissement }) => {
 
   return (
     <div style={fss.root}>
-      {/* Onglets de carte (menus) - filtrage des fiches */}
-      <CarteTabBar
-        cartes={cartes}
-        activeId={activeCarteTab}
-        onSelect={setActiveCarteTab}
-        extraTabs={[{ id: ALL_TAB, label: 'Toutes' }]}
-        canManage={canManageCartes}
-        onAddCarte={addCarte}
-        onRenameCarte={renameCarte}
-        onDeleteCarte={deleteCarte}
-        archivedCartes={archivedCartes}
-        onArchiveCarte={archiveCarte}
-        commandesRef={barreCartesRef}
-      />
       <div style={fss.toolbar}>
         <div style={fss.left}>
+          {/* La carte (menu) filtre les fiches : une pilule déroulante, sur la
+              ligne de la recherche et des catégories. */}
+          <CarteTabBar
+            cartes={cartes}
+            activeId={activeCarteTab}
+            onSelect={setActiveCarteTab}
+            extraTabs={[{ id: ALL_TAB, label: 'Toutes les cartes' }]}
+            canManage={canManageCartes}
+            onAddCarte={addCarte}
+            onRenameCarte={renameCarte}
+            onDeleteCarte={deleteCarte}
+            archivedCartes={archivedCartes}
+            onArchiveCarte={archiveCarte}
+            commandesRef={barreCartesRef}
+          />
           <SearchToggle value={search} onChange={setSearch} placeholder="Je cherche un plat…" />
           {/* Une seule catégorie sur la carte : l'onglet ferait doublon avec
               le titre de section. */}
@@ -721,6 +722,7 @@ const FichesSalle = ({ user, etablissement }) => {
               active={catFilterEff}
               onChange={setCatFilter}
               tabs={cats.map(c => ({ id: c, label: c }))}
+              titre="Catégories"
             />
           )}
         </div>

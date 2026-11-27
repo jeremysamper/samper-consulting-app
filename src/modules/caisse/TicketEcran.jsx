@@ -1238,7 +1238,7 @@ export default function TicketEcran({
         )}
         {ongletsModes.length > 1 && (
           <div style={st.modesZone} data-caisse-modes="">
-            <SegmentedTabs className="caisse-modes" tabs={ongletsModes} active={modeActif} onChange={choisirMode} />
+            <SegmentedTabs className="caisse-modes" tabs={ongletsModes} active={modeActif} onChange={choisirMode} deroulant={false} />
           </div>
         )}
         <button

@@ -65,13 +65,19 @@ export default function BandeauCommandesQr({ commandes, maintenant, onTraitee })
     }
   }
 
+  // Flottant en bas à droite (27.11.2026) : replié, une pilule (le nombre et
+  // l'âge de la plus ancienne, « Voir ») ; déplié, un panneau au même endroit
+  // qui défile. Le plan garde toute la largeur et le haut de l'écran. Pas de
+  // portail : le module caché (autre page) cache aussi le bandeau.
   return (
-    <section data-cadre="" data-commandes-qr="" style={s.carte} aria-labelledby="commandes-qr-titre">
+    <section data-cadre="" data-commandes-qr="" className="mvt-naissance no-print" style={ouvert ? s.panneau : s.pilule} aria-labelledby="commandes-qr-titre">
       <div style={s.tete}>
-        <span style={s.picto} aria-hidden="true"><QrCode size={20} /></span>
-        <h2 id="commandes-qr-titre" style={s.titre}>Commande QR à valider</h2>
+        <span style={s.picto} aria-hidden="true"><QrCode size={18} /></span>
+        <span style={s.textes}>
+          <h2 id="commandes-qr-titre" style={s.titre}>Commande QR à valider</h2>
+          {!ouvert && <AgePlusAncienne commandes={commandes} maintenant={maintenant} />}
+        </span>
         <span style={s.compte}>{commandes.length}</span>
-        {!ouvert && <AgePlusAncienne commandes={commandes} maintenant={maintenant} />}
         <button
           type="button"
           onClick={() => setOuvert((o) => !o)}
@@ -81,15 +87,6 @@ export default function BandeauCommandesQr({ commandes, maintenant, onTraitee })
         >
           {ouvert ? 'Replier' : 'Voir'}
         </button>
-        {ouvert && commandes.length > 1 && (
-          <Btn
-            onClick={() => setRefus({ ids: commandes.map((c) => c.id), prenom: null })}
-            disabled={Boolean(occupe)}
-            style={s.toutRefuser}
-          >
-            Tout refuser
-          </Btn>
-        )}
       </div>
       {ouvert && (
       <div style={s.liste} id="commandes-qr-liste">
@@ -129,6 +126,17 @@ export default function BandeauCommandesQr({ commandes, maintenant, onTraitee })
             </article>
           );
         })}
+        {commandes.length > 1 && (
+          <div style={s.piedPanneau}>
+            <Btn
+              onClick={() => setRefus({ ids: commandes.map((c) => c.id), prenom: null })}
+              disabled={Boolean(occupe)}
+              style={s.toutRefuser}
+            >
+              Tout refuser
+            </Btn>
+          </div>
+        )}
       </div>
       )}
       {refus && (
@@ -149,7 +157,7 @@ function AgePlusAncienne({ commandes, maintenant }) {
   const plusAncienne = [...commandes].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))[0];
   const age = ageCommande(plusAncienne?.created_at, maintenant);
   return (
-    <span style={s.detail}>
+    <span style={s.age}>
       <span>la plus ancienne</span>{' '}
       {age.unite === 'instant' ? <span>à l'instant</span> : (
         <><span>il y a</span> <span style={s.num}>{age.valeur}</span> <span>{age.unite}</span></>
@@ -204,25 +212,48 @@ function FenetreRefus({ nombre, prenom, enCours, onFermer, onRefuser }) {
   );
 }
 
+// Ce qui flotte prend l'ombre --sh-lg (direction Galet). En bas à droite, au
+// pied de l'encoche du téléphone ; sous les fenêtres (1000) et la barre de la
+// démo (900).
+const flottant = {
+  position: 'fixed', zIndex: 60,
+  right: 'calc(env(safe-area-inset-right, 0px) + 16px)',
+  // --demo-bas : hauteur du bandeau de la démo au téléphone (0 dans l'app).
+  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px + var(--demo-bas, 0px))',
+  boxSizing: 'border-box', maxWidth: 'calc(100vw - 32px)',
+  display: 'flex', flexDirection: 'column', gap: 8,
+  background: 'var(--zone)', boxShadow: 'var(--sh-lg)',
+  borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
+};
+
 const s = {
-  carte: {
-    background: 'var(--zone)', borderRadius: 'var(--r-lg)', boxShadow: 'var(--sh)',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)',
-    padding: '16px 18px', marginBottom: 16, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0,
+  // Replié : une carte d'une rangée (le titre et l'âge en deux lignes, donc
+  // le rayon d'une carte flottante, pas celui d'une pilule).
+  pilule: { ...flottant, padding: '6px 6px 6px 8px', borderRadius: 'var(--r-xl)' },
+  // Déplié : un panneau qui défile, à la place de la pilule.
+  panneau: {
+    ...flottant, width: 420, padding: '12px 16px', borderRadius: 'var(--r-lg)',
+    maxHeight: 'calc(100dvh - 140px)', overflowY: 'auto', overscrollBehavior: 'contain',
   },
-  tete: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
+  tete: { display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 },
   picto: {
-    width: 40, height: 40, borderRadius: 'var(--r-full)', background: 'var(--piste)', color: 'var(--text)',
+    width: 36, height: 36, borderRadius: 'var(--r-full)', background: 'var(--piste)', color: 'var(--text)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  titre: { margin: 0, fontSize: 'var(--t3)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)' },
+  textes: { display: 'flex', flexDirection: 'column', gap: 1, minWidth: 0, flex: '1 1 auto' },
+  titre: {
+    margin: 0, fontSize: 'var(--t2)', fontWeight: 'var(--g3)', color: 'var(--text)', fontFamily: 'var(--font)',
+    whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+  },
+  age: { fontSize: 'var(--t1)', color: 'var(--text2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+  piedPanneau: { display: 'flex', justifyContent: 'flex-end', paddingTop: 12, borderTopWidth: 1, borderTopStyle: 'solid', borderTopColor: 'var(--rule-soft)' },
   compte: {
     minWidth: 28, height: 28, padding: '0 8px', borderRadius: 'var(--r-full)', background: 'var(--piste)', color: 'var(--text)',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-num)', fontSize: 'var(--t2)',
   },
   toutRefuser: { minHeight: 44 },
   bascule: {
-    marginLeft: 'auto', minHeight: 44, padding: '0 18px', borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
+    flexShrink: 0, minHeight: 44, padding: '0 18px', borderRadius: 'var(--r-full)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--btn-bord)',
     background: 'var(--btn-fond)', color: 'var(--btn-texte)', fontFamily: 'var(--font)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer',
   },
   liste: { display: 'flex', flexDirection: 'column' },

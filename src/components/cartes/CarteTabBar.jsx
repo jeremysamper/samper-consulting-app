@@ -2,12 +2,13 @@ import React from 'react';
 import { confirmLegacy } from '../../legacy/legacyApi.js';
 import { Pencil } from 'lucide-react';
 import { Fenetre, Choix, st as stFenetre } from '../ui/Fenetres.jsx';
-import useOngletEnVue from '../../hooks/useOngletEnVue.js';
+import PiluleDeroulante from '../ui/PiluleDeroulante.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CarteTabBar - barre d'onglets « cartes » (menus) partagée par Cartes & Recettes
-// et Fiches salle. Un onglet par carte + des onglets supplémentaires fournis par
-// le parent (ex. « Bibliothèque recettes », « Toutes »).
+// CarteTabBar - choix de la carte (menu) partagé par Cartes & Recettes et
+// Fiches salle : une pilule déroulante (PiluleDeroulante) qui montre la carte
+// en cours et ouvre la liste des cartes, puis des choix supplémentaires
+// fournis par le parent (ex. « Bibliothèque recettes », « Toutes »).
 //
 // Si canManage : bouton « Ajouter une carte » et édition (renommer / dates / archiver /
 // supprimer) de la carte active. Supprimer une carte ne retire que l'onglet et
@@ -76,9 +77,6 @@ export default function CarteTabBar({
   // Brouillon d'ordre : liste d'ids en cours de réagencement (null = fermé).
   const [ordreDraft, setOrdreDraft] = React.useState(null);
   const [ordreBusy, setOrdreBusy] = React.useState(false);
-  // La bande défile quand les cartes débordent : la carte choisie y reste en vue.
-  const bandeRef = React.useRef(null);
-  useOngletEnVue(bandeRef, `${activeId}|${cartes.length}|${extraTabs.length}`);
 
   const openCreate = () => { setForm({ nom: '', dateDebut: '', dateFin: '' }); setModal({ mode: 'create' }); };
   const openEdit = (carte) => {
@@ -181,51 +179,32 @@ export default function CarteTabBar({
     if (ok !== false) setOrdreDraft(null);
   };
 
-  return (
-    <div ref={bandeRef} className="segmented-tabs no-print">
-      {/* De vrais onglets (clavier, lecteur d'écran). Le crayon de la carte
-          active est un bouton frère de son onglet, plus un bouton imbriqué. */}
-      <div role="tablist" aria-label="Cartes" style={s.tablist}>
-        {cartes.map(carte => {
-          const active = activeId === carte.id;
-          return (
-            <React.Fragment key={carte.id}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={active}
-                className={'segmented-tab' + (active ? ' is-active' : '')}
-                onClick={() => onSelect?.(carte.id)}
-              >
-                {/* « (cachée) » : carte cachée. Seul le consultant reçoit ces cartes, le
-                    marqueur ne s'affiche donc que chez lui, sans condition de rôle. */}
-                <span>{nomCarte(carte)}{carte.masquee === true && ' (cachée)'}</span>
-              </button>
-              {canManage && !gestionExterne && active && (
-                <button
-                  type="button"
-                  className="mini"
-                  style={s.editBtn}
-                  title="Modifier la carte"
-                  aria-label="Modifier la carte"
-                  onClick={() => openEdit(carte)}
-                ><Pencil size={14} aria-hidden="true" /></button>
-              )}
-            </React.Fragment>
-          );
-        })}
+  const carteActive = cartes.find(c => c.id === activeId) || null;
+  const optionsCartes = [
+    ...cartes.map(carte => ({ id: carte.id, label: <>{nomCarte(carte)}{carte.masquee === true && ' (cachée)'}</> })),
+    ...(cartes.length > 0 && extraTabs.length > 0 ? [{ divider: true }] : []),
+    ...extraTabs.map(t => ({ id: t.id, label: t.label })),
+  ];
 
-        {extraTabs.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={activeId === t.id}
-            className={'segmented-tab' + (activeId === t.id ? ' is-active' : '')}
-            onClick={() => onSelect?.(t.id)}
-          >{t.label}</button>
-        ))}
-      </div>
+  return (
+    <div className="no-print" style={s.bar}>
+      {/* Une pilule déroulante : la carte en cours, et la liste des cartes
+          puis des onglets en plus, quel que soit leur nombre. « (cachée) » :
+          carte cachée. Seul le consultant reçoit ces cartes, le marqueur ne
+          s'affiche donc que chez lui, sans condition de rôle. */}
+      {optionsCartes.length > 0 && (
+        <PiluleDeroulante options={optionsCartes} valeur={activeId} onChange={(id) => onSelect?.(id)} titre="Cartes" />
+      )}
+      {canManage && !gestionExterne && carteActive && (
+        <button
+          type="button"
+          className="mini"
+          style={s.editBtn}
+          title="Modifier la carte"
+          aria-label="Modifier la carte"
+          onClick={() => openEdit(carteActive)}
+        ><Pencil size={14} aria-hidden="true" /></button>
+      )}
 
       {canManage && !gestionExterne && (
         <button className="segmented-tab" style={s.addBtn} onClick={openCreate}>Ajouter une carte</button>
@@ -412,7 +391,7 @@ export default function CarteTabBar({
 }
 
 const s = {
-  bar: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' },
+  bar: { display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', minWidth: 0, maxWidth: '100%' },
   // Mode bande scrollable (mobile) : 1 ligne, défilement horizontal contenu.
   // Le détail anti-rétrécissement des onglets + masquage scrollbar est en CSS
   // (.carte-tab-bar--scroll dans app.css) car non exprimable en style inline.
@@ -420,9 +399,6 @@ const s = {
   tab: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: '1px solid var(--border)', borderRadius: 'var(--r)', background: 'var(--surface)', color: 'var(--text2)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', cursor: 'pointer', fontFamily: 'var(--font)' },
   tabBtnReset: { outline: 'none' },
   tabLabel: { whiteSpace: 'nowrap' },
-  // Les onglets se suivent dans une rangée à part, sans rétrécir : la bande
-  // parente défile si la rangée déborde.
-  tablist: { display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 },
   // 32 px au moins : le crayon de 18 × 16 se ratait au doigt comme à la souris.
   editBtn: { display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 32, height: 32, flexShrink: 0, background: 'transparent', border: 'none', borderRadius: 'var(--r)', color: 'var(--lien)', cursor: 'pointer', padding: 0, fontFamily: 'var(--font)' },
   // Sans pointillés : des actions de la barre, pas des onglets à remplir.

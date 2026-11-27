@@ -1,8 +1,9 @@
 import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import SegmentedTabs from './SegmentedTabs.jsx';
+import PiluleDeroulante from './PiluleDeroulante.jsx';
 
-export { SegmentedTabs };
+export { SegmentedTabs, PiluleDeroulante };
 export { Anneau, Arc, Barres } from './Graphiques.jsx';
 export { default as ChoixFiltre } from './ChoixFiltre.jsx';
 export { default as Coche } from './Coche.jsx';
@@ -166,8 +167,8 @@ export function Input({ value, onChange, placeholder, type = 'text', style = {},
 
 // TabBar délègue désormais au SegmentedTabs (bande compacte 1 ligne scrollable)
 // pour que tous les usages existants profitent du rendu mobile compact.
-export function TabBar({ tabs, active, onChange, style = {} }) {
-  return <SegmentedTabs tabs={tabs} active={active} onChange={onChange} style={style} />;
+export function TabBar({ tabs, active, onChange, style = {}, deroulant, titre }) {
+  return <SegmentedTabs tabs={tabs} active={active} onChange={onChange} style={style} deroulant={deroulant} titre={titre} />;
 }
 
 // Encadré de statut : posé sur la page, sans fond ni coins arrondis. Un filet
