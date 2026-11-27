@@ -1,7 +1,7 @@
 import React from 'react';
-import { ChevronsRight, Clock, ConciergeBell, Maximize2, Minimize2, Minus, Move, Plus, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeftRight, ChevronsRight, Clock, ConciergeBell, Maximize2, Minimize2, Minus, Move, Plus, SlidersHorizontal } from 'lucide-react';
 import { PLAN_W, PLAN_H } from '../../hooks/planSalleCanevas.js';
-import { Btn, Panneau, TabBar } from '../../components/ui/index.jsx';
+import { Btn, Panneau } from '../../components/ui/index.jsx';
 import { ElementDecor } from '../previsions/planDecor.jsx';
 import { readJson, writeJson } from '../../utils/storage.js';
 import { useHauteurRestante, useLargeur, useMaintenant } from './mesures.js';
@@ -163,6 +163,27 @@ export default function PlanTables({
   const visibles = actif === '_autres' || !onglets.length ? horsSalle : tablesActives.filter((t) => t.salle_id === actif);
   const decor = (elements || []).filter((el) => (actif === '_autres' || !onglets.length ? !el.salle_id : el.salle_id === actif));
   const deplacerActif = deplacer && peutDeplacer && !choixSeul;
+
+  // Changer de salle d'un toucher (27.11.2026) : le bouton montre la salle à
+  // l'écran, un toucher passe à la suivante (Salle, Terrasse, puis Salle),
+  // sans menu.
+  function salleSuivante() {
+    const i = onglets.findIndex((o) => o.id === actif);
+    const suivante = onglets[(i + 1) % onglets.length];
+    if (suivante && suivante.id !== actif) choisirSalle(suivante.id);
+  }
+  const boutonSalle = onglets.length > 1 ? (
+    <button
+      type="button"
+      className="pilule-deroulante no-print"
+      onClick={salleSuivante}
+      title="Passer à la salle suivante"
+      data-caisse-salle=""
+    >
+      <span className="pilule-deroulante-valeur">{onglets.find((o) => o.id === actif)?.label}</span>
+      <ArrowLeftRight size={16} aria-hidden="true" className="pilule-deroulante-chevron" />
+    </button>
+  ) : null;
 
   function choisirSalle(id) {
     setSalleId(id);
@@ -529,7 +550,7 @@ export default function PlanTables({
       {barreCaisse && (
         <div className="module-actions caisse-actions no-print" data-caisse-actions="" style={st.barreCaisse}>
           {barreCaisse.avant}
-          {barreUnique && onglets.length > 1 && <TabBar tabs={onglets} active={actif} onChange={choisirSalle} deroulant titre="Salles" />}
+          {barreUnique && boutonSalle}
           <div style={st.barreCaisseDroite}>
             {barreUnique && actionsPlan}
             {!pleinSurPlan && barreCaisse.apres}
@@ -548,7 +569,7 @@ export default function PlanTables({
       {!deuxColonnes && !barreUnique && (onglets.length > 1 ? (
         <>
           <div style={st.barre}>
-            <TabBar tabs={onglets} active={actif} onChange={choisirSalle} deroulant titre="Salles" />
+            {boutonSalle}
             {actionsPlan}
           </div>
           {!tel && <div style={st.barre}>{filtres}</div>}
@@ -569,7 +590,7 @@ export default function PlanTables({
           {deuxColonnes && barreUnique && <div style={st.barre}>{filtres}</div>}
           {deuxColonnes && !barreUnique && (
             <div style={st.barre}>
-              {onglets.length > 1 && <TabBar tabs={onglets} active={actif} onChange={choisirSalle} deroulant titre="Salles" />}
+              {boutonSalle}
               {actionsPlan}
             </div>
           )}
@@ -1018,16 +1039,19 @@ function ReglagesAffichage({ affichage, onChange, tel = false }) {
 const st = {
   racine: { display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10, minWidth: 0 },
   barre: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, minWidth: 0 },
-  compteurs: { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6, flex: '1 1 auto', minWidth: 0 },
-  // Filtre d'état : une pilule de 40 px dans une cible de 44 px, la choisie
-  // en aplat sombre (direction Galet).
+  // Une seule ligne, toujours : quand la place manque (iPad debout), elle
+  // défile de côté plutôt que de prendre une seconde ligne.
+  compteurs: { display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 2, flex: '1 1 auto', minWidth: 0, overflowX: 'auto', scrollbarWidth: 'none' },
+  // Filtre d'état, discret (27.11.2026) : un point, le nombre et l'état en
+  // petit texte, sans fond ni contour au repos ; le filtre choisi en aplat
+  // sombre (direction Galet). Toute la rangée tient sur une ligne.
   compteur: {
-    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, margin: '2px 0', padding: '0 12px', borderRadius: 'var(--r-full)',
-    background: 'var(--zone)', color: 'var(--text)', fontSize: 'var(--t2)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap',
-    borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--rule-soft)', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0,
+    display: 'inline-flex', alignItems: 'center', gap: 5, minHeight: 36, margin: 0, padding: '0 8px', borderRadius: 'var(--r-full)',
+    background: 'transparent', color: 'var(--text2)', fontSize: 'var(--t1)', fontWeight: 'var(--g2)', whiteSpace: 'nowrap',
+    borderWidth: 1, borderStyle: 'solid', borderColor: 'transparent', cursor: 'pointer', fontFamily: 'var(--font)', flexShrink: 0,
   },
   compteurChoisi: { background: 'var(--accent)', color: 'var(--on-accent)', borderColor: 'var(--accent)' },
-  point: { width: 10, height: 10, borderRadius: '50%', flexShrink: 0 },
+  point: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
   actionsBarre: { display: 'inline-flex', alignItems: 'center', gap: 8, marginLeft: 'auto' },
   btn44: { minHeight: 44 },
   rond: {
