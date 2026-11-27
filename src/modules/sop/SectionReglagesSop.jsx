@@ -29,6 +29,11 @@ const ROLES = [
   { id: 'cuisinier', label: 'Cuisinier' },
   { id: 'serveur', label: 'Serveur' },
   { id: 'hote', label: 'Hôte' },
+  // Rôles hôtel (revue du 27.11.2026) : ils ouvrent les SOP (moduleConfig).
+  { id: 'receptionniste', label: 'Réceptionniste' },
+  { id: 'gouvernante', label: 'Gouvernante' },
+  { id: 'femme_de_chambre', label: 'Femme / valet de chambre' },
+  { id: 'technicien', label: 'Technicien(ne)' },
 ];
 const MOMENTS = [
   { id: 'ouverture', label: "À l'ouverture" },
