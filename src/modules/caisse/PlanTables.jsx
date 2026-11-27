@@ -524,6 +524,16 @@ export default function PlanTables({
 
       <div style={deuxColonnes ? st.grille : st.corps}>
         <div style={deuxColonnes ? st.gauche : st.colPlan}>
+          {/* En deux colonnes, la barre du plan est au-dessus de lui, comme
+              en une colonne : la salle à gauche, les gestes du plan à droite
+              (le réglage de l'affichage s'ouvre juste dessous). Les filtres
+              d'état restent dans la colonne. */}
+          {deuxColonnes && (
+            <div style={st.barre}>
+              {onglets.length > 1 && <TabBar tabs={onglets} active={actif} onChange={choisirSalle} deroulant titre="Salles" />}
+              {actionsPlan}
+            </div>
+          )}
           {deuxColonnes && panneauReglages}
           {deuxColonnes && bandeauDeplacer}
           <div ref={corpsRef}>
@@ -698,8 +708,8 @@ export default function PlanTables({
         </div>
 
         {/* Colonne : en deux colonnes, le bandeau du service, « À faire
-            maintenant » (en vue sans défiler), puis les filtres et les gestes
-            du plan ; sinon cette liste seule, sous le plan ou à côté. */}
+            maintenant » (en vue sans défiler), puis les filtres d'état ;
+            sinon cette liste seule, sous le plan ou à côté. */}
         {(deuxColonnes || (affichage.liste && !choixSeul)) && (
         <div style={deuxColonnes ? st.colonne : st.colonnePile}>
         {deuxColonnes && enTete}
@@ -765,15 +775,7 @@ export default function PlanTables({
             })}
           </div>
         )}
-        {/* En deux colonnes, la salle se choisit avec les filtres et les gestes
-            du plan : le plan garde toute la hauteur de sa colonne. */}
-        {deuxColonnes && (
-          <div style={st.barreColonne}>
-            {onglets.length > 1 && <TabBar tabs={onglets} active={actif} onChange={choisirSalle} deroulant titre="Salles" />}
-            {filtres}
-            {actionsPlan}
-          </div>
-        )}
+        {deuxColonnes && <div style={st.barreColonne}>{filtres}</div>}
         </div>
         )}
       </div>
