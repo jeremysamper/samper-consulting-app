@@ -81,7 +81,8 @@ function FenetreDemenagement({ onClose }) {
     <div style={s.pied}>
       <Btn variant="ghost" onClick={onClose}>Plus tard</Btn>
       <Btn variant="primary" onClick={ouvrirJouanet} disabled={!pret}>
-        Ouvrir <span data-no-translate="">Jouanet</span>
+        {/* Un seul enfant : Btn espace ses enfants, deux nœuds doubleraient l'espace. */}
+        <span>Ouvrir <span data-no-translate="">Jouanet</span></span>
       </Btn>
     </div>
   );
